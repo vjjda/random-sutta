@@ -10,10 +10,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const commentContent = document.getElementById("comment-content");
   const closeCommentBtn = document.getElementById("close-comment");
 
-  // --- Comment Logic ---
+  // --- Helper: Get Title ---
+  function getSuttaTitle(id) {
+    if (window.SUTTA_NAMES && window.SUTTA_NAMES[id]) {
+        return window.SUTTA_NAMES[id];
+    }
+    return "";
+  }
 
+  // --- Comment Logic ---
+  // (Giữ nguyên phần Comment Logic)
   function showComment(text) {
-    commentContent.innerHTML = text; // Hỗ trợ HTML trong comment nếu có
+    commentContent.innerHTML = text; 
     commentPopup.classList.remove("hidden");
   }
 
@@ -21,38 +29,29 @@ document.addEventListener("DOMContentLoaded", () => {
     commentPopup.classList.add("hidden");
   }
 
-  // Event Delegation: Lắng nghe click trên toàn bộ container bài kinh
   container.addEventListener("click", (event) => {
-    // Kiểm tra xem cái được click có phải là .comment-marker không
     if (event.target.classList.contains("comment-marker")) {
       const text = event.target.dataset.comment;
       if (text) {
         showComment(text);
-        // Ngăn chặn sự kiện lan truyền (optional)
         event.stopPropagation();
       }
     } else {
-      // Nếu click ra ngoài marker (vào text bài kinh), ẩn popup
       hideComment();
     }
   });
 
-  // Close button logic
   closeCommentBtn.addEventListener("click", (e) => {
     hideComment();
     e.stopPropagation();
   });
 
-  // Close when clicking escape key
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hideComment();
   });
 
   // --- Core Functions ---
 
-  // 1. Render Sutta to View
-  // FIX: Thêm tham số checkHash (mặc định true)
-  // Khi chuyển bài bằng nút Next/Prev, ta truyền false để bỏ qua hash cũ
   function renderSutta(suttaId, checkHash = true) {
     const id = suttaId.toLowerCase().trim();
     if (!window.SUTTA_DB || !window.SUTTA_DB[id]) {
@@ -62,48 +61,61 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const data = window.SUTTA_DB[id];
+    const currentTitle = getSuttaTitle(id);
     
     // Build Navigation HTML
     let navHtml = '<div class="sutta-nav">';
     
     if (data.previous) {
-      navHtml += `<button onclick="window.loadSutta('${
-        data.previous
-      }')">← ${data.previous.toUpperCase()}</button>`;
+      const prevTitle = getSuttaTitle(data.previous);
+      const prevLabel = prevTitle 
+          ? `← ${data.previous.toUpperCase()}<br><span class="nav-title">${prevTitle}</span>` 
+          : `← ${data.previous.toUpperCase()}`;
+          
+      navHtml += `<button onclick="window.loadSutta('${data.previous}')" class="nav-btn">${prevLabel}</button>`;
     } else {
       navHtml += `<span></span>`;
     }
 
     if (data.next) {
-      navHtml += `<button onclick="window.loadSutta('${
-        data.next
-      }')">${data.next.toUpperCase()} →</button>`;
+      const nextTitle = getSuttaTitle(data.next);
+      const nextLabel = nextTitle
+          ? `${data.next.toUpperCase()} →<br><span class="nav-title">${nextTitle}</span>`
+          : `${data.next.toUpperCase()} →`;
+
+      navHtml += `<button onclick="window.loadSutta('${data.next}')" class="nav-btn">${nextLabel}</button>`;
     }
     navHtml += "</div>";
 
+    // Inject Title into Content (Optional but nice)
+    let contentHtml = data.content;
+    if (currentTitle) {
+        // Simple injection at the top if not already there
+        // Note: Bilara content usually has its own headers, so we might just rely on statusDiv
+    }
+
     // Render Content
-    container.innerHTML = navHtml + data.content + navHtml;
-    statusDiv.textContent = `Displaying: ${id.toUpperCase()}`;
+    container.innerHTML = navHtml + contentHtml + navHtml;
+    
+    // Update Status with Title
+    statusDiv.textContent = currentTitle 
+        ? `${id.toUpperCase()}: ${currentTitle}` 
+        : `Displaying: ${id.toUpperCase()}`;
 
     // --- SCROLL & HIGHLIGHT LOGIC FIX ---
-    // Chỉ xử lý scroll theo hash nếu checkHash = true VÀ có hash
     const hash = window.location.hash;
     
     if (checkHash && hash) {
-      // Lấy ID bỏ dấu #
       const targetId = hash.substring(1);
       const targetElement = document.getElementById(targetId);
 
       if (targetElement) {
-        // 1. Scroll
         targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        // 2. Force Highlight (Thêm class thủ công)
         targetElement.classList.add("highlight");
       } else {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } else {
-      // Nếu không check hash (navigating) hoặc không có hash -> Lên đầu trang
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -113,9 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateURL(suttaId) {
     try {
       const currentUrl = new URL(window.location);
-      // 1. Cập nhật sutta_id
       currentUrl.searchParams.set("q", suttaId);
-      // 2. QUAN TRỌNG: Xóa hash cũ (ví dụ #9.1) đi
       currentUrl.hash = "";
       window.history.pushState({ suttaId: suttaId }, "", currentUrl);
     } catch (e) {
@@ -123,12 +133,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Nhớ update hàm loadSutta (nếu bạn đã tách nó ra global) để nó cũng gọi hideComment()
   window.loadSutta = function (suttaId) {
     hideComment();
-    // Reset popup
-    // FIX: Truyền false vào tham số thứ 2 để BỎ QUA hash hiện tại của trình duyệt
-    // Vì đây là hành động chuyển trang chủ động.
     if (renderSutta(suttaId, false)) {
       updateURL(suttaId);
     }
@@ -136,8 +142,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function loadRandomSutta() {
     hideComment();
-    // Ẩn comment cũ nếu đang mở
-
     if (!window.SUTTA_DB) return;
     const keys = Object.keys(window.SUTTA_DB);
     if (keys.length === 0) return;
@@ -151,16 +155,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Initialization ---
 
   function waitForData() {
+    // Check both DB and Names (Names are optional but good to wait for)
     if (window.SUTTA_DB && Object.keys(window.SUTTA_DB).length > 0) {
       const count = Object.keys(window.SUTTA_DB).length;
-      statusDiv.textContent = `Library loaded: ~${count} suttas available.`;
+      
+      // Update status if names are loaded
+      const nameCount = window.SUTTA_NAMES ? Object.keys(window.SUTTA_NAMES).length : 0;
+      statusDiv.textContent = `Library loaded: ~${count} suttas (${nameCount} titles).`;
       statusDiv.style.color = "#666";
       randomBtn.disabled = false;
 
       const params = new URLSearchParams(window.location.search);
       const queryId = params.get("q");
       if (queryId) {
-        // Initial load: Giữ nguyên true để support link chia sẻ có hash
         renderSutta(queryId, true);
       }
     } else {
@@ -173,7 +180,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("popstate", (event) => {
     if (event.state && event.state.suttaId) {
-      // Back/Forward button: Giữ mặc định true để restore đúng vị trí nếu history có hash
       renderSutta(event.state.suttaId);
     } else {
       const params = new URLSearchParams(window.location.search);

@@ -10,6 +10,8 @@ from typing import Dict, List, Any
 from .config import OUTPUT_BASE_DIR, OUTPUT_BOOKS_DIR, PROCESS_LIMIT
 from .finder import scan_root_dir
 from .converter import process_worker
+# UPDATED: Import name processor
+from .name_parser import process_names, generate_name_loader
 
 logger = logging.getLogger("SuttaProcessor")
 
@@ -37,7 +39,7 @@ class SuttaManager:
         
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [executor.submit(process_worker, task) for task in tasks]
-            
+ 
             count = 0
             for future in as_completed(futures):
                 group, sid, content = future.result()
@@ -52,11 +54,22 @@ class SuttaManager:
 
         # 3. Process Linking & Output
         self._write_files()
+        
+        # 4. UPDATED: Process Names
+        logger.info("🏷️  Processing Sutta Names...")
+        name_files = process_names()
+        generate_name_loader(name_files)
+
+        logger.info("✅ All done.")
 
     def _write_files(self):
         logger.info("💾 Linking suttas and writing output files...")
         
         if OUTPUT_BASE_DIR.exists():
+            # Warning: This deletes everything, including the new 'names' dir if it was created before
+            # But since names are processed AFTER this function in run(), it's fine.
+            # Ideally, we should be careful not to delete 'names' if we run partial updates.
+            # For now, let's keep it simple: Wipe clean.
             shutil.rmtree(OUTPUT_BASE_DIR)
         
         OUTPUT_BASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -88,7 +101,7 @@ class SuttaManager:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             
             json_str = json.dumps(linked_data, ensure_ascii=False, indent=2)
-            
+           
             js_content = f"""// Source: {group_name}
 window.SUTTA_DB = window.SUTTA_DB || {{}};
 Object.assign(window.SUTTA_DB, {json_str});
@@ -100,11 +113,10 @@ Object.assign(window.SUTTA_DB, {json_str});
             logger.info(f"   -> {file_name} ({len(linked_data)} items)")
 
         self._write_loader(generated_files)
-        logger.info("✅ All done.")
 
     def _write_loader(self, files: list):
         files.sort()
-        loader_path = OUTPUT_BASE_DIR / "loader.js"
+        loader_path = OUTPUT_BASE_DIR / "loader.js" # This is the main book loader
         
         js_content = f"""
 // Auto-generated Loader
