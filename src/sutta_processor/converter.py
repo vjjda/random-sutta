@@ -1,4 +1,4 @@
-# Path: tools/sutta_processor/converter.py
+# Path: src/sutta_processor/converter.py
 import json
 import re
 from pathlib import Path

@@ -1,4 +1,4 @@
-# Path: tools/sutta_processor/finder.py
+# Path: src/sutta_processor/finder.py
 import logging
 import os
 from pathlib import Path

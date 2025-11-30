@@ -1,4 +1,4 @@
-# Path: tools/sutta_processor/config.py
+# Path: src/sutta_processor/config.py
 from pathlib import Path
 
 # Base Paths

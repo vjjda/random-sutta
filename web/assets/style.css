@@ -1,4 +1,4 @@
-/* Path: web/style.css */
+/* Path: web/assets/style.css */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f4f4f9;
@@ -53,7 +53,8 @@ button:hover { background-color: #a0522d; }
     color: #777;
     font-style: italic;
     font-size: 0.9em;
-    display: block;       /* Chiếm trọn dòng */
+    display: block;
+    margin-top: 5px;       /* Chiếm trọn dòng */
     margin-bottom: 4px;   /* Khoảng cách nhỏ với dòng tiếng Anh */
 }
 
@@ -73,15 +74,22 @@ button:hover { background-color: #a0522d; }
 
 /* Comment Marker Style */
 .comment-marker {
-    color: #d35400;       /* Màu cam đất nổi bật */
+    color: #d35400; /* Màu cam đất nổi bật */
     font-weight: bold;
     cursor: pointer;
-    font-size: 0.85em;    /* Nhỏ hơn chữ thường chút */
-    vertical-align: super;/* Đẩy lên cao (superscript) */
-    margin-left: 2px;
-    padding: 0 4px;       /* Tăng diện tích bấm */
-    user-select: none;    /* Không cho bôi đen */
+    font-size: 0.75em; /* Giảm size đi một chút cho tinh tế hơn (cũ là 0.85em) */
+    
+    /* FIX: Thay thế vertical-align: super bằng position relative */
+    /* vertical-align: super; <--- XÓA DÒNG NÀY */
+    vertical-align: baseline; /* Đưa về chuẩn */
+    position: relative;       /* Để có thể dịch chuyển vị trí */
+    top: -0.5em;             /* Đẩy lên cao thủ công */
+    
+    margin-left: 0px;        /* Sát lại chữ một chút (cũ là 2px) */
+    padding: 0 4px;          /* Tăng diện tích bấm */
+    user-select: none;       /* Không cho bôi đen */
     transition: color 0.2s;
+    line-height: 0;          /* Đảm bảo nó không chiếm chiều cao dòng */
 }
 
 .comment-marker:hover {
@@ -176,16 +184,6 @@ p { margin-bottom: 15px; }
 
 .sutta-nav button:hover {
     background-color: #e0e0e0;
-}
-
-/* Highlight segment khi được trỏ tới (Anchor targeting) */
-.segment:target {
-    background-color: #fff9c4; /* Màu vàng nhạt */
-    border-left: 3px solid #fbc02d;
-    padding-left: 5px;
-    display: block; /* Đảm bảo padding hoạt động tốt */
-    border-radius: 0 4px 4px 0;
-    transition: background-color 0.5s;
 }
 
 /* Highlight segment khi được trỏ tới */

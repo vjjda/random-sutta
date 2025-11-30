@@ -1,3 +1,4 @@
+// Path: web/assets/sutta/loader.js
 
 // Auto-generated Loader
 (function() {

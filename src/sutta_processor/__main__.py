@@ -1,4 +1,4 @@
-# Path: tools/sutta_processor/__main__.py
+# Path: src/sutta_processor/__main__.py
 import logging
 import sys
 from .manager import SuttaManager
