@@ -7,34 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { hideComment } = window.initCommentPopup();
 
-    // Helper: Tính toán tham số ?b=
-    function getBookUrlParam() {
-        const active = window.getActiveFilters(); // Lấy từ filters.js
-        const defaults = window.PRIMARY_BOOKS;    // Lấy từ constants.js
-
-        // 1. Nếu số lượng khác nhau -> Chắc chắn là Custom -> Trả về string
-        if (active.length !== defaults.length) {
-            return active.join(",");
-        }
-
-        // 2. Nếu số lượng bằng nhau, kiểm tra nội dung
-        // (Dùng Set để so sánh nhanh)
-        const activeSet = new Set(active);
-        for (let book of defaults) {
-            if (!activeSet.has(book)) {
-                return active.join(","); // Có sách lạ -> Custom
-            }
-        }
-
-        // 3. Nếu giống hệt Default -> Trả về null (để utils xóa ?b= đi cho gọn link)
-        return null;
-    }
-
     window.loadSutta = function (suttaId) {
         hideComment();
         if (window.renderSutta(suttaId, false)) { 
-            // UPDATED: Truyền thêm tham số sách vào URL
-            const bookParam = getBookUrlParam();
+            // UPDATED: Dùng hàm từ filters.js
+            const bookParam = window.generateBookParam();
             window.updateURL(suttaId, bookParam);
         }
     };

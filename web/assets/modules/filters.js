@@ -1,23 +1,50 @@
 // Path: web/assets/modules/filters.js
 
-const filterSet = new Set();
+const filterSet = new Set(); 
 
 window.getActiveFilters = function() {
     return Array.from(filterSet);
 }
 
+// NEW: Hàm tính toán tham số URL cho sách (Chuyển từ app.js sang)
+window.generateBookParam = function() {
+    const active = Array.from(filterSet);
+    const defaults = window.PRIMARY_BOOKS;
+
+    // 1. Nếu số lượng khác nhau -> Custom
+    if (active.length !== defaults.length) {
+        return active.join(",");
+    }
+
+    // 2. Nếu số lượng bằng, check nội dung
+    const activeSetCheck = new Set(active);
+    for (let book of defaults) {
+        if (!activeSetCheck.has(book)) {
+            return active.join(","); // Có sách lạ
+        }
+    }
+
+    // 3. Giống hệt default -> null
+    return null;
+}
+
 function toggleFilter(bookId, btnElement) {
     if (filterSet.has(bookId)) {
-        if (filterSet.size === 1) return;
+        if (filterSet.size === 1) return; // Giữ ít nhất 1
         filterSet.delete(bookId);
         btnElement.classList.remove("active");
     } else {
         filterSet.add(bookId);
         btnElement.classList.add("active");
     }
+
+    // UPDATED: Cập nhật URL ngay lập tức
+    const bookParam = window.generateBookParam();
+    // Truyền null vào tham số đầu tiên để giữ nguyên Sutta ID hiện tại
+    window.updateURL(null, bookParam);
 }
 
-function createFilterButton(bookId, container, isActive) {
+function createFilterButton(bookId, container, isDefaultActive) {
     const btn = document.createElement("button");
     btn.className = "filter-btn";
     
@@ -27,8 +54,7 @@ function createFilterButton(bookId, container, isActive) {
         btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
     }
     
-    // Set trạng thái dựa trên tham số isActive được truyền vào
-    if (isActive) {
+    if (isDefaultActive) {
         btn.classList.add("active");
         filterSet.add(bookId);
     }
@@ -45,52 +71,44 @@ window.initFilters = function() {
     primaryDiv.innerHTML = "";
     secondaryDiv.innerHTML = "";
 
-    // Reset bộ lọc
     filterSet.clear();
 
-    // --- XỬ LÝ URL PARAM ?b=... ---
+    // Parse URL param ?b= để init state
     const params = new URLSearchParams(window.location.search);
     const bParam = params.get("b");
 
     let initialBooks = new Set();
-    let hasSecondaryActive = false; // Cờ kiểm tra xem có sách phụ nào được chọn không
+    let hasSecondaryActive = false;
 
     if (bParam) {
-        // Nếu có ?b=mn,dn -> Tách chuỗi và lấy danh sách
         const booksFromUrl = bParam.toLowerCase().split(",").map(s => s.trim());
         booksFromUrl.forEach(b => initialBooks.add(b));
     } else {
-        // Nếu không có ?b= -> Mặc định chọn Primary Books
         window.PRIMARY_BOOKS.forEach(b => initialBooks.add(b));
     }
 
-    // --- RENDER PRIMARY ---
+    // Render Primary
     window.PRIMARY_BOOKS.forEach(book => {
         const isActive = initialBooks.has(book);
         createFilterButton(book, primaryDiv, isActive);
     });
 
-    // --- RENDER SECONDARY ---
+    // Render Secondary
     window.SECONDARY_BOOKS.forEach(book => {
         const isActive = initialBooks.has(book);
         if (isActive) hasSecondaryActive = true;
         createFilterButton(book, secondaryDiv, isActive);
     });
 
-    // --- LOGIC MỞ RỘNG AUTO ---
-    // Nếu trong URL có yêu cầu sách thuộc nhóm Secondary (ví dụ ?b=dhp,bv), 
-    // ta tự động mở rộng panel "Others" để người dùng thấy nút đang active.
     if (hasSecondaryActive) {
         secondaryDiv.classList.remove("hidden");
         moreBtn.textContent = "Hide";
     } else {
-        // Mặc định ẩn
         secondaryDiv.classList.add("hidden");
         moreBtn.textContent = "Others";
     }
 
-    // Toggle button logic
-    moreBtn.onclick = () => { // Dùng onclick để override event cũ nếu hàm này chạy nhiều lần
+    moreBtn.onclick = () => {
         secondaryDiv.classList.toggle("hidden");
         moreBtn.textContent = secondaryDiv.classList.contains("hidden") 
             ? "Others" 
