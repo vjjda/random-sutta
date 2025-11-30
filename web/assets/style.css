@@ -1,4 +1,6 @@
 /* Path: web/assets/style.css */
+
+/* --- GLOBAL & LAYOUT --- */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f4f4f9;
@@ -9,7 +11,6 @@ body {
     line-height: 1.6;
 }
 
-/* Header & Controls */
 header {
     text-align: center;
     margin-bottom: 30px;
@@ -17,8 +18,10 @@ header {
     border-bottom: 2px solid #ddd;
 }
 
+/* --- HEADINGS & GENERIC CONTROLS --- */
 h1 { margin: 0 0 10px 0; color: #8b4513; }
 
+/* Generic button (used for 'Randomize Sutta') */
 button {
     background-color: #8b4513;
     color: white;
@@ -32,231 +35,15 @@ button {
 
 button:hover { background-color: #a0522d; }
 
+.controls { margin-top: 20px; }
+
 #status {
     margin-top: 10px; 
     color: #666; 
     font-size: 0.9em;
 }
 
-/* Sutta Content Styling */
-#sutta-container {
-    background: white;
-    padding: 40px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    min-height: 300px;
-}
-
-/* Bilara Data Styles */
-/* 1. Pali: Giữ nguyên block để nó nằm riêng một dòng phía trên */
-.pli {
-    color: #777;
-    font-style: italic;
-    font-size: 0.9em;
-    display: block;
-    margin-top: 5px;       /* Chiếm trọn dòng */
-    margin-bottom: 4px;   /* Khoảng cách nhỏ với dòng tiếng Anh */
-}
-
-/* 2. English: Đổi thành inline để dấu * có thể nằm kế bên */
-.eng {
-    color: #222;
-    font-weight: 500;
-    display: inline;      /* QUAN TRỌNG: Cho phép phần tử khác nằm cùng dòng */
-    margin-bottom: 0;     /* Inline không nhận margin-bottom, khoảng cách sẽ do thẻ <p> bao ngoài lo */
-}
-
-/* 3. Wrapper Segment: Đảm bảo khối này hiển thị dạng block */
-.segment {
-    display: block;       /* Đảm bảo toàn bộ cụm Pali + Anh là một khối */
-    margin-bottom: 0;     /* Khoảng cách giữa các đoạn */
-}
-
-/* Comment Marker Style */
-.comment-marker {
-    color: #d35400; /* Màu cam đất nổi bật */
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 0.75em; /* Giảm size đi một chút cho tinh tế hơn (cũ là 0.85em) */
-    
-    /* FIX: Thay thế vertical-align: super bằng position relative */
-    /* vertical-align: super; <--- XÓA DÒNG NÀY */
-    vertical-align: baseline; /* Đưa về chuẩn */
-    position: relative;       /* Để có thể dịch chuyển vị trí */
-    top: -0.5em;             /* Đẩy lên cao thủ công */
-    
-    margin-left: 0px;        /* Sát lại chữ một chút (cũ là 2px) */
-    padding: 0 4px;          /* Tăng diện tích bấm */
-    user-select: none;       /* Không cho bôi đen */
-    transition: color 0.2s;
-    line-height: 0;          /* Đảm bảo nó không chiếm chiều cao dòng */
-}
-
-.comment-marker:hover {
-    color: #e67e22;
-    text-decoration: underline;
-}
-
-/* Comment Popup (Toast Style) */
-#comment-popup {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    max-width: 600px;
-    background-color: #fff;
-    border-left: 5px solid #d35400;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    padding: 15px 40px 15px 20px; /* Right padding to avoid overlap with close btn */
-    border-radius: 4px;
-    z-index: 1000;
-    font-size: 0.95em;
-    line-height: 1.5;
-    color: #444;
-    
-    /* Animation */
-    transition: opacity 0.3s, transform 0.3s;
-    opacity: 1;
-}
-
-#comment-popup.hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: translate(-50%, 20px); /* Slide down when hidden */
-}
-
-/* Close Button inside Popup */
-#comment-popup button {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: transparent;
-    color: #999;
-    font-size: 20px;
-    padding: 0 8px;
-    line-height: 1;
-}
-
-#comment-popup button:hover {
-    background: transparent;
-    color: #333;
-}
-
-/* Headings inside Sutta */
-h1.sutta-title {
-    text-align: center;
-    font-size: 1.8em;
-    color: #2c3e50;
-}
-
-.evam {
-    font-variant: small-caps;
-    font-weight: bold;
-}
-
-/* Paragraph grouping */
-p { margin-bottom: 15px; }
-
-/* Placeholder text */
-.placeholder {
-    text-align: center; 
-    color: #999;
-}
-
-/* Add to web/style.css */
-
-.sutta-nav {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px dashed #eee;
-}
-
-.sutta-nav button {
-    background-color: #f0f0f0;
-    color: #555;
-    font-size: 14px;
-    padding: 5px 15px;
-}
-
-.sutta-nav button:hover {
-    background-color: #e0e0e0;
-}
-
-/* Highlight segment khi được trỏ tới */
-/* CẬP NHẬT: Thêm .segment.highlight vào selector */
-.segment:target,
-.segment.highlight {
-    background-color: #fff9c4; /* Màu vàng nhạt */
-    /* border-left: 3px solid #fbc02d; */
-    /* padding-left: 5px; */
-    display: block; 
-    border-radius: 0 4px 4px 0;
-    transition: background-color 0.5s;
-    
-    /* Optional: Thêm animation nhấp nháy nhẹ để gây chú ý */
-    /* animation: flash-highlight 1s; */
-}
-
-@keyframes flash-highlight {
-    0% { background-color: #fff9c4; }
-    50% { background-color: #fff59d; } /* Đậm hơn chút */
-    100% { background-color: #fff9c4; }
-}
-
-/* Hover effect nhẹ để biết từng đoạn */
-.segment:hover {
-    background-color: #fafafa;
-}
-
-/* --- LIST STYLES (Fix bullet points) --- */
-
-/* Loại bỏ dấu chấm tròn và khoảng trắng thụt lề mặc định của thẻ ul */
-#sutta-container ul {
-    list-style-type: none; /* Quan trọng: Xóa dấu chấm tròn */
-    padding-left: 0;       /* Xóa khoảng trắng thụt đầu dòng mặc định */
-    margin: 0;             /* Reset margin */
-}
-
-/* Đảm bảo các dòng trong list hiển thị đẹp */
-#sutta-container li {
-    margin-bottom: 0.5em;
-}
-
-/* New styles for Nav Buttons with Titles */
-.sutta-nav button.nav-btn {
-    text-align: left; /* Canh lề trái cho dễ đọc nếu text dài */
-    line-height: 1.3;
-    max-width: 45%;   /* Giới hạn chiều rộng để không đè nhau */
-}
-
-/* Nút Next thì canh phải */
-.sutta-nav button.nav-btn:last-child {
-    text-align: right;
-}
-
-.nav-title {
-    display: block;
-    font-size: 0.85em;
-    font-weight: normal;
-    opacity: 0.9;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* Cắt bớt nếu tên quá dài */
-    max-width: 200px;        /* Giới hạn độ dài text */
-}
-
-/* Responsive cho mobile */
-@media (max-width: 600px) {
-    .nav-title {
-        display: none; /* Ẩn tên bài kinh trên mobile cho gọn */
-    }
-}
-
-/* --- FILTER STYLES --- */
+/* --- FILTER SECTION --- */
 #filter-container {
     margin: 20px 0;
     text-align: center;
@@ -264,7 +51,7 @@ p { margin-bottom: 15px; }
 
 .filter-label {
     font-size: 0.9em;
-    color: #8b4513; /* Màu nâu đất */
+    color: #8b4513;
     margin-bottom: 10px;
     opacity: 0.8;
 }
@@ -278,7 +65,7 @@ p { margin-bottom: 15px; }
 }
 
 .filter-btn {
-    background-color: #e0d6cc; /* Màu be nhạt (inactive) */
+    background-color: #e0d6cc;
     color: #5a4a42;
     border: 1px solid #d0c0b0;
     padding: 6px 12px;
@@ -289,19 +76,15 @@ p { margin-bottom: 15px; }
     user-select: none;
 }
 
-.filter-btn:hover {
-    background-color: #d6c6b6;
-}
+.filter-btn:hover { background-color: #d6c6b6; }
 
-/* Trạng thái được chọn (Active) */
 .filter-btn.active {
-    background-color: #5d4037; /* Màu nâu đậm (giống hình mẫu) */
+    background-color: #5d4037;
     color: #fff;
     border-color: #4e342e;
     font-weight: bold;
 }
 
-/* Nút Show More text */
 .text-btn {
     background: none;
     border: none;
@@ -317,16 +100,7 @@ p { margin-bottom: 15px; }
     background: none;
 }
 
-.hidden {
-    display: none !important;
-}
-
-/* Chỉnh lại Header chút cho đẹp */
-.controls {
-    margin-top: 20px;
-}
-
-/* --- NEW NAVIGATION HEADER --- */
+/* --- NAVIGATION HEADER (TOP) --- */
 #nav-header {
     display: flex;
     justify-content: center;
@@ -337,16 +111,13 @@ p { margin-bottom: 15px; }
     animation: fadeIn 0.5s;
 }
 
-#nav-header.hidden {
-    display: none;
-}
+#nav-header.hidden { display: none; }
 
-/* Nút mũi tên tối giản */
 .nav-arrow {
     background: none;
     border: none;
     font-size: 1.5em;
-    color: #8b4513; /* Màu nâu chủ đạo */
+    color: #8b4513;
     cursor: pointer;
     padding: 0 10px;
     transition: transform 0.2s, opacity 0.2s;
@@ -365,7 +136,6 @@ p { margin-bottom: 15px; }
     opacity: 0.3;
 }
 
-/* Phần hiển thị tên bài ở giữa */
 #nav-title-display {
     text-align: center;
     display: flex;
@@ -384,24 +154,148 @@ p { margin-bottom: 15px; }
     font-style: italic;
 }
 
-/* --- UPDATE CONTENT NAVIGATION (BOTTOM) --- */
-/* Sửa lại thanh điều hướng bên dưới bài kinh cho gọn */
+/* --- SUTTA CONTAINER & TEXT --- */
+#sutta-container {
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    min-height: 300px;
+}
+
+h1.sutta-title {
+    text-align: center;
+    font-size: 1.8em;
+    color: #2c3e50;
+}
+
+.evam {
+    font-variant: small-caps;
+    font-weight: bold;
+}
+
+p { margin-bottom: 15px; }
+
+.placeholder {
+    text-align: center; 
+    color: #999;
+}
+
+.hidden { display: none !important; }
+
+/* Bilara Data Styles */
+.pli {
+    color: #777;
+    font-style: italic;
+    font-size: 0.9em;
+    display: block;
+    margin-top: 5px;
+    margin-bottom: 4px;
+}
+
+.eng {
+    color: #222;
+    font-weight: 500;
+    display: inline;
+    margin-bottom: 0;
+}
+
+.segment {
+    display: block;
+    margin-bottom: 0;
+}
+
+/* List Styles Reset */
+#sutta-container ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+#sutta-container li { margin-bottom: 0.5em; }
+
+/* --- COMMENTS & POPUP --- */
+.comment-marker {
+    color: #d35400;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.75em;
+    vertical-align: baseline;
+    position: relative;
+    top: -0.5em;
+    margin-left: 0px;
+    padding: 0 4px;
+    user-select: none;
+    transition: color 0.2s;
+    line-height: 0;
+}
+
+.comment-marker:hover {
+    color: #e67e22;
+    text-decoration: underline;
+}
+
+#comment-popup {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 600px;
+    background-color: #fff;
+    border-left: 5px solid #d35400;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 15px 40px 15px 20px;
+    border-radius: 4px;
+    z-index: 1000;
+    font-size: 0.95em;
+    line-height: 1.5;
+    color: #444;
+    transition: opacity 0.3s, transform 0.3s;
+    opacity: 1;
+}
+
+#comment-popup.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 20px);
+}
+
+#comment-popup button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: transparent;
+    color: #999;
+    font-size: 20px;
+    padding: 0 8px;
+    line-height: 1;
+}
+
+#comment-popup button:hover {
+    background: transparent;
+    color: #333;
+}
+
+/* --- BOTTOM NAVIGATION (Sutta Content) --- */
 .sutta-nav {
     display: flex;
     justify-content: space-between;
-    margin-top: 40px;          /* Tăng khoảng cách với nội dung */
+    margin-top: 40px;
     padding-top: 20px;
-    border-top: 1px solid #eee; /* Đổi dashed thành solid nhẹ nhàng hơn */
+    border-top: 1px solid #eee;
 }
 
-/* Style lại nút bên dưới giống text link hơn là nút bấm cục mịch */
 .sutta-nav button.nav-btn {
     background: none;
-    border: 1px solid transparent; /* Ẩn border */
+    border: 1px solid transparent;
     color: #8b4513;
     padding: 5px 10px;
     font-size: 0.9em;
     transition: all 0.2s;
+    text-align: left;
+    line-height: 1.3;
+    max-width: 45%;
 }
 
 .sutta-nav button.nav-btn:hover {
@@ -410,9 +304,37 @@ p { margin-bottom: 15px; }
     text-decoration: none;
 }
 
+.sutta-nav button.nav-btn:last-child { text-align: right; }
+
 .nav-title {
     display: block;
     font-size: 0.85em;
     color: #888;
     margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* Responsive Nav Title */
+@media (max-width: 600px) {
+    .nav-title { display: none; }
+}
+
+/* --- HIGHLIGHT & ANIMATION --- */
+.segment:target,
+.segment.highlight {
+    background-color: #fff9c4;
+    display: block; 
+    border-radius: 0 4px 4px 0;
+    transition: background-color 0.5s;
+}
+
+.segment:hover { background-color: #fafafa; }
+
+@keyframes flash-highlight {
+    0% { background-color: #fff9c4; }
+    50% { background-color: #fff59d; }
+    100% { background-color: #fff9c4; }
 }
