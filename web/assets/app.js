@@ -53,8 +53,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- DATA LOADING LOGIC (IMPROVED) ---
     
     let loadAttempts = 0;
-    // Tăng thời gian chờ lên 120 giây (1200 * 100ms) để hỗ trợ mạng chậm
-    const MAX_ATTEMPTS = 1200; 
+    // // UPDATED: Giảm xuống 10 giây (100 * 100ms)
+    const MAX_ATTEMPTS = 100; 
 
     function waitForData() {
         // Kiểm tra an toàn xem object đã khởi tạo chưa
