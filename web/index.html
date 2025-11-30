@@ -12,10 +12,22 @@
     <script src="assets/sutta/name_loader.js"></script>
 </head>
 <body>
-<header>
+
+    <header>
         <h1>☸️ Random Sutta</h1>
         <p>A simple reader for Bilara texts</p>
-        <button id="btn-random" disabled>🎲 Randomize Sutta</button>
+        
+        <div id="filter-container">
+            <p class="filter-label">Choose books to include in the pool</p>
+            <div id="primary-filters" class="filter-row"></div>
+            
+            <button id="btn-more-filters" class="text-btn">Show More Books...</button>
+            <div id="secondary-filters" class="filter-row hidden"></div>
+        </div>
+        <div class="controls">
+            <button id="btn-random" disabled>🎲 Randomize Sutta</button>
+        </div>
+        
         <div id="status">Initializing...</div>
     </header>
 
