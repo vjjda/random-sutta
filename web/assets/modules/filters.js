@@ -1,9 +1,6 @@
 // Path: web/assets/modules/filters.js
 
-// Biến này ở global scope của file này, không cần window nhưng các hàm khác phải gắn window
-const filterSet = new Set(); 
-// Lưu ý: chưa init Set ngay vì PRIMARY_BOOKS có thể chưa load xong nếu thứ tự script sai.
-// Ta sẽ init trong initFilters
+const filterSet = new Set();
 
 window.getActiveFilters = function() {
     return Array.from(filterSet);
@@ -20,7 +17,7 @@ function toggleFilter(bookId, btnElement) {
     }
 }
 
-function createFilterButton(bookId, container, isDefaultActive) {
+function createFilterButton(bookId, container, isActive) {
     const btn = document.createElement("button");
     btn.className = "filter-btn";
     
@@ -30,7 +27,8 @@ function createFilterButton(bookId, container, isDefaultActive) {
         btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
     }
     
-    if (isDefaultActive) {
+    // Set trạng thái dựa trên tham số isActive được truyền vào
+    if (isActive) {
         btn.classList.add("active");
         filterSet.add(bookId);
     }
@@ -47,17 +45,55 @@ window.initFilters = function() {
     primaryDiv.innerHTML = "";
     secondaryDiv.innerHTML = "";
 
-    // Reset và Init Set từ biến toàn cục
+    // Reset bộ lọc
     filterSet.clear();
-    
-    // Render
-    window.PRIMARY_BOOKS.forEach(book => createFilterButton(book, primaryDiv, true));
-    window.SECONDARY_BOOKS.forEach(book => createFilterButton(book, secondaryDiv, false));
 
-    moreBtn.addEventListener("click", () => {
+    // --- XỬ LÝ URL PARAM ?b=... ---
+    const params = new URLSearchParams(window.location.search);
+    const bParam = params.get("b");
+
+    let initialBooks = new Set();
+    let hasSecondaryActive = false; // Cờ kiểm tra xem có sách phụ nào được chọn không
+
+    if (bParam) {
+        // Nếu có ?b=mn,dn -> Tách chuỗi và lấy danh sách
+        const booksFromUrl = bParam.toLowerCase().split(",").map(s => s.trim());
+        booksFromUrl.forEach(b => initialBooks.add(b));
+    } else {
+        // Nếu không có ?b= -> Mặc định chọn Primary Books
+        window.PRIMARY_BOOKS.forEach(b => initialBooks.add(b));
+    }
+
+    // --- RENDER PRIMARY ---
+    window.PRIMARY_BOOKS.forEach(book => {
+        const isActive = initialBooks.has(book);
+        createFilterButton(book, primaryDiv, isActive);
+    });
+
+    // --- RENDER SECONDARY ---
+    window.SECONDARY_BOOKS.forEach(book => {
+        const isActive = initialBooks.has(book);
+        if (isActive) hasSecondaryActive = true;
+        createFilterButton(book, secondaryDiv, isActive);
+    });
+
+    // --- LOGIC MỞ RỘNG AUTO ---
+    // Nếu trong URL có yêu cầu sách thuộc nhóm Secondary (ví dụ ?b=dhp,bv), 
+    // ta tự động mở rộng panel "Others" để người dùng thấy nút đang active.
+    if (hasSecondaryActive) {
+        secondaryDiv.classList.remove("hidden");
+        moreBtn.textContent = "Hide";
+    } else {
+        // Mặc định ẩn
+        secondaryDiv.classList.add("hidden");
+        moreBtn.textContent = "Others";
+    }
+
+    // Toggle button logic
+    moreBtn.onclick = () => { // Dùng onclick để override event cũ nếu hàm này chạy nhiều lần
         secondaryDiv.classList.toggle("hidden");
         moreBtn.textContent = secondaryDiv.classList.contains("hidden") 
             ? "Others" 
             : "Hide";
-    });
+    };
 }
