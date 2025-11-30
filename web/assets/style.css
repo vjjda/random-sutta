@@ -169,3 +169,18 @@ p { margin-bottom: 15px; }
 .sutta-nav button:hover {
     background-color: #e0e0e0;
 }
+
+/* Highlight segment khi được trỏ tới (Anchor targeting) */
+.segment:target {
+    background-color: #fff9c4; /* Màu vàng nhạt */
+    border-left: 3px solid #fbc02d;
+    padding-left: 5px;
+    display: block; /* Đảm bảo padding hoạt động tốt */
+    border-radius: 0 4px 4px 0;
+    transition: background-color 0.5s;
+}
+
+/* Hover effect nhẹ để biết từng đoạn */
+.segment:hover {
+    background-color: #fafafa;
+}

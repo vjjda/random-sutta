@@ -25,19 +25,16 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[str]]:
     try:
         files = find_sutta_files(sutta_id, root_file_path)
         
-        # Requirement: Must have Root and HTML structure
         if not files.get('root') or not files.get('html'):
             return "skipped", sutta_id, None
 
         group = get_group_name(files['root'])
 
-        # Load data
         data_root = load_json(files['root'])
         data_trans = load_json(files.get('translation', Path("")))
         data_html = load_json(files.get('html', Path("")))
         data_comment = load_json(files.get('comment', Path("")))
 
-        # Natural Sort Keys
         sorted_keys = sorted(data_html.keys(), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)])
 
         final_html = ""
@@ -47,27 +44,24 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[str]]:
             eng_text = data_trans.get(key, "")
             comment_text = data_comment.get(key, "")
 
-            segment_content = ""
+            # --- WRAPPER START ---
+            # Bọc toàn bộ nội dung của segment vào span có id là segment_id (ví dụ: mn1:1.1)
+            # class 'segment' dùng để style hoặc query sau này
+            segment_content = f"<span class='segment' id='{key}'>"
             
-            # 1. Pali
             if pali_text:
                 segment_content += f"<span class='pli'>{pali_text}</span>"
             
-            # 2. English
             if eng_text:
                 segment_content += f" <span class='eng'>{eng_text}</span>"
                 
-            # 3. Comment
             if comment_text:
-                # Escape quotes để tránh lỗi HTML attribute
                 safe_comment = comment_text.replace('"', '&quot;').replace("'", "&#39;")
-                
-                # CẬP NHẬT: 
-                # 1. Dùng data-comment thay vì title để JS xử lý
-                # 2. Text hiển thị chỉ là dấu * (bỏ ngoặc vuông)
-                segment_content += f"<span class='comment-marker' data-comment='{safe_comment}'>*</span>"
+                segment_content += f" <span class='comment-marker' data-comment='{safe_comment}'>*</span>"
+            
+            segment_content += "</span>"
+            # --- WRAPPER END ---
 
-            # Merge into template
             final_html += template.replace("{}", segment_content) + "\n"
 
         return group, sutta_id, final_html

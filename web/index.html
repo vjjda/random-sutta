@@ -1,31 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Random Sutta Reader</title>
+    
+    <link rel="stylesheet" href="assets/style.css">
+    
+    <script src="assets/sutta/loader.js"></script>
+</head>
+<body>
 
-    <link rel="stylesheet" href="assets/style.css" />
-
-    <script src="../data/sutta/loader.js"></script>
-  </head>
-  <body>
     <header>
-      <h1>Random Sutta</h1>
-      <p>A simple reader for Bilara texts</p>
-      <button id="btn-random" disabled>Randomize Sutta</button>
-      <div id="status">Initializing...</div>
+        <h1>☸️ Random Sutta</h1>
+        <p>A simple reader for Bilara texts</p>
+        <button id="btn-random" disabled>🎲 Randomize Sutta</button>
+        <div id="status">Initializing...</div>
     </header>
 
     <main id="sutta-container">
-      <p class="placeholder">Click the button to load a sutta.</p>
+        <p class="placeholder">Click the button to load a sutta.</p>
     </main>
 
     <div id="comment-popup" class="hidden">
-      <div id="comment-content"></div>
-      <button id="close-comment" aria-label="Close">×</button>
+        <div id="comment-content"></div>
+        <button id="close-comment" aria-label="Close">×</button>
     </div>
 
     <script src="assets/app.js"></script>
-  </body>
+</body>
 </html>
