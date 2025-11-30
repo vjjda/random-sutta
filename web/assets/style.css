@@ -11,7 +11,7 @@ body {
   /* --- SỬA DÒNG NÀY --- */
   /* Cũ: padding: 20px; */
   /* Mới: Trên 5px, Phải 20px, Dưới 20px, Trái 20px */
-  padding: 5px 20px 20px 20px;
+  padding: 0 20px 20px 20px;
 
   line-height: 1.6;
 }
@@ -403,23 +403,22 @@ p {
 /* --- ICON TRIGGER STYLES --- */
 
 .icon-trigger {
-  background: transparent;
-  border: none;
-
-  /* MÀU MỚI: Xám nâu nhạt (Light Grayish Brown) */
-  color: #a89f91;
-
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: none;
-
-  /* LOW PROFILE: Mờ đi khi chưa chạm vào */
-  opacity: 0.4;
+    background: transparent;
+    border: none;
+    color: #a89f91;     
+    cursor: pointer;
+    
+    /* SỬA ĐOẠN NÀY: Bỏ padding thừa và bo góc nhẹ thay vì hình tròn */
+    padding: 2px 10px; 
+    /* border-radius: 4px; */
+    
+    /* Đảm bảo không có khoảng cách dòng thừa */
+    display: flex; 
+    margin: 0 auto; /* Căn giữa */
+    
+    /* ... giữ nguyên transition, opacity ... */
+    opacity: 0.45;
+    transition: all 0.3s ease;
 }
 
 .icon-trigger:hover {
@@ -440,8 +439,8 @@ p {
 /* Icon SVG bên trong */
 .icon-trigger svg {
   display: block;
-  width: 28px; /* Kích thước icon */
-  height: 28px;
+  width: 20px; /* Kích thước icon */
+  height: 20px;
 }
 
 /* Drawer chứa filters */
