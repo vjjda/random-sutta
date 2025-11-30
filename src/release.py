@@ -3,7 +3,6 @@
 import os
 import sys
 import zipfile
-import shutil
 from pathlib import Path
 
 # --- Configuration ---
@@ -11,29 +10,44 @@ PROJECT_ROOT = Path(__file__).parent.parent
 WEB_DIR = PROJECT_ROOT / "web"
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
-VERSION = "v1.0" # Bạn có thể đổi version ở đây
 
 def main():
-    print(f"📦 Starting release build for {APP_NAME} {VERSION}...")
+    # 1. Xử lý tham số đầu vào (Arguments)
+    if len(sys.argv) < 2:
+        print("❌ Error: Missing version number.")
+        print("   Usage: python3 src/release.py <version>")
+        print("   Example: python3 src/release.py 1.0")
+        sys.exit(1)
 
-    # 1. Kiểm tra dữ liệu đầu vào
+    input_version = sys.argv[1]
+    
+    # Tự động thêm tiền tố 'v' nếu chưa có (để đúng chuẩn random-sutta-v1.0)
+    if not input_version.startswith("v"):
+        version_tag = f"v{input_version}"
+    else:
+        version_tag = input_version
+
+    print(f"📦 Starting release build for {APP_NAME} {version_tag}...")
+
+    # 2. Kiểm tra dữ liệu đầu vào
+    # Kiểm tra file loader quan trọng xem đã build chưa
     if not (WEB_DIR / "assets" / "sutta" / "sutta_loader.js").exists():
         print("❌ Error: Sutta data not found! Please run 'python -m src.sutta_processor' first.")
         sys.exit(1)
 
-    # 2. Tạo thư mục release (nếu chưa có)
+    # 3. Tạo thư mục release (nếu chưa có)
     if not RELEASE_DIR.exists():
         RELEASE_DIR.mkdir(parents=True)
         print(f"   Created directory: {RELEASE_DIR}")
 
-    # 3. Định nghĩa tên file zip
-    zip_filename = RELEASE_DIR / f"{APP_NAME}-{VERSION}.zip"
+    # 4. Định nghĩa tên file zip
+    zip_filename = RELEASE_DIR / f"{APP_NAME}-{version_tag}.zip"
     
-    # Xóa file cũ nếu tồn tại
+    # Xóa file cũ nếu tồn tại để tránh lỗi ghi đè
     if zip_filename.exists():
         os.remove(zip_filename)
 
-    # 4. Thực hiện nén
+    # 5. Thực hiện nén
     print(f"   Zipping content from '{WEB_DIR.name}' into '{APP_NAME}/'...")
     
     try:
@@ -43,7 +57,7 @@ def main():
                 for file in files:
                     file_path = Path(root) / file
                     
-                    # Bỏ qua các file rác hệ thống
+                    # Bỏ qua các file rác hệ thống và cache
                     if file in [".DS_Store", "Thumbs.db"] or "__pycache__" in root:
                         continue
 
@@ -52,14 +66,17 @@ def main():
                     relative_path = file_path.relative_to(WEB_DIR)
                     
                     # Đổi tên folder gốc trong file zip:
-                    # web/index.html -> random-sutta/index.html
+                    # Thay vì 'web/index.html' -> sẽ thành 'random-sutta/index.html'
                     archive_name = Path(APP_NAME) / relative_path
                     
                     zf.write(file_path, archive_name)
         
         print(f"✅ Build successful!")
         print(f"🚀 Release file ready at: {zip_filename}")
-        print(f"   Size: {zip_filename.stat().st_size / (1024*1024):.2f} MB")
+        
+        # In ra kích thước file (MB)
+        file_size_mb = zip_filename.stat().st_size / (1024 * 1024)
+        print(f"   Size: {file_size_mb:.2f} MB")
 
     except Exception as e:
         print(f"❌ Error during zipping: {e}")
