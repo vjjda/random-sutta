@@ -110,7 +110,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateURL(suttaId) {
     try {
       const currentUrl = new URL(window.location);
+
+      // 1. Cập nhật sutta_id
       currentUrl.searchParams.set("q", suttaId);
+
+      // 2. QUAN TRỌNG: Xóa hash cũ (ví dụ #9.1) đi
+      // Để khi chuyển bài, nó luôn bắt đầu từ đầu trang sạch sẽ
+      currentUrl.hash = "";
+
       window.history.pushState({ suttaId: suttaId }, "", currentUrl);
     } catch (e) {
       console.warn("Could not update URL:", e);
