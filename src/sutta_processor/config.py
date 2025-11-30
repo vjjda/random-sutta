@@ -14,8 +14,8 @@ DATA_NAME_DIR = DATA_ROOT / "name"
 OUTPUT_SUTTA_BASE = ASSETS_ROOT / "sutta"
 OUTPUT_SUTTA_BOOKS = OUTPUT_SUTTA_BASE / "books"
 
-# Output Dirs - Names (Tách riêng folder)
-OUTPUT_NAMES_BASE = ASSETS_ROOT / "names"
+# UPDATED: Output Dirs - Names (Di chuyển vào trong sutta/names)
+OUTPUT_NAMES_DIR = OUTPUT_SUTTA_BASE / "names"
 
 # Processing Limits (0 for unlimited)
 PROCESS_LIMIT = 0
