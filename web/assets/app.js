@@ -5,13 +5,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const randomBtn = document.getElementById("btn-random");
     const navHeader = document.getElementById("nav-header");
 
-    // Khởi tạo Popup Comment
-    const { hideComment } = initCommentPopup();
+    // Khởi tạo Popup
+    const { hideComment } = window.initCommentPopup();
 
+    // Gắn hàm loadSutta vào window để các nút Previous/Next trong HTML gọi được
     window.loadSutta = function (suttaId) {
         hideComment();
-        if (renderSutta(suttaId, false)) { 
-            updateURL(suttaId);
+        if (window.renderSutta(suttaId, false)) { 
+            window.updateURL(suttaId);
         }
     };
 
@@ -22,7 +23,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const allKeys = Object.keys(window.SUTTA_DB);
         if (allKeys.length === 0) return;
 
-        const activePrefixes = getActiveFilters();
+        // Gọi hàm từ filters.js qua window
+        const activePrefixes = window.getActiveFilters();
         
         const filteredKeys = allKeys.filter(key => {
             return activePrefixes.some(prefix => key.startsWith(prefix));
@@ -49,12 +51,13 @@ document.addEventListener("DOMContentLoaded", () => {
             navHeader.classList.add("hidden");
             randomBtn.disabled = false;
 
-            initFilters();
+            // Gọi hàm init filters từ window
+            window.initFilters();
 
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("q");
             if (queryId) {
-                renderSutta(queryId, true);
+                window.renderSutta(queryId, true);
             }
         } else {
             statusDiv.textContent = "Loading database files...";
@@ -66,11 +69,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener("popstate", (event) => {
         if (event.state && event.state.suttaId) {
-            renderSutta(event.state.suttaId);
+            window.renderSutta(event.state.suttaId);
         } else {
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("q");
-            if (queryId) renderSutta(queryId);
+            if (queryId) window.renderSutta(queryId);
         }
     });
 

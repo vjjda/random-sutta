@@ -1,11 +1,11 @@
 // Path: web/assets/modules/filters.js
-// Xóa dòng import vì PRIMARY_BOOKS đã là biến toàn cục
 
-// Đổi tên activeFilters thành biến global filterSet để tránh trùng lặp nếu cần, 
-// nhưng trong trường hợp này ta để nguyên vì file load tuần tự.
-const filterSet = new Set(PRIMARY_BOOKS);
+// Biến này ở global scope của file này, không cần window nhưng các hàm khác phải gắn window
+const filterSet = new Set(); 
+// Lưu ý: chưa init Set ngay vì PRIMARY_BOOKS có thể chưa load xong nếu thứ tự script sai.
+// Ta sẽ init trong initFilters
 
-function getActiveFilters() {
+window.getActiveFilters = function() {
     return Array.from(filterSet);
 }
 
@@ -39,7 +39,7 @@ function createFilterButton(bookId, container, isDefaultActive) {
     container.appendChild(btn);
 }
 
-function initFilters() {
+window.initFilters = function() {
     const primaryDiv = document.getElementById("primary-filters");
     const secondaryDiv = document.getElementById("secondary-filters");
     const moreBtn = document.getElementById("btn-more-filters");
@@ -47,11 +47,12 @@ function initFilters() {
     primaryDiv.innerHTML = "";
     secondaryDiv.innerHTML = "";
 
+    // Reset và Init Set từ biến toàn cục
     filterSet.clear();
-    PRIMARY_BOOKS.forEach(b => filterSet.add(b));
-
-    PRIMARY_BOOKS.forEach(book => createFilterButton(book, primaryDiv, true));
-    SECONDARY_BOOKS.forEach(book => createFilterButton(book, secondaryDiv, false));
+    
+    // Render
+    window.PRIMARY_BOOKS.forEach(book => createFilterButton(book, primaryDiv, true));
+    window.SECONDARY_BOOKS.forEach(book => createFilterButton(book, secondaryDiv, false));
 
     moreBtn.addEventListener("click", () => {
         secondaryDiv.classList.toggle("hidden");

@@ -1,6 +1,6 @@
 // Path: web/assets/modules/utils.js
 
-function getSuttaDisplayInfo(id) {
+window.getSuttaDisplayInfo = function(id) {
     let info = { title: id.toUpperCase(), subtitle: "" };
     if (window.SUTTA_NAMES && window.SUTTA_NAMES[id]) {
         const meta = window.SUTTA_NAMES[id];
@@ -15,9 +15,8 @@ function getSuttaDisplayInfo(id) {
     return info;
 }
 
-function updateURL(suttaId) {
+window.updateURL = function(suttaId) {
     try {
-        // Dùng window.location.href để an toàn hơn với file://
         const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?q=' + suttaId;
         window.history.pushState({ suttaId: suttaId }, "", newUrl);
     } catch (e) {
@@ -25,7 +24,7 @@ function updateURL(suttaId) {
     }
 }
 
-function initCommentPopup() {
+window.initCommentPopup = function() {
     const popup = document.getElementById("comment-popup");
     const content = document.getElementById("comment-content");
     const closeBtn = document.getElementById("close-comment");
