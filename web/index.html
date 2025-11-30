@@ -8,8 +8,12 @@
     <link rel="stylesheet" href="assets/style.css">
     
     <script src="assets/sutta/sutta_loader.js"></script>
-    
     <script src="assets/sutta/name_loader.js"></script>
+
+    <script src="assets/modules/constants.js"></script>
+    <script src="assets/modules/utils.js"></script>
+    <script src="assets/modules/filters.js"></script>
+    <script src="assets/modules/renderer.js"></script>
 </head>
 <body>
 
@@ -21,6 +25,7 @@
             <button id="btn-more-filters" class="text-btn">Others</button>
             <div id="secondary-filters" class="filter-row hidden"></div>
         </div>
+
         <div class="controls">
             <button id="btn-random" disabled>Random Sutta</button>
         </div>
@@ -46,6 +51,6 @@
         <button id="close-comment" aria-label="Close">×</button>
     </div>
 
-    <script type="module" src="assets/app.js"></script>
+    <script src="assets/app.js"></script>
 </body>
 </html>

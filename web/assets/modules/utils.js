@@ -1,11 +1,7 @@
 // Path: web/assets/modules/utils.js
 
-// --- HELPER: GET METADATA ---
-export function getSuttaDisplayInfo(id) {
-    let info = {
-        title: id.toUpperCase(), 
-        subtitle: ""
-    };
+function getSuttaDisplayInfo(id) {
+    let info = { title: id.toUpperCase(), subtitle: "" };
     if (window.SUTTA_NAMES && window.SUTTA_NAMES[id]) {
         const meta = window.SUTTA_NAMES[id];
         if (meta.acronym) info.title = meta.acronym;
@@ -19,20 +15,17 @@ export function getSuttaDisplayInfo(id) {
     return info;
 }
 
-// --- URL HELPER ---
-export function updateURL(suttaId) {
+function updateURL(suttaId) {
     try {
-        const currentUrl = new URL(window.location.search, window.location.origin + window.location.pathname);
-        currentUrl.searchParams.set("q", suttaId);
-        // Xóa hash để tránh scroll lung tung khi đổi bài
-        window.history.pushState({ suttaId: suttaId }, "", currentUrl.toString());
+        // Dùng window.location.href để an toàn hơn với file://
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?q=' + suttaId;
+        window.history.pushState({ suttaId: suttaId }, "", newUrl);
     } catch (e) {
         console.warn("Could not update URL:", e);
     }
 }
 
-// --- COMMENT POPUP LOGIC ---
-export function initCommentPopup() {
+function initCommentPopup() {
     const popup = document.getElementById("comment-popup");
     const content = document.getElementById("comment-content");
     const closeBtn = document.getElementById("close-comment");
@@ -47,7 +40,6 @@ export function initCommentPopup() {
         popup.classList.add("hidden");
     }
 
-    // Event Delegation cho container
     container.addEventListener("click", (event) => {
         if (event.target.classList.contains("comment-marker")) {
             const text = event.target.dataset.comment;
@@ -69,5 +61,5 @@ export function initCommentPopup() {
         if (e.key === "Escape") hideComment();
     });
 
-    return { hideComment }; // Export hàm hide để dùng khi chuyển trang
+    return { hideComment };
 }

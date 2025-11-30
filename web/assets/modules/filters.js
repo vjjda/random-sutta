@@ -1,21 +1,21 @@
 // Path: web/assets/modules/filters.js
-import { PRIMARY_BOOKS, SECONDARY_BOOKS } from './constants.js';
+// Xóa dòng import vì PRIMARY_BOOKS đã là biến toàn cục
 
-// State nội bộ của module
-const activeFilters = new Set(PRIMARY_BOOKS);
+// Đổi tên activeFilters thành biến global filterSet để tránh trùng lặp nếu cần, 
+// nhưng trong trường hợp này ta để nguyên vì file load tuần tự.
+const filterSet = new Set(PRIMARY_BOOKS);
 
-export function getActiveFilters() {
-    return Array.from(activeFilters);
+function getActiveFilters() {
+    return Array.from(filterSet);
 }
 
 function toggleFilter(bookId, btnElement) {
-    if (activeFilters.has(bookId)) {
-        // Giữ lại ít nhất 1 filter
-        if (activeFilters.size === 1) return;
-        activeFilters.delete(bookId);
+    if (filterSet.has(bookId)) {
+        if (filterSet.size === 1) return;
+        filterSet.delete(bookId);
         btnElement.classList.remove("active");
     } else {
-        activeFilters.add(bookId);
+        filterSet.add(bookId);
         btnElement.classList.add("active");
     }
 }
@@ -24,7 +24,6 @@ function createFilterButton(bookId, container, isDefaultActive) {
     const btn = document.createElement("button");
     btn.className = "filter-btn";
     
-    // Logic viết hoa: DN, MN, SN, AN -> Uppercase; còn lại Titlecase
     if (['dn', 'mn', 'sn', 'an'].includes(bookId)) {
         btn.textContent = bookId.toUpperCase();
     } else {
@@ -33,14 +32,14 @@ function createFilterButton(bookId, container, isDefaultActive) {
     
     if (isDefaultActive) {
         btn.classList.add("active");
-        activeFilters.add(bookId); // Đảm bảo sync state
+        filterSet.add(bookId);
     }
 
     btn.addEventListener("click", () => toggleFilter(bookId, btn));
     container.appendChild(btn);
 }
 
-export function initFilters() {
+function initFilters() {
     const primaryDiv = document.getElementById("primary-filters");
     const secondaryDiv = document.getElementById("secondary-filters");
     const moreBtn = document.getElementById("btn-more-filters");
@@ -48,9 +47,8 @@ export function initFilters() {
     primaryDiv.innerHTML = "";
     secondaryDiv.innerHTML = "";
 
-    // Reset state về mặc định trước khi render
-    activeFilters.clear();
-    PRIMARY_BOOKS.forEach(b => activeFilters.add(b));
+    filterSet.clear();
+    PRIMARY_BOOKS.forEach(b => filterSet.add(b));
 
     PRIMARY_BOOKS.forEach(book => createFilterButton(book, primaryDiv, true));
     SECONDARY_BOOKS.forEach(book => createFilterButton(book, secondaryDiv, false));

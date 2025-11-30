@@ -1,7 +1,6 @@
 // Path: web/assets/modules/renderer.js
-import { getSuttaDisplayInfo } from './utils.js';
+// Xóa import getSuttaDisplayInfo
 
-// Cache elements
 const container = document.getElementById("sutta-container");
 const statusDiv = document.getElementById("status");
 const navHeader = document.getElementById("nav-header");
@@ -18,7 +17,6 @@ function updateTopNav(currentId, prevId, nextId) {
 
     if (prevId) {
         navPrevBtn.disabled = false;
-        // Lưu ý: window.loadSutta được gán ở app.js
         navPrevBtn.onclick = () => window.loadSutta(prevId);
         navPrevBtn.title = `Previous: ${getSuttaDisplayInfo(prevId).title}`;
     } else {
@@ -41,7 +39,7 @@ function updateTopNav(currentId, prevId, nextId) {
     statusDiv.classList.add("hidden");
 }
 
-export function renderSutta(suttaId, checkHash = true) {
+function renderSutta(suttaId, checkHash = true) {
     const id = suttaId.toLowerCase().trim();
     
     if (!window.SUTTA_DB || !window.SUTTA_DB[id]) {
@@ -54,10 +52,8 @@ export function renderSutta(suttaId, checkHash = true) {
 
     const data = window.SUTTA_DB[id];
     
-    // 1. Update Top Nav
     updateTopNav(id, data.previous, data.next);
 
-    // 2. Build Bottom Nav
     let bottomNavHtml = '<div class="sutta-nav">';
     if (data.previous) {
         const prevInfo = getSuttaDisplayInfo(data.previous);
@@ -74,10 +70,8 @@ export function renderSutta(suttaId, checkHash = true) {
     }
     bottomNavHtml += "</div>";
 
-    // 3. Inject
     container.innerHTML = data.content + bottomNavHtml;
     
-    // 4. Scroll Logic
     const hash = window.location.hash;
     if (checkHash && hash) {
         const targetId = hash.substring(1);

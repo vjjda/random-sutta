@@ -1,7 +1,4 @@
 // Path: web/assets/app.js
-import { initFilters, getActiveFilters } from './modules/filters.js';
-import { renderSutta } from './modules/renderer.js';
-import { updateURL, initCommentPopup } from './modules/utils.js';
 
 document.addEventListener("DOMContentLoaded", () => {
     const statusDiv = document.getElementById("status");
@@ -11,16 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Khởi tạo Popup Comment
     const { hideComment } = initCommentPopup();
 
-    // --- GLOBAL FUNCTION EXPORT ---
-    // Cần gán vào window để các nút onclick trong HTML gọi được
     window.loadSutta = function (suttaId) {
         hideComment();
-        if (renderSutta(suttaId, false)) { // false = no scroll hash check on nav
+        if (renderSutta(suttaId, false)) { 
             updateURL(suttaId);
         }
     };
 
-    // --- RANDOM LOGIC ---
     function loadRandomSutta() {
         hideComment();
         if (!window.SUTTA_DB) return;
@@ -30,7 +24,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const activePrefixes = getActiveFilters();
         
-        // Filter logic
         const filteredKeys = allKeys.filter(key => {
             return activePrefixes.some(prefix => key.startsWith(prefix));
         });
@@ -46,7 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
         window.loadSutta(suttaId);
     }
 
-    // --- INITIALIZATION ---
     function waitForData() {
         if (window.SUTTA_DB && Object.keys(window.SUTTA_DB).length > 0) {
             const count = Object.keys(window.SUTTA_DB).length;
@@ -59,11 +51,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             initFilters();
 
-            // Check URL query
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("q");
             if (queryId) {
-                renderSutta(queryId, true); // true = check hash for scroll
+                renderSutta(queryId, true);
             }
         } else {
             statusDiv.textContent = "Loading database files...";
@@ -71,7 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Event Listeners
     randomBtn.addEventListener("click", loadRandomSutta);
 
     window.addEventListener("popstate", (event) => {
@@ -84,6 +74,5 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Start
     waitForData();
 });
