@@ -4,19 +4,19 @@ Một trình đọc kinh điển Phật giáo sơ kỳ (EBT) đơn giản, tập
 
 ## 🌟 Tính năng
 
-  * **Random Sutta:** Ngẫu nhiên chọn một bài kinh để đọc.
-  * **Bộ lọc sách (Book Filters):** Tùy chọn random trong các bộ Nikaya (DN, MN, SN, AN) hoặc Khuddaka Nikaya (Dhp, Ud, Iti, v.v.).
-  * **Song ngữ:** Hiển thị song song Pāli và tiếng Anh (bản dịch của Bhante Sujato).
-  * **Chú giải:** Hỗ trợ hiển thị chú giải (comment) dạng popup.
-  * **Offline-first:** Chạy trực tiếp trên trình duyệt mà không cần internet hay server backend (sau khi đã build dữ liệu).
+- **Random Sutta:** Ngẫu nhiên chọn một bài kinh để đọc.
+- **Bộ lọc sách (Book Filters):** Tùy chọn random trong các bộ Nikaya (DN, MN, SN, AN) hoặc Khuddaka Nikaya (Dhp, Ud, Iti, v.v.).
+- **Song ngữ:** Hiển thị song song Pāli và tiếng Anh (bản dịch của Bhante Sujato).
+- **Chú giải:** Hỗ trợ hiển thị chú giải (comment) dạng popup.
+- **Offline-first:** Chạy trực tiếp trên trình duyệt mà không cần internet hay server backend (sau khi đã build dữ liệu).
 
 ## 🛠️ Yêu cầu hệ thống (Cho Developer/Builder)
 
 Để build dữ liệu từ nguồn, bạn cần:
 
-  * Python 3.8 trở lên.
-  * Git.
-  * Kết nối Internet (để tải dữ liệu từ SuttaCentral).
+- Python 3.8 trở lên.
+- Git.
+- Kết nối Internet (để tải dữ liệu từ SuttaCentral).
 
 ## 🚀 Hướng dẫn Cài đặt & Build
 
@@ -31,8 +31,8 @@ cd random-sutta
 
 Dự án cần 2 nguồn dữ liệu:
 
-1.  **Nội dung kinh (Text & HTML):** Tải từ Bilara Git repo.
-2.  **Thông tin Metadata (Tên kinh):** Tải từ SuttaCentral API.
+1. **Nội dung kinh (Text & HTML):** Tải từ Bilara Git repo.
+2. **Thông tin Metadata (Tên kinh):** Tải từ SuttaCentral API.
 
 Chạy lần lượt các lệnh sau:
 
@@ -59,14 +59,14 @@ Bạn có thể mở trực tiếp file `web/index.html` bằng trình duyệt (
 
 ## 📂 Cấu trúc dự án
 
-  * `src/`: Mã nguồn Python (Tools).
-      * `sutta_fetcher.py`: Đồng bộ dữ liệu từ Bilara Git.
-      * `api_fetcher.py`: Tải metadata từ API.
-      * `sutta_processor/`: Xử lý logic, convert JSON -\> JS Assets.
-  * `data/`: Chứa dữ liệu thô (không commit lên Git, được tải về bởi các fetcher).
-  * `web/`: Giao diện người dùng (Frontend).
-      * `assets/sutta/`: Dữ liệu đã được build (Database của App).
-      * `assets/modules/`: Các module JS xử lý logic hiển thị.
+- `src/`: Mã nguồn Python (Tools).
+  - `sutta_fetcher.py`: Đồng bộ dữ liệu từ Bilara Git.
+  - `api_fetcher.py`: Tải metadata từ API.
+  - `sutta_processor/`: Xử lý logic, convert JSON -\> JS Assets.
+- `data/`: Chứa dữ liệu thô (không commit lên Git, được tải về bởi các fetcher).
+- `web/`: Giao diện người dùng (Frontend).
+  - `assets/sutta/`: Dữ liệu đã được build (Database của App).
+  - `assets/modules/`: Các module JS xử lý logic hiển thị.
 
 ## 🤝 Đóng góp
 
