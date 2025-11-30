@@ -3,8 +3,9 @@ import json
 import logging
 import os
 import shutil
+import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Dict
+from typing import Dict, List, Any
 
 from .config import OUTPUT_BASE_DIR, OUTPUT_BOOKS_DIR, PROCESS_LIMIT
 from .finder import scan_root_dir
@@ -12,9 +13,19 @@ from .converter import process_worker
 
 logger = logging.getLogger("SuttaProcessor")
 
+def natural_sort_key(s: str) -> List[Any]:
+    """
+    Splits string into a list of integers and strings for natural sorting.
+    e.g., "mn12" -> ['mn', 12]
+    e.g., "an1.1-10" -> ['an', 1, '.', 1, '-', 10]
+    """
+    return [int(text) if text.isdigit() else text.lower()
+            for text in re.split(r'(\d+)', s)]
+
 class SuttaManager:
     def __init__(self):
-        self.collections: Dict[str, Dict[str, str]] = {}
+        # Raw content storage: { 'mn': { 'mn1': '<html>...' } }
+        self.raw_collections: Dict[str, Dict[str, str]] = {}
 
     def run(self):
         # 1. Prepare
@@ -31,21 +42,20 @@ class SuttaManager:
             for future in as_completed(futures):
                 group, sid, content = future.result()
                 if content:
-                    if group not in self.collections:
-                        self.collections[group] = {}
-                    self.collections[group][sid] = content
+                    if group not in self.raw_collections:
+                        self.raw_collections[group] = {}
+                    self.raw_collections[group][sid] = content
                 
                 count += 1
                 if count % 500 == 0:
                     logger.info(f"   Processed {count}/{len(tasks)}...")
 
-        # 3. Output
+        # 3. Process Linking & Output
         self._write_files()
 
     def _write_files(self):
-        logger.info("💾 Writing output files...")
+        logger.info("💾 Linking suttas and writing output files...")
         
-        # Reset Directories
         if OUTPUT_BASE_DIR.exists():
             shutil.rmtree(OUTPUT_BASE_DIR)
         
@@ -54,16 +64,30 @@ class SuttaManager:
 
         generated_files = []
 
-        # Write Book Files (Prettified)
-        for group_name, data in self.collections.items():
+        for group_name, raw_data in self.raw_collections.items():
+            # 1. Sort IDs naturally
+            sorted_sids = sorted(raw_data.keys(), key=natural_sort_key)
+            
+            # 2. Build Linked Data
+            linked_data = {}
+            total_suttas = len(sorted_sids)
+            
+            for i, sid in enumerate(sorted_sids):
+                prev_id = sorted_sids[i-1] if i > 0 else None
+                next_id = sorted_sids[i+1] if i < total_suttas - 1 else None
+                
+                linked_data[sid] = {
+                    "previous": prev_id,
+                    "next": next_id,
+                    "content": raw_data[sid]
+                }
+
+            # 3. Write File
             file_name = f"{group_name}.js"
             file_path = OUTPUT_BOOKS_DIR / file_name
-            
-            # Ensure subfolders exist (for kn/dhp etc)
             file_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # PRETTIFY: indent=2 ensures readability
-            json_str = json.dumps(data, ensure_ascii=False, indent=2)
+            json_str = json.dumps(linked_data, ensure_ascii=False, indent=2)
             
             js_content = f"""// Source: {group_name}
 window.SUTTA_DB = window.SUTTA_DB || {{}};
@@ -73,9 +97,8 @@ Object.assign(window.SUTTA_DB, {json_str});
                 f.write(js_content)
             
             generated_files.append(file_name)
-            logger.info(f"   -> {file_name} ({len(data)} items)")
+            logger.info(f"   -> {file_name} ({len(linked_data)} items)")
 
-        # Write Loader
         self._write_loader(generated_files)
         logger.info("✅ All done.")
 
@@ -83,7 +106,6 @@ Object.assign(window.SUTTA_DB, {json_str});
         files.sort()
         loader_path = OUTPUT_BASE_DIR / "loader.js"
         
-        # Loader logic: Append "books/" to the filename
         js_content = f"""
 // Auto-generated Loader
 (function() {{

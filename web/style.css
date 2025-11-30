@@ -93,3 +93,25 @@ p { margin-bottom: 15px; }
     text-align: center; 
     color: #999;
 }
+
+/* Add to web/style.css */
+
+.sutta-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px dashed #eee;
+}
+
+.sutta-nav button {
+    background-color: #f0f0f0;
+    color: #555;
+    font-size: 14px;
+    padding: 5px 15px;
+}
+
+.sutta-nav button:hover {
+    background-color: #e0e0e0;
+}
