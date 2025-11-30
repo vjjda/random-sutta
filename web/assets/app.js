@@ -5,14 +5,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const randomBtn = document.getElementById("btn-random");
     const navHeader = document.getElementById("nav-header");
 
-    // Khởi tạo Popup Comment
     const { hideComment } = window.initCommentPopup();
 
-    // Gắn hàm loadSutta vào window để các nút Previous/Next trong HTML gọi được
+    // Helper: Tính toán tham số ?b=
+    function getBookUrlParam() {
+        const active = window.getActiveFilters(); // Lấy từ filters.js
+        const defaults = window.PRIMARY_BOOKS;    // Lấy từ constants.js
+
+        // 1. Nếu số lượng khác nhau -> Chắc chắn là Custom -> Trả về string
+        if (active.length !== defaults.length) {
+            return active.join(",");
+        }
+
+        // 2. Nếu số lượng bằng nhau, kiểm tra nội dung
+        // (Dùng Set để so sánh nhanh)
+        const activeSet = new Set(active);
+        for (let book of defaults) {
+            if (!activeSet.has(book)) {
+                return active.join(","); // Có sách lạ -> Custom
+            }
+        }
+
+        // 3. Nếu giống hệt Default -> Trả về null (để utils xóa ?b= đi cho gọn link)
+        return null;
+    }
+
     window.loadSutta = function (suttaId) {
         hideComment();
         if (window.renderSutta(suttaId, false)) { 
-            window.updateURL(suttaId);
+            // UPDATED: Truyền thêm tham số sách vào URL
+            const bookParam = getBookUrlParam();
+            window.updateURL(suttaId, bookParam);
         }
     };
 
@@ -23,22 +46,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const allKeys = Object.keys(window.SUTTA_DB);
         if (allKeys.length === 0) return;
 
-        // Gọi hàm từ filters.js qua window
         const activePrefixes = window.getActiveFilters();
         
-        // --- FIX BUG LOGIC FILTER ---
         const filteredKeys = allKeys.filter(key => {
             return activePrefixes.some(prefix => {
-                // 1. Phải bắt đầu bằng prefix
                 if (!key.startsWith(prefix)) return false;
-
-                // 2. CHECK NGHIÊM NGẶT:
-                // Để phân biệt 'mn' với 'mnd', hoặc 'sn' với 'snp':
-                // Ký tự ngay sau prefix BẮT BUỘC phải là số (0-9).
-                // Ví dụ: 
-                // key="mn1" (prefix="mn") -> nextChar="1" -> OK
-                // key="mnd1" (prefix="mn") -> nextChar="d" -> REJECT
-                
                 const nextChar = key.charAt(prefix.length);
                 return /^\d$/.test(nextChar);
             });
@@ -65,7 +77,6 @@ document.addEventListener("DOMContentLoaded", () => {
             navHeader.classList.add("hidden");
             randomBtn.disabled = false;
 
-            // Gọi hàm init filters từ window
             window.initFilters();
 
             const params = new URLSearchParams(window.location.search);

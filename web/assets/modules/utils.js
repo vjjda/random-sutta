@@ -15,9 +15,24 @@ window.getSuttaDisplayInfo = function(id) {
     return info;
 }
 
-window.updateURL = function(suttaId) {
+// UPDATED: Nhận thêm bookParam
+window.updateURL = function(suttaId, bookParam) {
     try {
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?q=' + suttaId;
+        const params = new URLSearchParams(window.location.search);
+        
+        // 1. Set Sutta ID
+        if (suttaId) {
+            params.set("q", suttaId);
+        }
+
+        // 2. Set Books Param (nếu có thì set, không có thì xóa)
+        if (bookParam) {
+            params.set("b", bookParam);
+        } else {
+            params.delete("b");
+        }
+
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
         window.history.pushState({ suttaId: suttaId }, "", newUrl);
     } catch (e) {
         console.warn("Could not update URL:", e);
@@ -25,6 +40,7 @@ window.updateURL = function(suttaId) {
 }
 
 window.initCommentPopup = function() {
+    // ... (Giữ nguyên phần logic popup cũ) ...
     const popup = document.getElementById("comment-popup");
     const content = document.getElementById("comment-content");
     const closeBtn = document.getElementById("close-comment");
