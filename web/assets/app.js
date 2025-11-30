@@ -7,7 +7,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { hideComment } = window.initCommentPopup();
 
-    // UPDATED: Thêm tham số shouldUpdateUrl (mặc định true)
     window.loadSutta = function (suttaId, shouldUpdateUrl = true) {
         hideComment();
         if (window.renderSutta(suttaId, false)) { 
@@ -18,7 +17,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    // UPDATED: Thêm tham số shouldUpdateUrl
     function loadRandomSutta(shouldUpdateUrl = true) {
         hideComment();
         if (!window.SUTTA_DB) return;
@@ -44,7 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const randomIndex = Math.floor(Math.random() * filteredKeys.length);
         const suttaId = filteredKeys[randomIndex];
 
-        // Truyền tiếp tham số shouldUpdateUrl
         window.loadSutta(suttaId, shouldUpdateUrl);
     }
 
@@ -58,26 +55,30 @@ document.addEventListener("DOMContentLoaded", () => {
             navHeader.classList.add("hidden");
             randomBtn.disabled = false;
 
-            // 1. Init Filters (xử lý ?b=)
             window.initFilters();
 
-            // 2. Kiểm tra Logic Load
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("q");
-            const isRandomLoop = params.get("r"); // Kiểm tra tham số r
+            const isRandomLoop = params.get("r");
 
             if (isRandomLoop) {
-                // CASE A: Chế độ Random Loop (?r=true)
-                // Load random bài mới NHƯNG không update URL (để giữ nguyên ?r=true cho lần F5 sau)
+                // CASE A: Đang ở chế độ F5 Loop
+                // Load random nhưng GIỮ NGUYÊN URL (không xóa ?r=1, không thêm ?q=...)
                 loadRandomSutta(false);
             } 
             else if (queryId) {
-                // CASE B: Có link bài cụ thể -> Load bài đó
+                // CASE B: Có link bài cụ thể
                 window.renderSutta(queryId, true);
             } 
             else {
-                // CASE C: Mặc định (Vào trang chủ) -> Random bài mới VÀ update URL thành ?q=...
-                loadRandomSutta(true);
+                // CASE C: Mặc định (Vào trang chủ trắng)
+                // 1. Load random ngay lập tức (nhưng khoan update URL theo kiểu thường)
+                loadRandomSutta(false);
+                
+                // 2. Cập nhật URL: Thêm ?r=1 để lần sau F5 sẽ ra bài khác
+                const bookParam = window.generateBookParam();
+                // Tham số thứ 3 = true nghĩa là bật Random Mode
+                window.updateURL(null, bookParam, true);
             }
         } else {
             statusDiv.textContent = "Loading database files...";
@@ -85,7 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Nút bấm luôn update URL (thoát khỏi chế độ r nếu đang có)
+    // Nút bấm: Vẫn hoạt động như cũ (Update URL ra ?q=... để ghim bài kinh đó)
     randomBtn.addEventListener("click", () => loadRandomSutta(true));
 
     window.addEventListener("popstate", (event) => {

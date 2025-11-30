@@ -15,18 +15,23 @@ window.getSuttaDisplayInfo = function(id) {
     return info;
 }
 
-window.updateURL = function(suttaId, bookParam) {
+// UPDATED: Thêm tham số enableRandomMode
+window.updateURL = function(suttaId, bookParam, enableRandomMode = false) {
     try {
         const params = new URLSearchParams(window.location.search);
         
-        // 1. Xử lý Sutta ID
-        if (suttaId) {
+        // 1. Xử lý chế độ Random Loop (?r=1)
+        if (enableRandomMode) {
+            params.set("r", "1");
+            params.delete("q"); // Xóa ID cụ thể để F5 sẽ ra bài mới
+        } 
+        // 2. Xử lý Sutta ID cụ thể (Khi bấm nút Random hoặc Next/Prev)
+        else if (suttaId) {
             params.set("q", suttaId);
-            // QUAN TRỌNG: Nếu đã chọn bài cụ thể, ta thoát khỏi chế độ Random Loop (?r=)
-            params.delete("r"); 
+            params.delete("r"); // Thoát chế độ Random Loop
         }
 
-        // 2. Xử lý Books Param
+        // 3. Xử lý Books Param
         if (bookParam) {
             params.set("b", bookParam);
         } else {
@@ -34,9 +39,11 @@ window.updateURL = function(suttaId, bookParam) {
         }
 
         const newUrl = `${window.location.pathname}?${params.toString()}`;
-        const currentSuttaId = suttaId || params.get("q");
         
-        window.history.pushState({ suttaId: currentSuttaId }, "", newUrl);
+        // Nếu đang ở Random Mode thì suttaId là null, ta không cần lưu state cụ thể
+        const stateId = enableRandomMode ? null : (suttaId || params.get("q"));
+        
+        window.history.pushState({ suttaId: stateId }, "", newUrl);
     } catch (e) {
         console.warn("Could not update URL:", e);
     }
