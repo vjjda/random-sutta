@@ -1,0 +1,27 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    # Chỉ chạy khi có thay đổi trong thư mục web hoặc file này
+    paths:
+      - 'web/**'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Deploy to gh-pages 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: web        # Thư mục bạn muốn deploy
+          branch: gh-pages   # Nhánh đích
+          clean: true        # Tự động xóa các file cũ không còn tồn tại
