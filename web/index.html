@@ -8,9 +8,39 @@
     <link rel="stylesheet" href="assets/style.css">
     
     <script src="assets/sutta/sutta_loader.js"></script>
+    
     <script src="assets/sutta/name_loader.js"></script>
 </head>
 <body>
+
+    <header>
+        <div id="filter-container">
+            <p class="filter-label">Choose books to include in the pool</p>
+            <div id="primary-filters" class="filter-row"></div>
+            
+            <button id="btn-more-filters" class="text-btn">Others</button>
+            <div id="secondary-filters" class="filter-row hidden"></div>
+        </div>
+        <div class="controls">
+            <button id="btn-random" disabled>Random Sutta</button>
+        </div>
+        
+        <div id="nav-header" class="hidden">
+            <button id="nav-prev" class="nav-arrow" title="Previous">←</button>
+            <div id="nav-title-display">
+                <span id="nav-main-title"></span>
+                <span id="nav-sub-title"></span>
+            </div>
+            <button id="nav-next" class="nav-arrow" title="Next">→</button>
+        </div>
+
+        <div id="status">Initializing...</div>
+    </header>
+
+    <main id="sutta-container">
+        <p class="placeholder">Click the button to load a sutta.</p>
+    </main>
+
     <div id="comment-popup" class="hidden">
         <div id="comment-content"></div>
         <button id="close-comment" aria-label="Close">×</button>
