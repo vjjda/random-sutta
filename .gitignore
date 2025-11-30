@@ -12,7 +12,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-/data/bilara
+/data/*
+
+/web/assets/sutta/
 
 .cache
 
