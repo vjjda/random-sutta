@@ -7,15 +7,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { hideComment } = window.initCommentPopup();
 
-    window.loadSutta = function (suttaId) {
+    // UPDATED: Thêm tham số shouldUpdateUrl (mặc định true)
+    window.loadSutta = function (suttaId, shouldUpdateUrl = true) {
         hideComment();
         if (window.renderSutta(suttaId, false)) { 
-            const bookParam = window.generateBookParam();
-            window.updateURL(suttaId, bookParam);
+            if (shouldUpdateUrl) {
+                const bookParam = window.generateBookParam();
+                window.updateURL(suttaId, bookParam);
+            }
         }
     };
 
-    function loadRandomSutta() {
+    // UPDATED: Thêm tham số shouldUpdateUrl
+    function loadRandomSutta(shouldUpdateUrl = true) {
         hideComment();
         if (!window.SUTTA_DB) return;
 
@@ -33,7 +37,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (filteredKeys.length === 0) {
-            // Nếu filter không khớp bài nào (ví dụ ?b=xyz), alert xong vẫn nên để yên
             alert("No suttas match your selected filters!");
             return;
         }
@@ -41,7 +44,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const randomIndex = Math.floor(Math.random() * filteredKeys.length);
         const suttaId = filteredKeys[randomIndex];
 
-        window.loadSutta(suttaId);
+        // Truyền tiếp tham số shouldUpdateUrl
+        window.loadSutta(suttaId, shouldUpdateUrl);
     }
 
     function waitForData() {
@@ -54,20 +58,26 @@ document.addEventListener("DOMContentLoaded", () => {
             navHeader.classList.add("hidden");
             randomBtn.disabled = false;
 
-            // 1. Khởi tạo bộ lọc (xử lý ?b=...)
+            // 1. Init Filters (xử lý ?b=)
             window.initFilters();
 
-            // 2. Kiểm tra URL xem có yêu cầu bài cụ thể không (?q=...)
+            // 2. Kiểm tra Logic Load
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("q");
+            const isRandomLoop = params.get("r"); // Kiểm tra tham số r
 
-            if (queryId) {
-                // Trường hợp A: Có link bài cụ thể -> Load bài đó
+            if (isRandomLoop) {
+                // CASE A: Chế độ Random Loop (?r=true)
+                // Load random bài mới NHƯNG không update URL (để giữ nguyên ?r=true cho lần F5 sau)
+                loadRandomSutta(false);
+            } 
+            else if (queryId) {
+                // CASE B: Có link bài cụ thể -> Load bài đó
                 window.renderSutta(queryId, true);
-            } else {
-                // Trường hợp B: Không có bài cụ thể -> TỰ ĐỘNG RANDOM NGAY LẬP TỨC
-                // (Logic ?b=mn đã được xử lý ở bước initFilters phía trên nên random sẽ đúng sách)
-                loadRandomSutta();
+            } 
+            else {
+                // CASE C: Mặc định (Vào trang chủ) -> Random bài mới VÀ update URL thành ?q=...
+                loadRandomSutta(true);
             }
         } else {
             statusDiv.textContent = "Loading database files...";
@@ -75,7 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    randomBtn.addEventListener("click", loadRandomSutta);
+    // Nút bấm luôn update URL (thoát khỏi chế độ r nếu đang có)
+    randomBtn.addEventListener("click", () => loadRandomSutta(true));
 
     window.addEventListener("popstate", (event) => {
         if (event.state && event.state.suttaId) {

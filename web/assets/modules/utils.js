@@ -15,7 +15,6 @@ window.getSuttaDisplayInfo = function(id) {
     return info;
 }
 
-// UPDATED: suttaId là optional. Nếu null, giữ nguyên ID hiện tại.
 window.updateURL = function(suttaId, bookParam) {
     try {
         const params = new URLSearchParams(window.location.search);
@@ -23,8 +22,9 @@ window.updateURL = function(suttaId, bookParam) {
         // 1. Xử lý Sutta ID
         if (suttaId) {
             params.set("q", suttaId);
-        } 
-        // Nếu suttaId là null/undefined, ta KHÔNG làm gì cả -> Giữ nguyên ?q= cũ
+            // QUAN TRỌNG: Nếu đã chọn bài cụ thể, ta thoát khỏi chế độ Random Loop (?r=)
+            params.delete("r"); 
+        }
 
         // 2. Xử lý Books Param
         if (bookParam) {
@@ -34,13 +34,8 @@ window.updateURL = function(suttaId, bookParam) {
         }
 
         const newUrl = `${window.location.pathname}?${params.toString()}`;
-        
-        // Lấy suttaId hiện tại để lưu vào history state nếu không có suttaId mới
         const currentSuttaId = suttaId || params.get("q");
         
-        // Dùng replaceState thay vì pushState nếu chỉ đổi filter để tránh làm rác lịch sử Back button
-        // Nhưng nếu muốn Back quay lại trạng thái filter cũ thì dùng pushState. 
-        // Ở đây dùng pushState cho nhất quán.
         window.history.pushState({ suttaId: currentSuttaId }, "", newUrl);
     } catch (e) {
         console.warn("Could not update URL:", e);
@@ -48,6 +43,7 @@ window.updateURL = function(suttaId, bookParam) {
 }
 
 window.initCommentPopup = function() {
+    // ... (Giữ nguyên code cũ) ...
     const popup = document.getElementById("comment-popup");
     const content = document.getElementById("comment-content");
     const closeBtn = document.getElementById("close-comment");
