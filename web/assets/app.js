@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const randomBtn = document.getElementById("btn-random");
     const navHeader = document.getElementById("nav-header");
 
-    // Khởi tạo Popup
+    // Khởi tạo Popup Comment
     const { hideComment } = window.initCommentPopup();
 
     // Gắn hàm loadSutta vào window để các nút Previous/Next trong HTML gọi được
@@ -26,8 +26,22 @@ document.addEventListener("DOMContentLoaded", () => {
         // Gọi hàm từ filters.js qua window
         const activePrefixes = window.getActiveFilters();
         
+        // --- FIX BUG LOGIC FILTER ---
         const filteredKeys = allKeys.filter(key => {
-            return activePrefixes.some(prefix => key.startsWith(prefix));
+            return activePrefixes.some(prefix => {
+                // 1. Phải bắt đầu bằng prefix
+                if (!key.startsWith(prefix)) return false;
+
+                // 2. CHECK NGHIÊM NGẶT:
+                // Để phân biệt 'mn' với 'mnd', hoặc 'sn' với 'snp':
+                // Ký tự ngay sau prefix BẮT BUỘC phải là số (0-9).
+                // Ví dụ: 
+                // key="mn1" (prefix="mn") -> nextChar="1" -> OK
+                // key="mnd1" (prefix="mn") -> nextChar="d" -> REJECT
+                
+                const nextChar = key.charAt(prefix.length);
+                return /^\d$/.test(nextChar);
+            });
         });
 
         if (filteredKeys.length === 0) {
