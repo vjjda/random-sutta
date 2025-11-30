@@ -1,0 +1,16 @@
+# Path: .gitignore
+
+# Python compilation files
+__pycache__/
+*.pyc
+
+# System files (Mac/Windows)
+.DS_Store
+Thumbs.db
+
+# IDE settings (Optional)
+.vscode/
+.idea/
+
+# Logs
+*.log
