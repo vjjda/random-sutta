@@ -19,6 +19,8 @@ Thumbs.db
 
 .cache
 
+/release/
+
 /sample_*.txt
 
 # Logs
