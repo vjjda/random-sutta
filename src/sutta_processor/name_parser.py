@@ -2,64 +2,63 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Any
 
-# UPDATED: Import OUTPUT_SUTTA_BASE để đặt loader, OUTPUT_NAMES_DIR để đặt data
-from .config import DATA_NAME_DIR, OUTPUT_NAMES_DIR, OUTPUT_SUTTA_BASE
+# UPDATED: Import DATA_API_DIR từ config
+from .config import DATA_API_DIR, OUTPUT_NAMES_DIR, OUTPUT_SUTTA_BASE
 
 logger = logging.getLogger("SuttaProcessor")
 
-def _parse_sutta_id_from_key(key: str) -> str:
-    """
-    Parses keys like 'an-name:3.an1.1-10' to extract 'an1.1-10'.
-    """
-    try:
-        if ":" not in key:
-            return ""
-        index_part = key.split(":", 1)[1]
-        if "." not in index_part:
-            return ""
-        return index_part.split(".", 1)[1]
-    except Exception:
-        return ""
-
 def process_names() -> List[str]:
     """
-    Scans name directory, processes JSONs, and outputs JS files with '-name' suffix.
+    Scans API JSON directory, processes JSONs, and outputs JS files with '-name' suffix.
     """
-    if not DATA_NAME_DIR.exists():
-        logger.warning(f"⚠️ Name directory not found: {DATA_NAME_DIR}")
+    if not DATA_API_DIR.exists():
+        logger.warning(f"⚠️ API Data directory not found: {DATA_API_DIR}")
         return []
 
-    # UPDATED: Tạo folder names bên trong sutta
     OUTPUT_NAMES_DIR.mkdir(parents=True, exist_ok=True)
     
     generated_files = []
-    json_files = sorted(list(DATA_NAME_DIR.glob("*-name_*.json")))
+    # Quét tất cả file .json trong data/json (ví dụ: an.json, mn.json...)
+    json_files = sorted(list(DATA_API_DIR.glob("*.json")))
     
-    logger.info(f"📚 Processing {len(json_files)} name files...")
+    logger.info(f"📚 Processing {len(json_files)} API metadata files...")
 
     for file_path in json_files:
         try:
-            filename_parts = file_path.name.split("-name")
-            if not filename_parts:
-                continue
-            book_code = filename_parts[0]
+            book_code = file_path.stem # e.g. 'an', 'mn'
             
             with open(file_path, "r", encoding="utf-8") as f:
-                raw_data = json.load(f)
+                raw_list = json.load(f)
 
-            name_map: Dict[str, str] = {}
-            for key, title in raw_data.items():
-                sutta_id = _parse_sutta_id_from_key(key)
-                if sutta_id and title:
-                    name_map[sutta_id] = title.strip()
+            # Map: { "mn1": { "acronym": "MN 1", "title": "...", "original": "..." } }
+            name_map: Dict[str, Dict[str, str]] = {}
+            
+            # API trả về một List các Dict
+            if isinstance(raw_list, list):
+                for item in raw_list:
+                    uid = item.get("uid")
+                    if not uid:
+                        continue
+                    
+                    # Trích xuất thông tin
+                    entry = {
+                        "acronym": item.get("acronym") or "",
+                        "translated_title": item.get("translated_title") or "",
+                        "original_title": item.get("original_title") or ""
+                    }
+                    
+                    # Clean up titles (trim whitespace)
+                    entry["translated_title"] = entry["translated_title"].strip()
+                    entry["original_title"] = entry["original_title"].strip()
+                    
+                    name_map[uid] = entry
 
             if not name_map:
                 continue
 
             output_filename = f"{book_code}-name.js"
-            # UPDATED: Xuất vào assets/sutta/names/
             output_path = OUTPUT_NAMES_DIR / output_filename
             
             json_content = json.dumps(name_map, ensure_ascii=False, indent=2)
@@ -71,10 +70,10 @@ Object.assign(window.SUTTA_NAMES, {json_content});
                 f.write(js_content)
             
             generated_files.append(output_filename)
-            logger.info(f"   -> Name Map: {output_filename} ({len(name_map)} entries)")
+            logger.info(f"   -> Metadata: {output_filename} ({len(name_map)} entries)")
 
         except Exception as e:
-            logger.error(f"❌ Error processing name file {file_path.name}: {e}")
+            logger.error(f"❌ Error processing API file {file_path.name}: {e}")
 
     return generated_files
 
@@ -84,16 +83,12 @@ def generate_name_loader(files: List[str]) -> None:
         return
 
     files.sort()
-    # UPDATED: Loader nằm ngang hàng với sutta_loader.js (trong assets/sutta/)
     loader_path = OUTPUT_SUTTA_BASE / "name_loader.js"
     
     js_content = f"""
 // Auto-generated Name Loader
 (function() {{
     const files = {json.dumps(files, indent=2)};
-    // UPDATED: Script này ở assets/sutta/name_loader.js
-    // Data files ở assets/sutta/names/*.js
-    // -> thay 'name_loader.js' thành 'names/'
     const basePath = document.currentScript.src.replace('name_loader.js', 'names/');
     
     files.forEach(file => {{

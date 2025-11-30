@@ -10,16 +10,34 @@ document.addEventListener("DOMContentLoaded", () => {
   const commentContent = document.getElementById("comment-content");
   const closeCommentBtn = document.getElementById("close-comment");
 
-  // --- Helper: Get Title ---
-  function getSuttaTitle(id) {
+  // --- Helper: Get Sutta Metadata ---
+  // Trả về object { title, subtitle } để hiển thị
+  function getSuttaDisplayInfo(id) {
+    // Default fallback
+    let info = {
+        title: id.toUpperCase(), // Dùng ID làm title chính nếu ko có dữ liệu
+        subtitle: ""
+    };
+
     if (window.SUTTA_NAMES && window.SUTTA_NAMES[id]) {
-        return window.SUTTA_NAMES[id];
+        const meta = window.SUTTA_NAMES[id];
+        
+        // 1. Acronym (ưu tiên hiển thị số hiệu chuẩn, ví dụ: MN 1)
+        if (meta.acronym) {
+            info.title = meta.acronym;
+        }
+
+        // 2. Title (ưu tiên bản dịch -> bản gốc)
+        if (meta.translated_title) {
+            info.subtitle = meta.translated_title;
+        } else if (meta.original_title) {
+            info.subtitle = meta.original_title;
+        }
     }
-    return "";
+    return info;
   }
 
   // --- Comment Logic ---
-  // (Giữ nguyên phần Comment Logic)
   function showComment(text) {
     commentContent.innerHTML = text; 
     commentPopup.classList.remove("hidden");
@@ -61,48 +79,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const data = window.SUTTA_DB[id];
-    const currentTitle = getSuttaTitle(id);
+    const currentInfo = getSuttaDisplayInfo(id);
     
     // Build Navigation HTML
     let navHtml = '<div class="sutta-nav">';
     
+    // Previous Button
     if (data.previous) {
-      const prevTitle = getSuttaTitle(data.previous);
-      const prevLabel = prevTitle 
-          ? `← ${data.previous.toUpperCase()}<br><span class="nav-title">${prevTitle}</span>` 
-          : `← ${data.previous.toUpperCase()}`;
-          
+      const prevInfo = getSuttaDisplayInfo(data.previous);
+      // Format: "MN 1" ở dòng trên, "Tên bài kinh" ở dòng dưới
+      const prevLabel = `← ${prevInfo.title}<br><span class="nav-title">${prevInfo.subtitle}</span>`;     
       navHtml += `<button onclick="window.loadSutta('${data.previous}')" class="nav-btn">${prevLabel}</button>`;
     } else {
       navHtml += `<span></span>`;
     }
 
+    // Next Button
     if (data.next) {
-      const nextTitle = getSuttaTitle(data.next);
-      const nextLabel = nextTitle
-          ? `${data.next.toUpperCase()} →<br><span class="nav-title">${nextTitle}</span>`
-          : `${data.next.toUpperCase()} →`;
-
+      const nextInfo = getSuttaDisplayInfo(data.next);
+      const nextLabel = `${nextInfo.title} →<br><span class="nav-title">${nextInfo.subtitle}</span>`;
       navHtml += `<button onclick="window.loadSutta('${data.next}')" class="nav-btn">${nextLabel}</button>`;
     }
     navHtml += "</div>";
 
-    // Inject Title into Content (Optional but nice)
+    // Inject Title into Content (Optional)
     let contentHtml = data.content;
-    if (currentTitle) {
-        // Simple injection at the top if not already there
-        // Note: Bilara content usually has its own headers, so we might just rely on statusDiv
-    }
-
+    
     // Render Content
     container.innerHTML = navHtml + contentHtml + navHtml;
     
     // Update Status with Title
-    statusDiv.textContent = currentTitle 
-        ? `${id.toUpperCase()}: ${currentTitle}` 
-        : `Displaying: ${id.toUpperCase()}`;
+    statusDiv.textContent = currentInfo.subtitle 
+        ? `${currentInfo.title}: ${currentInfo.subtitle}` 
+        : `Displaying: ${currentInfo.title}`;
 
-    // --- SCROLL & HIGHLIGHT LOGIC FIX ---
+    // --- SCROLL & HIGHLIGHT LOGIC ---
     const hash = window.location.hash;
     
     if (checkHash && hash) {
@@ -155,13 +166,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Initialization ---
 
   function waitForData() {
-    // Check both DB and Names (Names are optional but good to wait for)
     if (window.SUTTA_DB && Object.keys(window.SUTTA_DB).length > 0) {
       const count = Object.keys(window.SUTTA_DB).length;
       
-      // Update status if names are loaded
       const nameCount = window.SUTTA_NAMES ? Object.keys(window.SUTTA_NAMES).length : 0;
-      statusDiv.textContent = `Library loaded: ~${count} suttas (${nameCount} titles).`;
+      statusDiv.textContent = `Library loaded: ~${count} suttas (${nameCount} meta-entries).`;
       statusDiv.style.color = "#666";
       randomBtn.disabled = false;
 
