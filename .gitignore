@@ -14,5 +14,7 @@ Thumbs.db
 
 /data/bilara
 
+/sample_*.txt
+
 # Logs
 *.log
