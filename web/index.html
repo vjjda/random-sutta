@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Random Sutta Reader</title>
-    
-    <link rel="stylesheet" href="assets/style.css?v=v1.0.4">
-    
+
+    <link rel="stylesheet" href="assets/style.css?v=v1.0.4" />
+
     <script src="assets/sutta/sutta_loader.js?v=v1.0.4"></script>
     <script src="assets/sutta/name_loader.js?v=v1.0.4"></script>
 
@@ -14,43 +14,74 @@
     <script src="assets/modules/utils.js?v=v1.0.4"></script>
     <script src="assets/modules/filters.js?v=v1.0.4"></script>
     <script src="assets/modules/renderer.js?v=v1.0.4"></script>
-</head>
-<body>
-
+  </head>
+  <body>
     <header>
-        <div id="filter-container">
-            <p class="filter-label">Choose books to include in the pool</p>
-            <div id="primary-filters" class="filter-row"></div>
-            
-            <button id="btn-more-filters" class="text-btn">Others</button>
-            <div id="secondary-filters" class="filter-row hidden"></div>
-        </div>
+      <div id="filter-container">
+        <button
+          id="btn-toggle-drawer"
+          class="icon-trigger"
+          title="Customize Pool"
+        >
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M7 6L12 11L17 6"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M7 13L12 18L17 13"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
 
-        <div class="controls">
-            <button id="btn-random" disabled>Random Sutta</button>
-        </div>
-        
-        <div id="nav-header" class="hidden">
-            <button id="nav-prev" class="nav-arrow" title="Previous">←</button>
-            <div id="nav-title-display">
-                <span id="nav-main-title"></span>
-                <span id="nav-sub-title"></span>
-            </div>
-            <button id="nav-next" class="nav-arrow" title="Next">→</button>
-        </div>
+        <div id="filter-drawer" class="hidden">
+          <p class="filter-label">Select books to randomize from:</p>
 
-        <div id="status">Initializing...</div>
+          <div id="primary-filters" class="filter-row"></div>
+
+          <button id="btn-more-filters" class="text-btn">Others</button>
+          <div id="secondary-filters" class="filter-row hidden"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="btn-random" disabled>Random Sutta</button>
+      </div>
+
+      <div id="nav-header" class="hidden">
+        <button id="nav-prev" class="nav-arrow" title="Previous">←</button>
+        <div id="nav-title-display">
+          <span id="nav-main-title"></span>
+          <span id="nav-sub-title"></span>
+        </div>
+        <button id="nav-next" class="nav-arrow" title="Next">→</button>
+      </div>
+
+      <div id="status">Initializing...</div>
     </header>
 
     <main id="sutta-container">
-        <p class="placeholder">Click the button to load a sutta.</p>
+      <p class="placeholder">Click the button to load a sutta.</p>
     </main>
 
     <div id="comment-popup" class="hidden">
-        <div id="comment-content"></div>
-        <button id="close-comment" aria-label="Close">×</button>
+      <div id="comment-content"></div>
+      <button id="close-comment" aria-label="Close">×</button>
     </div>
 
     <script src="assets/app.js?v=v1.0.4"></script>
-</body>
+  </body>
 </html>

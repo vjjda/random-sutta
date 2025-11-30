@@ -7,7 +7,12 @@ body {
     color: #333;
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px;
+
+    /* --- SỬA DÒNG NÀY --- */
+    /* Cũ: padding: 20px; */
+    /* Mới: Trên 5px, Phải 20px, Dưới 20px, Trái 20px */
+    padding: 5px 20px 20px 20px; 
+    
     line-height: 1.6;
 }
 
@@ -56,7 +61,11 @@ button:active {
 
 /* --- FILTER SECTION --- */
 #filter-container {
-    margin: 10px 0 20px 0; /* Giảm margin top vì giờ nó nằm đầu tiên */
+    /* --- SỬA DÒNG NÀY --- */
+    /* Cũ: margin: 10px 0 20px 0; */
+    /* Mới: Đặt số đầu tiên (top) về 0 */
+    margin: 0 0 15px 0;
+    
     text-align: center;
 }
 
@@ -364,4 +373,61 @@ p { margin-bottom: 15px; }
     0% { background-color: #fff9c4; }
     50% { background-color: #fff59d; }
     100% { background-color: #fff9c4; }
+}
+
+/* --- NEW DROPDOWN STYLES --- */
+
+/* --- ICON TRIGGER STYLES --- */
+
+.icon-trigger {
+    background: transparent;
+    border: none;
+    color: #8b4513;     /* Màu nâu chủ đạo của app */
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%; /* Hình tròn khi hover */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Hiệu ứng mượt */
+    box-shadow: none;
+    opacity: 0.7;       /* Mờ nhẹ để không quá nổi bật */
+}
+
+.icon-trigger:hover {
+    background-color: rgba(139, 69, 19, 0.1);
+    opacity: 1;
+    transform: scale(1.1); /* Phóng to nhẹ khi di chuột vào */
+}
+
+/* Quan trọng: Xoay icon khi menu mở */
+.icon-trigger.open {
+    transform: rotate(180deg); /* Xoay ngược lên trên */
+    opacity: 1;
+    background-color: rgba(139, 69, 19, 0.15);
+}
+
+/* Icon SVG bên trong */
+.icon-trigger svg {
+    display: block;
+    width: 28px;  /* Kích thước icon */
+    height: 28px;
+}
+
+/* Drawer chứa filters */
+#filter-drawer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px dashed #e0d6cc; /* Đường kẻ mờ ngăn cách */
+    animation: slideDown 0.3s ease-out;
+}
+
+#filter-drawer.hidden {
+    display: none;
+}
+
+/* Hiệu ứng trượt nhẹ */
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
