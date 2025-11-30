@@ -14,9 +14,6 @@ Thumbs.db
 
 /data/*
 
-/web/assets/sutta/books/
-/web/assets/sutta/names/
-
 .cache
 
 /release/
