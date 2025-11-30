@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# Path: tools/sample_data.py
+# Path: src/sample_data.py
 import json
 import logging
 import sys

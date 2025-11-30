@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Path: tools/sutta_fetcher.py
+# Path: src/sutta_fetcher.py
 import logging
 import shutil
 import subprocess
