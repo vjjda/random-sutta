@@ -48,19 +48,27 @@ button:hover { background-color: #a0522d; }
 }
 
 /* Bilara Data Styles */
+/* 1. Pali: Giữ nguyên block để nó nằm riêng một dòng phía trên */
 .pli {
     color: #777;
     font-style: italic;
     font-size: 0.9em;
-    display: block; /* Pali on separate line */
-    margin-bottom: 2px;
+    display: block;       /* Chiếm trọn dòng */
+    margin-bottom: 4px;   /* Khoảng cách nhỏ với dòng tiếng Anh */
 }
 
+/* 2. English: Đổi thành inline để dấu * có thể nằm kế bên */
 .eng {
     color: #222;
     font-weight: 500;
-    display: block; /* English on separate line */
-    margin-bottom: 12px;
+    display: inline;      /* QUAN TRỌNG: Cho phép phần tử khác nằm cùng dòng */
+    margin-bottom: 0;     /* Inline không nhận margin-bottom, khoảng cách sẽ do thẻ <p> bao ngoài lo */
+}
+
+/* 3. Wrapper Segment: Đảm bảo khối này hiển thị dạng block */
+.segment {
+    display: block;       /* Đảm bảo toàn bộ cụm Pali + Anh là một khối */
+    margin-bottom: 0;     /* Khoảng cách giữa các đoạn */
 }
 
 /* Comment Marker Style */
@@ -180,7 +188,42 @@ p { margin-bottom: 15px; }
     transition: background-color 0.5s;
 }
 
+/* Highlight segment khi được trỏ tới */
+/* CẬP NHẬT: Thêm .segment.highlight vào selector */
+.segment:target,
+.segment.highlight {
+    background-color: #fff9c4; /* Màu vàng nhạt */
+    border-left: 3px solid #fbc02d;
+    padding-left: 5px;
+    display: block; 
+    border-radius: 0 4px 4px 0;
+    transition: background-color 0.5s;
+    
+    /* Optional: Thêm animation nhấp nháy nhẹ để gây chú ý */
+    animation: flash-highlight 1s;
+}
+
+@keyframes flash-highlight {
+    0% { background-color: #fff9c4; }
+    50% { background-color: #fff59d; } /* Đậm hơn chút */
+    100% { background-color: #fff9c4; }
+}
+
 /* Hover effect nhẹ để biết từng đoạn */
 .segment:hover {
     background-color: #fafafa;
+}
+
+/* --- LIST STYLES (Fix bullet points) --- */
+
+/* Loại bỏ dấu chấm tròn và khoảng trắng thụt lề mặc định của thẻ ul */
+#sutta-container ul {
+    list-style-type: none; /* Quan trọng: Xóa dấu chấm tròn */
+    padding-left: 0;       /* Xóa khoảng trắng thụt đầu dòng mặc định */
+    margin: 0;             /* Reset margin */
+}
+
+/* Đảm bảo các dòng trong list hiển thị đẹp */
+#sutta-container li {
+    margin-bottom: 0.5em;
 }

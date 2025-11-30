@@ -83,27 +83,24 @@ document.addEventListener("DOMContentLoaded", () => {
     container.innerHTML = navHtml + data.content + navHtml;
     statusDiv.textContent = `Displaying: ${id.toUpperCase()}`;
 
-    // --- SCROLL LOGIC FIX ---
-    // Kiểm tra xem URL hiện tại có hash (ví dụ #9.1) không
+    // --- SCROLL & HIGHLIGHT LOGIC FIX ---
     const hash = window.location.hash;
 
     if (hash) {
-      // Bỏ dấu # để lấy ID (ví dụ "9.1")
+      // Lấy ID bỏ dấu #
       const targetId = hash.substring(1);
       const targetElement = document.getElementById(targetId);
 
       if (targetElement) {
-        // Nếu tìm thấy element, cuộn tới nó
+        // 1. Scroll
         targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
 
-        // (Tùy chọn) Flash highlight lại để người dùng chú ý
-        // CSS :target đã lo việc highlight, nhưng scrollIntoView đảm bảo nó nằm trong vùng nhìn thấy
+        // 2. Force Highlight (Thêm class thủ công)
+        targetElement.classList.add("highlight");
       } else {
-        // Có hash nhưng không tìm thấy element (VD: hash sai), cuộn lên đầu
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } else {
-      // Không có hash, cuộn lên đầu như bình thường
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
