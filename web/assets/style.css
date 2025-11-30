@@ -18,6 +18,8 @@ header {
     border-bottom: 2px solid #ddd;
 }
 
+
+
 /* --- CONTROLS --- */
 /* REMOVED: h1 style */
 
@@ -226,6 +228,10 @@ p { margin-bottom: 15px; }
     list-style-type: none;
     padding-left: 0;
     margin: 0;
+}
+
+#sutta-container header ul { 
+    display: none; 
 }
 
 #sutta-container li { margin-bottom: 0.5em; }
