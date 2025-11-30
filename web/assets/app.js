@@ -4,25 +4,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const container = document.getElementById("sutta-container");
   const statusDiv = document.getElementById("status");
   const randomBtn = document.getElementById("btn-random");
-  
-  // New Nav Elements
+
+  // --- NAV ELEMENTS (Top Header) ---
   const navHeader = document.getElementById("nav-header");
   const navPrevBtn = document.getElementById("nav-prev");
   const navNextBtn = document.getElementById("nav-next");
   const navMainTitle = document.getElementById("nav-main-title");
   const navSubTitle = document.getElementById("nav-sub-title");
 
-  // Filter Elements & Logic (Giữ nguyên)
-  // ... (Code filter giữ nguyên không đổi) ...
+  // --- FILTER ELEMENTS ---
   const primaryFiltersDiv = document.getElementById("primary-filters");
   const secondaryFiltersDiv = document.getElementById("secondary-filters");
   const moreFiltersBtn = document.getElementById("btn-more-filters");
+
+  // --- CONFIGURATION ---
+  // Danh sách sách chính (hiển thị mặc định)
   const PRIMARY_BOOKS = ['dn', 'mn', 'sn', 'an', 'kp', 'dhp', 'ud', 'iti', 'snp', 'thag', 'thig'];
-  const SECONDARY_BOOKS = ['bv', 'cnd', 'cp', 'ja', 'mil', 'mnd', 'ne', 'pe', 'ps', 'pv', 'tha-ap', 'thi-ap', 'vv'];
+  
+  // Danh sách sách phụ (ẩn trong Others)
+  const SECONDARY_BOOKS = [
+      'bv', 'cnd', 'cp', 'ja', 'mil', 'mnd', 'ne', 'pe', 'ps', 'pv', 'tha-ap', 'thi-ap', 'vv'
+  ];
+
+  // State: Lưu trữ các sách đang được chọn (mặc định chọn hết Primary)
   const activeFilters = new Set(PRIMARY_BOOKS);
 
-  function toggleFilter(bookId, btnElement) { /* ... Giữ nguyên ... */ 
+  // --- FILTER LOGIC ---
+
+  function toggleFilter(bookId, btnElement) {
       if (activeFilters.has(bookId)) {
+          // Không cho phép bỏ chọn hết (ít nhất phải giữ 1 cái để random)
           if (activeFilters.size === 1) return;
           activeFilters.delete(bookId);
           btnElement.classList.remove("active");
@@ -31,48 +42,100 @@ document.addEventListener("DOMContentLoaded", () => {
           btnElement.classList.add("active");
       }
   }
-  function createFilterButton(bookId, container, isDefaultActive) { /* ... Giữ nguyên ... */ 
+
+  function createFilterButton(bookId, container, isDefaultActive) {
       const btn = document.createElement("button");
       btn.className = "filter-btn";
+      // Viết hoa chữ cái đầu: dn -> Dn
       btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
-      if (isDefaultActive) btn.classList.add("active");
+      
+      if (isDefaultActive) {
+          btn.classList.add("active");
+          // Đảm bảo state đồng bộ (dù activeFilters đã init ở trên nhưng cứ chắc chắn)
+          activeFilters.add(bookId);
+      }
+
       btn.addEventListener("click", () => toggleFilter(bookId, btn));
       container.appendChild(btn);
   }
-  function initFilters() { /* ... Giữ nguyên ... */ 
+
+  function initFilters() {
+      // Xóa nội dung cũ nếu có để tránh duplicate khi reload
+      primaryFiltersDiv.innerHTML = "";
+      secondaryFiltersDiv.innerHTML = "";
+
+      // 1. Render Primary
       PRIMARY_BOOKS.forEach(book => createFilterButton(book, primaryFiltersDiv, true));
+
+      // 2. Render Secondary
       SECONDARY_BOOKS.forEach(book => createFilterButton(book, secondaryFiltersDiv, false));
+
+      // 3. Handle "Others" toggle
       moreFiltersBtn.addEventListener("click", () => {
           secondaryFiltersDiv.classList.toggle("hidden");
-          moreFiltersBtn.textContent = secondaryFiltersDiv.classList.contains("hidden") ? "Others" : "Hide";
+          moreFiltersBtn.textContent = secondaryFiltersDiv.classList.contains("hidden") 
+              ? "Others" 
+              : "Hide";
       });
   }
 
-  // --- Comment Logic (Giữ nguyên) ---
+  // --- COMMENT LOGIC ---
   const commentPopup = document.getElementById("comment-popup");
   const commentContent = document.getElementById("comment-content");
   const closeCommentBtn = document.getElementById("close-comment");
-  function showComment(text) { commentContent.innerHTML = text; commentPopup.classList.remove("hidden"); }
-  function hideComment() { commentPopup.classList.add("hidden"); }
-  container.addEventListener("click", (event) => { if (event.target.classList.contains("comment-marker")) { const text = event.target.dataset.comment; if (text) { showComment(text); event.stopPropagation(); } } else { hideComment(); } });
-  closeCommentBtn.addEventListener("click", (e) => { hideComment(); e.stopPropagation(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideComment(); });
 
-  // --- Helper: Get Sutta Metadata ---
+  function showComment(text) {
+    commentContent.innerHTML = text; 
+    commentPopup.classList.remove("hidden");
+  }
+
+  function hideComment() {
+    commentPopup.classList.add("hidden");
+  }
+
+  container.addEventListener("click", (event) => {
+    if (event.target.classList.contains("comment-marker")) {
+      const text = event.target.dataset.comment;
+      if (text) {
+        showComment(text);
+        event.stopPropagation();
+      }
+    } else {
+      hideComment();
+    }
+  });
+
+  closeCommentBtn.addEventListener("click", (e) => {
+    hideComment();
+    e.stopPropagation();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideComment();
+  });
+
+  // --- HELPER: GET METADATA ---
   function getSuttaDisplayInfo(id) {
-    let info = { title: id.toUpperCase(), subtitle: "" };
+    let info = {
+        title: id.toUpperCase(), 
+        subtitle: ""
+    };
     if (window.SUTTA_NAMES && window.SUTTA_NAMES[id]) {
         const meta = window.SUTTA_NAMES[id];
         if (meta.acronym) info.title = meta.acronym;
-        if (meta.translated_title) info.subtitle = meta.translated_title;
-        else if (meta.original_title) info.subtitle = meta.original_title;
+        
+        if (meta.translated_title) {
+            info.subtitle = meta.translated_title;
+        } else if (meta.original_title) {
+            info.subtitle = meta.original_title;
+        }
     }
     return info;
   }
 
-  // --- Core Functions ---
+  // --- CORE FUNCTIONS ---
 
-  // UPDATED: Function to update the top Nav Bar
+  // 1. Update Top Navigation Header
   function updateTopNav(currentId, prevId, nextId) {
       const currentInfo = getSuttaDisplayInfo(currentId);
       
@@ -80,18 +143,19 @@ document.addEventListener("DOMContentLoaded", () => {
       navMainTitle.textContent = currentInfo.title;
       navSubTitle.textContent = currentInfo.subtitle;
 
-      // Update Arrows
+      // Update Previous Arrow
       if (prevId) {
           navPrevBtn.disabled = false;
           navPrevBtn.onclick = () => window.loadSutta(prevId);
-          // Optional: Add tooltip with title
           const prevInfo = getSuttaDisplayInfo(prevId);
           navPrevBtn.title = `Previous: ${prevInfo.title}`;
       } else {
           navPrevBtn.disabled = true;
           navPrevBtn.onclick = null;
+          navPrevBtn.title = "";
       }
 
+      // Update Next Arrow
       if (nextId) {
           navNextBtn.disabled = false;
           navNextBtn.onclick = () => window.loadSutta(nextId);
@@ -100,6 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
           navNextBtn.disabled = true;
           navNextBtn.onclick = null;
+          navNextBtn.title = "";
       }
 
       // Show Nav, Hide Status
@@ -107,11 +172,13 @@ document.addEventListener("DOMContentLoaded", () => {
       statusDiv.classList.add("hidden");
   }
 
+  // 2. Render Sutta Content
   function renderSutta(suttaId, checkHash = true) {
     const id = suttaId.toLowerCase().trim();
+    
+    // Check DB
     if (!window.SUTTA_DB || !window.SUTTA_DB[id]) {
       container.innerHTML = `<p class="placeholder" style="color:red">Sutta ID "<b>${id}</b>" not found.</p>`;
-      // Show error in status, hide nav
       statusDiv.textContent = "Error: Sutta not found.";
       statusDiv.classList.remove("hidden");
       navHeader.classList.add("hidden");
@@ -120,13 +187,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const data = window.SUTTA_DB[id];
     
-    // 1. UPDATE TOP NAV
+    // A. Update Top Nav
     updateTopNav(id, data.previous, data.next);
 
-    // 2. BUILD CONTENT (Only Bottom Nav)
-    // Removed Top Nav generation here
-    
+    // B. Build Bottom Nav (Text links)
     let bottomNavHtml = '<div class="sutta-nav">';
+    
     if (data.previous) {
       const prevInfo = getSuttaDisplayInfo(data.previous);
       const prevLabel = `← ${prevInfo.title}<br><span class="nav-title">${prevInfo.subtitle}</span>`;     
@@ -142,10 +208,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     bottomNavHtml += "</div>";
 
-    // 3. RENDER
+    // C. Inject Content
     container.innerHTML = data.content + bottomNavHtml;
     
-    // --- SCROLL LOGIC ---
+    // D. Scroll Logic
     const hash = window.location.hash;
     if (checkHash && hash) {
       const targetId = hash.substring(1);
@@ -159,6 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+
     return true;
   }
 
@@ -175,42 +242,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.loadSutta = function (suttaId) {
     hideComment();
+    // Khi load bài mới thì không checkHash (để scroll lên đầu)
     if (renderSutta(suttaId, false)) {
       updateURL(suttaId);
     }
   };
 
-  function loadRandomSutta() { /* ... Giữ nguyên ... */
+  // 3. Random Logic (With Filter)
+  function loadRandomSutta() {
     hideComment();
     if (!window.SUTTA_DB) return;
+    
     const allKeys = Object.keys(window.SUTTA_DB);
     if (allKeys.length === 0) return;
+
+    // Lọc danh sách bài kinh dựa trên bộ lọc đang active
     const activePrefixes = Array.from(activeFilters);
     const filteredKeys = allKeys.filter(key => {
+        // ID thường là 'mn1', 'dn2'... prefix là 'mn', 'dn'
         return activePrefixes.some(prefix => key.startsWith(prefix));
     });
+
     if (filteredKeys.length === 0) {
         alert("No suttas match your selected filters!");
         return;
     }
+
     const randomIndex = Math.floor(Math.random() * filteredKeys.length);
     const suttaId = filteredKeys[randomIndex];
+
     window.loadSutta(suttaId);
   }
 
-  // --- Initialization ---
+  // --- INITIALIZATION ---
   function waitForData() {
     if (window.SUTTA_DB && Object.keys(window.SUTTA_DB).length > 0) {
       const count = Object.keys(window.SUTTA_DB).length;
       const nameCount = window.SUTTA_NAMES ? Object.keys(window.SUTTA_NAMES).length : 0;
       
       statusDiv.textContent = `Library loaded: ~${count} suttas (${nameCount} meta-entries).`;
-      statusDiv.classList.remove("hidden"); // Show init status
-      navHeader.classList.add("hidden");    // Hide nav initially
+      statusDiv.classList.remove("hidden");
+      navHeader.classList.add("hidden"); // Mặc định ẩn nav khi chưa load bài
       randomBtn.disabled = false;
       
+      // Khởi tạo bộ lọc
       initFilters();
 
+      // Kiểm tra URL nếu có bài kinh được share
       const params = new URLSearchParams(window.location.search);
       const queryId = params.get("q");
       if (queryId) {
@@ -223,6 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   randomBtn.addEventListener("click", loadRandomSutta);
+
   window.addEventListener("popstate", (event) => {
     if (event.state && event.state.suttaId) {
       renderSutta(event.state.suttaId);
