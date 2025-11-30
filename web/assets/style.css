@@ -63,14 +63,68 @@ button:hover { background-color: #a0522d; }
     margin-bottom: 12px;
 }
 
-/* Comment Tooltip */
+/* Comment Marker Style */
 .comment-marker {
-    color: #d35400;
+    color: #d35400;       /* Màu cam đất nổi bật */
     font-weight: bold;
-    cursor: help;
-    font-size: 0.8em;
-    vertical-align: super;
-    margin-left: 4px;
+    cursor: pointer;
+    font-size: 0.85em;    /* Nhỏ hơn chữ thường chút */
+    vertical-align: super;/* Đẩy lên cao (superscript) */
+    margin-left: 2px;
+    padding: 0 4px;       /* Tăng diện tích bấm */
+    user-select: none;    /* Không cho bôi đen */
+    transition: color 0.2s;
+}
+
+.comment-marker:hover {
+    color: #e67e22;
+    text-decoration: underline;
+}
+
+/* Comment Popup (Toast Style) */
+#comment-popup {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 600px;
+    background-color: #fff;
+    border-left: 5px solid #d35400;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 15px 40px 15px 20px; /* Right padding to avoid overlap with close btn */
+    border-radius: 4px;
+    z-index: 1000;
+    font-size: 0.95em;
+    line-height: 1.5;
+    color: #444;
+    
+    /* Animation */
+    transition: opacity 0.3s, transform 0.3s;
+    opacity: 1;
+}
+
+#comment-popup.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 20px); /* Slide down when hidden */
+}
+
+/* Close Button inside Popup */
+#comment-popup button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: transparent;
+    color: #999;
+    font-size: 20px;
+    padding: 0 8px;
+    line-height: 1;
+}
+
+#comment-popup button:hover {
+    background: transparent;
+    color: #333;
 }
 
 /* Headings inside Sutta */

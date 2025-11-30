@@ -59,9 +59,13 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[str]]:
                 
             # 3. Comment
             if comment_text:
-                # Escape for HTML attribute
+                # Escape quotes để tránh lỗi HTML attribute
                 safe_comment = comment_text.replace('"', '&quot;').replace("'", "&#39;")
-                segment_content += f" <span class='comment-marker' title='{safe_comment}'>[*]</span>"
+                
+                # CẬP NHẬT: 
+                # 1. Dùng data-comment thay vì title để JS xử lý
+                # 2. Text hiển thị chỉ là dấu * (bỏ ngoặc vuông)
+                segment_content += f"<span class='comment-marker' data-comment='{safe_comment}'>*</span>"
 
             # Merge into template
             final_html += template.replace("{}", segment_content) + "\n"
