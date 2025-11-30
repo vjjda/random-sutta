@@ -12,23 +12,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- CONFIGURATION ---
   
-  // Danh sách các sách chính (hiển thị mặc định) - Khớp với hình bạn gửi
+  // UPDATED: Order strictly as requested (DN, MN, SN, AN, Kp, Dhp, Ud, Iti, Snp, Thag, Thig)
   const PRIMARY_BOOKS = ['dn', 'mn', 'sn', 'an', 'kp', 'dhp', 'ud', 'iti', 'snp', 'thag', 'thig'];
   
-  // Danh sách các sách phụ (ẩn trong More) - Dựa trên file loader.js
   const SECONDARY_BOOKS = [
       'bv', 'cnd', 'cp', 'ja', 'mil', 'mnd', 'ne', 'pe', 'ps', 'pv', 'tha-ap', 'thi-ap', 'vv'
   ];
 
   // State lưu trữ các sách đang được chọn
-  // Mặc định chọn hết Primary
   const activeFilters = new Set(PRIMARY_BOOKS);
 
   // --- Filter Logic ---
 
   function toggleFilter(bookId, btnElement) {
       if (activeFilters.has(bookId)) {
-          // Không cho phép bỏ chọn hết (ít nhất phải giữ 1 cái để random)
           if (activeFilters.size === 1) return;
           activeFilters.delete(bookId);
           btnElement.classList.remove("active");
@@ -36,14 +33,11 @@ document.addEventListener("DOMContentLoaded", () => {
           activeFilters.add(bookId);
           btnElement.classList.add("active");
       }
-      // Update UI status text (optional)
-      // console.log("Active filters:", Array.from(activeFilters));
   }
 
   function createFilterButton(bookId, container, isDefaultActive) {
       const btn = document.createElement("button");
       btn.className = "filter-btn";
-      // Capitalize first letter (dn -> Dn), or special casing
       btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
       
       if (isDefaultActive) {
@@ -62,15 +56,16 @@ document.addEventListener("DOMContentLoaded", () => {
       SECONDARY_BOOKS.forEach(book => createFilterButton(book, secondaryFiltersDiv, false));
 
       // 3. Handle "More" toggle
+      // UPDATED: Simple text toggle
       moreFiltersBtn.addEventListener("click", () => {
           secondaryFiltersDiv.classList.toggle("hidden");
           moreFiltersBtn.textContent = secondaryFiltersDiv.classList.contains("hidden") 
-              ? "Show More Books..." 
-              : "Hide More Books";
+              ? "Others" 
+              : "Hide";
       });
   }
 
-  // --- Comment Logic (Giữ nguyên) ---
+  // --- Comment Logic ---
   const commentPopup = document.getElementById("comment-popup");
   const commentContent = document.getElementById("comment-content");
   const closeCommentBtn = document.getElementById("close-comment");
@@ -128,7 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderSutta(suttaId, checkHash = true) {
     const id = suttaId.toLowerCase().trim();
     if (!window.SUTTA_DB || !window.SUTTA_DB[id]) {
-      container.innerHTML = `<p class="placeholder" style="color:red">⚠️ Sutta ID "<b>${id}</b>" not found.</p>`;
+      // REMOVED: Emoji ⚠️
+      container.innerHTML = `<p class="placeholder" style="color:red">Sutta ID "<b>${id}</b>" not found.</p>`;
       statusDiv.textContent = "Error: Sutta not found.";
       return false;
     }
@@ -136,7 +132,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = window.SUTTA_DB[id];
     const currentInfo = getSuttaDisplayInfo(id);
     
-    // Build Navigation HTML
     let navHtml = '<div class="sutta-nav">';
     
     if (data.previous) {
@@ -195,7 +190,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  // UPDATED: Random Logic with Filter
   function loadRandomSutta() {
     hideComment();
     if (!window.SUTTA_DB) return;
@@ -203,16 +197,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const allKeys = Object.keys(window.SUTTA_DB);
     if (allKeys.length === 0) return;
 
-    // 1. Tạo danh sách các prefix đang active
     const activePrefixes = Array.from(activeFilters);
 
-    // 2. Lọc danh sách keys dựa trên prefix
-    // Ví dụ: activeFilters = ['mn', 'dhp'] -> giữ lại 'mn1', 'mn2', 'dhp1'...
     const filteredKeys = allKeys.filter(key => {
-        // Kiểm tra xem key có bắt đầu bằng bất kỳ prefix nào đang active không
-        // Lưu ý: ID thường là 'mn1', prefix là 'mn'. 
-        // Cần cẩn thận với trường hợp prefix trùng nhau như 's' và 'sn' (nhưng ở đây prefixes khá rõ ràng)
-        // Cách tốt nhất là dùng regex hoặc startsWith
         return activePrefixes.some(prefix => key.startsWith(prefix));
     });
 
@@ -221,11 +208,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // 3. Random từ danh sách đã lọc
     const randomIndex = Math.floor(Math.random() * filteredKeys.length);
     const suttaId = filteredKeys[randomIndex];
 
-    console.log(`🎲 Random pool size: ${filteredKeys.length} (Total: ${allKeys.length})`);
     window.loadSutta(suttaId);
   }
 
@@ -235,11 +220,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.SUTTA_DB && Object.keys(window.SUTTA_DB).length > 0) {
       const count = Object.keys(window.SUTTA_DB).length;
       const nameCount = window.SUTTA_NAMES ? Object.keys(window.SUTTA_NAMES).length : 0;
+      
       statusDiv.textContent = `Library loaded: ~${count} suttas (${nameCount} meta-entries).`;
       statusDiv.style.color = "#666";
       randomBtn.disabled = false;
       
-      // Khởi tạo bộ lọc sau khi data đã sẵn sàng (hoặc init ngay cũng được, nhưng ở đây an toàn hơn)
       initFilters();
 
       const params = new URLSearchParams(window.location.search);
