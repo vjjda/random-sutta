@@ -18,22 +18,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const moreFiltersBtn = document.getElementById("btn-more-filters");
 
   // --- CONFIGURATION ---
-  // Danh sách sách chính (hiển thị mặc định)
   const PRIMARY_BOOKS = ['dn', 'mn', 'sn', 'an', 'kp', 'dhp', 'ud', 'iti', 'snp', 'thag', 'thig'];
   
-  // Danh sách sách phụ (ẩn trong Others)
   const SECONDARY_BOOKS = [
       'bv', 'cnd', 'cp', 'ja', 'mil', 'mnd', 'ne', 'pe', 'ps', 'pv', 'tha-ap', 'thi-ap', 'vv'
   ];
 
-  // State: Lưu trữ các sách đang được chọn (mặc định chọn hết Primary)
   const activeFilters = new Set(PRIMARY_BOOKS);
 
   // --- FILTER LOGIC ---
 
   function toggleFilter(bookId, btnElement) {
       if (activeFilters.has(bookId)) {
-          // Không cho phép bỏ chọn hết (ít nhất phải giữ 1 cái để random)
           if (activeFilters.size === 1) return;
           activeFilters.delete(bookId);
           btnElement.classList.remove("active");
@@ -46,12 +42,17 @@ document.addEventListener("DOMContentLoaded", () => {
   function createFilterButton(bookId, container, isDefaultActive) {
       const btn = document.createElement("button");
       btn.className = "filter-btn";
-      // Viết hoa chữ cái đầu: dn -> Dn
-      btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
+      
+      // UPDATED LOGIC: In hoa toàn bộ cho 4 Nikaya chính
+      if (['dn', 'mn', 'sn', 'an'].includes(bookId)) {
+          btn.textContent = bookId.toUpperCase(); // DN, MN, SN, AN
+      } else {
+          // Các sách khác viết hoa chữ cái đầu (Title Case)
+          btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
+      }
       
       if (isDefaultActive) {
           btn.classList.add("active");
-          // Đảm bảo state đồng bộ (dù activeFilters đã init ở trên nhưng cứ chắc chắn)
           activeFilters.add(bookId);
       }
 
@@ -60,17 +61,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function initFilters() {
-      // Xóa nội dung cũ nếu có để tránh duplicate khi reload
       primaryFiltersDiv.innerHTML = "";
       secondaryFiltersDiv.innerHTML = "";
 
-      // 1. Render Primary
       PRIMARY_BOOKS.forEach(book => createFilterButton(book, primaryFiltersDiv, true));
-
-      // 2. Render Secondary
       SECONDARY_BOOKS.forEach(book => createFilterButton(book, secondaryFiltersDiv, false));
 
-      // 3. Handle "Others" toggle
       moreFiltersBtn.addEventListener("click", () => {
           secondaryFiltersDiv.classList.toggle("hidden");
           moreFiltersBtn.textContent = secondaryFiltersDiv.classList.contains("hidden") 
@@ -135,15 +131,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- CORE FUNCTIONS ---
 
-  // 1. Update Top Navigation Header
   function updateTopNav(currentId, prevId, nextId) {
       const currentInfo = getSuttaDisplayInfo(currentId);
       
-      // Update Center Title
       navMainTitle.textContent = currentInfo.title;
       navSubTitle.textContent = currentInfo.subtitle;
 
-      // Update Previous Arrow
       if (prevId) {
           navPrevBtn.disabled = false;
           navPrevBtn.onclick = () => window.loadSutta(prevId);
@@ -155,7 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
           navPrevBtn.title = "";
       }
 
-      // Update Next Arrow
       if (nextId) {
           navNextBtn.disabled = false;
           navNextBtn.onclick = () => window.loadSutta(nextId);
@@ -167,16 +159,13 @@ document.addEventListener("DOMContentLoaded", () => {
           navNextBtn.title = "";
       }
 
-      // Show Nav, Hide Status
       navHeader.classList.remove("hidden");
       statusDiv.classList.add("hidden");
   }
 
-  // 2. Render Sutta Content
   function renderSutta(suttaId, checkHash = true) {
     const id = suttaId.toLowerCase().trim();
     
-    // Check DB
     if (!window.SUTTA_DB || !window.SUTTA_DB[id]) {
       container.innerHTML = `<p class="placeholder" style="color:red">Sutta ID "<b>${id}</b>" not found.</p>`;
       statusDiv.textContent = "Error: Sutta not found.";
@@ -187,10 +176,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const data = window.SUTTA_DB[id];
     
-    // A. Update Top Nav
     updateTopNav(id, data.previous, data.next);
 
-    // B. Build Bottom Nav (Text links)
     let bottomNavHtml = '<div class="sutta-nav">';
     
     if (data.previous) {
@@ -208,10 +195,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     bottomNavHtml += "</div>";
 
-    // C. Inject Content
     container.innerHTML = data.content + bottomNavHtml;
     
-    // D. Scroll Logic
     const hash = window.location.hash;
     if (checkHash && hash) {
       const targetId = hash.substring(1);
@@ -242,13 +227,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.loadSutta = function (suttaId) {
     hideComment();
-    // Khi load bài mới thì không checkHash (để scroll lên đầu)
     if (renderSutta(suttaId, false)) {
       updateURL(suttaId);
     }
   };
 
-  // 3. Random Logic (With Filter)
   function loadRandomSutta() {
     hideComment();
     if (!window.SUTTA_DB) return;
@@ -256,10 +239,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const allKeys = Object.keys(window.SUTTA_DB);
     if (allKeys.length === 0) return;
 
-    // Lọc danh sách bài kinh dựa trên bộ lọc đang active
     const activePrefixes = Array.from(activeFilters);
     const filteredKeys = allKeys.filter(key => {
-        // ID thường là 'mn1', 'dn2'... prefix là 'mn', 'dn'
         return activePrefixes.some(prefix => key.startsWith(prefix));
     });
 
@@ -274,7 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
     window.loadSutta(suttaId);
   }
 
-  // --- INITIALIZATION ---
   function waitForData() {
     if (window.SUTTA_DB && Object.keys(window.SUTTA_DB).length > 0) {
       const count = Object.keys(window.SUTTA_DB).length;
@@ -282,13 +262,11 @@ document.addEventListener("DOMContentLoaded", () => {
       
       statusDiv.textContent = `Library loaded: ~${count} suttas (${nameCount} meta-entries).`;
       statusDiv.classList.remove("hidden");
-      navHeader.classList.add("hidden"); // Mặc định ẩn nav khi chưa load bài
+      navHeader.classList.add("hidden");
       randomBtn.disabled = false;
       
-      // Khởi tạo bộ lọc
       initFilters();
 
-      // Kiểm tra URL nếu có bài kinh được share
       const params = new URLSearchParams(window.location.search);
       const queryId = params.get("q");
       if (queryId) {
