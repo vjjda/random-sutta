@@ -10,7 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
     window.loadSutta = function (suttaId) {
         hideComment();
         if (window.renderSutta(suttaId, false)) { 
-            // UPDATED: Dùng hàm từ filters.js
             const bookParam = window.generateBookParam();
             window.updateURL(suttaId, bookParam);
         }
@@ -34,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (filteredKeys.length === 0) {
+            // Nếu filter không khớp bài nào (ví dụ ?b=xyz), alert xong vẫn nên để yên
             alert("No suttas match your selected filters!");
             return;
         }
@@ -54,12 +54,20 @@ document.addEventListener("DOMContentLoaded", () => {
             navHeader.classList.add("hidden");
             randomBtn.disabled = false;
 
+            // 1. Khởi tạo bộ lọc (xử lý ?b=...)
             window.initFilters();
 
+            // 2. Kiểm tra URL xem có yêu cầu bài cụ thể không (?q=...)
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get("q");
+
             if (queryId) {
+                // Trường hợp A: Có link bài cụ thể -> Load bài đó
                 window.renderSutta(queryId, true);
+            } else {
+                // Trường hợp B: Không có bài cụ thể -> TỰ ĐỘNG RANDOM NGAY LẬP TỨC
+                // (Logic ?b=mn đã được xử lý ở bước initFilters phía trên nên random sẽ đúng sách)
+                loadRandomSutta();
             }
         } else {
             statusDiv.textContent = "Loading database files...";
