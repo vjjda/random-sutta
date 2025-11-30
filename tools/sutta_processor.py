@@ -4,8 +4,10 @@ import json
 import logging
 import re
 import sys
+import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple, Optional
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # --- Configuration ---
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -13,10 +15,10 @@ DATA_ROOT = PROJECT_ROOT / "data" / "bilara"
 OUTPUT_FILE = PROJECT_ROOT / "data" / "sutta_db.js"
 
 # Limit processing for testing (Set to 0 for unlimited)
-# Warning: Full processing might create a very large JS file.
 PROCESS_LIMIT = 0 
 
 # --- Logging Setup ---
+# Configure logging to work nicely with multiprocessing
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SuttaProcessor")
 
@@ -27,15 +29,17 @@ def load_json(path: Path) -> Dict[str, str]:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        logger.warning(f"⚠️ Error reading {path}: {e}")
+        # Print error directly as logger might not sync perfectly in processes without complex setup
+        print(f"⚠️ Error reading {path}: {e}")
         return {}
 
 def find_sutta_files(sutta_id: str) -> Dict[str, Path]:
     """Finds the 4 component files for a given sutta_id."""
-    # Heuristic: We look into subfolders recursively
+    # Note: Optimization possibility - Scan all dirs once and map them instead of rglob per ID.
+    # But for now, rglob in parallel processes is fast enough.
     files = {}
     
-    # 1. Root (Pali) - Source of Truth for ID
+    # 1. Root (Pali)
     root_matches = list((DATA_ROOT / "root").rglob(f"{sutta_id}_root-*.json"))
     if not root_matches:
         return {}
@@ -55,92 +59,98 @@ def find_sutta_files(sutta_id: str) -> Dict[str, Path]:
 
     return files
 
-def process_sutta(sutta_id: str) -> str:
-    """Merges the components into a single HTML string."""
-    files = find_sutta_files(sutta_id)
-    if not files.get('root') or not files.get('html'):
-        # Skip if no root or no structure
-        return ""
+def process_single_worker(sutta_id: str) -> Tuple[str, Optional[str]]:
+    """
+    Worker function to be run in a separate process.
+    Returns (sutta_id, html_content) or (sutta_id, None) if failed/skipped.
+    """
+    try:
+        files = find_sutta_files(sutta_id)
+        if not files.get('root') or not files.get('html'):
+            return sutta_id, None
 
-    data_root = load_json(files['root'])
-    data_trans = load_json(files['translation']) if files['translation'] else {}
-    data_html = load_json(files['html']) if files['html'] else {}
-    data_comment = load_json(files['comment']) if files['comment'] else {}
+        data_root = load_json(files['root'])
+        data_trans = load_json(files['translation']) if files['translation'] else {}
+        data_html = load_json(files['html']) if files['html'] else {}
+        data_comment = load_json(files['comment']) if files['comment'] else {}
 
-    # We iterate based on HTML keys to preserve the structure order
-    # Sorting keys naturally (mn1:1.1, mn1:1.2...)
-    sorted_keys = sorted(data_html.keys(), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)])
+        # Sort keys naturally
+        sorted_keys = sorted(data_html.keys(), key=lambda x: [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', x)])
 
-    final_html = ""
+        final_html = ""
+        for key in sorted_keys:
+            template = data_html.get(key, "{}")
+            pali_text = data_root.get(key, "")
+            eng_text = data_trans.get(key, "")
+            comment_text = data_comment.get(key, "")
 
-    for key in sorted_keys:
-        template = data_html.get(key, "{}")
-        pali_text = data_root.get(key, "")
-        eng_text = data_trans.get(key, "")
-        comment_text = data_comment.get(key, "")
-
-        # Logic: If English exists, show both. If not, just Pali.
-        segment_content = ""
-        
-        if pali_text:
-            segment_content += f"<span class='pli'>{pali_text}</span>"
-        
-        if eng_text:
-            # Add a break or space between Pali and English
-            segment_content += f" <span class='eng'>{eng_text}</span>"
+            segment_content = ""
             
-        if comment_text:
-            # Add a simple tooltip indicator
-            # Escape quotes in comment to avoid breaking HTML attributes
-            safe_comment = comment_text.replace('"', '&quot;').replace("'", "&#39;")
-            segment_content += f" <span class='comment-marker' title='{safe_comment}'>[*]</span>"
+            if pali_text:
+                segment_content += f"<span class='pli'>{pali_text}</span>"
+            
+            if eng_text:
+                segment_content += f" <span class='eng'>{eng_text}</span>"
+                
+            if comment_text:
+                safe_comment = comment_text.replace('"', '&quot;').replace("'", "&#39;")
+                segment_content += f" <span class='comment-marker' title='{safe_comment}'>[*]</span>"
 
-        # Inject content into the HTML template
-        # Using replace instead of format to avoid issues if text contains {}
-        rendered_segment = template.replace("{}", segment_content)
-        final_html += rendered_segment + "\n"
+            rendered_segment = template.replace("{}", segment_content)
+            final_html += rendered_segment + "\n"
 
-    return final_html
+        return sutta_id, final_html
+
+    except Exception as e:
+        print(f"❌ Error processing {sutta_id}: {e}")
+        return sutta_id, None
 
 def orchestrate_processing():
-    logger.info("🚀 Starting Sutta Processing...")
+    logger.info("🚀 Starting Sutta Processing (Multiprocessed)...")
     
-    # 1. Discover Suttas (Scan root folder)
-    # This might find thousands.
     root_dir = DATA_ROOT / "root"
     if not root_dir.exists():
-        logger.error("❌ Data directory missing. Please run fetcher first.")
+        logger.error("❌ Data directory missing.")
         sys.exit(1)
 
+    # 1. Discover Suttas
+    logger.info("Scanning for suttas...")
     sutta_ids = []
-    # Find all json files in root, extract ID prefix (e.g. 'mn1' from 'mn1_root-pli-ms.json')
     for file_path in root_dir.rglob("*_root-*.json"):
         sutta_id = file_path.name.split("_")[0]
         sutta_ids.append(sutta_id)
     
-    # De-duplicate and sort
     sutta_ids = sorted(list(set(sutta_ids)))
     
-    logger.info(f"Found {len(sutta_ids)} potential suttas.")
+    total_suttas = len(sutta_ids)
+    if PROCESS_LIMIT > 0:
+        sutta_ids = sutta_ids[:PROCESS_LIMIT]
+        total_suttas = len(sutta_ids)
+        
+    logger.info(f"Found {len(sutta_ids)} suttas to process.")
 
-    # 2. Process
+    # 2. Process in Parallel
     db = {}
-    count = 0
-    
-    for sid in sutta_ids:
-        if PROCESS_LIMIT > 0 and count >= PROCESS_LIMIT:
-            break
+    workers_count = os.cpu_count() or 4
+    logger.info(f"🔥 Spawning {workers_count} worker processes...")
+
+    with ProcessPoolExecutor(max_workers=workers_count) as executor:
+        # Submit all tasks
+        future_to_sutta = {executor.submit(process_single_worker, sid): sid for sid in sutta_ids}
+        
+        completed_count = 0
+        for future in as_completed(future_to_sutta):
+            sid, html_content = future.result()
+            if html_content:
+                db[sid] = html_content
             
-        logger.info(f"Processing: {sid}...")
-        html_content = process_sutta(sid)
-        if html_content:
-            db[sid] = html_content
-            count += 1
+            completed_count += 1
+            if completed_count % 100 == 0:
+                logger.info(f"   Progress: {completed_count}/{total_suttas} suttas processed...")
 
     # 3. Write output
     logger.info(f"💾 Writing {len(db)} suttas to {OUTPUT_FILE}...")
-    
-    js_content = f"const SUTTA_DB = {json.dumps(db, ensure_ascii=False, indent=2)};"
+    js_content = f"const SUTTA_DB = {json.dumps(db, ensure_ascii=False)};" # Removed indent for smaller file size
     
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(js_content)
@@ -148,4 +158,5 @@ def orchestrate_processing():
     logger.info("✅ Done.")
 
 if __name__ == "__main__":
+    # Windows requires this protection for multiprocessing
     orchestrate_processing()
