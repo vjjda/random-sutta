@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Core Functions ---
 
+  // 1. Render Sutta to View
   function renderSutta(suttaId) {
     const id = suttaId.toLowerCase().trim();
 
@@ -68,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
         data.previous
       }')">← ${data.previous.toUpperCase()}</button>`;
     } else {
-      navHtml += `<span></span>`; // Spacer
+      navHtml += `<span></span>`;
     }
 
     if (data.next) {
@@ -78,11 +79,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     navHtml += "</div>";
 
-    // Render Content + Nav
+    // Render Content
     container.innerHTML = navHtml + data.content + navHtml;
-
     statusDiv.textContent = `Displaying: ${id.toUpperCase()}`;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // --- SCROLL LOGIC FIX ---
+    // Kiểm tra xem URL hiện tại có hash (ví dụ #9.1) không
+    const hash = window.location.hash;
+
+    if (hash) {
+      // Bỏ dấu # để lấy ID (ví dụ "9.1")
+      const targetId = hash.substring(1);
+      const targetElement = document.getElementById(targetId);
+
+      if (targetElement) {
+        // Nếu tìm thấy element, cuộn tới nó
+        targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        // (Tùy chọn) Flash highlight lại để người dùng chú ý
+        // CSS :target đã lo việc highlight, nhưng scrollIntoView đảm bảo nó nằm trong vùng nhìn thấy
+      } else {
+        // Có hash nhưng không tìm thấy element (VD: hash sai), cuộn lên đầu
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } else {
+      // Không có hash, cuộn lên đầu như bình thường
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     return true;
   }
 
