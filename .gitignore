@@ -12,5 +12,7 @@ Thumbs.db
 .vscode/
 .idea/
 
+/data/bilara
+
 # Logs
 *.log
