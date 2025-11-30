@@ -193,14 +193,14 @@ p { margin-bottom: 15px; }
 .segment:target,
 .segment.highlight {
     background-color: #fff9c4; /* Màu vàng nhạt */
-    border-left: 3px solid #fbc02d;
-    padding-left: 5px;
+    /* border-left: 3px solid #fbc02d; */
+    /* padding-left: 5px; */
     display: block; 
     border-radius: 0 4px 4px 0;
     transition: background-color 0.5s;
     
     /* Optional: Thêm animation nhấp nháy nhẹ để gây chú ý */
-    animation: flash-highlight 1s;
+    /* animation: flash-highlight 1s; */
 }
 
 @keyframes flash-highlight {
