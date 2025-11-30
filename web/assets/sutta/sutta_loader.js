@@ -1,6 +1,5 @@
-// Path: web/assets/sutta/loader.js
 
-// Auto-generated Loader
+// Auto-generated Sutta Loader
 (function() {
     const files = [
   "an.js",
@@ -28,7 +27,8 @@
   "mn.js",
   "sn.js"
 ];
-    const basePath = document.currentScript.src.replace('loader.js', 'books/');
+    // Thay thế đúng tên file loader mới
+    const basePath = document.currentScript.src.replace('sutta_loader.js', 'books/');
     
     files.forEach(file => {
         const script = document.createElement('script');
