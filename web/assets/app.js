@@ -51,9 +51,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Core Functions ---
 
   // 1. Render Sutta to View
-  function renderSutta(suttaId) {
+  // FIX: Thêm tham số checkHash (mặc định true)
+  // Khi chuyển bài bằng nút Next/Prev, ta truyền false để bỏ qua hash cũ
+  function renderSutta(suttaId, checkHash = true) {
     const id = suttaId.toLowerCase().trim();
-
     if (!window.SUTTA_DB || !window.SUTTA_DB[id]) {
       container.innerHTML = `<p class="placeholder" style="color:red">⚠️ Sutta ID "<b>${id}</b>" not found.</p>`;
       statusDiv.textContent = "Error: Sutta not found.";
@@ -61,9 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const data = window.SUTTA_DB[id];
-
+    
     // Build Navigation HTML
     let navHtml = '<div class="sutta-nav">';
+    
     if (data.previous) {
       navHtml += `<button onclick="window.loadSutta('${
         data.previous
@@ -84,9 +86,10 @@ document.addEventListener("DOMContentLoaded", () => {
     statusDiv.textContent = `Displaying: ${id.toUpperCase()}`;
 
     // --- SCROLL & HIGHLIGHT LOGIC FIX ---
+    // Chỉ xử lý scroll theo hash nếu checkHash = true VÀ có hash
     const hash = window.location.hash;
-
-    if (hash) {
+    
+    if (checkHash && hash) {
       // Lấy ID bỏ dấu #
       const targetId = hash.substring(1);
       const targetElement = document.getElementById(targetId);
@@ -94,13 +97,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (targetElement) {
         // 1. Scroll
         targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
-
         // 2. Force Highlight (Thêm class thủ công)
         targetElement.classList.add("highlight");
       } else {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } else {
+      // Nếu không check hash (navigating) hoặc không có hash -> Lên đầu trang
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -110,14 +113,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateURL(suttaId) {
     try {
       const currentUrl = new URL(window.location);
-
       // 1. Cập nhật sutta_id
       currentUrl.searchParams.set("q", suttaId);
-
       // 2. QUAN TRỌNG: Xóa hash cũ (ví dụ #9.1) đi
-      // Để khi chuyển bài, nó luôn bắt đầu từ đầu trang sạch sẽ
       currentUrl.hash = "";
-
       window.history.pushState({ suttaId: suttaId }, "", currentUrl);
     } catch (e) {
       console.warn("Could not update URL:", e);
@@ -126,15 +125,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Nhớ update hàm loadSutta (nếu bạn đã tách nó ra global) để nó cũng gọi hideComment()
   window.loadSutta = function (suttaId) {
-    hideComment(); // Reset popup
-    if (renderSutta(suttaId)) {
+    hideComment();
+    // Reset popup
+    // FIX: Truyền false vào tham số thứ 2 để BỎ QUA hash hiện tại của trình duyệt
+    // Vì đây là hành động chuyển trang chủ động.
+    if (renderSutta(suttaId, false)) {
       updateURL(suttaId);
     }
   };
 
-  // CHỈ CẦN SỬA ĐOẠN NÀY ĐỂ KẾT NỐI VỚI NÚT RANDOM:
   function loadRandomSutta() {
-    hideComment(); // Ẩn comment cũ nếu đang mở
+    hideComment();
+    // Ẩn comment cũ nếu đang mở
 
     if (!window.SUTTA_DB) return;
     const keys = Object.keys(window.SUTTA_DB);
@@ -158,7 +160,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const queryId = params.get("q");
       if (queryId) {
-        renderSutta(queryId);
+        // Initial load: Giữ nguyên true để support link chia sẻ có hash
+        renderSutta(queryId, true);
       }
     } else {
       statusDiv.textContent = "Loading database files...";
@@ -170,6 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("popstate", (event) => {
     if (event.state && event.state.suttaId) {
+      // Back/Forward button: Giữ mặc định true để restore đúng vị trí nếu history có hash
       renderSutta(event.state.suttaId);
     } else {
       const params = new URLSearchParams(window.location.search);
