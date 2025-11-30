@@ -98,23 +98,24 @@ def generate_name_loader(files: List[str]) -> None:
     if not files:
         return
 
-    # Sort để đảm bảo thứ tự load đẹp mắt (an, dn... kn/dhp...)
     files.sort()
     
     loader_path = OUTPUT_SUTTA_BASE / "name_loader.js"
     
+    # FIX: Thêm .split('?')[0] để loại bỏ version tag
     js_content = f"""
 // Auto-generated Name Loader
 (function() {{
     const files = {json.dumps(files, indent=2)};
-    // Script này nằm tại assets/sutta/name_loader.js
-    // basePath sẽ trỏ vào assets/sutta/names/
-    const basePath = document.currentScript.src.replace('name_loader.js', 'names/');
+    
+    // 1. Lấy src hiện tại và bỏ query param (?v=...)
+    const currentSrc = document.currentScript.src.split('?')[0];
+    
+    // 2. Thay thế tên file để ra thư mục names/
+    const basePath = currentSrc.replace('name_loader.js', 'names/');
     
     files.forEach(file => {{
         const script = document.createElement('script');
-        // file đã chứa relative path (vd: "kn/dhp-name.js" hoặc "mn-name.js")
-        // nên nối vào basePath là chuẩn: ".../names/kn/dhp-name.js"
         script.src = basePath + file;
         script.async = false;
         document.head.appendChild(script);

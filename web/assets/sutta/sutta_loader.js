@@ -27,8 +27,12 @@
   "mn.js",
   "sn.js"
 ];
-    // Thay thế đúng tên file loader mới
-    const basePath = document.currentScript.src.replace('sutta_loader.js', 'books/');
+    
+    // 1. Lấy src hiện tại và bỏ query param (?v=...)
+    const currentSrc = document.currentScript.src.split('?')[0];
+    
+    // 2. Thay thế tên file để ra thư mục books/
+    const basePath = currentSrc.replace('sutta_loader.js', 'books/');
     
     files.forEach(file => {
         const script = document.createElement('script');

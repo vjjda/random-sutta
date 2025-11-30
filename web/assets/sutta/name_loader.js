@@ -27,14 +27,15 @@
   "mn-name.js",
   "sn-name.js"
 ];
-    // Script này nằm tại assets/sutta/name_loader.js
-    // basePath sẽ trỏ vào assets/sutta/names/
-    const basePath = document.currentScript.src.replace('name_loader.js', 'names/');
+    
+    // 1. Lấy src hiện tại và bỏ query param (?v=...)
+    const currentSrc = document.currentScript.src.split('?')[0];
+    
+    // 2. Thay thế tên file để ra thư mục names/
+    const basePath = currentSrc.replace('name_loader.js', 'names/');
     
     files.forEach(file => {
         const script = document.createElement('script');
-        // file đã chứa relative path (vd: "kn/dhp-name.js" hoặc "mn-name.js")
-        // nên nối vào basePath là chuẩn: ".../names/kn/dhp-name.js"
         script.src = basePath + file;
         script.async = false;
         document.head.appendChild(script);

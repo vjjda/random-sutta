@@ -41,7 +41,7 @@ class SuttaManager:
                     if group not in self.raw_collections:
                         self.raw_collections[group] = {}
                     self.raw_collections[group][sid] = content
-                
+                 
                 count += 1
                 if count % 500 == 0:
                     logger.info(f"   Processed {count}/{len(tasks)}...")
@@ -61,7 +61,7 @@ class SuttaManager:
         
         if OUTPUT_SUTTA_BASE.exists():
             shutil.rmtree(OUTPUT_SUTTA_BASE)
-        
+         
         OUTPUT_SUTTA_BASE.mkdir(parents=True, exist_ok=True)
         OUTPUT_SUTTA_BOOKS.mkdir(parents=True, exist_ok=True)
 
@@ -106,12 +106,17 @@ Object.assign(window.SUTTA_DB, {json_str});
         # UPDATED: Đổi tên loader thành sutta_loader.js
         loader_path = OUTPUT_SUTTA_BASE / "sutta_loader.js"
         
+        # FIX: Thêm .split('?')[0] để loại bỏ version tag trước khi replace
         js_content = f"""
 // Auto-generated Sutta Loader
 (function() {{
     const files = {json.dumps(files, indent=2)};
-    // Thay thế đúng tên file loader mới
-    const basePath = document.currentScript.src.replace('sutta_loader.js', 'books/');
+    
+    // 1. Lấy src hiện tại và bỏ query param (?v=...)
+    const currentSrc = document.currentScript.src.split('?')[0];
+    
+    // 2. Thay thế tên file để ra thư mục books/
+    const basePath = currentSrc.replace('sutta_loader.js', 'books/');
     
     files.forEach(file => {{
         const script = document.createElement('script');
