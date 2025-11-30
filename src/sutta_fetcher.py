@@ -17,14 +17,12 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data" / "bilara"
 
 # MAPPINGS
-# Format: (Source Path inside Repo, Destination Path in Local Project)
 DIRECTORY_MAPPINGS: List[Tuple[str, Path]] = [
     ("sc_bilara_data/root/pli/ms/sutta", DATA_ROOT / "root"),
     ("sc_bilara_data/translation/en/sujato/sutta", DATA_ROOT / "translation"),
     ("sc_bilara_data/html/pli/ms/sutta", DATA_ROOT / "html"),
     ("sc_bilara_data/comment/en/sujato/sutta", DATA_ROOT / "comment"),
-    # NEW: Fetch Sutta Names
-    ("sc_bilara_data/translation/en/sujato/name/sutta", DATA_ROOT / "name"),
+    # REMOVED: Name fetching via Git is incomplete. We use API now.
 ]
 
 # --- Internal Types ---
@@ -94,11 +92,8 @@ def _full_clone_setup(config: SyncConfig) -> None:
 
 def _incremental_update(config: SyncConfig) -> None:
     logger.info("🔄 Performing INCREMENTAL UPDATE...")
-    # Update sparse-checkout definition to include new paths (like 'name/sutta')
     sparse_paths = _get_sparse_paths(config)
     _run_git_command(config.cache_dir, ["sparse-checkout", "set"] + sparse_paths)
-    
-    # Pull latest changes
     _run_git_command(config.cache_dir, ["pull", "origin", "HEAD"])
     logger.info("✅ Repository updated successfully.")
 
@@ -133,7 +128,6 @@ def _sync_directories_parallel(config: SyncConfig) -> None:
     logger.info(f"🔄 Syncing directories with {os.cpu_count()} threads...")
     
     with ThreadPoolExecutor() as executor:
-        # Submit all copy tasks
         futures = {
             executor.submit(_copy_worker, mapping, config.cache_dir): mapping 
             for mapping in config.mappings
