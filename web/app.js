@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!SUTTA_DB[id]) {
             container.innerHTML = `<p class="placeholder" style="color:red">⚠️ Sutta ID "<b>${id}</b>" not found in database.</p>`;
             statusDiv.textContent = "Error: Sutta not found.";
-            return false;
+            return false; // Báo thất bại
         }
 
         // Render Content
@@ -28,14 +28,24 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        return true;
+        return true; // Báo thành công
     }
 
-    // 2. Update Browser URL (Thay đổi URL mà không reload)
+    // 2. Update Browser URL (Fix: Sử dụng URL Object chuẩn)
     function updateURL(suttaId) {
-        const newUrl = `${window.location.pathname}?q=${suttaId}`;
-        // pushState helps the "Back" button work correctly
-        window.history.pushState({ suttaId: suttaId }, '', newUrl);
+        try {
+            // Lấy URL hiện tại
+            const currentUrl = new URL(window.location);
+            
+            // Set tham số 'q' (Nó sẽ tự thêm nếu chưa có, hoặc sửa nếu đã có)
+            currentUrl.searchParams.set('q', suttaId);
+            
+            // Push state: Thay đổi URL trên thanh địa chỉ
+            window.history.pushState({ suttaId: suttaId }, '', currentUrl);
+        } catch (e) {
+            // Phòng trường hợp chạy file:// trên một số trình duyệt cũ chặn pushState
+            console.warn("Could not update URL (likely due to file:// protocol restrictions):", e);
+        }
     }
 
     // 3. Random Logic
@@ -46,9 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const randomIndex = Math.floor(Math.random() * suttaKeys.length);
         const suttaId = suttaKeys[randomIndex];
 
-        // Render & Update URL
-        renderSutta(suttaId);
-        updateURL(suttaId);
+        // Render
+        const success = renderSutta(suttaId);
+        
+        // Chỉ đổi URL khi render thành công
+        if (success) {
+            updateURL(suttaId);
+        }
     }
 
     // --- Initialization ---
@@ -65,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const queryId = params.get('q');
 
             if (queryId) {
-                // If ID exists in URL, load it immediately
+                // Nếu link đã có ID, load nó
                 renderSutta(queryId);
             }
 
@@ -82,17 +96,19 @@ document.addEventListener('DOMContentLoaded', () => {
     randomBtn.addEventListener('click', loadRandomSutta);
 
     // Handle Browser "Back" Button
-    // (When user clicks Back, we need to reload the previous sutta from history)
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.suttaId) {
+            // Restore sutta from history state
             renderSutta(event.state.suttaId);
         } else {
-            // If going back to the homepage (no ID), clear content or reload init
+            // Nếu back về trang chủ (không có query), kiểm tra lại URL
             const params = new URLSearchParams(window.location.search);
             const queryId = params.get('q');
+            
             if(queryId) {
                  renderSutta(queryId);
             } else {
+                // Trạng thái ban đầu
                 container.innerHTML = '<p class="placeholder">Click the button to load a sutta.</p>';
                 statusDiv.textContent = `Library loaded: ${suttaKeys.length} suttas available.`;
             }
