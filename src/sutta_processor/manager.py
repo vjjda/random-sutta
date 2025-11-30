@@ -7,26 +7,20 @@ import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 
-from .config import OUTPUT_BASE_DIR, OUTPUT_BOOKS_DIR, PROCESS_LIMIT
+# UPDATED: Import config mới
+from .config import OUTPUT_SUTTA_BASE, OUTPUT_SUTTA_BOOKS, PROCESS_LIMIT
 from .finder import scan_root_dir
 from .converter import process_worker
-# UPDATED: Import name processor
 from .name_parser import process_names, generate_name_loader
 
 logger = logging.getLogger("SuttaProcessor")
 
 def natural_sort_key(s: str) -> List[Any]:
-    """
-    Splits string into a list of integers and strings for natural sorting.
-    e.g., "mn12" -> ['mn', 12]
-    e.g., "an1.1-10" -> ['an', 1, '.', 1, '-', 10]
-    """
     return [int(text) if text.isdigit() else text.lower()
             for text in re.split(r'(\d+)', s)]
 
 class SuttaManager:
     def __init__(self):
-        # Raw content storage: { 'mn': { 'mn1': '<html>...' } }
         self.raw_collections: Dict[str, Dict[str, str]] = {}
 
     def run(self):
@@ -55,7 +49,7 @@ class SuttaManager:
         # 3. Process Linking & Output
         self._write_files()
         
-        # 4. UPDATED: Process Names
+        # 4. Process Names
         logger.info("🏷️  Processing Sutta Names...")
         name_files = process_names()
         generate_name_loader(name_files)
@@ -65,23 +59,17 @@ class SuttaManager:
     def _write_files(self):
         logger.info("💾 Linking suttas and writing output files...")
         
-        if OUTPUT_BASE_DIR.exists():
-            # Warning: This deletes everything, including the new 'names' dir if it was created before
-            # But since names are processed AFTER this function in run(), it's fine.
-            # Ideally, we should be careful not to delete 'names' if we run partial updates.
-            # For now, let's keep it simple: Wipe clean.
-            shutil.rmtree(OUTPUT_BASE_DIR)
+        if OUTPUT_SUTTA_BASE.exists():
+            shutil.rmtree(OUTPUT_SUTTA_BASE)
         
-        OUTPUT_BASE_DIR.mkdir(parents=True, exist_ok=True)
-        OUTPUT_BOOKS_DIR.mkdir(parents=True, exist_ok=True)
+        OUTPUT_SUTTA_BASE.mkdir(parents=True, exist_ok=True)
+        OUTPUT_SUTTA_BOOKS.mkdir(parents=True, exist_ok=True)
 
         generated_files = []
 
         for group_name, raw_data in self.raw_collections.items():
-            # 1. Sort IDs naturally
             sorted_sids = sorted(raw_data.keys(), key=natural_sort_key)
             
-            # 2. Build Linked Data
             linked_data = {}
             total_suttas = len(sorted_sids)
             
@@ -95,9 +83,8 @@ class SuttaManager:
                     "content": raw_data[sid]
                 }
 
-            # 3. Write File
             file_name = f"{group_name}.js"
-            file_path = OUTPUT_BOOKS_DIR / file_name
+            file_path = OUTPUT_SUTTA_BOOKS / file_name
             file_path.parent.mkdir(parents=True, exist_ok=True)
             
             json_str = json.dumps(linked_data, ensure_ascii=False, indent=2)
@@ -116,13 +103,15 @@ Object.assign(window.SUTTA_DB, {json_str});
 
     def _write_loader(self, files: list):
         files.sort()
-        loader_path = OUTPUT_BASE_DIR / "loader.js" # This is the main book loader
+        # UPDATED: Đổi tên loader thành sutta_loader.js
+        loader_path = OUTPUT_SUTTA_BASE / "sutta_loader.js"
         
         js_content = f"""
-// Auto-generated Loader
+// Auto-generated Sutta Loader
 (function() {{
     const files = {json.dumps(files, indent=2)};
-    const basePath = document.currentScript.src.replace('loader.js', 'books/');
+    // Thay thế đúng tên file loader mới
+    const basePath = document.currentScript.src.replace('sutta_loader.js', 'books/');
     
     files.forEach(file => {{
         const script = document.createElement('script');
