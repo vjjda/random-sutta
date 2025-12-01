@@ -4,7 +4,7 @@ import sys
 from .manager import SuttaManager
 
 if __name__ == "__main__":
-    # Setup simple logging
+    
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',

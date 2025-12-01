@@ -1,5 +1,14 @@
 
 
+
+[tool.ndoc]
+
+extensions = ["py"]
+
+format_extensions = ["py"]
+
+ignore = [".DS_Store", ".git", ".gitignore", ".hg", ".ruff_cache", ".svn", ".venv", "__pycache__", "build", "dist", "node_modules", "out", "venv"]
+
 [tool.pcode]
 
 clean_extensions = ["py", "sh", "zsh"]

@@ -16,23 +16,14 @@ def load_json(path: Path) -> Dict[str, str]:
         return {}
 
 def localize_links(text: str) -> str:
-    """
-    Converts SuttaCentral online links to local offline links.
-    
-    Source: https://suttacentral.net/sn35.30/en/sujato#1.19
-    Target: index.html?q=sn35.30#1.19
-    
-    Source: https://suttacentral.net/sn35.28/en/sujato
-    Target: index.html?q=sn35.28
-    """
     if not text:
         return ""
 
-    # Regex Explanation:
-    # https://suttacentral\.net/  -> Match domain prefix
-    # ([a-zA-Z0-9\.-]+)           -> Group 1: Capture Sutta ID (e.g., sn35.30)
-    # /[a-z]+/[a-z0-9-]+          -> Match lang/author (ignore content)
-    # (?:#([a-zA-Z0-9\.:-]+))?    -> Non-capturing group for hash, Group 2 captures Segment ID
+    
+    
+    
+    
+    
     pattern = r'https://suttacentral\.net/([a-zA-Z0-9\.-]+)/[a-z]+/[a-z0-9-]+(?:#([a-zA-Z0-9\.:-]+))?'
     
     def replacer(match):
@@ -42,8 +33,8 @@ def localize_links(text: str) -> str:
         new_url = f"index.html?q={sutta_id}"
         
         if segment:
-            # Nếu segment trong link có dạng "sn35.30:1.19", ta cắt bỏ prefix để còn "1.19"
-            # cho khớp với ID ngắn gọn trong HTML (xem logic ở process_worker)
+            
+            
             if ":" in segment:
                 segment = segment.split(":", 1)[1]
             new_url += f"#{segment}"
@@ -53,10 +44,6 @@ def localize_links(text: str) -> str:
     return re.sub(pattern, replacer, text)
 
 def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[str]]:
-    """
-    Worker function to be run in parallel.
-    Returns: (group_name, sutta_id, html_content)
-    """
     sutta_id, root_file_path = args
     
     try:
@@ -81,13 +68,13 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[str]]:
             eng_text = data_trans.get(key, "")
             comment_text = data_comment.get(key, "")
 
-            # --- LOGIC XỬ LÝ ID ---
+            
             if ":" in key:
                 short_id = key.split(":", 1)[1]
             else:
                 short_id = key
 
-            # Wrapper
+            
             segment_content = f"<span class='segment' id='{short_id}' data-uid='{key}'>"
             
             if pali_text:
@@ -97,10 +84,10 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[str]]:
                 segment_content += f" <span class='eng'>{eng_text}</span>"
                 
             if comment_text:
-                # 1. Chuyển link Online -> Offline
+                
                 processed_comment = localize_links(comment_text)
                 
-                # 2. Escape quotes cho HTML attribute
+                
                 safe_comment = processed_comment.replace('"', '&quot;').replace("'", "&#39;")
                 
                 segment_content += f" <span class='comment-marker' data-comment='{safe_comment}'>*</span>"

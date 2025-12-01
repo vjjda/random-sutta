@@ -5,14 +5,13 @@ import zipfile
 import re
 from pathlib import Path
 
-# --- Configuration ---
+
 PROJECT_ROOT = Path(__file__).parent.parent
 WEB_DIR = PROJECT_ROOT / "web"
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
 def update_file_content(file_path: Path, pattern: str, replacement: str) -> bool:
-    """Helper để update nội dung file bằng Regex."""
     if not file_path.exists():
         print(f"❌ Error: {file_path.name} not found.")
         return False
@@ -36,22 +35,19 @@ def update_file_content(file_path: Path, pattern: str, replacement: str) -> bool
         return False
 
 def update_version_tags(version_tag: str):
-    """
-    Cập nhật version tag cho index.html VÀ sw.js
-    """
     print(f"📝 Updating version to '{version_tag}'...")
 
-    # 1. Update index.html (assets links)
-    # Pattern: (assets\/.*?\.(?:js|css))(?:\?v=[^"\']*)?
+    
+    
     if not update_file_content(
         WEB_DIR / "index.html",
         r'(assets\/.*?\.(?:js|css))(?:\?v=[^"\']*)?',
         f'\\1?v={version_tag}'
     ): return False
     
-    # 2. Update sw.js (Cache Name)
-    # Pattern: const CACHE_NAME = '.*';
-    # Replacement: const CACHE_NAME = 'sutta-reader-cache-{version_tag}';
+    
+    
+    
     if not update_file_content(
         WEB_DIR / "sw.js",
         r"const CACHE_NAME = '.*';",
@@ -61,7 +57,7 @@ def update_version_tags(version_tag: str):
     return True
 
 def main():
-    # 1. Xử lý tham số
+    
     if len(sys.argv) < 2:
         print("❌ Error: Missing version number.")
         print("   Usage: python3 src/release.py <version>")
@@ -72,20 +68,20 @@ def main():
 
     print(f"📦 Starting release build for {APP_NAME} {version_tag}...")
 
-    # 2. Kiểm tra dữ liệu
+    
     if not (WEB_DIR / "assets" / "sutta" / "sutta_loader.js").exists():
         print("❌ Error: Sutta data not found! Please run processor first.")
         sys.exit(1)
 
-    # 3. CẬP NHẬT VERSION (HTML & SW)
+    
     if not update_version_tags(version_tag):
         sys.exit(1)
 
-    # 4. Tạo thư mục release
+    
     if not RELEASE_DIR.exists():
         RELEASE_DIR.mkdir(parents=True)
 
-    # 5. Zip file
+    
     zip_filename = RELEASE_DIR / f"{APP_NAME}-{version_tag}.zip"
     if zip_filename.exists():
         os.remove(zip_filename)

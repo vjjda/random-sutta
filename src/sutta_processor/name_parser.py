@@ -8,7 +8,7 @@ from .config import DATA_API_DIR, OUTPUT_NAMES_DIR, OUTPUT_SUTTA_BASE
 
 logger = logging.getLogger("SuttaProcessor")
 
-# Danh sách các sách thuộc Khuddaka Nikaya
+
 KN_BOOKS = {
     "bv", "cnd", "cp", "dhp", "iti", "ja", "kp", "mil", "mnd", 
     "ne", "pe", "ps", "pv", "snp", "tha-ap", "thag", "thi-ap", 
@@ -16,15 +16,11 @@ KN_BOOKS = {
 }
 
 def process_names() -> List[str]:
-    """
-    Scans API JSON directory, processes JSONs, and outputs JS files with '-name' suffix.
-    Handles subdirectory structure for KN books.
-    """
     if not DATA_API_DIR.exists():
         logger.warning(f"⚠️ API Data directory not found: {DATA_API_DIR}")
         return []
 
-    # Đảm bảo thư mục gốc tồn tại (và thư mục kn sẽ được tạo trong loop nếu cần)
+    
     OUTPUT_NAMES_DIR.mkdir(parents=True, exist_ok=True)
     
     generated_files = []
@@ -34,7 +30,7 @@ def process_names() -> List[str]:
 
     for file_path in json_files:
         try:
-            book_code = file_path.stem # e.g. 'an', 'mn', 'dhp'
+            book_code = file_path.stem 
             
             with open(file_path, "r", encoding="utf-8") as f:
                 raw_list = json.load(f)
@@ -61,22 +57,22 @@ def process_names() -> List[str]:
             if not name_map:
                 continue
 
-            # --- LOGIC PHÂN LOẠI THƯ MỤC ---
+            
             output_filename = f"{book_code}-name.js"
             
             if book_code in KN_BOOKS:
-                # Tạo folder kn nếu chưa có
+                
                 kn_dir = OUTPUT_NAMES_DIR / "kn"
                 kn_dir.mkdir(exist_ok=True)
                 
                 output_path = kn_dir / output_filename
-                # Lưu relative path để loader dùng (ví dụ: "kn/dhp-name.js")
+                
                 loader_entry = f"kn/{output_filename}"
             else:
                 output_path = OUTPUT_NAMES_DIR / output_filename
                 loader_entry = output_filename
             
-            # Write JS File
+            
             json_content = json.dumps(name_map, ensure_ascii=False, indent=2)
             js_content = f"""// Source: {file_path.name}
 window.SUTTA_NAMES = window.SUTTA_NAMES || {{}};
@@ -94,7 +90,6 @@ Object.assign(window.SUTTA_NAMES, {json_content});
     return generated_files
 
 def generate_name_loader(files: List[str]) -> None:
-    """Generates 'name_loader.js' inside assets/sutta/."""
     if not files:
         return
 
@@ -102,7 +97,7 @@ def generate_name_loader(files: List[str]) -> None:
     
     loader_path = OUTPUT_SUTTA_BASE / "name_loader.js"
     
-    # FIX: Thêm .split('?')[0] để loại bỏ version tag
+    
     js_content = f"""
 // Auto-generated Name Loader
 (function() {{

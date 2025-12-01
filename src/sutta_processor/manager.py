@@ -7,7 +7,7 @@ import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 
-# UPDATED: Import config mới
+
 from .config import OUTPUT_SUTTA_BASE, OUTPUT_SUTTA_BOOKS, PROCESS_LIMIT
 from .finder import scan_root_dir
 from .converter import process_worker
@@ -24,10 +24,10 @@ class SuttaManager:
         self.raw_collections: Dict[str, Dict[str, str]] = {}
 
     def run(self):
-        # 1. Prepare
+        
         tasks = scan_root_dir(limit=PROCESS_LIMIT)
         
-        # 2. Execute Parallel Processing
+        
         workers = os.cpu_count() or 4
         logger.info(f"Processing with {workers} workers...")
         
@@ -46,10 +46,10 @@ class SuttaManager:
                 if count % 500 == 0:
                     logger.info(f"   Processed {count}/{len(tasks)}...")
 
-        # 3. Process Linking & Output
+        
         self._write_files()
         
-        # 4. Process Names
+        
         logger.info("🏷️  Processing Sutta Names...")
         name_files = process_names()
         generate_name_loader(name_files)
@@ -103,10 +103,10 @@ Object.assign(window.SUTTA_DB, {json_str});
 
     def _write_loader(self, files: list):
         files.sort()
-        # UPDATED: Đổi tên loader thành sutta_loader.js
+        
         loader_path = OUTPUT_SUTTA_BASE / "sutta_loader.js"
         
-        # FIX: Thêm .split('?')[0] để loại bỏ version tag trước khi replace
+        
         js_content = f"""
 // Auto-generated Sutta Loader
 (function() {{

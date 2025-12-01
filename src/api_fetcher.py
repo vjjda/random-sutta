@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List
 
-# --- Configuration ---
+
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_JSON_DIR = PROJECT_ROOT / "data" / "json"
 API_TEMPLATE = "https://suttacentral.net/api/suttaplex/{}"
@@ -22,7 +22,7 @@ TARGET_BOOKS = [
     "thig", "ud", "vv", "an", "dn", "mn", "sn"
 ]
 
-# --- Logging ---
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -30,17 +30,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("APIFetcher")
 
-# --- Core Logic ---
+
 
 def fetch_book_json(book_id: str) -> str:
-    """
-    Downloads JSON data for a specific book ID from SuttaCentral API.
-    """
     url = API_TEMPLATE.format(book_id)
     dest_file = DATA_JSON_DIR / f"{book_id}.json"
     
     try:
-        # Use urllib to avoid external dependencies like requests
+        
         with urllib.request.urlopen(url, timeout=30) as response:
             if response.status != 200:
                 return f"❌ {book_id}: HTTP {response.status}"
@@ -60,21 +57,18 @@ def fetch_book_json(book_id: str) -> str:
         return f"❌ {book_id}: Unexpected Error - {e}"
 
 def orchestrate_api_fetch() -> None:
-    """
-    Manages the parallel download of all target books.
-    """
     logger.info(f"🚀 Starting API Fetch for {len(TARGET_BOOKS)} books...")
     logger.info(f"📂 Output directory: {DATA_JSON_DIR}")
     
-    # Ensure directory exists
+    
     if DATA_JSON_DIR.exists():
-        # Optional: Clean old files? For now, we overwrite.
+        
         pass
     else:
         DATA_JSON_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Execute in parallel
-    workers = min(10, os.cpu_count() * 2) # IO-bound, can use more threads
+    
+    workers = min(10, os.cpu_count() * 2) 
     
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {

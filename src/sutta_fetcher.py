@@ -10,29 +10,29 @@ from pathlib import Path
 from typing import List, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# --- Configuration & Constants ---
+
 REPO_URL = "https://github.com/suttacentral/sc-data.git"
 CACHE_DIR = Path(".cache/sc_bilara_data")
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data" / "bilara"
 
-# MAPPINGS
+
 DIRECTORY_MAPPINGS: List[Tuple[str, Path]] = [
     ("sc_bilara_data/root/pli/ms/sutta", DATA_ROOT / "root"),
     ("sc_bilara_data/translation/en/sujato/sutta", DATA_ROOT / "translation"),
     ("sc_bilara_data/html/pli/ms/sutta", DATA_ROOT / "html"),
     ("sc_bilara_data/comment/en/sujato/sutta", DATA_ROOT / "comment"),
-    # REMOVED: Name fetching via Git is incomplete. We use API now.
+    
 ]
 
-# --- Internal Types ---
+
 @dataclass
 class SyncConfig:
     repo_url: str
     cache_dir: Path
     mappings: List[Tuple[str, Path]]
 
-# --- Logging Setup ---
+
 def _setup_logger() -> logging.Logger:
     logger = logging.getLogger("SuttaFetcher")
     logger.setLevel(logging.INFO)
@@ -45,7 +45,7 @@ def _setup_logger() -> logging.Logger:
 
 logger = _setup_logger()
 
-# --- Git Operations ---
+
 def _run_git_command(cwd: Path, args: List[str]) -> None:
     try:
         subprocess.run(
@@ -108,9 +108,8 @@ def _ensure_data_available(config: SyncConfig) -> None:
             logger.warning("⚠️ Falling back to fresh clone...")
     _full_clone_setup(config)
 
-# --- Multithreaded File Operations ---
+
 def _copy_worker(mapping: Tuple[str, Path], cache_dir: Path) -> str:
-    """Worker function for threading."""
     source_subpath, dest_path = mapping
     full_source_path = cache_dir / source_subpath
     
@@ -124,7 +123,6 @@ def _copy_worker(mapping: Tuple[str, Path], cache_dir: Path) -> str:
     return f"✅ Synced: {dest_path.name}"
 
 def _sync_directories_parallel(config: SyncConfig) -> None:
-    """Copies files using ThreadPoolExecutor."""
     logger.info(f"🔄 Syncing directories with {os.cpu_count()} threads...")
     
     with ThreadPoolExecutor() as executor:
@@ -141,7 +139,7 @@ def _sync_directories_parallel(config: SyncConfig) -> None:
                 logger.error(f"❌ Thread error: {e}")
                 raise
 
-# --- Orchestrator ---
+
 def orchestrate_fetch() -> None:
     config = SyncConfig(REPO_URL, CACHE_DIR, DIRECTORY_MAPPINGS)
     logger.info("🚀 Starting Sutta Data Sync...")
