@@ -313,6 +313,18 @@ header {
     margin-top: 40px;
 }
 
+/* --- Reset List & Ẩn Metadata thừa --- */
+#sutta-container ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Ẩn thông tin Nikaya/Chapter ở đầu bài kinh */
+#sutta-container header ul {
+    display: none;
+}
+
 /* Typography Content */
 h1.sutta-title {
     text-align: center;
