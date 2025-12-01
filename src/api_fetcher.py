@@ -8,7 +8,7 @@ import urllib.request
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Set
+from typing import List, Tuple
 
 # --- Configuration ---
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -25,21 +25,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("APIFetcher")
 
-def discover_books() -> List[str]:
+def discover_books() -> List[Tuple[str, str]]:
     """
-    Quét thư mục data/bilara/root theo cấu trúc Tam Tạng để tìm ID sách.
-    Structure:
-      - sutta/
-        - dn, mn, sn, an
-        - kn/ -> (dhp, iti, ud...)
-      - vinaya/ -> (pli-tv-bi-vb, pli-tv-kd...)
-      - abhidhamma/ -> (ds, dt, kv...)
+    Quét thư mục data/bilara/root để tìm ID sách và Category của nó.
+    Trả về danh sách các tuple: (book_id, category)
+    Ví dụ: [('mn', 'sutta'), ('ds', 'abhidhamma'), ...]
     """
     if not DATA_ROOT_DIR.exists():
         logger.error(f"❌ Root data not found at {DATA_ROOT_DIR}. Please run sutta_fetcher.py first.")
         return []
 
-    found_books: Set[str] = set()
+    found_books: List[Tuple[str, str]] = []
     
     # 1. Scan Sutta Pitaka
     sutta_dir = DATA_ROOT_DIR / "sutta"
@@ -52,10 +48,10 @@ def discover_books() -> List[str]:
                 # Khuddaka Nikaya: ID sách nằm bên trong thư mục kn
                 for kn_book in item.iterdir():
                     if kn_book.is_dir():
-                        found_books.add(kn_book.name)
+                        found_books.append((kn_book.name, "sutta"))
             else:
                 # Các bộ Nikaya chính (dn, mn, sn, an)
-                found_books.add(item.name)
+                found_books.append((item.name, "sutta"))
 
     # 2. Scan Vinaya Pitaka
     vinaya_dir = DATA_ROOT_DIR / "vinaya"
@@ -63,7 +59,7 @@ def discover_books() -> List[str]:
         logger.info("   🔍 Scanning Vinaya Pitaka...")
         for item in vinaya_dir.iterdir():
             if item.is_dir():
-                found_books.add(item.name)
+                found_books.append((item.name, "vinaya"))
 
     # 3. Scan Abhidhamma Pitaka
     abhi_dir = DATA_ROOT_DIR / "abhidhamma"
@@ -71,23 +67,30 @@ def discover_books() -> List[str]:
         logger.info("   🔍 Scanning Abhidhamma Pitaka...")
         for item in abhi_dir.iterdir():
             if item.is_dir():
-                found_books.add(item.name)
+                found_books.append((item.name, "abhidhamma"))
 
     # Loại bỏ rác hệ thống (nếu có)
     params_to_ignore = {'xplayground', '__pycache__', '.git', '.DS_Store'}
-    final_list = sorted(list(found_books - params_to_ignore))
+    final_list = [
+        (book, cat) for book, cat in sorted(found_books) 
+        if book not in params_to_ignore
+    ]
     
-    logger.info(f"✅ Discovered {len(final_list)} books from local data.")
+    logger.info(f"✅ Discovered {len(final_list)} books.")
     return final_list
 
-def fetch_book_json(book_id: str) -> str:
-    """Tải metadata từ API SuttaCentral."""
+def fetch_book_json(book_info: Tuple[str, str]) -> str:
+    """Tải metadata từ API SuttaCentral và lưu vào đúng thư mục category."""
+    book_id, category = book_info
     url = API_TEMPLATE.format(book_id)
-    dest_file = DATA_JSON_DIR / f"{book_id}.json"
     
-    # Skip nếu file đã tồn tại và không rỗng (Optional: muốn fetch lại thì comment dòng này)
-    if dest_file.exists() and dest_file.stat().st_size > 0:
-         return f"⏭️  {book_id}: Exists (Skipped)"
+    # Tạo đường dẫn thư mục category: data/json/sutta, data/json/vinaya...
+    category_dir = DATA_JSON_DIR / category
+    category_dir.mkdir(parents=True, exist_ok=True)
+    
+    dest_file = category_dir / f"{book_id}.json"
+    
+    # Đã xóa logic kiểm tra file tồn tại để FORCE DOWNLOAD (Update-friendly)
 
     try:
         with urllib.request.urlopen(url, timeout=60) as response:
@@ -100,17 +103,17 @@ def fetch_book_json(book_id: str) -> str:
             with open(dest_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
                 
-        return f"✅ {book_id}"
+        return f"✅ {category}/{book_id}"
         
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return f"⚠️ {book_id}: Not found on API (404)"
-        return f"❌ {book_id}: HTTP {e.code}"
+            return f"⚠️ {category}/{book_id}: Not found on API (404)"
+        return f"❌ {category}/{book_id}: HTTP {e.code}"
     except Exception as e:
-        return f"❌ {book_id}: Error {e}"
+        return f"❌ {category}/{book_id}: Error {e}"
 
 def orchestrate_api_fetch() -> None:
-    logger.info("🚀 Starting Metadata Fetch (Deep Discovery)...")
+    logger.info("🚀 Starting Metadata Fetch (Organized & Force Update)...")
     
     # 1. Khám phá sách
     target_books = discover_books()
@@ -118,7 +121,7 @@ def orchestrate_api_fetch() -> None:
         logger.warning("⚠️ No books found to fetch.")
         return
 
-    # 2. Chuẩn bị thư mục output
+    # 2. Chuẩn bị thư mục gốc output
     if not DATA_JSON_DIR.exists():
         DATA_JSON_DIR.mkdir(parents=True)
 
@@ -127,9 +130,10 @@ def orchestrate_api_fetch() -> None:
     logger.info(f"   Using {workers} threads for {len(target_books)} books...")
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
+        # Submit task với tham số là tuple (book_id, category)
         futures = {
-            executor.submit(fetch_book_json, book_id): book_id 
-            for book_id in target_books
+            executor.submit(fetch_book_json, info): info[0] 
+            for info in target_books
         }
         
         for future in as_completed(futures):
