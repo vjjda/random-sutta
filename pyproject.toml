@@ -4,7 +4,7 @@
 
 clean_extensions = ["py", "sh", "zsh"]
 
-extensions = ["", "bash", "cfg", "cfg.py", "gitignore", "ini", "json", "md", "py", "sh", "template", "toml", "txt", "xml", "yaml", "yml", "zsh", "html", "css", "js", "ts"]
+extensions = ["", "bash", "cfg", "cfg.py", "gitignore", "ini", "json", "md", "py", "sh", "template", "toml", "txt", "xml", "yaml", "yml", "zsh", "html", "css", "js", "ts", "webmanifest"]
 
 format_extensions = ["py"]
 
