@@ -1,7 +1,7 @@
 // Path: web/sw.js
 
 // Tên cache sẽ được cập nhật tự động bởi release.py
-const CACHE_NAME = 'sutta-reader-cache-v1.0.5'; //  -> (Giả sử release.py đã chạy)
+const CACHE_NAME = 'sutta-reader-cache-v1.0.6'; //  -> (Giả sử release.py đã chạy)
 
 // Danh sách các file dữ liệu sutta được tạo ra bởi sutta_processor/manager.py
 // Đây là danh sách đầy đủ các files trong web/assets/sutta/books/
