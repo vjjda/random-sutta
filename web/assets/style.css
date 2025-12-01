@@ -1,5 +1,64 @@
 /* Path: web/assets/style.css */
 
+/* --- FONT FACE DECLARATIONS (UPDATED) --- */
+
+/* Gentium Plus - Regular */
+@font-face {
+    font-family: 'Gentium Plus';
+    src: url('assets/fonts/GentiumPlus-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap; 
+}
+
+/* Gentium Plus - Italic */
+@font-face {
+    font-family: 'Gentium Plus';
+    src: url('assets/fonts/GentiumPlus-Italic.ttf') format('truetype');
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap; 
+}
+
+/* Gentium Plus - Bold */
+@font-face {
+    font-family: 'Gentium Plus';
+    src: url('assets/fonts/GentiumPlus-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap; 
+}
+
+/* Gentium Plus - Bold Italic */
+@font-face {
+    font-family: 'Gentium Plus';
+    src: url('assets/fonts/GentiumPlus-BoldItalic.ttf') format('truetype');
+    font-weight: 700;
+    font-style: italic;
+    font-display: swap; 
+}
+
+/* Noto Sans - Variable Font */
+@font-face {
+    font-family: 'Noto Sans';
+    src: url('assets/fonts/NotoSans-VariableFont_wdth,wght.ttf') format('truetype');
+    /* Font Variable: khai báo dải weight và width được hỗ trợ */
+    font-weight: 100 900; 
+    font-stretch: 75% 125%; 
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Noto Sans - Variable Font Italic */
+@font-face {
+    font-family: 'Noto Sans';
+    src: url('assets/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-stretch: 75% 125%; 
+    font-style: italic;
+    font-display: swap;
+}
+
 /* --- GLOBAL & LAYOUT --- */
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -230,6 +289,8 @@ p {
   display: block;
   margin-top: 5px;
   margin-bottom: 4px;
+  /* --- CẬP NHẬT FONT MỚI --- */
+  font-family: "Gentium Plus", "Noto Sans", sans-serif; 
 }
 
 .eng {
