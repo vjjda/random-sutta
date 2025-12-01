@@ -178,6 +178,9 @@ button:active {
   font-weight: bold;
   font-size: 1.1em;
   color: #333;
+  /* THÊM: Cho phép xuống dòng cho tiêu đề dài */
+  word-break: break-word; 
+  white-space: normal;
 }
 
 #nav-sub-title {
@@ -189,7 +192,7 @@ button:active {
 /* --- SUTTA CONTAINER & TEXT --- */
 #sutta-container {
   background: white;
-  padding: 40px;
+  padding: 40px; /* Sẽ bị ghi đè bởi Media Query */
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   min-height: 300px;
@@ -465,4 +468,32 @@ p {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@media (max-width: 600px) {
+    /* 1. Tối ưu hóa lề body */
+    body {
+        /* Lề (padding) trên/dưới giữ nguyên, lề trái/phải giảm xuống 10px */
+        padding: 0 10px 20px 10px; 
+    }
+
+    /* 2. Tối ưu hóa khung nội dung trắng */
+    #sutta-container {
+        /* Giảm padding ngang của khung trắng từ 40px xuống 20px */
+        padding: 40px 20px; 
+    }
+
+    /* 3. Đảm bảo tiêu đề không bị cắt */
+    #nav-main-title {
+        /* Cần đảm bảo tiêu đề dài có thể xuống dòng */
+        word-break: break-word; 
+        white-space: normal;
+    }
+    
+    /* 4. Tối ưu hóa điều hướng (Navigation Header) */
+    #nav-header {
+        /* Điều chỉnh khoảng cách trên màn hình nhỏ */
+        margin-top: 10px; 
+        gap: 5px; /* Giảm khoảng cách giữa các nút */
+    }
 }
