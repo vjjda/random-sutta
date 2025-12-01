@@ -191,25 +191,25 @@ button:active {
   opacity: 0.3;
 }
 
-#nav-title-display {
-  text-align: center;
+#nav-title-text {
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Quan trọng: Xếp chồng dọc */
+  align-items: center;    /* Căn giữa */
+  line-height: 1.3;       /* Khoảng cách giữa 2 dòng thoáng hơn chút */
 }
 
+/* Tinh chỉnh lại font cho đẹp hơn */
 #nav-main-title {
   font-weight: bold;
-  font-size: 1.1em;
+  font-size: 1.2em;       /* To hơn chút để làm điểm nhấn */
   color: #333;
-  /* THÊM: Cho phép xuống dòng cho tiêu đề dài */
-  word-break: break-word;
-  white-space: normal;
 }
 
 #nav-sub-title {
   font-size: 0.9em;
   color: #666;
   font-style: italic;
+  margin-top: 2px;        /* Tách nhẹ khỏi tiêu đề chính */
 }
 
 /* --- SUTTA CONTAINER & TEXT --- */
@@ -600,3 +600,5 @@ p {
 .hidden {
   display: none !important;
 }
+
+
