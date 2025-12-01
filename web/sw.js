@@ -88,28 +88,31 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
+            
+            // 1. NẾU CÓ TRONG CACHE, TRẢ VỀ NGAY (Cache First)
             if (cachedResponse) {
-                return cachedResponse;
+                return cachedResponse; 
             }
 
-            // Nếu chưa có trong cache thì tải từ mạng và lưu vào cache
+            // 2. NẾU KHÔNG CÓ TRONG CACHE, THỬ TẢI MẠNG
             return fetch(event.request).then((networkResponse) => {
                 // Chỉ cache các request hợp lệ
                 if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-                    return networkResponse;
+                    return networkResponse; 
                 }
 
-                // Không cần cache lại nếu đã precache, nhưng giữ logic này 
-                // cho các assets tải động khác (ví dụ: hình ảnh)
+                // Sao chép response để cache
                 const responseToCache = networkResponse.clone();
                 caches.open(CACHE_NAME).then((cache) => {
                     cache.put(event.request, responseToCache);
                 });
 
-                return networkResponse;
+                return networkResponse; 
             }).catch(() => {
-                // Fallback nếu mất mạng hoàn toàn và chưa cache
-                console.log('[SW] Offline and resource not cached:', event.request.url);
+                // 3. NẾU MẤT MẠNG VÀ CHƯA CACHE -> Bỏ qua và để client tự xử lý lỗi
+                console.log('[SW] Offline and resource not cached:', event.request.url); 
+                // Trả về một Response rỗng để tránh lỗi Promise bị reject không cần thiết
+                return new Response(null, { status: 404, statusText: 'Not Found' });
             });
         })
     );
