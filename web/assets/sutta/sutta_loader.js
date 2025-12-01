@@ -1,7 +1,6 @@
 
-// Auto-generated Sutta Loader
-(function() {
-    const files = [
+// Auto-generated Sutta Manifest
+window.ALL_SUTTA_FILES = [
   "an.js",
   "dn.js",
   "kn/bv.js",
@@ -27,17 +26,3 @@
   "mn.js",
   "sn.js"
 ];
-    
-    // 1. Lấy src hiện tại và bỏ query param (?v=...)
-    const currentSrc = document.currentScript.src.split('?')[0];
-    
-    // 2. Thay thế tên file để ra thư mục books/
-    const basePath = currentSrc.replace('sutta_loader.js', 'books/');
-    
-    files.forEach(file => {
-        const script = document.createElement('script');
-        script.src = basePath + file;
-        script.async = false;
-        document.head.appendChild(script);
-    });
-})();
