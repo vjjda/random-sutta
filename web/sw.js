@@ -42,8 +42,9 @@ const CORE_ASSETS = [
   "./assets/modules/utils.js",
   "./assets/modules/filters.js",
   "./assets/modules/renderer.js",
+  "./assets/modules/loader.js", // MỚI
+  "./assets/modules/router.js", // MỚI
   "./assets/sutta/sutta_loader.js",
-  // REMOVED: "./assets/sutta/name_loader.js",
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",
   "./assets/icons/favicon.ico",

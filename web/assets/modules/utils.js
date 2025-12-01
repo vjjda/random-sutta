@@ -2,13 +2,9 @@
 
 window.getSuttaDisplayInfo = function (id) {
   let info = { title: id.toUpperCase(), subtitle: "" };
-  
-  // NEW LOGIC: Look inside SUTTA_DB directly
   if (window.SUTTA_DB && window.SUTTA_DB[id]) {
     const data = window.SUTTA_DB[id];
-    
     if (data.acronym) info.title = data.acronym;
-    
     if (data.translated_title) {
       info.subtitle = data.translated_title;
     } else if (data.original_title) {
@@ -18,34 +14,10 @@ window.getSuttaDisplayInfo = function (id) {
   return info;
 };
 
-// ... (Giữ nguyên phần updateURL và initCommentPopup) ...
-// Các hàm phía dưới không thay đổi
-window.updateURL = function (suttaId, bookParam, enableRandomMode = false) {
-    // ... code cũ giữ nguyên
-    try {
-        const params = new URLSearchParams(window.location.search);
-        if (enableRandomMode) {
-            params.set("r", "1");
-            params.delete("q");
-        } else if (suttaId) {
-            params.set("q", suttaId);
-            params.delete("r");
-        }
-        if (bookParam) {
-            params.set("b", bookParam);
-        } else {
-            params.delete("b");
-        }
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        const stateId = enableRandomMode ? null : suttaId || params.get("q");
-        window.history.pushState({ suttaId: stateId }, "", newUrl);
-    } catch (e) {
-        console.warn("Could not update URL:", e);
-    }
-};
+// --- ĐÃ XÓA updateURL ---
 
 window.initCommentPopup = function () {
-    // ... code cũ giữ nguyên
+    // ... (Giữ nguyên logic popup cũ) ...
     const popup = document.getElementById("comment-popup");
     const content = document.getElementById("comment-content");
     const closeBtn = document.getElementById("close-comment");
