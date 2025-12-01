@@ -41,7 +41,7 @@ body {
 
 header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   padding-bottom: 20px;
   border-bottom: 2px solid #ddd;
 }
@@ -223,7 +223,7 @@ button:active {
 
 h1.sutta-title {
   text-align: center;
-  font-size: 1.8em;
+  font-size: 1.6em;
   color: #2c3e50;
 }
 
@@ -395,11 +395,11 @@ p {
 }
 
 /* Responsive Nav Title */
-@media (max-width: 600px) {
+/* @media (max-width: 600px) {
   .nav-title {
     display: none;
   }
-}
+} */
 
 /* --- HIGHLIGHT & ANIMATION --- */
 .segment:target,
@@ -505,7 +505,7 @@ p {
   /* 2. Tối ưu hóa khung nội dung trắng */
   #sutta-container {
     /* Giảm padding ngang của khung trắng từ 40px xuống 20px */
-    padding: 40px 20px;
+    padding: 20px 15px;
   }
 
   /* 3. Đảm bảo tiêu đề không bị cắt */
