@@ -2,121 +2,54 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any, TypedDict
 
-from .config import DATA_API_DIR, OUTPUT_NAMES_DIR, OUTPUT_SUTTA_BASE
+from .config import DATA_API_DIR
 
 logger = logging.getLogger("SuttaProcessor")
 
+# Định nghĩa kiểu dữ liệu cho rõ ràng (Type Hinting)
+class SuttaNameInfo(TypedDict):
+    acronym: str
+    translated_title: str
+    original_title: str
 
-KN_BOOKS = {
-    "bv", "cnd", "cp", "dhp", "iti", "ja", "kp", "mil", "mnd", 
-    "ne", "pe", "ps", "pv", "snp", "tha-ap", "thag", "thi-ap", 
-    "thig", "ud", "vv"
-}
-
-def process_names() -> List[str]:
+def load_names_map() -> Dict[str, SuttaNameInfo]:
+    """
+    Đọc toàn bộ file JSON metadata và trả về một Dictionary khổng lồ.
+    Không còn logic viết file (IO) ở đây nữa.
+    """
     if not DATA_API_DIR.exists():
         logger.warning(f"⚠️ API Data directory not found: {DATA_API_DIR}")
-        return []
+        return {}
 
+    logger.info("📚 Loading metadata into memory...")
     
-    OUTPUT_NAMES_DIR.mkdir(parents=True, exist_ok=True)
-    
-    generated_files = []
+    master_name_map: Dict[str, SuttaNameInfo] = {}
     json_files = sorted(list(DATA_API_DIR.glob("*.json")))
-    
-    logger.info(f"📚 Processing {len(json_files)} API metadata files...")
 
     for file_path in json_files:
         try:
-            book_code = file_path.stem 
-            
             with open(file_path, "r", encoding="utf-8") as f:
                 raw_list = json.load(f)
 
-            name_map: Dict[str, Dict[str, str]] = {}
-            
             if isinstance(raw_list, list):
                 for item in raw_list:
                     uid = item.get("uid")
                     if not uid:
                         continue
                     
-                    entry = {
+                    # Chuẩn hóa dữ liệu
+                    entry: SuttaNameInfo = {
                         "acronym": item.get("acronym") or "",
-                        "translated_title": item.get("translated_title") or "",
-                        "original_title": item.get("original_title") or ""
+                        "translated_title": (item.get("translated_title") or "").strip(),
+                        "original_title": (item.get("original_title") or "").strip()
                     }
                     
-                    entry["translated_title"] = entry["translated_title"].strip()
-                    entry["original_title"] = entry["original_title"].strip()
-                    
-                    name_map[uid] = entry
-
-            if not name_map:
-                continue
-
-            
-            output_filename = f"{book_code}-name.js"
-            
-            if book_code in KN_BOOKS:
-                
-                kn_dir = OUTPUT_NAMES_DIR / "kn"
-                kn_dir.mkdir(exist_ok=True)
-                
-                output_path = kn_dir / output_filename
-                
-                loader_entry = f"kn/{output_filename}"
-            else:
-                output_path = OUTPUT_NAMES_DIR / output_filename
-                loader_entry = output_filename
-            
-            
-            json_content = json.dumps(name_map, ensure_ascii=False, indent=2)
-            js_content = f"""// Source: {file_path.name}
-window.SUTTA_NAMES = window.SUTTA_NAMES || {{}};
-Object.assign(window.SUTTA_NAMES, {json_content});
-"""
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(js_content)
-            
-            generated_files.append(loader_entry)
-            logger.info(f"   -> Metadata: {loader_entry} ({len(name_map)} entries)")
+                    master_name_map[uid] = entry
 
         except Exception as e:
-            logger.error(f"❌ Error processing API file {file_path.name}: {e}")
+            logger.error(f"❌ Error reading API file {file_path.name}: {e}")
 
-    return generated_files
-
-def generate_name_loader(files: List[str]) -> None:
-    if not files:
-        return
-
-    files.sort()
-    
-    loader_path = OUTPUT_SUTTA_BASE / "name_loader.js"
-    
-    
-    js_content = f"""
-// Auto-generated Name Loader
-(function() {{
-    const files = {json.dumps(files, indent=2)};
-    
-    // 1. Lấy src hiện tại và bỏ query param (?v=...)
-    const currentSrc = document.currentScript.src.split('?')[0];
-    
-    // 2. Thay thế tên file để ra thư mục names/
-    const basePath = currentSrc.replace('name_loader.js', 'names/');
-    
-    files.forEach(file => {{
-        const script = document.createElement('script');
-        script.src = basePath + file;
-        script.async = false;
-        document.head.appendChild(script);
-    }});
-}})();
-"""
-    with open(loader_path, "w", encoding="utf-8") as f:
-        f.write(js_content)
-    logger.info("✅ Generated Name Loader: name_loader.js")
+    logger.info(f"   -> Loaded {len(master_name_map)} name entries.")
+    return master_name_map

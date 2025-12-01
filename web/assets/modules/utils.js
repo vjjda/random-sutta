@@ -2,89 +2,79 @@
 
 window.getSuttaDisplayInfo = function (id) {
   let info = { title: id.toUpperCase(), subtitle: "" };
-  if (window.SUTTA_NAMES && window.SUTTA_NAMES[id]) {
-    const meta = window.SUTTA_NAMES[id];
-    if (meta.acronym) info.title = meta.acronym;
-
-    if (meta.translated_title) {
-      info.subtitle = meta.translated_title;
-    } else if (meta.original_title) {
-      info.subtitle = meta.original_title;
+  
+  // NEW LOGIC: Look inside SUTTA_DB directly
+  if (window.SUTTA_DB && window.SUTTA_DB[id]) {
+    const data = window.SUTTA_DB[id];
+    
+    if (data.acronym) info.title = data.acronym;
+    
+    if (data.translated_title) {
+      info.subtitle = data.translated_title;
+    } else if (data.original_title) {
+      info.subtitle = data.original_title;
     }
   }
   return info;
 };
 
-// UPDATED: Thêm tham số enableRandomMode
+// ... (Giữ nguyên phần updateURL và initCommentPopup) ...
+// Các hàm phía dưới không thay đổi
 window.updateURL = function (suttaId, bookParam, enableRandomMode = false) {
-  try {
-    const params = new URLSearchParams(window.location.search);
-
-    // 1. Xử lý chế độ Random Loop (?r=1)
-    if (enableRandomMode) {
-      params.set("r", "1");
-      params.delete("q"); // Xóa ID cụ thể để F5 sẽ ra bài mới
+    // ... code cũ giữ nguyên
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (enableRandomMode) {
+            params.set("r", "1");
+            params.delete("q");
+        } else if (suttaId) {
+            params.set("q", suttaId);
+            params.delete("r");
+        }
+        if (bookParam) {
+            params.set("b", bookParam);
+        } else {
+            params.delete("b");
+        }
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        const stateId = enableRandomMode ? null : suttaId || params.get("q");
+        window.history.pushState({ suttaId: stateId }, "", newUrl);
+    } catch (e) {
+        console.warn("Could not update URL:", e);
     }
-    // 2. Xử lý Sutta ID cụ thể (Khi bấm nút Random hoặc Next/Prev)
-    else if (suttaId) {
-      params.set("q", suttaId);
-      params.delete("r"); // Thoát chế độ Random Loop
-    }
-
-    // 3. Xử lý Books Param
-    if (bookParam) {
-      params.set("b", bookParam);
-    } else {
-      params.delete("b");
-    }
-
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-
-    // Nếu đang ở Random Mode thì suttaId là null, ta không cần lưu state cụ thể
-    const stateId = enableRandomMode ? null : suttaId || params.get("q");
-
-    window.history.pushState({ suttaId: stateId }, "", newUrl);
-  } catch (e) {
-    console.warn("Could not update URL:", e);
-  }
 };
 
 window.initCommentPopup = function () {
-  // ... (Giữ nguyên code cũ) ...
-  const popup = document.getElementById("comment-popup");
-  const content = document.getElementById("comment-content");
-  const closeBtn = document.getElementById("close-comment");
-  const container = document.getElementById("sutta-container");
+    // ... code cũ giữ nguyên
+    const popup = document.getElementById("comment-popup");
+    const content = document.getElementById("comment-content");
+    const closeBtn = document.getElementById("close-comment");
+    const container = document.getElementById("sutta-container");
 
-  function showComment(text) {
-    content.innerHTML = text;
-    popup.classList.remove("hidden");
-  }
-
-  function hideComment() {
-    popup.classList.add("hidden");
-  }
-
-  container.addEventListener("click", (event) => {
-    if (event.target.classList.contains("comment-marker")) {
-      const text = event.target.dataset.comment;
-      if (text) {
-        showComment(text);
-        event.stopPropagation();
-      }
-    } else {
-      hideComment();
+    function showComment(text) {
+        content.innerHTML = text;
+        popup.classList.remove("hidden");
     }
-  });
-
-  closeBtn.addEventListener("click", (e) => {
-    hideComment();
-    e.stopPropagation();
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") hideComment();
-  });
-
-  return { hideComment };
+    function hideComment() {
+        popup.classList.add("hidden");
+    }
+    container.addEventListener("click", (event) => {
+        if (event.target.classList.contains("comment-marker")) {
+            const text = event.target.dataset.comment;
+            if (text) {
+                showComment(text);
+                event.stopPropagation();
+            }
+        } else {
+            hideComment();
+        }
+    });
+    closeBtn.addEventListener("click", (e) => {
+        hideComment();
+        e.stopPropagation();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") hideComment();
+    });
+    return { hideComment };
 };

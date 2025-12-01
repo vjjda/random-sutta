@@ -7,33 +7,36 @@ import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 
-
+# --- SỬA DÒNG NÀY (Bỏ OUTPUT_NAMES_DIR) ---
 from .config import OUTPUT_SUTTA_BASE, OUTPUT_SUTTA_BOOKS, PROCESS_LIMIT
+# ------------------------------------------
+
 from .finder import scan_root_dir
 from .converter import process_worker
-from .name_parser import process_names, generate_name_loader
+from .name_parser import load_names_map 
 
 logger = logging.getLogger("SuttaProcessor")
 
+# ... (Phần còn lại giữ nguyên)
 def natural_sort_key(s: str) -> List[Any]:
     return [int(text) if text.isdigit() else text.lower()
             for text in re.split(r'(\d+)', s)]
 
 class SuttaManager:
+    # ... (Code logic bên dưới giữ nguyên như hướng dẫn trước)
     def __init__(self):
         self.raw_collections: Dict[str, Dict[str, str]] = {}
+        self.names_map = load_names_map()
 
     def run(self):
-        
         tasks = scan_root_dir(limit=PROCESS_LIMIT)
-        
-        
         workers = os.cpu_count() or 4
-        logger.info(f"Processing with {workers} workers...")
+        
+        logger.info(f"Processing content with {workers} workers...")
         
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [executor.submit(process_worker, task) for task in tasks]
- 
+            
             count = 0
             for future in as_completed(futures):
                 group, sid, content = future.result()
@@ -41,27 +44,20 @@ class SuttaManager:
                     if group not in self.raw_collections:
                         self.raw_collections[group] = {}
                     self.raw_collections[group][sid] = content
-                 
+                
                 count += 1
                 if count % 500 == 0:
                     logger.info(f"   Processed {count}/{len(tasks)}...")
 
-        
         self._write_files()
-        
-        
-        logger.info("🏷️  Processing Sutta Names...")
-        name_files = process_names()
-        generate_name_loader(name_files)
-
         logger.info("✅ All done.")
 
     def _write_files(self):
-        logger.info("💾 Linking suttas and writing output files...")
+        logger.info("💾 Linking suttas and writing Combined DB files...")
         
         if OUTPUT_SUTTA_BASE.exists():
             shutil.rmtree(OUTPUT_SUTTA_BASE)
-         
+        
         OUTPUT_SUTTA_BASE.mkdir(parents=True, exist_ok=True)
         OUTPUT_SUTTA_BOOKS.mkdir(parents=True, exist_ok=True)
 
@@ -77,10 +73,19 @@ class SuttaManager:
                 prev_id = sorted_sids[i-1] if i > 0 else None
                 next_id = sorted_sids[i+1] if i < total_suttas - 1 else None
                 
+                name_info = self.names_map.get(sid, {
+                    "acronym": "",
+                    "translated_title": "",
+                    "original_title": ""
+                })
+
                 linked_data[sid] = {
                     "previous": prev_id,
                     "next": next_id,
-                    "content": raw_data[sid]
+                    "content": raw_data[sid],
+                    "acronym": name_info["acronym"],
+                    "translated_title": name_info["translated_title"],
+                    "original_title": name_info["original_title"]
                 }
 
             file_name = f"{group_name}.js"
@@ -88,7 +93,7 @@ class SuttaManager:
             file_path.parent.mkdir(parents=True, exist_ok=True)
             
             json_str = json.dumps(linked_data, ensure_ascii=False, indent=2)
-           
+            
             js_content = f"""// Source: {group_name}
 window.SUTTA_DB = window.SUTTA_DB || {{}};
 Object.assign(window.SUTTA_DB, {json_str});
@@ -103,9 +108,7 @@ Object.assign(window.SUTTA_DB, {json_str});
 
     def _write_loader(self, files: list):
         files.sort()
-        
         loader_path = OUTPUT_SUTTA_BASE / "sutta_loader.js"
-        
         
         js_content = f"""
 // Auto-generated Sutta Loader
