@@ -310,7 +310,7 @@ p {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
+  width: 95%;
   max-width: 600px;
   background-color: #fff;
   border-left: 5px solid #d35400;
@@ -318,7 +318,7 @@ p {
   padding: 15px 40px 15px 20px;
   border-radius: 4px;
   z-index: 1000;
-  font-size: 0.95em;
+  font-size: 1em;
   line-height: 1.5;
   color: #444;
   transition: opacity 0.3s, transform 0.3s;
