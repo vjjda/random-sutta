@@ -13,6 +13,7 @@ REPO_URL = "https://github.com/suttacentral/sc-data.git"
 CACHE_DIR = Path(".cache/sc_bilara_data")
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data" / "bilara"
+BRANCH_NAME = "master"  # sc-data uses 'master'
 
 # Định nghĩa các đường dẫn cụ thể cần lấy từ Git (Sparse Checkout)
 FETCH_MAPPING = {
@@ -58,56 +59,66 @@ def _perform_clone():
         shutil.rmtree(CACHE_DIR)
     CACHE_DIR.parent.mkdir(parents=True, exist_ok=True)
     
-    # Clone depth 1 để nhẹ
-    _run_git(PROJECT_ROOT, ["clone", "--filter=blob:none", "--no-checkout", "--depth", "1", REPO_URL, str(CACHE_DIR)])
+    # 1. Init empty repo & add remote (thủ công để kiểm soát tốt hơn)
+    CACHE_DIR.mkdir()
+    _run_git(CACHE_DIR, ["init"])
+    _run_git(CACHE_DIR, ["remote", "add", "origin", REPO_URL])
     
-    # Cấu hình sparse
-    sparse_paths = [path.strip("/") for path in FETCH_MAPPING.keys()]
-    _run_git(CACHE_DIR, ["sparse-checkout", "set"] + sparse_paths)
+    # 2. Configure Sparse Checkout
+    _run_git(CACHE_DIR, ["config", "core.sparseCheckout", "true"])
+    sparse_path = CACHE_DIR / ".git" / "info" / "sparse-checkout"
+    with open(sparse_path, "w") as f:
+        for path in FETCH_MAPPING.keys():
+            f.write(path.strip("/") + "\n")
+            
+    # 3. Explicit Fetch & Hard Reset (The Magic Fix)
+    # Lấy đúng commit mới nhất của master về
+    logger.info(f"   📥 Fetching {BRANCH_NAME}...")
+    _run_git(CACHE_DIR, ["fetch", "--depth", "1", "origin", BRANCH_NAME])
     
-    # Checkout master (sc-data default)
-    _run_git(CACHE_DIR, ["checkout", "master"])
+    # Ép buộc HEAD trỏ vào origin/master
+    logger.info("   🔨 Resetting to match remote...")
+    _run_git(CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
 
 def _update_existing_repo():
-    """Cố gắng update repo hiện có, nếu lỗi sẽ raise exception."""
+    """Cố gắng update repo hiện có."""
     if not (CACHE_DIR / ".git").exists():
         raise RuntimeError("Invalid git repository")
         
     logger.info("   🔄 Updating existing repository...")
     
-    # Reset sparse config
-    try:
-        _run_git(CACHE_DIR, ["sparse-checkout", "disable"])
-    except:
-        pass # Ignore error
-        
-    # Re-apply sparse config
-    sparse_paths = [path.strip("/") for path in FETCH_MAPPING.keys()]
-    _run_git(CACHE_DIR, ["sparse-checkout", "set"] + sparse_paths)
+    # Đảm bảo sparse checkout list được cập nhật
+    sparse_path = CACHE_DIR / ".git" / "info" / "sparse-checkout"
+    with open(sparse_path, "w") as f:
+        for path in FETCH_MAPPING.keys():
+            f.write(path.strip("/") + "\n")
+
+    # Fetch và Reset thay vì Pull
+    _run_git(CACHE_DIR, ["fetch", "--depth", "1", "origin", BRANCH_NAME])
+    _run_git(CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
     
-    # Force sync với remote (tránh lỗi divergent branches)
-    _run_git(CACHE_DIR, ["fetch", "origin", "master", "--depth", "1"])
-    _run_git(CACHE_DIR, ["reset", "--hard", "origin/master"])
+    # Clean các file không được track (rác)
+    _run_git(CACHE_DIR, ["clean", "-fdx"])
 
 def _setup_repo():
     """Điều phối việc Clone/Update với cơ chế Self-Healing."""
     logger.info("⚡ Setting up data repository...")
     
+    # Cơ chế thử Update trước, nếu lỗi thì Clone lại từ đầu
     if CACHE_DIR.exists():
         try:
             _update_existing_repo()
             logger.info("✅ Repository updated.")
             return
         except Exception as e:
-            logger.warning(f"⚠️ Update failed ({e}). Cleaning cache and re-cloning...")
-            # Fall through to _perform_clone
+            logger.warning(f"⚠️ Update failed ({e}). Re-cloning...")
     
     # Nếu chưa có cache hoặc update thất bại -> Clone mới
     try:
         _perform_clone()
-        logger.info("✅ Repository cloned successfully.")
+        logger.info("✅ Repository synced successfully.")
     except Exception as e:
-        logger.error(f"❌ Clone failed: {e}")
+        logger.error(f"❌ Sync failed: {e}")
         raise e
 
 def _clean_destination():
