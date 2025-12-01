@@ -1,4 +1,3 @@
-
 // Auto-generated Sutta Manifest
 window.ALL_SUTTA_FILES = [
   "an.js",
