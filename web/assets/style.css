@@ -543,3 +543,60 @@ p {
     gap: 5px; /* Giảm khoảng cách giữa các nút */
   }
 }
+
+/* --- QUICK SEARCH NAV --- */
+#nav-title-display {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-width: 150px; /* Giữ khung không bị nhảy khi chuyển đổi */
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+#nav-title-display:hover {
+  background-color: #f0ebe5; /* Hiệu ứng hover nhẹ */
+}
+
+#nav-search-container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#nav-sutta-input {
+  width: 100px;
+  padding: 4px 8px;
+  border: 1px solid #8b4513;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  outline: none;
+  font-size: 1rem;
+}
+
+#nav-search-btn {
+  padding: 4px 8px;
+  font-size: 14px;
+  background-color: #8b4513;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+#nav-search-btn:hover {
+  background-color: #a0522d;
+}
+
+/* Đảm bảo ẩn class hidden */
+.hidden {
+  display: none !important;
+}

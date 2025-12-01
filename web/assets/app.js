@@ -86,7 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // --- SUCCESS STATE ---
       statusDiv.textContent = `Library loaded: ${dbCount} suttas (${nameCount} meta-entries).`;
       statusDiv.classList.remove("hidden");
-      // Ẩn thanh loading sau 2s để gọn giao diện (tuỳ chọn)
+
       setTimeout(() => {
         statusDiv.classList.add("hidden");
       }, 3000);
@@ -96,6 +96,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Init App Logic
       window.initFilters();
+
+      // >>> THÊM DÒNG NÀY <<<
+      if (window.setupQuickNav) window.setupQuickNav();
+      // >>> HẾT PHẦN THÊM <<<
 
       // Router Logic
       const params = new URLSearchParams(window.location.search);
