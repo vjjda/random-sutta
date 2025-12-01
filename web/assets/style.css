@@ -489,6 +489,27 @@ p {
         word-break: break-word; 
         white-space: normal;
     }
+
+    h1.sutta-title .pli {
+        /* Bắt buộc ngắt dòng bất kể có khoảng trắng hay không */
+        word-break: break-all;
+        
+        /* Giảm font chữ để tiết kiệm không gian */
+        font-size: 1.2em;
+        
+        /* Đảm bảo nó được hiển thị như một khối để có thể chiếm toàn bộ chiều rộng */
+        display: block; 
+    }
+    
+    /* Đồng thời giảm font tiếng Anh nếu cần (để cân đối) */
+    h1.sutta-title .eng {
+        font-size: 1.6em; /* Giữ font English lớn hơn font Pali */
+    }
+
+    /* Giảm font size chung của h1.sutta-title */
+    h1.sutta-title {
+        font-size: 1.4em; /* Giảm font size chung từ 1.8em (style ban đầu) */
+    }
     
     /* 4. Tối ưu hóa điều hướng (Navigation Header) */
     #nav-header {
