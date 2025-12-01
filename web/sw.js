@@ -117,43 +117,52 @@ self.addEventListener("activate", (event) => {
 });
 
 // 3. Fetch: Chiến lược Cache First (Ưu tiên Cache, nếu không có mới tải mạng)
-self.addEventListener('fetch', (event) => {
-    // Chỉ xử lý GET request
-    if (event.request.method !== 'GET') return;
+self.addEventListener("fetch", (event) => {
+  // Chỉ xử lý GET request
+  if (event.request.method !== "GET") return;
 
-    event.respondWith(
-        (async () => {
-            // A. ƯU TIÊN 1: Tìm chính xác trong cache (bao gồm cả ignoreSearch)
-            const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
-            if (cachedResponse) {
-                return cachedResponse;
-            }
+  event.respondWith(
+    (async () => {
+      // A. ƯU TIÊN 1: Tìm chính xác trong cache (bao gồm cả ignoreSearch)
+      const cachedResponse = await caches.match(event.request, {
+        ignoreSearch: true,
+      });
+      if (cachedResponse) {
+        return cachedResponse;
+      }
 
-            // B. ƯU TIÊN 2: Nếu là Navigation (Refresh trang, gõ URL) -> Trả về index.html
-            // Đây là chốt chặn quan trọng để sửa lỗi ?r=1 hay bất kỳ đường dẫn ảo nào
-            if (event.request.mode === 'navigate') {
-                const indexResponse = await caches.match('./index.html');
-                if (indexResponse) return indexResponse;
-            }
+      // B. ƯU TIÊN 2: Nếu là Navigation (Refresh trang, gõ URL) -> Trả về index.html
+      // Đây là chốt chặn quan trọng để sửa lỗi ?r=1 hay bất kỳ đường dẫn ảo nào
+      if (event.request.mode === "navigate") {
+        const indexResponse = await caches.match("./index.html");
+        if (indexResponse) return indexResponse;
+      }
 
-            // C. ƯU TIÊN 3: Tải từ mạng (Network)
-            try {
-                const networkResponse = await fetch(event.request);
-                
-                // Cache lại các file tài nguyên hợp lệ (không phải API, không lỗi)
-                if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-                    const responseToCache = networkResponse.clone();
-                    const cache = await caches.open(CACHE_NAME);
-                    cache.put(event.request, responseToCache);
-                }
-                
-                return networkResponse;
-            } catch (error) {
-                // D. MẤT MẠNG hoàn toàn:
-                console.log('[SW] Offline and resource not cached:', event.request.url);
-                // Có thể trả về trang offline tùy chỉnh nếu muốn, hiện tại trả về lỗi để debug
-                return new Response('Offline - Resource not found', { status: 404, statusText: 'Not Found' });
-            }
-        })()
-    );
+      // C. ƯU TIÊN 3: Tải từ mạng (Network)
+      try {
+        const networkResponse = await fetch(event.request);
+
+        // Cache lại các file tài nguyên hợp lệ (không phải API, không lỗi)
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          networkResponse.type === "basic"
+        ) {
+          const responseToCache = networkResponse.clone();
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(event.request, responseToCache);
+        }
+
+        return networkResponse;
+      } catch (error) {
+        // D. MẤT MẠNG hoàn toàn:
+        console.log("[SW] Offline and resource not cached:", event.request.url);
+        // Có thể trả về trang offline tùy chỉnh nếu muốn, hiện tại trả về lỗi để debug
+        return new Response("Offline - Resource not found", {
+          status: 404,
+          statusText: "Not Found",
+        });
+      }
+    })()
+  );
 });
