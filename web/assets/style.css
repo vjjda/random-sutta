@@ -493,23 +493,46 @@ p {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-width: 150px; /* Giữ khung không bị nhảy khi chuyển đổi */
+  
+  /* --- CẬP NHẬT: THÊM 2 DÒNG NÀY --- */
+  min-width: 160px;       /* Đảm bảo chiều rộng không bị nhảy */
+  min-height: 3.5rem;     /* Đảm bảo chiều cao đủ cho 2 dòng chữ (khoảng 56px) */
+  /* -------------------------------- */
+
   cursor: pointer;
-  padding: 5px 10px;
+  padding: 0 10px;        /* Giảm padding trên dưới vì đã có min-height */
   border-radius: 6px;
   transition: background-color 0.2s;
+  box-sizing: border-box; /* Quan trọng để tính toán kích thước đúng */
 }
 
+/* Giữ nguyên hover */
 #nav-title-display:hover {
-  background-color: #f0ebe5; /* Hiệu ứng hover nhẹ */
+  background-color: #f0ebe5;
 }
 
+/* --- CẬP NHẬT: Style cho Text Mode --- */
+#nav-title-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.3;
+}
+
+/* --- CẬP NHẬT: Style cho Input Mode --- */
 #nav-search-container {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
+  
+  /* --- THÊM DÒNG NÀY --- */
+  height: 100%;       /* Chiếm toàn bộ chiều cao của cha */
+  flex: 1;            /* Tự động căn giữa theo trục dọc nhờ flex của cha */
+  /* -------------------- */
 }
 
+/* Giữ nguyên các phần còn lại (input, button...) */
 #nav-sutta-input {
   width: 100px;
   padding: 4px 8px;
