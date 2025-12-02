@@ -6,7 +6,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 
 # Import từ các module con
-from .shared.app_config import OUTPUT_SUTTA_BOOKS, PROCESSED_DIR
+from .shared.app_config import OUTPUT_DB_DIR, PROCESSED_DIR
 from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
 from .logic.content_merger import process_worker
@@ -27,7 +27,7 @@ class BuildManager:
         self.sutta_group_map: Dict[str, str] = {}
 
     def _prepare_environment(self) -> None:
-        target_dir = PROCESSED_DIR if self.dry_run else OUTPUT_SUTTA_BOOKS
+        target_dir = PROCESSED_DIR if self.dry_run else OUTPUT_DB_DIR
         if target_dir.exists():
             shutil.rmtree(target_dir)
         target_dir.mkdir(parents=True, exist_ok=True)
