@@ -6,7 +6,8 @@ import subprocess
 import sys
 import os
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- Configuration ---
 REPO_URL = "https://github.com/suttacentral/sc-data.git"
@@ -14,7 +15,7 @@ CACHE_DIR = Path(".cache/sc_bilara_data")
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data" / "bilara"
 
-# QUAN TRỌNG: Chuyển sang branch 'main' để lấy dữ liệu mới nhất
+# Branch mục tiêu
 BRANCH_NAME = "main"
 
 # Định nghĩa các đường dẫn cụ thể cần lấy từ Git (Sparse Checkout)
@@ -87,23 +88,21 @@ def _update_existing_repo():
         
     logger.info(f"   🔄 Updating existing repository (Target: {BRANCH_NAME})...")
     
-    # Cập nhật sparse list (đề phòng mapping thay đổi)
+    # Cập nhật sparse list
     sparse_path = CACHE_DIR / ".git" / "info" / "sparse-checkout"
     with open(sparse_path, "w") as f:
         for path in FETCH_MAPPING.keys():
             f.write(path.strip("/") + "\n")
 
-    # Fetch đúng branch MAIN và Reset cứng
+    # Fetch đúng branch và Reset cứng
     _run_git(CACHE_DIR, ["fetch", "--depth", "1", "origin", BRANCH_NAME])
     _run_git(CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
-    
     _run_git(CACHE_DIR, ["clean", "-fdx"])
 
 def _setup_repo():
     """Điều phối việc Clone/Update với cơ chế Self-Healing."""
     logger.info("⚡ Setting up data repository...")
     
-    # Cơ chế thử Update trước, nếu lỗi thì Clone lại từ đầu
     if CACHE_DIR.exists():
         try:
             _update_existing_repo()
@@ -125,27 +124,56 @@ def _clean_destination():
         shutil.rmtree(DATA_ROOT)
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
-def _copy_data():
-    logger.info("📂 Copying and filtering data...")
-    for src_rel, dest_rel in FETCH_MAPPING.items():
-        src_path = CACHE_DIR / src_rel
-        dest_path = DATA_ROOT / dest_rel
-        
-        if not src_path.exists():
-            logger.warning(f"⚠️ Source not found (skipped): {src_rel}")
-            continue
-
-        ignore_list = []
-        for key, patterns in IGNORE_PATTERNS.items():
-            if dest_rel.startswith(key):
-                ignore_list.extend(patterns)
-        ignore_func = shutil.ignore_patterns(*ignore_list) if ignore_list else None
-        
-        logger.info(f"   -> Copying: {dest_rel}")
-        if dest_path.exists():
-            shutil.rmtree(dest_path)
-        shutil.copytree(src_path, dest_path, ignore=ignore_func)
+def _copy_worker(task: Tuple[str, str]) -> str:
+    """Worker function để copy một thư mục cụ thể."""
+    src_rel, dest_rel = task
+    src_path = CACHE_DIR / src_rel
+    dest_path = DATA_ROOT / dest_rel
     
+    if not src_path.exists():
+        return f"⚠️ Source not found (skipped): {src_rel}"
+
+    # Xác định ignore pattern
+    ignore_list = []
+    for key, patterns in IGNORE_PATTERNS.items():
+        if dest_rel.startswith(key):
+            ignore_list.extend(patterns)
+    ignore_func = shutil.ignore_patterns(*ignore_list) if ignore_list else None
+    
+    # Đảm bảo thư mục cha tồn tại (Thread-safe enough for mkdir)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Nếu destination đã tồn tại (do run nhiều lần mà không clean), xóa đi
+    if dest_path.exists():
+        shutil.rmtree(dest_path)
+        
+    shutil.copytree(src_path, dest_path, ignore=ignore_func)
+    return f"   -> Copied: {dest_rel}"
+
+def _copy_data():
+    """Copy dữ liệu song song sử dụng ThreadPoolExecutor."""
+    logger.info("📂 Copying and filtering data (Multi-threaded)...")
+    
+    # Số lượng workers tối đa
+    workers = min(os.cpu_count() or 4, len(FETCH_MAPPING))
+    
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        # Submit các tasks
+        futures = {
+            executor.submit(_copy_worker, item): item 
+            for item in FETCH_MAPPING.items()
+        }
+        
+        # Chờ và log kết quả khi hoàn thành
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                logger.info(result)
+            except Exception as e:
+                logger.error(f"❌ Error copying: {e}")
+                # Không raise sys.exit ở đây để các luồng khác tiếp tục chạy, 
+                # nhưng log lỗi để biết.
+
     logger.info(f"✅ Data copied to {DATA_ROOT}")
 
 def orchestrate_fetch():
