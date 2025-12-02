@@ -9,127 +9,86 @@ from .config import DATA_ROOT
 
 logger = logging.getLogger("SuttaProcessor")
 
-# Thứ tự ưu tiên dịch giả
-TRANSLATOR_PRIORITY = ["sujato", "brahmali", "kelly"]
-
 def load_json(path: Path) -> Dict[str, str]:
     if not path or not path.exists():
         return {}
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception as e:
-        logger.warning(f"⚠️ Error reading {path.name}: {e}")
+    except Exception:
         return {}
 
-def find_translation_file(sutta_id: str) -> Tuple[Optional[Path], str]:
-    """Tìm file dịch tiếng Anh dựa trên độ ưu tiên tác giả."""
-    base_trans_dir = DATA_ROOT / "translation" / "en"
-    if not base_trans_dir.exists():
-        return None, ""
-
-    for author in TRANSLATOR_PRIORITY:
-        author_dir = base_trans_dir / author
-        if not author_dir.exists():
-            continue
-            
-        pattern = f"{sutta_id}_translation-en-*.json"
-        found = list(author_dir.rglob(pattern))
-        if found:
-            return found[0], author
-    return None, ""
-
-def find_auxiliary_file(sutta_id: str, category: str) -> Optional[Path]:
-    """Tìm các file phụ trợ (html, comment)."""
-    base_dir = DATA_ROOT / category
-    if not base_dir.exists():
-        return None
-        
-    if category == "html":
+def get_file_path(sutta_id: str, category: str, author_uid: str = None) -> Optional[Path]:
+    """
+    Xác định đường dẫn file dựa trên thông tin đã biết (Direct Lookup).
+    Không dùng glob bừa bãi nữa.
+    """
+    if category == "translation":
+        # translation/en/sujato/sutta/mn/.../mn1_translation-en-sujato.json
+        # Nhưng ta không biết chắc nó nằm ở sub-folder nào (kn/dhp hay mn).
+        # Nên vẫn phải dùng rglob nhưng giới hạn phạm vi trong folder tác giả.
+        if not author_uid: return None
+        base = DATA_ROOT / "translation" / "en" / author_uid
+        pattern = f"{sutta_id}_translation-en-{author_uid}.json"
+    
+    elif category == "html":
+        # html/sutta/mn/.../mn1_html.json
+        base = DATA_ROOT / "html"
         pattern = f"{sutta_id}_html.json"
+        
     elif category == "comment":
+        # comment/en/sujato/sutta/...
+        # Mặc định comment lấy của Sujato (hoặc theo cấu trúc folder comment/en)
+        base = DATA_ROOT / "comment" / "en"
         pattern = f"{sutta_id}_comment-en-*.json"
+    
     else:
         return None
 
-    found = list(base_dir.rglob(pattern))
+    if not base.exists(): return None
+    
+    # Tìm nhanh file
+    found = list(base.rglob(pattern))
     return found[0] if found else None
-
-def get_group_name(root_file_path: Path) -> str:
-    """
-    Xác định group chuẩn xác từ đường dẫn file root.
-    Hỗ trợ cả file nằm sâu trong folder con và file lẻ nằm ngay root category.
-    """
-    try:
-        base_root = DATA_ROOT / "root"
-        rel_path = root_file_path.relative_to(base_root)
-        parts = rel_path.parts
-        
-        if not parts:
-            return "uncategorized"
-
-        category = parts[0]
-        
-        # Trường hợp 1: File nằm trong folder con (Deep structure)
-        # Ví dụ: vinaya/pli-tv-bi-vb/pli-tv-bi-vb-np/...
-        if len(parts) > 1:
-            # Sutta/KN đặc biệt vì có thêm 1 cấp
-            if category == 'sutta':
-                if parts[1] == 'kn':
-                    if len(parts) > 2:
-                        return f"sutta/kn/{parts[2]}"
-                    # Nếu file nằm ngay trong sutta/kn (hiếm gặp nhưng có thể)
-                    return f"sutta/kn/{root_file_path.name.split('_')[0]}"
-                return f"sutta/{parts[1]}"
-            
-            # Vinaya/Abhidhamma: Lấy folder cấp 1 làm group
-            # Tuy nhiên, nếu file nằm ngay trong vinaya/ (len=2, parts[1] là file)
-            # Thì phải lấy tên file làm group ID
-            if root_file_path.is_file() and len(parts) == 2:
-                 # Ví dụ: vinaya/pli-tv-bi-pm_root-pli-ms.json
-                 # Lấy prefix trước dấu _ đầu tiên làm group ID
-                 book_id = parts[1].split('_')[0]
-                 return f"{category}/{book_id}"
-
-            # Trường hợp folder con chuẩn: vinaya/pli-tv-bi-vb/file.json
-            return f"{category}/{parts[1]}"
-            
-        return "uncategorized"
-            
-    except ValueError:
-        return "uncategorized"
 
 def natural_keys(text: str):
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
-def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str, Any]]]:
-    sutta_id, root_file_path = args
+def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]]]:
+    """
+    args: (sutta_id, root_file_path, author_uid)
+    """
+    sutta_id, root_path, author_uid = args
     
     try:
-        # 1. Định danh Group
-        group = get_group_name(root_file_path)
+        # 1. Xác định group (chỉ để trả về cho Manager gom nhóm)
+        # (Logic get_group_name có thể tái sử dụng hoặc tính toán ở Manager)
+        # Ở đây ta trả về None, Manager sẽ tự xử lý group map
+        
+        # 2. Tìm các file phụ trợ
+        trans_path = get_file_path(sutta_id, "translation", author_uid) if author_uid else None
+        html_path = get_file_path(sutta_id, "html")
+        comment_path = get_file_path(sutta_id, "comment")
 
-        # 2. Tìm các file liên quan
-        trans_path, author_uid = find_translation_file(sutta_id)
-        html_path = find_auxiliary_file(sutta_id, "html")
-        comment_path = find_auxiliary_file(sutta_id, "comment")
-
-        # Skip nếu không có HTML (trừ khi bạn muốn giữ raw text không format)
+        # Skip nếu không có HTML (bắt buộc để hiển thị)
         if not html_path:
-            # Vẫn trả về group đúng để Manager update progress, nhưng content là None
-            return group, sutta_id, None
+            return "skipped", sutta_id, None
 
         # 3. Load nội dung
-        data_root = load_json(root_file_path)
+        data_root = load_json(root_path)
         data_trans = load_json(trans_path)
         data_html = load_json(html_path)
         data_comment = load_json(comment_path)
 
-        # 4. Trộn dữ liệu
-        all_keys = set(data_root.keys()) | set(data_html.keys()) | set(data_trans.keys())
+        # 4. Trộn dữ liệu thành List
+        all_keys = set(data_root.keys()) | set(data_html.keys())
+        # Nếu có bản dịch thì lấy key bản dịch, nếu không thì thôi
+        if data_trans:
+            all_keys |= set(data_trans.keys())
+            
         sorted_keys = sorted(list(all_keys), key=natural_keys)
 
-        segments = {}
+        segments = [] # [NEW] List instead of Dict
         has_content = False
         
         for key in sorted_keys:
@@ -142,17 +101,18 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
                 continue
 
             has_content = True
-            entry = {}
-            if pali: entry["p"] = pali
-            if eng: entry["e"] = eng
-            if html: entry["h"] = html
-            if comm: entry["c"] = comm
             
-            short_key = key.split(":")[-1] if ":" in key else key
-            segments[short_key] = entry
+            # Short keys
+            entry = {"id": key} # [NEW] Cần ID trong object vì giờ là list
+            if pali: entry["pli"] = pali
+            if eng: entry["en"] = eng
+            if html: entry["html"] = html
+            if comm: entry["comm"] = comm
+            
+            segments.append(entry)
 
         if not has_content:
-             return group, sutta_id, None
+             return "skipped", sutta_id, None
 
         # 5. Kết quả
         final_data = {
@@ -160,8 +120,8 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
             "segments": segments
         }
 
-        return group, sutta_id, final_data
+        return "success", sutta_id, final_data
 
     except Exception as e:
-        logger.error(f"❌ Error merging {sutta_id}: {e}")
-        return "error_group", sutta_id, None
+        # logger.error(f"Error {sutta_id}: {e}")
+        return "error", sutta_id, None
