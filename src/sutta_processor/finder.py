@@ -10,7 +10,6 @@ from .config import DATA_ROOT
 logger = logging.getLogger("SuttaProcessor")
 
 def find_sutta_files(sutta_id: str, root_file_path: Path) -> Dict[str, Path]:
-    # Giữ nguyên logic tìm file phụ trợ (translation, html, comment)
     files = {'root': root_file_path}
     try:
         rel_path = root_file_path.relative_to(DATA_ROOT / "root")
@@ -32,34 +31,38 @@ def find_sutta_files(sutta_id: str, root_file_path: Path) -> Dict[str, Path]:
 
     return files
 
-def _identify_book_group(rel_parts: Tuple[str, ...]) -> str:
+def _identify_book_group(rel_parts: Tuple[str, ...], file_name: str) -> str:
     """
-    Logic định danh group chuẩn (Sync với converter.get_group_name)
+    Xác định Book ID từ đường dẫn tương đối.
+    Input: ('sutta', 'mn', 'mn1.json') -> Output: 'sutta/mn'
+    Input: ('vinaya', 'pli-tv-bi-pm_root...') -> Output: 'vinaya/pli-tv-bi-pm'
     """
     if not rel_parts:
         return "uncategorized"
     
-    category = rel_parts[0]
+    category = rel_parts[0] # sutta, vinaya, abhidhamma
     
     if category == 'sutta':
+        # Sutta/MN/file.json -> len=3
         if len(rel_parts) > 1:
             if rel_parts[1] == 'kn':
+                # Sutta/KN/DHP/file.json -> len=4 -> sutta/kn/dhp
                 if len(rel_parts) > 2:
                     return f"sutta/kn/{rel_parts[2]}"
-                # File lẻ trong kn (nếu có)
+                # Fallback: Sutta/KN/file.json (Hiếm)
                 return f"sutta/kn/{file_name.split('_')[0]}"
+            # Sutta/MN
             return f"sutta/{rel_parts[1]}"
             
     elif category in ['vinaya', 'abhidhamma']:
-        # Nếu file nằm ngay trong vinaya/ (len=1 vì rel_path tính từ category cha)
-        # Sửa lại: rel_parts là full path tính từ 'root/'
-        # Ví dụ: ('vinaya', 'pli-tv-bi-pm_root-pli-ms.json') -> len = 2
-        
+        # Trường hợp 1: File nằm lẻ ngay trong root category (Structure nông)
+        # Ví dụ: vinaya/pli-tv-bi-pm_root... -> rel_parts=('vinaya', 'file.json') -> len=2
         if len(rel_parts) == 2:
-             # File lẻ: vinaya/xyz.json -> Group vinaya/xyz
-             book_id = file_name.split('_')[0]
+             book_id = file_name.split('_')[0] # Lấy ID sách từ tên file
              return f"{category}/{book_id}"
              
+        # Trường hợp 2: File nằm trong folder con (Structure sâu)
+        # Ví dụ: vinaya/pli-tv-bi-vb/folder/... -> len > 2
         if len(rel_parts) > 2:
             return f"{category}/{rel_parts[1]}"
             
@@ -78,20 +81,28 @@ def generate_book_tasks(limit: int = 0) -> Dict[str, List[Tuple[str, Path]]]:
     book_tasks: Dict[str, List[Tuple[str, Path]]] = {}
     
     count = 0
+    skipped_count = 0
+    
     for root, dirs, files in os.walk(base_search_dir):
         for file in files:
             if file.endswith(".json") and "_root-" in file:
                 sutta_id = file.split("_")[0]
                 full_path = Path(root) / file
                 
-                # Tính toán path tương đối để xác định group
+                # Xác định file này thuộc book nào
                 try:
                     rel_parts = full_path.relative_to(base_search_dir).parts
                     group_id = _identify_book_group(rel_parts, file)
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"⚠️ Skipping file {file}: Identification error - {e}")
+                    skipped_count += 1
                     continue
                 
                 if group_id == "uncategorized":
+                    # Debug log cho file không phân loại được (chỉ in 10 file đầu tiên để đỡ rối)
+                    if skipped_count < 10:
+                        logger.debug(f"⚠️ Uncategorized: {file} (parts: {rel_parts})")
+                    skipped_count += 1
                     continue
 
                 if group_id not in book_tasks:
@@ -105,11 +116,14 @@ def generate_book_tasks(limit: int = 0) -> Dict[str, List[Tuple[str, Path]]]:
         if limit > 0 and count >= limit:
             break
 
-    # Sort danh sách
+    # Sort
     for group in book_tasks:
         book_tasks[group].sort(key=lambda x: x[0])
 
     sorted_books = dict(sorted(book_tasks.items()))
     
+    if skipped_count > 0:
+        logger.warning(f"⚠️ Skipped {skipped_count} items due to categorization issues.")
+        
     logger.info(f"✅ Found {count} suttas across {len(sorted_books)} books.")
     return sorted_books
