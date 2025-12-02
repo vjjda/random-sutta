@@ -1,34 +1,25 @@
-# Path: src/sutta_processor/manager.py
+# Path: src/sutta_processor/orchestrator.py
 import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 
-from .config import OUTPUT_SUTTA_BOOKS, PROCESSED_DIR
-from .finder import generate_book_tasks
-from .converter import process_worker
-from .name_parser import load_names_map
-from .tree_utils import build_book_data
-from .writer import write_book_file, write_loader_script
+# --- CÁC IMPORT MỚI (ĐÃ SỬA) ---
+from .shared.app_config import OUTPUT_SUTTA_BOOKS, PROCESSED_DIR
+from .ingestion.metadata_parser import load_names_map
+from .ingestion.file_crawler import generate_book_tasks
+from .logic.content_merger import process_worker
+from .logic.structure_handler import build_book_data
+from .output.asset_generator import write_book_file, write_loader_script
 
-logger = logging.getLogger("SuttaProcessor.Manager")
+logger = logging.getLogger("SuttaProcessor.Orchestrator")
 
-class SuttaManager:
-    """
-    Orchestrator class: Điều phối quá trình xử lý dữ liệu Sutta.
-    Trách nhiệm:
-    1. Chuẩn bị môi trường.
-    2. Phân phối tasks (multiprocessing).
-    3. Tổng hợp kết quả.
-    4. Gọi module Writer để xuất file.
-    """
-    
+class SuttaOrchestrator:
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
         self.names_map = load_names_map()
         
-        # State Management
         self.buffers: Dict[str, Dict[str, Any]] = {}
         self.book_totals: Dict[str, int] = {}
         self.book_progress: Dict[str, int] = {}
@@ -45,38 +36,29 @@ class SuttaManager:
         logger.info(f"{mode} MODE INITIALIZED")
 
     def _handle_task_completion(self, group: str, sutta_id: str, content: Any) -> None:
-        """Xử lý khi một worker hoàn thành task."""
-        # Update Data Buffer
         if content:
             self.buffers[group][sutta_id] = content
-            
-        # Update Progress
+        
         self.book_progress[group] += 1
         
-        # Check if Book is Ready
         if self.book_progress[group] >= self.book_totals[group]:
             self._finalize_book(group)
-            # Cleanup memory
             if group in self.buffers:
                 del self.buffers[group]
 
     def _finalize_book(self, group: str) -> None:
-        """Khi một cuốn sách đủ dữ liệu, đóng gói và ghi ra file."""
         raw_data = self.buffers.get(group, {})
-        
-        # 1. Build Book Object (Logic in tree_utils)
+        # Gọi Logic Layer
         book_obj = build_book_data(group, raw_data, self.names_map)
-        
-        # 2. Write to Disk (Logic in writer)
+        # Gọi Output Layer
         filename = write_book_file(group, book_obj, self.dry_run)
-        
         if filename:
             self.completed_files.append(filename)
 
     def run(self) -> None:
         self._prepare_environment()
         
-        # 1. Generate Tasks
+        # Gọi Ingestion Layer
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
@@ -84,17 +66,15 @@ class SuttaManager:
             self.book_totals[group_name] = len(tasks)
             self.book_progress[group_name] = 0
             self.buffers[group_name] = {}
-            
             for task in tasks:
                 all_tasks.append(task)
-                # Map sutta_id ngược lại group để lookup nhanh khi worker trả về
                 self.sutta_group_map[task[0]] = group_name
 
-        # 2. Execute Workers
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
+            # Logic Layer Worker
             futures = [executor.submit(process_worker, task) for task in all_tasks]
             
             for i, future in enumerate(as_completed(futures)):
@@ -105,14 +85,12 @@ class SuttaManager:
                     if target_group:
                         success_content = content if res_status == "success" else None
                         self._handle_task_completion(target_group, res_sid, success_content)
-                        
                 except Exception as e:
                     logger.error(f"❌ Worker exception: {e}")
 
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
-        # 3. Finalize Loader (Only in Prod)
         if not self.dry_run:
             write_loader_script(self.completed_files)
             

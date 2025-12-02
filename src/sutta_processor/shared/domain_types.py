@@ -3,7 +3,7 @@ from typing import TypedDict, Dict, Optional, Any
 
 class SuttaMeta(TypedDict):
     uid: str
-    type: str
+    type: str  # 'leaf' | 'branch'
     acronym: str
     translated_title: str
     original_title: str
@@ -16,9 +16,13 @@ class SuttaSegment(TypedDict, total=False):
     html: str
     comm: str
 
+class SuttaData(TypedDict):
+    author_uid: Optional[str]
+    segments: Dict[str, SuttaSegment]
+
 class BookOutput(TypedDict):
     id: str
     title: str
     structure: Any
     meta: Dict[str, Dict[str, Any]]
-    data: Dict[str, Any]
+    data: Dict[str, SuttaData]

@@ -4,37 +4,23 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
+# Import từ Shared Layer
 from ..shared.app_config import DATA_API_DIR, AUTHOR_PRIORITY
-from ..shared.domain_types import SuttaMeta
+from ..shared.domain_types import SuttaMeta  # <--- Import thay vì định nghĩa lại
 
 logger = logging.getLogger("SuttaProcessor.Ingestion.Meta")
 
-class SuttaMeta(TypedDict):
-    uid: str
-    type: str  # 'leaf' | 'branch'
-    acronym: str
-    translated_title: str
-    original_title: str
-    blurb: Optional[str]
-    best_author_uid: Optional[str] # Dịch giả được chọn (nếu có)
-
 def _find_best_author(translations: List[Dict[str, Any]]) -> Optional[str]:
-    """
-    Tìm tác giả phù hợp nhất từ danh sách translations trong metadata.
-    Tiêu chí: lang='en', segmented=True, author_uid nằm trong priority list.
-    """
+    """Tìm tác giả phù hợp nhất từ danh sách translations."""
     if not translations:
         return None
         
-    # Tạo map để tra cứu nhanh: author_uid -> translation_entry
-    # Chỉ lấy các bản dịch tiếng Anh và có segmented
     valid_trans = {
         t.get("author_uid"): t 
         for t in translations 
         if t.get("lang") == "en" and t.get("segmented") is True
     }
     
-    # Check theo thứ tự ưu tiên
     for author in AUTHOR_PRIORITY:
         if author in valid_trans:
             return author
@@ -42,9 +28,7 @@ def _find_best_author(translations: List[Dict[str, Any]]) -> Optional[str]:
     return None
 
 def load_names_map() -> Dict[str, SuttaMeta]:
-    """
-    Quét toàn bộ metadata, trích xuất thông tin cơ bản và xác định dịch giả.
-    """
+    """Quét toàn bộ metadata, trích xuất thông tin cơ bản."""
     if not DATA_API_DIR.exists():
         logger.warning(f"⚠️ API Data directory not found: {DATA_API_DIR}")
         return {}
@@ -65,7 +49,6 @@ def load_names_map() -> Dict[str, SuttaMeta]:
                 uid = item.get("uid")
                 if not uid: continue
                 
-                # Logic xác định dịch giả ngay tại đây
                 translations = item.get("translations", [])
                 best_author = _find_best_author(translations)
                 
