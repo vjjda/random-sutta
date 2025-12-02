@@ -1,4 +1,4 @@
 # Path: src/__init__.py
-from .sutta_fetcher import orchestrate_fetch
+from .sutta_fetcher import run_sync
 
-__all__ = ["orchestrate_fetch"]
+__all__ = ["run_sync"]
