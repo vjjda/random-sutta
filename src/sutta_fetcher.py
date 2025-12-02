@@ -13,7 +13,9 @@ REPO_URL = "https://github.com/suttacentral/sc-data.git"
 CACHE_DIR = Path(".cache/sc_bilara_data")
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data" / "bilara"
-BRANCH_NAME = "master"  # sc-data uses 'master'
+
+# QUAN TRỌNG: Chuyển sang branch 'main' để lấy dữ liệu mới nhất
+BRANCH_NAME = "main"
 
 # Định nghĩa các đường dẫn cụ thể cần lấy từ Git (Sparse Checkout)
 FETCH_MAPPING = {
@@ -59,7 +61,7 @@ def _perform_clone():
         shutil.rmtree(CACHE_DIR)
     CACHE_DIR.parent.mkdir(parents=True, exist_ok=True)
     
-    # 1. Init empty repo & add remote (thủ công để kiểm soát tốt hơn)
+    # 1. Init empty repo & add remote
     CACHE_DIR.mkdir()
     _run_git(CACHE_DIR, ["init"])
     _run_git(CACHE_DIR, ["remote", "add", "origin", REPO_URL])
@@ -71,12 +73,10 @@ def _perform_clone():
         for path in FETCH_MAPPING.keys():
             f.write(path.strip("/") + "\n")
             
-    # 3. Explicit Fetch & Hard Reset (The Magic Fix)
-    # Lấy đúng commit mới nhất của master về
+    # 3. Fetch & Reset to MAIN
     logger.info(f"   📥 Fetching {BRANCH_NAME}...")
     _run_git(CACHE_DIR, ["fetch", "--depth", "1", "origin", BRANCH_NAME])
     
-    # Ép buộc HEAD trỏ vào origin/master
     logger.info("   🔨 Resetting to match remote...")
     _run_git(CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
 
@@ -85,19 +85,18 @@ def _update_existing_repo():
     if not (CACHE_DIR / ".git").exists():
         raise RuntimeError("Invalid git repository")
         
-    logger.info("   🔄 Updating existing repository...")
+    logger.info(f"   🔄 Updating existing repository (Target: {BRANCH_NAME})...")
     
-    # Đảm bảo sparse checkout list được cập nhật
+    # Cập nhật sparse list (đề phòng mapping thay đổi)
     sparse_path = CACHE_DIR / ".git" / "info" / "sparse-checkout"
     with open(sparse_path, "w") as f:
         for path in FETCH_MAPPING.keys():
             f.write(path.strip("/") + "\n")
 
-    # Fetch và Reset thay vì Pull
+    # Fetch đúng branch MAIN và Reset cứng
     _run_git(CACHE_DIR, ["fetch", "--depth", "1", "origin", BRANCH_NAME])
     _run_git(CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
     
-    # Clean các file không được track (rác)
     _run_git(CACHE_DIR, ["clean", "-fdx"])
 
 def _setup_repo():
@@ -113,7 +112,6 @@ def _setup_repo():
         except Exception as e:
             logger.warning(f"⚠️ Update failed ({e}). Re-cloning...")
     
-    # Nếu chưa có cache hoặc update thất bại -> Clone mới
     try:
         _perform_clone()
         logger.info("✅ Repository synced successfully.")
