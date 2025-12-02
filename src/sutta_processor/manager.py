@@ -29,7 +29,6 @@ class SuttaManager:
         self.dry_run = dry_run
         self.names_map = load_names_map()
         
-        # Output config
         if self.dry_run:
             logger.info("🧪 RUNNING IN DRY-RUN MODE")
             self.output_base = PROCESSED_DIR
@@ -39,16 +38,17 @@ class SuttaManager:
             self.output_base = OUTPUT_SUTTA_BOOKS
             self.json_indent = None
 
-        # State management cho Map-Reduce
-        self.buffers: Dict[str, Dict[str, Any]] = {} # Chứa dữ liệu đang xử lý: {'sutta/mn': {'mn1': ...}}
-        self.book_totals: Dict[str, int] = {}        # Tổng số bài cần xử lý mỗi cuốn: {'sutta/mn': 152}
-        self.book_progress: Dict[str, int] = {}      # Tiến độ hiện tại: {'sutta/mn': 50}
+        self.buffers: Dict[str, Dict[str, Any]] = {} 
+        self.book_totals: Dict[str, int] = {}       
+        self.book_progress: Dict[str, int] = {}      
         self.completed_books: List[str] = []
+        
+        # Map ngược: sutta_id -> group (để handle trường hợp worker trả về 'skipped')
+        self.sutta_group_map: Dict[str, str] = {}
 
     def run(self):
         self._prepare_output_dir()
 
-        # 1. PLAN: Lấy danh sách task và tính toán tổng số lượng
         book_tasks = generate_book_tasks(limit=PROCESS_LIMIT)
         
         all_tasks = []
@@ -56,54 +56,67 @@ class SuttaManager:
             self.book_totals[group_name] = len(tasks)
             self.book_progress[group_name] = 0
             self.buffers[group_name] = {}
-            all_tasks.extend(tasks) # Flatten thành 1 list duy nhất
+            
+            for sutta_id, path in tasks:
+                all_tasks.append((sutta_id, path))
+                # Lưu mapping để tra cứu khi worker bị skip
+                self.sutta_group_map[sutta_id] = group_name
 
+        # Tăng số lượng worker lên tối đa có thể để ép xung CPU
+        # Sutta processing là CPU-bound (regex, json parse) nên càng nhiều core càng tốt
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items from {len(book_tasks)} books with {workers} workers...")
 
-        # 2. EXECUTE: Xử lý song song toàn cục
         with ProcessPoolExecutor(max_workers=workers) as executor:
-            # Submit tất cả tasks một lúc
             futures = [executor.submit(process_worker, task) for task in all_tasks]
             
-            # 3. ACCUMULATE & FLUSH: Nhận kết quả dần dần
             for i, future in enumerate(as_completed(futures)):
-                group, sid, content = future.result()
-                
-                # Bỏ qua các bài lỗi/skipped
-                if not content:
-                    # Vẫn phải tăng progress để biết là đã xử lý xong (dù fail)
-                    self._update_progress_and_flush_if_ready(group)
-                    continue
+                try:
+                    res_group, res_sid, content = future.result()
+                    
+                    # Xác định group đúng:
+                    # Nếu res_group là "skipped" hoặc "error", ta dùng map để tìm group gốc
+                    target_group = self.sutta_group_map.get(res_sid)
+                    
+                    if not target_group:
+                        logger.warning(f"⚠️ Unknown group for {res_sid} (result: {res_group})")
+                        continue
 
-                # Lưu vào buffer
-                self.buffers[group][sid] = content
-                
-                # Check xem cuốn sách này đã đủ chưa -> Ghi đĩa
-                self._update_progress_and_flush_if_ready(group)
+                    # Nếu thành công (có content), lưu vào buffer
+                    if content:
+                        self.buffers[target_group][res_sid] = content
+                    else:
+                        # Log nhẹ nếu skip để biết
+                        # logger.debug(f"Skipped: {res_sid}")
+                        pass
 
-                # Log tiến độ tổng (mỗi 500 bài)
-                if (i + 1) % 500 == 0:
+                    # Cập nhật tiến độ cho group gốc
+                    self._update_progress_and_flush_if_ready(target_group)
+
+                except Exception as e:
+                    logger.error(f"❌ Worker exception: {e}")
+
+                if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} total items...")
 
-        # 4. FINISH
         if not self.dry_run:
             self._write_loader(self.completed_books)
         
         logger.info(f"✅ All done. Output: {self.output_base}")
 
     def _update_progress_and_flush_if_ready(self, group: str):
-        """Cập nhật tiến độ của một cuốn sách và ghi đĩa nếu nó đã hoàn thành."""
         self.book_progress[group] += 1
         
-        # Nếu đã xử lý đủ số lượng bài của sách này
         if self.book_progress[group] >= self.book_totals[group]:
-            if self.buffers[group]: # Chỉ ghi nếu có dữ liệu (tránh sách rỗng toàn bộ)
+            if self.buffers.get(group): 
                 generated_file = self._write_single_book(group, self.buffers[group])
                 self.completed_books.append(generated_file)
+            else:
+                logger.warning(f"⚠️ Book {group} completed but buffer empty (all skipped?)")
             
-            # QUAN TRỌNG: Xóa khỏi RAM ngay lập tức
-            del self.buffers[group]
+            # Clean RAM
+            if group in self.buffers:
+                del self.buffers[group]
 
     def _prepare_output_dir(self):
         if self.output_base.exists():
@@ -111,7 +124,6 @@ class SuttaManager:
         self.output_base.mkdir(parents=True, exist_ok=True)
 
     def _write_single_book(self, group_name: str, raw_data: Dict[str, Any]) -> str:
-        """Ghi file sách (JSON/JS) và trả về tên file."""
         sorted_sids = sorted(raw_data.keys(), key=natural_sort_key)
         linked_data = {}
         
@@ -129,7 +141,6 @@ class SuttaManager:
                 "content": raw_data[sid] 
             }
 
-        # Tạo file path: data/processed/sutta/mn.json
         if self.dry_run:
             file_name = f"{group_name}.json"
             file_path = self.output_base / file_name
