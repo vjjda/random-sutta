@@ -1,218 +1,119 @@
 # Path: src/sutta_processor/manager.py
-import json
 import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
-from pathlib import Path
 
-from .config import (
-    OUTPUT_SUTTA_BASE, 
-    OUTPUT_SUTTA_BOOKS, 
-    PROCESSED_DIR,
-    PROCESS_LIMIT,
-    DATA_ROOT
-)
+from .config import OUTPUT_SUTTA_BOOKS, PROCESSED_DIR
 from .finder import generate_book_tasks
 from .converter import process_worker
-from .name_parser import load_names_map 
+from .name_parser import load_names_map
+from .tree_utils import build_book_data
+from .writer import write_book_file, write_loader_script
 
-logger = logging.getLogger("SuttaProcessor")
+logger = logging.getLogger("SuttaProcessor.Manager")
 
 class SuttaManager:
+    """
+    Orchestrator class: Điều phối quá trình xử lý dữ liệu Sutta.
+    Trách nhiệm:
+    1. Chuẩn bị môi trường.
+    2. Phân phối tasks (multiprocessing).
+    3. Tổng hợp kết quả.
+    4. Gọi module Writer để xuất file.
+    """
+    
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
         self.names_map = load_names_map()
         
-        if self.dry_run:
-            logger.info("🧪 RUNNING IN DRY-RUN MODE")
-            self.output_base = PROCESSED_DIR
-            self.json_indent = 2
-        else:
-            logger.info("🚀 RUNNING IN PRODUCTION MODE")
-            self.output_base = OUTPUT_SUTTA_BOOKS
-            self.json_indent = None
-
-        self.buffers: Dict[str, Dict[str, Any]] = {} 
-        self.book_totals: Dict[str, int] = {}       
-        self.book_progress: Dict[str, int] = {}      
-        self.completed_books: List[str] = []
+        # State Management
+        self.buffers: Dict[str, Dict[str, Any]] = {}
+        self.book_totals: Dict[str, int] = {}
+        self.book_progress: Dict[str, int] = {}
+        self.completed_files: List[str] = []
         self.sutta_group_map: Dict[str, str] = {}
 
-    def run(self):
-        self._prepare_output_dir()
+    def _prepare_environment(self) -> None:
+        target_dir = PROCESSED_DIR if self.dry_run else OUTPUT_SUTTA_BOOKS
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        mode = "🧪 DRY-RUN" if self.dry_run else "🚀 PRODUCTION"
+        logger.info(f"{mode} MODE INITIALIZED")
+
+    def _handle_task_completion(self, group: str, sutta_id: str, content: Any) -> None:
+        """Xử lý khi một worker hoàn thành task."""
+        # Update Data Buffer
+        if content:
+            self.buffers[group][sutta_id] = content
+            
+        # Update Progress
+        self.book_progress[group] += 1
+        
+        # Check if Book is Ready
+        if self.book_progress[group] >= self.book_totals[group]:
+            self._finalize_book(group)
+            # Cleanup memory
+            if group in self.buffers:
+                del self.buffers[group]
+
+    def _finalize_book(self, group: str) -> None:
+        """Khi một cuốn sách đủ dữ liệu, đóng gói và ghi ra file."""
+        raw_data = self.buffers.get(group, {})
+        
+        # 1. Build Book Object (Logic in tree_utils)
+        book_obj = build_book_data(group, raw_data, self.names_map)
+        
+        # 2. Write to Disk (Logic in writer)
+        filename = write_book_file(group, book_obj, self.dry_run)
+        
+        if filename:
+            self.completed_files.append(filename)
+
+    def run(self) -> None:
+        self._prepare_environment()
+        
+        # 1. Generate Tasks
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
+        
         for group_name, tasks in book_tasks.items():
             self.book_totals[group_name] = len(tasks)
             self.book_progress[group_name] = 0
             self.buffers[group_name] = {}
+            
             for task in tasks:
                 all_tasks.append(task)
+                # Map sutta_id ngược lại group để lookup nhanh khi worker trả về
                 self.sutta_group_map[task[0]] = group_name
 
+        # 2. Execute Workers
         workers = os.cpu_count() or 4
-        logger.info(f"🚀 Processing {len(all_tasks)} items...")
+        logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [executor.submit(process_worker, task) for task in all_tasks]
+            
             for i, future in enumerate(as_completed(futures)):
                 try:
                     res_status, res_sid, content = future.result()
                     target_group = self.sutta_group_map.get(res_sid)
-                    if not target_group: continue
-                    if res_status == "success" and content:
-                        self.buffers[target_group][res_sid] = content
-                    self._update_progress_and_flush_if_ready(target_group)
+                    
+                    if target_group:
+                        success_content = content if res_status == "success" else None
+                        self._handle_task_completion(target_group, res_sid, success_content)
+                        
                 except Exception as e:
                     logger.error(f"❌ Worker exception: {e}")
+
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
+        # 3. Finalize Loader (Only in Prod)
         if not self.dry_run:
-            self._write_loader(self.completed_books)
-        logger.info(f"✅ All done. Output: {self.output_base}")
-
-    def _prepare_output_dir(self):
-        if self.output_base.exists():
-            shutil.rmtree(self.output_base)
-        self.output_base.mkdir(parents=True, exist_ok=True)
-
-    def _update_progress_and_flush_if_ready(self, group: str):
-        self.book_progress[group] += 1
-        if self.book_progress[group] >= self.book_totals[group]:
-            generated_file = self._write_single_book(group, self.buffers.get(group, {}))
-            self.completed_books.append(generated_file)
-            if group in self.buffers:
-                del self.buffers[group]
-
-    # --- Tree Helpers ---
-
-    def _load_original_tree(self, group_name: str) -> Dict[str, Any]:
-        book_id = group_name.split("/")[-1]
-        tree_path = DATA_ROOT / "tree" / group_name / f"{book_id}-tree.json"
-        
-        if not tree_path.exists():
-            found = list((DATA_ROOT / "tree").rglob(f"{book_id}-tree.json"))
-            if found:
-                tree_path = found[0]
-            else:
-                return {book_id: []} 
-
-        try:
-            with open(tree_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {book_id: []}
-
-    def _simplify_structure(self, node: Any) -> Any:
-        if isinstance(node, list):
-            if all(isinstance(x, str) for x in node):
-                return node
-            new_dict = {}
-            for item in node:
-                if isinstance(item, dict):
-                    for key, val in item.items():
-                        new_dict[key] = self._simplify_structure(val)
-            return new_dict
-        elif isinstance(node, dict):
-            return {k: self._simplify_structure(v) for k, v in node.items()}
-        return node
-
-    def _flatten_tree_leaves(self, node: Any) -> List[str]:
-        leaves = []
-        if isinstance(node, str):
-            return [node]
-        elif isinstance(node, list):
-            for child in node: leaves.extend(self._flatten_tree_leaves(child))
-        elif isinstance(node, dict):
-            for children in node.values(): leaves.extend(self._flatten_tree_leaves(children))
-        return leaves
-
-    def _collect_meta_from_structure(self, node: Any, meta_dict: Dict[str, Any]):
-        if isinstance(node, str):
-            uid = node
-            self._add_meta(uid, "leaf", meta_dict)
-        elif isinstance(node, list):
-            for child in node: self._collect_meta_from_structure(child, meta_dict)
-        elif isinstance(node, dict):
-            for uid, children in node.items():
-                self._add_meta(uid, "branch", meta_dict)
-                self._collect_meta_from_structure(children, meta_dict)
-
-    def _add_meta(self, uid: str, type_default: str, meta_dict: Dict[str, Any]):
-        if uid not in meta_dict:
-            info = self.names_map.get(uid, {})
-            meta_dict[uid] = {
-                "type": info.get("type", type_default),
-                "acronym": info.get("acronym", ""),
-                "translated_title": info.get("translated_title", ""),
-                "original_title": info.get("original_title", ""),
-                "blurb": info.get("blurb")
-            }
-
-    def _write_single_book(self, group_name: str, raw_data: Dict[str, Any]) -> str:
-        # 1. Structure
-        raw_tree = self._load_original_tree(group_name)
-        structure = self._simplify_structure(raw_tree)
-
-        # 2. Meta
-        meta_dict = {}
-        self._collect_meta_from_structure(structure, meta_dict)
-        
-        for sid in raw_data.keys():
-            if sid not in meta_dict:
-                self._add_meta(sid, "leaf", meta_dict)
-
-        # 3. Data
-        ordered_leaves = self._flatten_tree_leaves(structure)
-        data_dict = {}
-        
-        for uid in ordered_leaves:
-            if uid in raw_data:
-                data_dict[uid] = raw_data[uid]
-        
-        for uid, content in raw_data.items():
-            if uid not in data_dict:
-                data_dict[uid] = content
-
-        book_id = group_name.split("/")[-1]
-        book_meta = self.names_map.get(book_id, {})
-        
-        final_output = {
-            "id": book_id,
-            "title": book_meta.get("translated_title", book_id.upper()),
-            "structure": structure,
-            "meta": meta_dict,
-            "data": data_dict
-        }
-
-        # Ghi file với hậu tố _book
-        if self.dry_run:
-            file_name = f"{group_name}_book.json" # [UPDATE] Added suffix
-            file_path = self.output_base / file_name
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(final_output, f, ensure_ascii=False, indent=self.json_indent)
-        else:
-            file_name = f"{group_name}_book.js"   # [UPDATE] Added suffix
-            file_path = self.output_base / file_name
-            file_path.parent.mkdir(parents=True, exist_ok=True)
+            write_loader_script(self.completed_files)
             
-            json_str = json.dumps(final_output, ensure_ascii=False, indent=self.json_indent)
-            safe_group = group_name.replace("/", "_")
-            js_content = f"window.SUTTA_DB = window.SUTTA_DB || {{}}; window.SUTTA_DB['{safe_group}'] = {json_str};"
-            
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(js_content)
-        
-        logger.info(f"   💾 Saved: {file_name} ({len(data_dict)} leaves)")
-        return file_name
-
-    def _write_loader(self, files: list):
-        files.sort()
-        loader_path = OUTPUT_SUTTA_BASE / "sutta_loader.js"
-        js_content = f"window.ALL_SUTTA_FILES = {json.dumps(files, indent=2)};\n"
-        with open(loader_path, "w", encoding="utf-8") as f:
-            f.write(js_content)
+        logger.info("✅ All processing tasks completed.")

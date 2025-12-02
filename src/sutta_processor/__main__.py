@@ -1,18 +1,20 @@
+#!/usr/bin/env python3
 # Path: src/sutta_processor/__main__.py
 import logging
 import sys
 import argparse
 from .manager import SuttaManager
 
-if __name__ == "__main__":
-    # Cấu hình Logging
+def setup_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%H:%M:%S'
     )
+
+def main() -> None:
+    setup_logging()
     
-    # Cấu hình Argument Parser
     parser = argparse.ArgumentParser(description="Sutta Data Processor")
     parser.add_argument(
         "-d", "--dry-run", 
@@ -29,8 +31,8 @@ if __name__ == "__main__":
         print("\n🛑 Stopped by user.")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ Fatal Error: {e}")
-        # In full traceback để debug nếu cần
-        import traceback
-        traceback.print_exc()
+        logging.error(f"❌ Fatal Error: {e}")
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
