@@ -43,6 +43,7 @@ class SuttaManager:
     def run(self):
         self._prepare_output_dir()
         book_tasks = generate_book_tasks(self.names_map)
+        
         all_tasks = []
         for group_name, tasks in book_tasks.items():
             self.book_totals[group_name] = len(tasks)
@@ -57,16 +58,21 @@ class SuttaManager:
 
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [executor.submit(process_worker, task) for task in all_tasks]
+            
             for i, future in enumerate(as_completed(futures)):
                 try:
                     res_status, res_sid, content = future.result()
                     target_group = self.sutta_group_map.get(res_sid)
                     if not target_group: continue
+
                     if res_status == "success" and content:
                         self.buffers[target_group][res_sid] = content
+                    
                     self._update_progress_and_flush_if_ready(target_group)
+
                 except Exception as e:
                     logger.error(f"❌ Worker exception: {e}")
+
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
@@ -82,33 +88,64 @@ class SuttaManager:
     def _update_progress_and_flush_if_ready(self, group: str):
         self.book_progress[group] += 1
         if self.book_progress[group] >= self.book_totals[group]:
-            # Flush kể cả khi buffer trống (vẫn cần ghi structure và meta)
-            generated_file = self._write_single_book(group, self.buffers.get(group, {}))
-            self.completed_books.append(generated_file)
+            if self.buffers.get(group): 
+                generated_file = self._write_single_book(group, self.buffers[group])
+                self.completed_books.append(generated_file)
+            else:
+                logger.info(f"   ℹ️  Skipped Book: {group} (Empty buffer)")
             
             if group in self.buffers:
                 del self.buffers[group]
 
+    # --- Tree Helpers ---
+
     def _load_original_tree(self, group_name: str) -> List[Any]:
-        # Logic đọc file tree (không thay đổi)
         book_id = group_name.split("/")[-1]
         tree_path = DATA_ROOT / "tree" / group_name / f"{book_id}-tree.json"
+        
         if not tree_path.exists():
             found = list((DATA_ROOT / "tree").rglob(f"{book_id}-tree.json"))
             if found: tree_path = found[0]
-            else: return [book_id] 
+            else: return [book_id]
+
         try:
             with open(tree_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return list(data.values())[0] if isinstance(data, dict) else []
         except: return []
 
-    def _collect_meta_from_structure(self, node: Any, meta_dict: Dict[str, Any]):
-        """
-        Duyệt cây Structure để thu thập metadata cho TẤT CẢ các node (Branch & Leaf).
-        """
+    def _enrich_tree_structure(self, node: Any) -> Any:
+        if isinstance(node, str): return node
+        elif isinstance(node, list): return [self._enrich_tree_structure(child) for child in node]
+        elif isinstance(node, dict):
+            for key, children in node.items():
+                meta = self.names_map.get(key, {})
+                return {
+                    "uid": key,
+                    "type": "branch",
+                    "acronym": meta.get("acronym"),
+                    "translated_title": meta.get("translated_title"),
+                    "original_title": meta.get("original_title"),
+                    "blurb": meta.get("blurb"),
+                    "children": self._enrich_tree_structure(children)
+                }
+        return node
+
+    def _flatten_tree_leaves(self, node: Any) -> List[str]:
+        """Trích xuất danh sách lá (UID) từ tree theo đúng thứ tự."""
+        leaves = []
         if isinstance(node, str):
-            # Đây là Leaf UID
+            return [node]
+        elif isinstance(node, list):
+            for child in node:
+                leaves.extend(self._flatten_tree_leaves(child))
+        elif isinstance(node, dict):
+            for children in node.values():
+                leaves.extend(self._flatten_tree_leaves(children))
+        return leaves
+
+    def _collect_meta_from_structure(self, node: Any, meta_dict: Dict[str, Any]):
+        if isinstance(node, str): # Leaf
             uid = node
             if uid not in meta_dict:
                 info = self.names_map.get(uid, {})
@@ -119,13 +156,9 @@ class SuttaManager:
                     "original_title": info.get("original_title", ""),
                     "blurb": info.get("blurb")
                 }
-        
         elif isinstance(node, list):
-            for child in node:
-                self._collect_meta_from_structure(child, meta_dict)
-                
-        elif isinstance(node, dict):
-            # Đây là Branch (Vagga/Pannasa)
+            for child in node: self._collect_meta_from_structure(child, meta_dict)
+        elif isinstance(node, dict): # Branch
             for uid, children in node.items():
                 if uid not in meta_dict:
                     info = self.names_map.get(uid, {})
@@ -139,17 +172,14 @@ class SuttaManager:
                 self._collect_meta_from_structure(children, meta_dict)
 
     def _write_single_book(self, group_name: str, raw_data: Dict[str, Any]) -> str:
-        """
-        Output: { structure: [...], meta: {uid: ...}, data: {uid: ...} }
-        """
-        # 1. Structure: Lấy nguyên bản từ tree.json (không enrich ở đây nữa)
-        structure = self._load_original_tree(group_name)
+        # 1. Structure
+        raw_tree = self._load_original_tree(group_name)
+        structure = raw_tree # Frontend dùng structure để render TOC
 
-        # 2. Meta: Xây dựng metadata cho TOÀN BỘ node trong structure
+        # 2. Meta
         meta_dict = {}
         self._collect_meta_from_structure(structure, meta_dict)
-        
-        # Bổ sung meta cho các item có trong raw_data nhưng có thể thiếu trong tree (Edge case)
+        # Bổ sung meta cho các item không có trong tree (Edge cases)
         for sid in raw_data.keys():
             if sid not in meta_dict:
                 info = self.names_map.get(sid, {})
@@ -161,10 +191,22 @@ class SuttaManager:
                     "blurb": info.get("blurb")
                 }
 
-        # 3. Data: Chỉ chứa nội dung content (đã bao gồm segments dict)
-        data_dict = raw_data
+        # 3. Data (RE-ORDERING LOGIC)
+        # Thay vì dùng raw_data trực tiếp (lộn xộn), ta sort theo tree order
+        ordered_leaves = self._flatten_tree_leaves(raw_tree)
+        data_dict = {}
+        
+        # 3a. Add items theo đúng thứ tự trong tree
+        for uid in ordered_leaves:
+            if uid in raw_data:
+                data_dict[uid] = raw_data[uid]
+        
+        # 3b. Add nốt các item "lạc loài" (có trong raw_data nhưng không có trong tree)
+        for uid, content in raw_data.items():
+            if uid not in data_dict:
+                data_dict[uid] = content
 
-        # Book Info (Header)
+        # Book Info
         book_id = group_name.split("/")[-1]
         book_meta = self.names_map.get(book_id, {})
         
@@ -195,7 +237,7 @@ class SuttaManager:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(js_content)
         
-        logger.info(f"   💾 Saved: {file_name} ({len(data_dict)} leaves)")
+        logger.info(f"   💾 Saved: {file_name} ({len(data_dict)} items)")
         return file_name
 
     def _write_loader(self, files: list):
