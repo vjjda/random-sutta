@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any
 from pathlib import Path
 
 from .config import (
@@ -21,6 +21,9 @@ from .name_parser import load_names_map
 logger = logging.getLogger("SuttaProcessor")
 
 class SuttaManager:
+    # ... (Giữ nguyên __init__, run, _prepare_output_dir, _update_progress_and_flush_if_ready) ...
+    # Chỉ thay đổi các hàm helper bên dưới cho Structure
+
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
         self.names_map = load_names_map()
@@ -87,106 +90,146 @@ class SuttaManager:
             if group in self.buffers:
                 del self.buffers[group]
 
-    def _load_original_tree(self, group_name: str) -> Any:
-        """Đọc file tree.json gốc."""
+    # --- Structure Helpers ---
+
+    def _load_original_tree(self, group_name: str) -> Dict[str, Any]:
+        """
+        Đọc file tree.json gốc.
+        [UPDATE] Giữ nguyên Root Key (ví dụ: {"mn": [...]}) để nhất quán.
+        """
         book_id = group_name.split("/")[-1]
         tree_path = DATA_ROOT / "tree" / group_name / f"{book_id}-tree.json"
         
+        # Fallback search
         if not tree_path.exists():
             found = list((DATA_ROOT / "tree").rglob(f"{book_id}-tree.json"))
-            if found: tree_path = found[0]
-            else: return [book_id] # Fallback flat list
+            if found:
+                tree_path = found[0]
+            else:
+                # [EDGE CASE] Nếu không có tree (như pli-tv-bi-pm)
+                # Tạo cây giả lập nhưng có Root Key chuẩn
+                return {book_id: [book_id]}
 
         try:
             with open(tree_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                # Trả về nguyên cục data gốc (thường là Dict {"mn": [...]})
-                # Ta sẽ simplify nó sau
-                if isinstance(data, dict):
-                    # Lấy nội dung bên trong root key (ví dụ key 'mn')
-                    return list(data.values())[0]
-                return data
-        except: return []
+                return data # Trả về nguyên dict { "mn": [...] }
+        except Exception:
+            return {book_id: []}
 
-    def _simplify_structure(self, node: Any) -> Any:
-        """
-        Chuyển đổi cấu trúc List-of-Dicts thành Pure Dict để JSON gọn và clean hơn.
-        Input: [ {"groupA": [...]}, {"groupB": [...]} ]
-        Output: { "groupA": [...], "groupB": [...] } (Thứ tự key được bảo toàn trong Py3.7+)
-        """
-        if isinstance(node, list):
-            # Kiểm tra xem list này có phải là danh sách các Leaves (String) không?
-            # Nếu là list of strings (uid bài kinh), giữ nguyên là list để đảm bảo sequence
-            if all(isinstance(x, str) for x in node):
-                return node
+    def _enrich_tree_structure(self, node: Any) -> Any:
+        # Nếu node là Dictionary (Branch hoặc Root)
+        if isinstance(node, dict):
+            enriched_dict = {}
+            for key, val in node.items():
+                # Lấy metadata cho Key (Branch ID hoặc Book ID)
+                meta = self.names_map.get(key, {})
+                
+                # Recursive cho children
+                children = self._enrich_tree_structure(val)
+                
+                # Tạo object enrich
+                enriched_node = {
+                    "uid": key,
+                    "type": meta.get("type", "branch"), # Default là branch nếu ko tìm thấy
+                    "acronym": meta.get("acronym"),
+                    "translated_title": meta.get("translated_title"),
+                    "original_title": meta.get("original_title"),
+                    "blurb": meta.get("blurb"),
+                    "children": children
+                }
+                
+                # Với Root Key (như 'mn'), ta không muốn wrap nó trong list 
+                # mà muốn trả về chính object đó để làm root của mảng structure?
+                # Nhưng cấu trúc gốc là Dict, nên ta cứ trả về Dict đã enrich
+                # Tuy nhiên, hàm _collect_meta_from_structure cần duyệt nó.
+                
+                # Để giữ đúng cấu trúc cây JSON output:
+                # structure: { "uid": "mn", "children": [...] }
+                return enriched_node
+                
+        elif isinstance(node, list):
+            return [self._enrich_tree_structure(child) for child in node]
             
-            # Nếu là list of dicts (Branch), chuyển thành Dict
-            new_dict = {}
-            for item in node:
-                if isinstance(item, dict):
-                    for key, val in item.items():
-                        new_dict[key] = self._simplify_structure(val)
-                else:
-                    # Trường hợp hỗn hợp (hiếm), giữ nguyên
-                    pass
-            return new_dict
-            
-        elif isinstance(node, dict):
-            # Đệ quy xuống dưới
-            return {k: self._simplify_structure(v) for k, v in node.items()}
+        elif isinstance(node, str):
+            return node # Leaf string giữ nguyên
             
         return node
 
     def _flatten_tree_leaves(self, node: Any) -> List[str]:
-        """Lấy danh sách UID bài kinh để sắp xếp data."""
         leaves = []
         if isinstance(node, str):
             return [node]
         elif isinstance(node, list):
             for child in node: leaves.extend(self._flatten_tree_leaves(child))
         elif isinstance(node, dict):
-            for children in node.values(): leaves.extend(self._flatten_tree_leaves(children))
+            # Nếu là Dict (Branch/Root), duyệt qua values (children)
+            # Với cấu trúc Enrich mới {uid:..., children:...}, ta cần duyệt field 'children'
+            if "children" in node:
+                leaves.extend(self._flatten_tree_leaves(node["children"]))
+            else:
+                # Cấu trúc gốc {Key: Value}
+                for val in node.values():
+                    leaves.extend(self._flatten_tree_leaves(val))
         return leaves
 
-    def _collect_meta(self, node: Any, meta_dict: Dict[str, Any]):
-        """Duyệt cấu trúc đã simplify (Dict/List) để lấy metadata."""
+    def _collect_meta_from_structure(self, node: Any, meta_dict: Dict[str, Any]):
         if isinstance(node, str): # Leaf
-            self._add_meta(node, "leaf", meta_dict)
+            uid = node
+            if uid not in meta_dict:
+                info = self.names_map.get(uid, {})
+                meta_dict[uid] = {
+                    "type": info.get("type", "leaf"),
+                    "acronym": info.get("acronym", ""),
+                    "translated_title": info.get("translated_title", ""),
+                    "original_title": info.get("original_title", ""),
+                    "blurb": info.get("blurb")
+                }
         elif isinstance(node, list):
-            for child in node: self._collect_meta(child, meta_dict)
-        elif isinstance(node, dict): # Branch (key là UID)
-            for uid, children in node.items():
-                self._add_meta(uid, "branch", meta_dict)
-                self._collect_meta(children, meta_dict)
-
-    def _add_meta(self, uid: str, type_default: str, meta_dict: Dict[str, Any]):
-        if uid not in meta_dict:
-            info = self.names_map.get(uid, {})
-            meta_dict[uid] = {
-                "type": info.get("type", type_default),
-                "acronym": info.get("acronym", ""),
-                "translated_title": info.get("translated_title", ""),
-                "original_title": info.get("original_title", ""),
-                "blurb": info.get("blurb")
-            }
+            for child in node: self._collect_meta_from_structure(child, meta_dict)
+        elif isinstance(node, dict): 
+            # Xử lý Node đã enrich {uid:..., children:...}
+            if "uid" in node:
+                uid = node["uid"]
+                if uid not in meta_dict:
+                    # Metadata đã có sẵn trong node enrich, nhưng để nhất quán ta lấy từ names_map
+                    info = self.names_map.get(uid, {})
+                    meta_dict[uid] = {
+                        "type": info.get("type", "branch"),
+                        "acronym": info.get("acronym", ""),
+                        "translated_title": info.get("translated_title", ""),
+                        "original_title": info.get("original_title", ""),
+                        "blurb": info.get("blurb")
+                    }
+                if "children" in node:
+                    self._collect_meta_from_structure(node["children"], meta_dict)
 
     def _write_single_book(self, group_name: str, raw_data: Dict[str, Any]) -> str:
-        # 1. Structure: Load và Simplify
-        original_tree = self._load_original_tree(group_name)
-        structure = self._simplify_structure(original_tree)
-
-        # 2. Meta: Quét từ Structure đã simplify
-        meta_dict = {}
-        self._collect_meta(structure, meta_dict)
+        # 1. Structure: Load và Enrich (Giữ Root Key)
+        raw_tree = self._load_original_tree(group_name)
+        # raw_tree lúc này là { "mn": [...] } hoặc { "pli-tv-bi-pm": [...] }
         
-        # Bổ sung meta cho các bài kinh có data nhưng thiếu trong tree
+        enriched_structure = self._enrich_tree_structure(raw_tree)
+        # enriched_structure lúc này là { "uid": "mn", "type": "branch", "children": [...] }
+
+        # 2. Meta: Quét từ Structure đã enrich
+        meta_dict = {}
+        self._collect_meta_from_structure(enriched_structure, meta_dict)
+        
+        # Bổ sung meta cho các item lạc (Edge cases)
         for sid in raw_data.keys():
             if sid not in meta_dict:
-                self._add_meta(sid, "leaf", meta_dict)
+                info = self.names_map.get(sid, {})
+                meta_dict[sid] = {
+                    "type": info.get("type", "leaf"),
+                    "acronym": info.get("acronym", ""),
+                    "translated_title": info.get("translated_title", ""),
+                    "original_title": info.get("original_title", ""),
+                    "blurb": info.get("blurb")
+                }
 
         # 3. Data: Sắp xếp theo Tree Order
-        # Vì structure giờ là Dict, ta vẫn cần hàm flatten để biết thứ tự đúng
-        ordered_leaves = self._flatten_tree_leaves(structure)
+        ordered_leaves = self._flatten_tree_leaves(enriched_structure)
         data_dict = {}
         
         for uid in ordered_leaves:
@@ -203,7 +246,7 @@ class SuttaManager:
         final_output = {
             "id": book_id,
             "title": book_meta.get("translated_title", book_id.upper()),
-            "structure": structure, # Pure Key:Value structure
+            "structure": enriched_structure,
             "meta": meta_dict,
             "data": data_dict
         }
