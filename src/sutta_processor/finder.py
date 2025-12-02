@@ -10,11 +10,9 @@ from .config import DATA_ROOT
 logger = logging.getLogger("SuttaProcessor")
 
 def find_sutta_files(sutta_id: str, root_file_path: Path) -> Dict[str, Path]:
-    # ... (Giữ nguyên logic tìm file phụ trợ HTML/Trans/Comment như cũ) ...
+    # ... (Giữ nguyên hàm này không đổi) ...
     files = {'root': root_file_path}
     try:
-        # Logic tìm file phụ trợ (Html, Trans...) giữ nguyên
-        # Chỉ cần đảm bảo root_file_path là đúng
         rel_path = root_file_path.relative_to(DATA_ROOT / "root")
         collection_part = rel_path.parent 
         
@@ -33,28 +31,18 @@ def find_sutta_files(sutta_id: str, root_file_path: Path) -> Dict[str, Path]:
     return files
 
 def _identify_book_group_from_tree(tree_file: Path) -> str:
-    """
-    Xác định group ID dựa vào vị trí file tree.
-    data/bilara/tree/sutta/mn-tree.json -> sutta/mn
-    data/bilara/tree/sutta/kn/dhp-tree.json -> sutta/kn/dhp
-    """
+    # ... (Giữ nguyên hàm này) ...
     try:
         base_tree = DATA_ROOT / "tree"
         rel_path = tree_file.relative_to(base_tree)
-        # rel_path: sutta/mn-tree.json hoặc sutta/kn/dhp-tree.json
-        
-        # Lấy parent path làm group prefix
         parent = rel_path.parent
-        
-        # Lấy tên file bỏ đuôi -tree.json làm book id
         book_id = tree_file.name.replace("-tree.json", "")
-        
         return f"{parent}/{book_id}"
     except Exception:
         return "uncategorized"
 
 def _extract_leaves_from_tree(node: Any) -> List[str]:
-    """Đệ quy lấy danh sách UID (lá) từ cấu trúc tree."""
+    # ... (Giữ nguyên hàm này) ...
     leaves = []
     if isinstance(node, str):
         return [node]
@@ -66,50 +54,47 @@ def _extract_leaves_from_tree(node: Any) -> List[str]:
             leaves.extend(_extract_leaves_from_tree(children))
     return leaves
 
-def _locate_root_file(sutta_id: str, group_path: str) -> Path:
+# --- [NEW] LOGIC TỐI ƯU INDEXING ---
+
+def _build_root_file_index() -> Dict[str, Path]:
     """
-    Tìm file root json cho một sutta_id cụ thể.
-    group_path: sutta/mn -> tìm trong data/bilara/root/sutta/mn
+    Quét ổ cứng 1 lần duy nhất để tạo bản đồ { sutta_id: file_path }.
+    Giúp giảm từ 7000+ lần seek đĩa xuống còn 1 lần.
     """
-    # Logic tìm kiếm file vật lý
-    # 1. Thử tìm trong thư mục group tương ứng
-    base_root = DATA_ROOT / "root" / group_path
+    logger.info("⚡ Indexing root files for fast lookup...")
+    root_dir = DATA_ROOT / "root"
+    index = {}
     
-    # Pattern chuẩn: mn1_root-pli-ms.json
-    pattern = f"{sutta_id}_root-*.json"
-    
-    # [Optimize] Nếu biết chắc folder, tìm trực tiếp
-    if base_root.exists():
-        found = list(base_root.glob(pattern))
-        if found:
-            return found[0]
+    if not root_dir.exists():
+        return index
+
+    # Dùng rglob để liệt kê tất cả file một thể
+    for file_path in root_dir.rglob("*_root-*.json"):
+        if file_path.is_file():
+            # Tên file: mn1_root-pli-ms.json -> sutta_id: mn1
+            sutta_id = file_path.name.split("_")[0]
+            index[sutta_id] = file_path
             
-    # Fallback: Nếu không tìm thấy (ví dụ file lẻ ở vinaya), quét rộng hơn một chút
-    # Hoặc dùng rglob từ cấp cha
-    parent_search = base_root.parent
-    if parent_search.exists():
-        found = list(parent_search.rglob(pattern))
-        if found:
-            return found[0]
-            
-    return None
+    logger.info(f"   -> Indexed {len(index)} root files.")
+    return index
 
 def generate_book_tasks(limit: int = 0) -> Dict[str, List[Tuple[str, Path]]]:
     """
-    1. Quét folder 'tree' để tìm danh sách các cuốn sách.
-    2. Parse mỗi file tree để lấy danh sách bài kinh (Leaves) theo THỨ TỰ CHUẨN.
-    3. Tìm file root tương ứng cho mỗi bài kinh.
+    1. Tạo Index file root (nhanh).
+    2. Quét Tree file và map ID từ index ra (nhanh).
     """
     tree_dir = DATA_ROOT / "tree"
     if not tree_dir.exists():
         raise FileNotFoundError(f"Tree directory missing: {tree_dir}")
+
+    # [OPTIMIZATION] Bước 1: Build Index
+    file_index = _build_root_file_index()
 
     logger.info(f"🌲 Scanning Tree files in {tree_dir} for canonical ordering...")
     
     book_tasks: Dict[str, List[Tuple[str, Path]]] = {}
     total_suttas = 0
     
-    # Tìm tất cả file *-tree.json
     tree_files = sorted(list(tree_dir.rglob("*-tree.json")))
     
     for tree_file in tree_files:
@@ -122,18 +107,15 @@ def generate_book_tasks(limit: int = 0) -> Dict[str, List[Tuple[str, Path]]]:
             with open(tree_file, "r", encoding="utf-8") as f:
                 tree_data = json.load(f)
                 
-            # Trích xuất danh sách bài kinh theo thứ tự
             ordered_uids = _extract_leaves_from_tree(tree_data)
             
             tasks = []
             for uid in ordered_uids:
-                # Tìm file vật lý
-                root_path = _locate_root_file(uid, group_id)
-                if root_path:
-                    tasks.append((uid, root_path))
+                # [OPTIMIZATION] Bước 2: Tra cứu RAM (O(1)) thay vì quét đĩa
+                if uid in file_index:
+                    tasks.append((uid, file_index[uid]))
                 else:
-                    # Có thể xảy ra nếu tree có ID nhưng chưa fetch text về (ví dụ bản dịch chưa có)
-                    # logger.debug(f"Missing root file for {uid} in {group_id}")
+                    # Có thể log debug nhẹ nếu cần, nhưng thường là do chưa có bản dịch
                     pass
             
             if tasks:
