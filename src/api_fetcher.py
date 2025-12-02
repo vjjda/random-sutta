@@ -15,6 +15,12 @@ DATA_ROOT_DIR = PROJECT_ROOT / "data" / "bilara" / "root"
 DATA_JSON_DIR = PROJECT_ROOT / "data" / "json"
 API_TEMPLATE = "https://suttacentral.net/api/suttaplex/{}"
 
+# [NEW] Danh sách các UID bổ sung (không tìm thấy qua quét thư mục)
+EXTRA_UIDS = {
+    "pli-tv-bi-pm": "vinaya",
+    "pli-tv-bu-pm": "vinaya"
+}
+
 # --- Logging Setup ---
 logging.basicConfig(
     level=logging.INFO,
@@ -47,21 +53,13 @@ def discover_books() -> List[Tuple[str, str]]:
             else:
                 found_books.append((item.name, "sutta"))
 
-    # 2. Scan Vinaya Pitaka (Cập nhật logic phát hiện file lẻ)
+    # 2. Scan Vinaya Pitaka
     vinaya_dir = DATA_ROOT_DIR / "vinaya"
     if vinaya_dir.exists():
         logger.info("   🔍 Scanning Vinaya Pitaka...")
         for item in vinaya_dir.iterdir():
-            # Trường hợp 1: Thư mục (như pli-tv-bi-vb)
             if item.is_dir():
                 found_books.append((item.name, "vinaya"))
-            
-            # Trường hợp 2: File Root lẻ (như pli-tv-bi-pm_root-pli-ms.json)
-            # Đây là 2 cuốn Patimokkha đặc biệt
-            elif item.is_file() and item.name.endswith("_root-pli-ms.json"):
-                # Lấy ID sách từ tên file (pli-tv-bi-pm)
-                book_id = item.name.split("_")[0]
-                found_books.append((book_id, "vinaya"))
 
     # 3. Scan Abhidhamma Pitaka
     abhi_dir = DATA_ROOT_DIR / "abhidhamma"
@@ -71,13 +69,23 @@ def discover_books() -> List[Tuple[str, str]]:
             if item.is_dir():
                 found_books.append((item.name, "abhidhamma"))
 
+    # 4. [NEW] Inject Extra UIDs
+    for uid, category in EXTRA_UIDS.items():
+        # Kiểm tra xem có file root tương ứng không thì mới thêm
+        # (Để tránh fetch thừa nếu người dùng chưa chạy sutta_fetcher đủ)
+        # Tuy nhiên, fetch dư metadata cũng không sao.
+        found_books.append((uid, category))
+
     params_to_ignore = {'xplayground', '__pycache__', '.git', '.DS_Store'}
-    final_list = [
-        (book, cat) for book, cat in sorted(found_books) 
-        if book not in params_to_ignore
-    ]
+    # Remove duplicates and ignore list
+    unique_books = {}
+    for book, cat in found_books:
+        if book not in params_to_ignore:
+            unique_books[book] = cat
+            
+    final_list = sorted([(k, v) for k, v in unique_books.items()])
     
-    logger.info(f"✅ Discovered {len(final_list)} books.")
+    logger.info(f"✅ Discovered {len(final_list)} books (including extras).")
     return final_list
 
 def fetch_book_json(book_info: Tuple[str, str]) -> str:
@@ -110,7 +118,7 @@ def fetch_book_json(book_info: Tuple[str, str]) -> str:
         return f"❌ {category_path}/{book_id}: Error {e}"
 
 def orchestrate_api_fetch() -> None:
-    logger.info("🚀 Starting Metadata Fetch (Deep Scan + Files)...")
+    logger.info("🚀 Starting Metadata Fetch...")
     
     target_books = discover_books()
     if not target_books:
@@ -121,7 +129,7 @@ def orchestrate_api_fetch() -> None:
         DATA_JSON_DIR.mkdir(parents=True)
 
     workers = min(10, os.cpu_count() * 2) 
-    logger.info(f"   Using {workers} threads for {len(target_books)} books...")
+    logger.info(f"   Using {workers} threads for {len(target_books)} requests...")
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
