@@ -57,30 +57,43 @@ def find_auxiliary_file(sutta_id: str, category: str) -> Optional[Path]:
 
 def get_group_name(root_file_path: Path) -> str:
     """
-    Xác định group với cấu trúc thư mục đầy đủ.
-    Output mong muốn: 'sutta/mn', 'sutta/kn/dhp', 'vinaya/pli-tv-bi-vb', 'abhidhamma/ds'
+    Xác định group chuẩn xác từ đường dẫn file root.
+    Hỗ trợ cả file nằm sâu trong folder con và file lẻ nằm ngay root category.
     """
     try:
         base_root = DATA_ROOT / "root"
         rel_path = root_file_path.relative_to(base_root)
         parts = rel_path.parts
         
-        # parts[0] là 'sutta', 'vinaya', hoặc 'abhidhamma'
+        if not parts:
+            return "uncategorized"
+
+        category = parts[0]
         
-        if len(parts) >= 2:
-            category = parts[0]
-            
+        # Trường hợp 1: File nằm trong folder con (Deep structure)
+        # Ví dụ: vinaya/pli-tv-bi-vb/pli-tv-bi-vb-np/...
+        if len(parts) > 1:
+            # Sutta/KN đặc biệt vì có thêm 1 cấp
             if category == 'sutta':
-                # Xử lý đặc biệt cho KN (Khuddaka Nikaya) -> sutta/kn/dhp
-                if parts[1] == 'kn' and len(parts) > 2:
-                    return f"sutta/kn/{parts[2]}"
-                # Các bộ khác -> sutta/mn
+                if parts[1] == 'kn':
+                    if len(parts) > 2:
+                        return f"sutta/kn/{parts[2]}"
+                    # Nếu file nằm ngay trong sutta/kn (hiếm gặp nhưng có thể)
+                    return f"sutta/kn/{root_file_path.name.split('_')[0]}"
                 return f"sutta/{parts[1]}"
             
-            # Vinaya và Abhidhamma -> vinaya/pli-tv-..., abhidhamma/ds
-            if len(parts) > 1:
-                return f"{category}/{parts[1]}"
-                
+            # Vinaya/Abhidhamma: Lấy folder cấp 1 làm group
+            # Tuy nhiên, nếu file nằm ngay trong vinaya/ (len=2, parts[1] là file)
+            # Thì phải lấy tên file làm group ID
+            if root_file_path.is_file() and len(parts) == 2:
+                 # Ví dụ: vinaya/pli-tv-bi-pm_root-pli-ms.json
+                 # Lấy prefix trước dấu _ đầu tiên làm group ID
+                 book_id = parts[1].split('_')[0]
+                 return f"{category}/{book_id}"
+
+            # Trường hợp folder con chuẩn: vinaya/pli-tv-bi-vb/file.json
+            return f"{category}/{parts[1]}"
+            
         return "uncategorized"
             
     except ValueError:
@@ -93,7 +106,7 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
     sutta_id, root_file_path = args
     
     try:
-        # 1. Định danh Group (đã cập nhật logic trả về path)
+        # 1. Định danh Group
         group = get_group_name(root_file_path)
 
         # 2. Tìm các file liên quan
@@ -101,8 +114,10 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
         html_path = find_auxiliary_file(sutta_id, "html")
         comment_path = find_auxiliary_file(sutta_id, "comment")
 
+        # Skip nếu không có HTML (trừ khi bạn muốn giữ raw text không format)
         if not html_path:
-            return "skipped", sutta_id, None
+            # Vẫn trả về group đúng để Manager update progress, nhưng content là None
+            return group, sutta_id, None
 
         # 3. Load nội dung
         data_root = load_json(root_file_path)
@@ -115,6 +130,8 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
         sorted_keys = sorted(list(all_keys), key=natural_keys)
 
         segments = {}
+        has_content = False
+        
         for key in sorted_keys:
             pali = data_root.get(key)
             eng = data_trans.get(key)
@@ -124,6 +141,7 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
             if not (pali or eng or html):
                 continue
 
+            has_content = True
             entry = {}
             if pali: entry["p"] = pali
             if eng: entry["e"] = eng
@@ -132,6 +150,9 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
             
             short_key = key.split(":")[-1] if ":" in key else key
             segments[short_key] = entry
+
+        if not has_content:
+             return group, sutta_id, None
 
         # 5. Kết quả
         final_data = {
@@ -143,4 +164,4 @@ def process_worker(args: Tuple[str, Path]) -> Tuple[str, str, Optional[Dict[str,
 
     except Exception as e:
         logger.error(f"❌ Error merging {sutta_id}: {e}")
-        return "error", sutta_id, None
+        return "error_group", sutta_id, None

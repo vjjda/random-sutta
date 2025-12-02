@@ -34,26 +34,33 @@ def find_sutta_files(sutta_id: str, root_file_path: Path) -> Dict[str, Path]:
 
 def _identify_book_group(rel_parts: Tuple[str, ...]) -> str:
     """
-    Xác định Book ID từ đường dẫn tương đối.
-    Input (parts): ('sutta', 'mn', 'mn1_...') -> Output: 'sutta/mn'
-    Input (parts): ('sutta', 'kn', 'dhp', 'dhp1_...') -> Output: 'sutta/kn/dhp'
+    Logic định danh group chuẩn (Sync với converter.get_group_name)
     """
     if not rel_parts:
         return "uncategorized"
     
-    category = rel_parts[0] # sutta, vinaya, abhidhamma
+    category = rel_parts[0]
     
     if category == 'sutta':
-        # Sutta/MN
-        if len(rel_parts) >= 2 and rel_parts[1] != 'kn':
+        if len(rel_parts) > 1:
+            if rel_parts[1] == 'kn':
+                if len(rel_parts) > 2:
+                    return f"sutta/kn/{rel_parts[2]}"
+                # File lẻ trong kn (nếu có)
+                return f"sutta/kn/{file_name.split('_')[0]}"
             return f"sutta/{rel_parts[1]}"
-        # Sutta/KN/DHP
-        if len(rel_parts) >= 3 and rel_parts[1] == 'kn':
-            return f"sutta/kn/{rel_parts[2]}"
             
     elif category in ['vinaya', 'abhidhamma']:
-        # Vinaya/Pli-tv-bi-vb
-        if len(rel_parts) >= 2:
+        # Nếu file nằm ngay trong vinaya/ (len=1 vì rel_path tính từ category cha)
+        # Sửa lại: rel_parts là full path tính từ 'root/'
+        # Ví dụ: ('vinaya', 'pli-tv-bi-pm_root-pli-ms.json') -> len = 2
+        
+        if len(rel_parts) == 2:
+             # File lẻ: vinaya/xyz.json -> Group vinaya/xyz
+             book_id = file_name.split('_')[0]
+             return f"{category}/{book_id}"
+             
+        if len(rel_parts) > 2:
             return f"{category}/{rel_parts[1]}"
             
     return "uncategorized"
@@ -61,7 +68,6 @@ def _identify_book_group(rel_parts: Tuple[str, ...]) -> str:
 def generate_book_tasks(limit: int = 0) -> Dict[str, List[Tuple[str, Path]]]:
     """
     Quét toàn bộ thư mục root và nhóm các task theo Book.
-    Trả về: { 'sutta/mn': [(mn1, path), (mn2, path)...], ... }
     """
     base_search_dir = DATA_ROOT / "root"
     if not base_search_dir.exists():
@@ -69,30 +75,21 @@ def generate_book_tasks(limit: int = 0) -> Dict[str, List[Tuple[str, Path]]]:
 
     logger.info(f"Scanning {base_search_dir} and grouping by books...")
     
-    # Dictionary chứa: Key = BookID, Value = List of Tasks
     book_tasks: Dict[str, List[Tuple[str, Path]]] = {}
     
     count = 0
     for root, dirs, files in os.walk(base_search_dir):
-        # Tính toán Book ID dựa trên folder hiện tại
-        try:
-            current_path = Path(root)
-            rel_path = current_path.relative_to(base_search_dir)
-            
-            # Chỉ xử lý nếu folder hiện tại chứa file json (lá của cây thư mục)
-            # Tuy nhiên, ta cần xác định Book Group cho từng file để chính xác nhất
-            pass 
-        except ValueError:
-            continue
-
         for file in files:
             if file.endswith(".json") and "_root-" in file:
                 sutta_id = file.split("_")[0]
                 full_path = Path(root) / file
                 
-                # Xác định file này thuộc book nào
-                rel_parts = full_path.relative_to(base_search_dir).parts
-                group_id = _identify_book_group(rel_parts)
+                # Tính toán path tương đối để xác định group
+                try:
+                    rel_parts = full_path.relative_to(base_search_dir).parts
+                    group_id = _identify_book_group(rel_parts, file)
+                except Exception:
+                    continue
                 
                 if group_id == "uncategorized":
                     continue
@@ -108,11 +105,10 @@ def generate_book_tasks(limit: int = 0) -> Dict[str, List[Tuple[str, Path]]]:
         if limit > 0 and count >= limit:
             break
 
-    # Sort danh sách bài kinh trong mỗi cuốn sách
+    # Sort danh sách
     for group in book_tasks:
-        book_tasks[group].sort(key=lambda x: x[0]) # Sort theo sutta_id
+        book_tasks[group].sort(key=lambda x: x[0])
 
-    # Sort danh sách các cuốn sách để xử lý theo thứ tự đẹp
     sorted_books = dict(sorted(book_tasks.items()))
     
     logger.info(f"✅ Found {count} suttas across {len(sorted_books)} books.")
