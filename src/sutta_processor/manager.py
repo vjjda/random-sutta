@@ -8,14 +8,13 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 from pathlib import Path
 
-# Import config mới
 from .config import (
     OUTPUT_SUTTA_BASE, 
     OUTPUT_SUTTA_BOOKS, 
     PROCESSED_DIR,
     PROCESS_LIMIT
 )
-from .finder import scan_root_dir
+from .finder import generate_book_tasks  # Import hàm mới
 from .converter import process_worker
 from .name_parser import load_names_map 
 
@@ -29,111 +28,108 @@ class SuttaManager:
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
         self.names_map = load_names_map()
-        self.raw_collections: Dict[str, Dict[str, Any]] = {}
-
-        # Cấu hình Output dựa trên chế độ chạy
+        
+        # Output config
         if self.dry_run:
             logger.info("🧪 RUNNING IN DRY-RUN MODE")
             self.output_base = PROCESSED_DIR
-            self.json_indent = 2  # Prettify
+            self.json_indent = 2
         else:
             logger.info("🚀 RUNNING IN PRODUCTION MODE")
             self.output_base = OUTPUT_SUTTA_BOOKS
-            self.json_indent = None # Minified
+            self.json_indent = None
 
     def run(self):
-        # 1. Clean up thư mục output tương ứng
         self._prepare_output_dir()
 
-        # 2. Quét và xử lý song song (Giữ nguyên logic cũ nhưng worker sẽ trả về Dict thay vì HTML string)
-        tasks = scan_root_dir(limit=PROCESS_LIMIT)
-        workers = os.cpu_count() or 4
-        logger.info(f"Processing {len(tasks)} items with {workers} workers...")
+        # 1. Lấy danh sách tasks đã được nhóm theo Book
+        # book_collections = { 'sutta/mn': [task1, task2...], ... }
+        book_collections = generate_book_tasks(limit=PROCESS_LIMIT)
         
-        with ProcessPoolExecutor(max_workers=workers) as executor:
-            futures = [executor.submit(process_worker, task) for task in tasks]
-            count = 0
-            for future in as_completed(futures):
-                group, sid, content = future.result()
-                if content:
-                    if group not in self.raw_collections:
-                        self.raw_collections[group] = {}
-                    self.raw_collections[group][sid] = content
-                
-                count += 1
-                if count % 500 == 0:
-                    logger.info(f"   Processed {count}/{len(tasks)}...")
+        workers = os.cpu_count() or 4
+        all_generated_files = []
 
-        # 3. Ghi file kết quả
-        self._write_files()
+        # 2. Xử lý từng cuốn sách (Book-by-Book Processing)
+        # Đây là bước tối ưu bộ nhớ: Xử lý xong sách nào, giải phóng sách đó.
+        total_books = len(book_collections)
+        current_book_idx = 0
+
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            for group_name, tasks in book_collections.items():
+                current_book_idx += 1
+                logger.info(f"📚 [{current_book_idx}/{total_books}] Processing {group_name} ({len(tasks)} items)...")
+                
+                # Submit tasks cho sách hiện tại
+                futures = [executor.submit(process_worker, task) for task in tasks]
+                
+                # Thu thập kết quả của sách này
+                book_data = {}
+                for future in as_completed(futures):
+                    _, sid, content = future.result()
+                    if content:
+                        book_data[sid] = content
+                
+                # Ghi file ngay lập tức
+                if book_data:
+                    generated_file = self._write_single_book(group_name, book_data)
+                    all_generated_files.append(generated_file)
+                    
+                # Python sẽ tự động giải phóng biến book_data và futures ở đây
+
+        # 3. Kết thúc
+        if not self.dry_run:
+            self._write_loader(all_generated_files)
+        
         logger.info(f"✅ All done. Output: {self.output_base}")
 
     def _prepare_output_dir(self):
-        """Xóa và tạo lại thư mục output."""
         if self.output_base.exists():
             shutil.rmtree(self.output_base)
         self.output_base.mkdir(parents=True, exist_ok=True)
-        logger.info(f"📁 Prepared output directory: {self.output_base}")
 
-    def _write_files(self):
-        logger.info("💾 Writing aggregated book files...")
+    def _write_single_book(self, group_name: str, raw_data: Dict[str, Any]) -> str:
+        """Ghi một file sách duy nhất."""
+        sorted_sids = sorted(raw_data.keys(), key=natural_sort_key)
+        linked_data = {}
         
-        generated_files = []
+        for sid in sorted_sids:
+            name_info = self.names_map.get(sid, {
+                "acronym": "",
+                "translated_title": "",
+                "original_title": ""
+            })
 
-        for group_name, raw_data in self.raw_collections.items():
-            sorted_sids = sorted(raw_data.keys(), key=natural_sort_key)
-            linked_data = {}
-            
-            for sid in sorted_sids:
-                # Lấy metadata
-                name_info = self.names_map.get(sid, {
-                    "acronym": "",
-                    "translated_title": "",
-                    "original_title": ""
-                })
+            linked_data[sid] = {
+                "acronym": name_info["acronym"],
+                "translated_title": name_info["translated_title"],
+                "original_title": name_info["original_title"],
+                "content": raw_data[sid] 
+            }
 
-                # Cấu trúc JSON mới (Raw Data)
-                # Lưu ý: Converter.py cần trả về 'content' dạng Dict (segments)
-                linked_data[sid] = {
-                    "acronym": name_info["acronym"],
-                    "translated_title": name_info["translated_title"],
-                    "original_title": name_info["original_title"],
-                    # Ở bước sau, content sẽ là Dict các segments, không phải HTML string
-                    "content": raw_data[sid] 
-                }
-
-            # Tên file
-            if self.dry_run:
-                # Dry-run: Lưu thuần JSON để dễ đọc
-                file_name = f"{group_name}.json"
-                file_path = self.output_base / file_name
-                # Tạo sub-folder nếu group là 'kn/dhp'
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(linked_data, f, ensure_ascii=False, indent=self.json_indent)
+        # Xác định tên file và path
+        if self.dry_run:
+            file_name = f"{group_name}.json"
+            file_path = self.output_base / file_name
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(linked_data, f, ensure_ascii=False, indent=self.json_indent)
+        else:
+            file_name = f"{group_name}.js"
+            file_path = self.output_base / file_name
+            file_path.parent.mkdir(parents=True, exist_ok=True)
             
-            else:
-                # Production: Lưu JS Object để browser load nhanh
-                file_name = f"{group_name}.js"
-                file_path = self.output_base / file_name
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                json_str = json.dumps(linked_data, ensure_ascii=False, indent=self.json_indent)
-                js_content = f"window.SUTTA_DB = window.SUTTA_DB || {{}}; Object.assign(window.SUTTA_DB, {json_str});"
-                
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(js_content)
+            json_str = json.dumps(linked_data, ensure_ascii=False, indent=self.json_indent)
+            # Normalize group name for JS comment (sutta/mn -> sutta_mn)
+            safe_group = group_name.replace("/", "_")
+            js_content = f"window.SUTTA_DB = window.SUTTA_DB || {{}}; Object.assign(window.SUTTA_DB, {json_str});"
             
-            generated_files.append(file_name)
-            logger.info(f"   -> {file_name} ({len(linked_data)} items)")
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(js_content)
         
-        # Chỉ tạo loader nếu ở production mode
-        if not self.dry_run:
-            self._write_loader(generated_files)
+        logger.info(f"   -> Saved {file_name}")
+        return file_name
 
     def _write_loader(self, files: list):
-        # Giữ nguyên logic cũ
         files.sort()
         loader_path = OUTPUT_SUTTA_BASE / "sutta_loader.js"
         js_content = f"window.ALL_SUTTA_FILES = {json.dumps(files, indent=2)};\n"
