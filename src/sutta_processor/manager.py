@@ -42,8 +42,6 @@ class SuttaManager:
         self.book_totals: Dict[str, int] = {}       
         self.book_progress: Dict[str, int] = {}      
         self.completed_books: List[str] = []
-        
-        # Map ngược: sutta_id -> group (để handle trường hợp worker trả về 'skipped')
         self.sutta_group_map: Dict[str, str] = {}
 
     def run(self):
@@ -59,11 +57,8 @@ class SuttaManager:
             
             for sutta_id, path in tasks:
                 all_tasks.append((sutta_id, path))
-                # Lưu mapping để tra cứu khi worker bị skip
                 self.sutta_group_map[sutta_id] = group_name
 
-        # Tăng số lượng worker lên tối đa có thể để ép xung CPU
-        # Sutta processing là CPU-bound (regex, json parse) nên càng nhiều core càng tốt
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items from {len(book_tasks)} books with {workers} workers...")
 
@@ -74,23 +69,14 @@ class SuttaManager:
                 try:
                     res_group, res_sid, content = future.result()
                     
-                    # Xác định group đúng:
-                    # Nếu res_group là "skipped" hoặc "error", ta dùng map để tìm group gốc
                     target_group = self.sutta_group_map.get(res_sid)
                     
                     if not target_group:
-                        logger.warning(f"⚠️ Unknown group for {res_sid} (result: {res_group})")
                         continue
 
-                    # Nếu thành công (có content), lưu vào buffer
                     if content:
                         self.buffers[target_group][res_sid] = content
-                    else:
-                        # Log nhẹ nếu skip để biết
-                        # logger.debug(f"Skipped: {res_sid}")
-                        pass
-
-                    # Cập nhật tiến độ cho group gốc
+                    
                     self._update_progress_and_flush_if_ready(target_group)
 
                 except Exception as e:
@@ -112,9 +98,9 @@ class SuttaManager:
                 generated_file = self._write_single_book(group, self.buffers[group])
                 self.completed_books.append(generated_file)
             else:
-                logger.warning(f"⚠️ Book {group} completed but buffer empty (all skipped?)")
+                # [UPDATE] Đổi Warning thành Info và giải thích rõ
+                logger.info(f"   ℹ️  Skipped Book: {group} (No valid HTML/Content found for any items)")
             
-            # Clean RAM
             if group in self.buffers:
                 del self.buffers[group]
 
