@@ -22,6 +22,9 @@ BRANCH_NAME = "main"
 FETCH_MAPPING = {
     "sc_bilara_data/root/pli/ms": "root",
     "sc_bilara_data/html/pli/ms": "html",
+    # [NEW] Lấy thêm HTML từ nguồn VRI cho Vinaya (bổ sung file thiếu)
+    "sc_bilara_data/html/pli/vri/vinaya": "html/vinaya",
+    
     "sc_bilara_data/comment/en": "comment/en",
     "sc_bilara_data/translation/en/brahmali": "translation/en/brahmali",
     "sc_bilara_data/translation/en/kelly": "translation/en/kelly",
@@ -110,22 +113,16 @@ def _setup_repo():
         raise e
 
 def _clean_destination():
+    """Xóa thư mục đích để đảm bảo sạch sẽ trước khi copy."""
     if DATA_ROOT.exists():
         logger.info("🧹 Cleaning old data...")
         shutil.rmtree(DATA_ROOT)
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
-# --- Logic mới cho Smart Tree Copy (With Structure Mirroring) ---
+# --- Logic mới cho Smart Tree Copy ---
 
 def _get_book_structure_map() -> Dict[str, str]:
-    """
-    Quét thư mục CACHE Root để xây dựng bản đồ cấu trúc.
-    Trả về Dictionary: { 'book_id': 'relative/path/to/category' }
-    Ví dụ:
-       'mn'  -> 'sutta'
-       'dhp' -> 'sutta/kn'
-       'ds'  -> 'abhidhamma'
-    """
+    """Quét thư mục CACHE Root để xây dựng bản đồ cấu trúc."""
     root_src_in_cache = CACHE_DIR / "sc_bilara_data/root/pli/ms"
     structure_map = {}
     
@@ -133,15 +130,10 @@ def _get_book_structure_map() -> Dict[str, str]:
         logger.warning(f"⚠️ Cannot find root text in cache at {root_src_in_cache}")
         return structure_map
 
-    # Quét đệ quy
     for item in root_src_in_cache.rglob("*"):
         if item.is_dir():
-            # Bỏ qua các folder container
             if item.name in ["sutta", "vinaya", "abhidhamma", "kn"]:
                 continue
-            
-            # Tính toán đường dẫn tương đối của cha nó
-            # Ví dụ: item = .../sutta/kn/dhp -> rel = sutta/kn/dhp -> parent = sutta/kn
             try:
                 rel_path = item.relative_to(root_src_in_cache)
                 category_path = str(rel_path.parent)
@@ -152,36 +144,23 @@ def _get_book_structure_map() -> Dict[str, str]:
     return structure_map
 
 def _smart_copy_tree(src_path: Path, dest_path: Path) -> str:
-    """
-    Copy tree file và tự động sắp xếp vào thư mục con (kn, vinaya...) 
-    dựa trên cấu trúc của root text.
-    """
-    # Lấy bản đồ cấu trúc từ Cache
     structure_map = _get_book_structure_map()
     logger.info(f"   ℹ️  Smart Tree Copy: Mapped {len(structure_map)} books structure.")
 
     copied_count = 0
-    
     for root, dirs, files in os.walk(src_path):
         for file in files:
-            # 1. Super tree -> Copy thẳng vào gốc tree/
             if file == "super-tree.json":
                 shutil.copy2(Path(root) / file, dest_path / file)
                 copied_count += 1
                 continue
             
-            # 2. Các file tree con
             if file.endswith("-tree.json"):
                 book_id = file.replace("-tree.json", "")
-                
-                # Kiểm tra xem sách này có trong map không (tức là có tải text không)
                 if book_id in structure_map:
-                    target_subdir = structure_map[book_id] # Ví dụ: 'sutta/kn'
-                    
-                    # Tạo đường dẫn đích: data/bilara/tree/sutta/kn/dhp-tree.json
+                    target_subdir = structure_map[book_id]
                     final_dest_dir = dest_path / target_subdir
                     final_dest_dir.mkdir(parents=True, exist_ok=True)
-                    
                     shutil.copy2(Path(root) / file, final_dest_dir / file)
                     copied_count += 1
 
@@ -199,9 +178,10 @@ def _copy_worker(task: Tuple[str, str]) -> str:
 
     # ROUTING ĐẶC BIỆT CHO TREE
     if dest_rel == "tree":
+        # Với tree thì xóa cũ trước khi copy mới (vì logic lọc phức tạp)
         if dest_path.exists():
             shutil.rmtree(dest_path)
-        dest_path.mkdir(parents=True, exist_ok=True) # Tạo root tree dir trước
+        dest_path.mkdir(parents=True, exist_ok=True)
         return _smart_copy_tree(src_path, dest_path)
 
     # Logic copy thông thường
@@ -213,10 +193,10 @@ def _copy_worker(task: Tuple[str, str]) -> str:
     
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     
-    if dest_path.exists():
-        shutil.rmtree(dest_path)
-        
-    shutil.copytree(src_path, dest_path, ignore=ignore_func)
+    # [UPDATE CRITICAL] Sử dụng dirs_exist_ok=True để MERGE dữ liệu thay vì overwrite
+    # Điều này cho phép 'html/pli/ms' và 'html/pli/vri' cùng đổ vào 'html' mà không xóa nhau
+    shutil.copytree(src_path, dest_path, ignore=ignore_func, dirs_exist_ok=True)
+    
     return f"   -> Copied: {dest_rel}"
 
 def _copy_data():
