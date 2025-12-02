@@ -1,13 +1,12 @@
-# Path: src/sutta_processor/tree_utils.py
+# Path: src/sutta_processor/logic/structure_handler.py
 import json
 import logging
-from pathlib import Path
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List
 
-from .config import DATA_ROOT
-from .types import SuttaMeta
+from ..shared.app_config import DATA_ROOT
+from ..shared.domain_types import SuttaMeta
 
-logger = logging.getLogger("SuttaProcessor.Tree")
+logger = logging.getLogger("SuttaProcessor.Logic.Structure")
 
 def load_original_tree(group_name: str) -> Dict[str, Any]:
     """Tải file tree gốc từ thư mục data."""

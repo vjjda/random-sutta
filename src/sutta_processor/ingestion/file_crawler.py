@@ -1,16 +1,12 @@
-# Path: src/sutta_processor/finder.py
+# Path: src/sutta_processor/ingestion/file_crawler.py
 import logging
 import json
-import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
 
-from .config import DATA_ROOT
+from ..shared.app_config import DATA_ROOT
 
-logger = logging.getLogger("SuttaProcessor")
-
-# [NEW] Danh sách các sách ngoại lệ (không có file tree nhưng cần xử lý)
-# Mapping: Book ID -> Group Name (Output Folder)
+logger = logging.getLogger("SuttaProcessor.Ingestion.Crawler")
 EXTRA_BOOKS = {
     "pli-tv-bi-pm": "vinaya/pli-tv-bi-pm",
     "pli-tv-bu-pm": "vinaya/pli-tv-bu-pm"

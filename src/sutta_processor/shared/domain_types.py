@@ -1,9 +1,9 @@
-# Path: src/sutta_processor/types.py
-from typing import TypedDict, List, Dict, Optional, Any, Union
+# Path: src/sutta_processor/shared/domain_types.py
+from typing import TypedDict, Dict, Optional, Any
 
 class SuttaMeta(TypedDict):
     uid: str
-    type: str  # 'leaf' | 'branch'
+    type: str
     acronym: str
     translated_title: str
     original_title: str
@@ -16,13 +16,9 @@ class SuttaSegment(TypedDict, total=False):
     html: str
     comm: str
 
-class SuttaData(TypedDict):
-    author_uid: Optional[str]
-    segments: Dict[str, SuttaSegment]
-
 class BookOutput(TypedDict):
     id: str
     title: str
-    structure: Any  # Recursive structure
+    structure: Any
     meta: Dict[str, Dict[str, Any]]
-    data: Dict[str, SuttaData]
+    data: Dict[str, Any]

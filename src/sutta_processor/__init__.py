@@ -1,4 +1,4 @@
 # Path: src/sutta_processor/__init__.py
-from .manager import SuttaManager
+from .orchestrator import SuttaOrchestrator
 
-__all__ = ["SuttaManager"]
+__all__ = ["SuttaOrchestrator"]

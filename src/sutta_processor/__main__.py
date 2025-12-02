@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 # Path: src/sutta_processor/__main__.py
 import logging
 import sys
 import argparse
-from .manager import SuttaManager
+from .orchestrator import SuttaOrchestrator
 
 def setup_logging() -> None:
     logging.basicConfig(
@@ -14,24 +13,20 @@ def setup_logging() -> None:
 
 def main() -> None:
     setup_logging()
-    
     parser = argparse.ArgumentParser(description="Sutta Data Processor")
-    parser.add_argument(
-        "-d", "--dry-run", 
-        action="store_true", 
-        help="Run in dry-run mode: Output prettified JSON to data/processed without affecting web assets."
-    )
-    
+    parser.add_argument("-d", "--dry-run", action="store_true", help="Dry run mode")
     args = parser.parse_args()
     
     try:
-        manager = SuttaManager(dry_run=args.dry_run)
+        manager = SuttaOrchestrator(dry_run=args.dry_run)
         manager.run()
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")
         sys.exit(0)
     except Exception as e:
         logging.error(f"❌ Fatal Error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":

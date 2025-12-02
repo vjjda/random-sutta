@@ -1,12 +1,12 @@
-# Path: src/sutta_processor/writer.py
+# Path: src/sutta_processor/output/asset_generator.py
 import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, List
 
-from .config import OUTPUT_SUTTA_BOOKS, OUTPUT_SUTTA_BASE, PROCESSED_DIR
+from ..shared.app_config import OUTPUT_SUTTA_BOOKS, OUTPUT_SUTTA_BASE, PROCESSED_DIR
 
-logger = logging.getLogger("SuttaProcessor.Writer")
+logger = logging.getLogger("SuttaProcessor.Output.Generator")
 
 def _ensure_dir(path: Path) -> None:
     if not path.parent.exists():

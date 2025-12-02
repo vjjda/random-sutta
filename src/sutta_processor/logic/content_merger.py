@@ -1,13 +1,13 @@
-# Path: src/sutta_processor/converter.py
+# Path: src/sutta_processor/logic/content_merger.py
 import json
 import re
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Any, List
+from typing import Dict, Optional, Tuple, Any, Set
 
-from .config import DATA_ROOT
+from ..shared.app_config import DATA_ROOT
 
-logger = logging.getLogger("SuttaProcessor")
+logger = logging.getLogger("SuttaProcessor.Logic.Merger")
 
 def load_json(path: Path) -> Dict[str, str]:
     if not path or not path.exists():

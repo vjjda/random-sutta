@@ -1,12 +1,13 @@
-# Path: src/sutta_processor/name_parser.py
+# Path: src/sutta_processor/ingestion/metadata_parser.py
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, TypedDict, Optional, List
+from typing import Dict, Any, List, Optional
 
-from .config import DATA_API_DIR, AUTHOR_PRIORITY
+from ..shared.app_config import DATA_API_DIR, AUTHOR_PRIORITY
+from ..shared.domain_types import SuttaMeta
 
-logger = logging.getLogger("SuttaProcessor")
+logger = logging.getLogger("SuttaProcessor.Ingestion.Meta")
 
 class SuttaMeta(TypedDict):
     uid: str
