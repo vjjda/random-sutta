@@ -1,11 +1,11 @@
-# Path: src/sutta_processor/orchestrator.py
+# Path: src/sutta_processor/build_manager.py
 import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 
-# --- CÁC IMPORT MỚI (ĐÃ SỬA) ---
+# Import từ các module con
 from .shared.app_config import OUTPUT_SUTTA_BOOKS, PROCESSED_DIR
 from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
@@ -13,9 +13,9 @@ from .logic.content_merger import process_worker
 from .logic.structure_handler import build_book_data
 from .output.asset_generator import write_book_file, write_loader_script
 
-logger = logging.getLogger("SuttaProcessor.Orchestrator")
+logger = logging.getLogger("SuttaProcessor.BuildManager")
 
-class SuttaOrchestrator:
+class BuildManager:
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
         self.names_map = load_names_map()

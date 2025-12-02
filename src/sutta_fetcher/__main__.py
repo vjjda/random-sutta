@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Path: src/sutta_fetcher/__main__.py
 import sys
-from .orchestrator import orchestrate_fetch
+from .sync_manager import run_sync
 
 if __name__ == "__main__":
     try:
-        orchestrate_fetch()
+        run_sync()
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")
         sys.exit(0)

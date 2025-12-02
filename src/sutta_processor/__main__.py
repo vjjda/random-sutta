@@ -1,8 +1,9 @@
+#!/usr/bin/env python3
 # Path: src/sutta_processor/__main__.py
 import logging
 import sys
 import argparse
-from .orchestrator import SuttaOrchestrator
+from .build_manager import BuildManager
 
 def setup_logging() -> None:
     logging.basicConfig(
@@ -13,12 +14,14 @@ def setup_logging() -> None:
 
 def main() -> None:
     setup_logging()
+    
     parser = argparse.ArgumentParser(description="Sutta Data Processor")
-    parser.add_argument("-d", "--dry-run", action="store_true", help="Dry run mode")
+    parser.add_argument("-d", "--dry-run", action="store_true", help="Run in dry-run mode")
+    
     args = parser.parse_args()
     
     try:
-        manager = SuttaOrchestrator(dry_run=args.dry_run)
+        manager = BuildManager(dry_run=args.dry_run)
         manager.run()
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")

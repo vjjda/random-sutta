@@ -1,19 +1,20 @@
-# Path: src/sutta_fetcher/orchestrator.py
+# Path: src/sutta_fetcher/sync_manager.py
 import logging
 import sys
 
+# Import nội bộ
 from .vcs.git_wrapper import GitWrapper
 from .logic.content_manager import ContentManager
 
-# Setup Logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%H:%M:%S'
 )
-logger = logging.getLogger("SuttaFetcher.Orchestrator")
+logger = logging.getLogger("SuttaFetcher.SyncManager")
 
-def orchestrate_fetch():
+def run_sync():
+    """Hàm điều phối quá trình đồng bộ dữ liệu từ Git về Local."""
     try:
         # 1. Sync Git Repo
         git_manager = GitWrapper()
@@ -24,7 +25,7 @@ def orchestrate_fetch():
         content_manager.clean_destination()
         content_manager.copy_data()
         
-        logger.info("✨ Sutta Data Fetch completed successfully.")
+        logger.info("✨ Sutta Data Sync completed successfully.")
         
     except Exception as e:
         logger.error(f"❌ Critical Error: {e}")
