@@ -26,8 +26,6 @@ FETCH_MAPPING = {
     "sc_bilara_data/translation/en/brahmali": "translation/en/brahmali",
     "sc_bilara_data/translation/en/kelly": "translation/en/kelly",
     "sc_bilara_data/translation/en/sujato/sutta": "translation/en/sujato/sutta",
-    
-    # [FIXED] Đường dẫn đúng của Tree (nằm ngoài sc_bilara_data)
     "structure/tree": "tree",
 }
 
@@ -85,7 +83,6 @@ def _update_existing_repo():
         
     logger.info(f"   🔄 Updating existing repository (Target: {BRANCH_NAME})...")
     
-    # Cập nhật sparse list (quan trọng để Git biết cần pull thêm folder structure/tree)
     sparse_path = CACHE_DIR / ".git" / "info" / "sparse-checkout"
     with open(sparse_path, "w") as f:
         for path in FETCH_MAPPING.keys():
@@ -118,63 +115,77 @@ def _clean_destination():
         shutil.rmtree(DATA_ROOT)
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
-# --- Logic mới cho Smart Tree Copy ---
+# --- Logic mới cho Smart Tree Copy (With Structure Mirroring) ---
 
-def _get_installed_books_from_cache() -> Set[str]:
+def _get_book_structure_map() -> Dict[str, str]:
     """
-    [FIXED] Quét thư mục CACHE để tìm sách.
-    Lý do: Thư mục DATA_ROOT/root đã bị xóa bởi _clean_destination trước khi copy chạy.
+    Quét thư mục CACHE Root để xây dựng bản đồ cấu trúc.
+    Trả về Dictionary: { 'book_id': 'relative/path/to/category' }
+    Ví dụ:
+       'mn'  -> 'sutta'
+       'dhp' -> 'sutta/kn'
+       'ds'  -> 'abhidhamma'
     """
-    # Đường dẫn trong cache: .cache/sc_bilara_data/sc_bilara_data/root/pli/ms
-    # Lưu ý: FETCH_MAPPING key cho root là "sc_bilara_data/root/pli/ms"
     root_src_in_cache = CACHE_DIR / "sc_bilara_data/root/pli/ms"
-    
-    books = set()
+    structure_map = {}
     
     if not root_src_in_cache.exists():
         logger.warning(f"⚠️ Cannot find root text in cache at {root_src_in_cache}")
-        return books
+        return structure_map
 
-    # Quét đệ quy tìm tên sách
+    # Quét đệ quy
     for item in root_src_in_cache.rglob("*"):
         if item.is_dir():
-            # Chỉ lấy các folder là sách thực sự (có chứa file json hoặc nằm trong kn)
-            if item.name not in ["sutta", "vinaya", "abhidhamma", "kn"]:
-                 books.add(item.name)
+            # Bỏ qua các folder container
+            if item.name in ["sutta", "vinaya", "abhidhamma", "kn"]:
+                continue
             
-    return books
+            # Tính toán đường dẫn tương đối của cha nó
+            # Ví dụ: item = .../sutta/kn/dhp -> rel = sutta/kn/dhp -> parent = sutta/kn
+            try:
+                rel_path = item.relative_to(root_src_in_cache)
+                category_path = str(rel_path.parent)
+                structure_map[item.name] = category_path
+            except ValueError:
+                continue
+            
+    return structure_map
 
 def _smart_copy_tree(src_path: Path, dest_path: Path) -> str:
     """
-    Chỉ copy super-tree.json và các *-tree.json tương ứng.
+    Copy tree file và tự động sắp xếp vào thư mục con (kn, vinaya...) 
+    dựa trên cấu trúc của root text.
     """
-    # Lấy danh sách sách từ Cache nguồn
-    valid_books = _get_installed_books_from_cache()
-    logger.info(f"   ℹ️  Smart Tree Copy: Found {len(valid_books)} books in cache to filter trees.")
+    # Lấy bản đồ cấu trúc từ Cache
+    structure_map = _get_book_structure_map()
+    logger.info(f"   ℹ️  Smart Tree Copy: Mapped {len(structure_map)} books structure.")
 
     copied_count = 0
     
     for root, dirs, files in os.walk(src_path):
         for file in files:
+            # 1. Super tree -> Copy thẳng vào gốc tree/
             if file == "super-tree.json":
-                should_copy = True
-            elif file.endswith("-tree.json"):
-                # "mn-tree.json" -> "mn"
-                book_id = file.replace("-tree.json", "")
-                should_copy = book_id in valid_books
-            else:
-                should_copy = False
-
-            if should_copy:
-                abs_src = Path(root) / file
-                rel_path = abs_src.relative_to(src_path)
-                abs_dest = dest_path / rel_path
-                
-                abs_dest.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(abs_src, abs_dest)
+                shutil.copy2(Path(root) / file, dest_path / file)
                 copied_count += 1
+                continue
+            
+            # 2. Các file tree con
+            if file.endswith("-tree.json"):
+                book_id = file.replace("-tree.json", "")
+                
+                # Kiểm tra xem sách này có trong map không (tức là có tải text không)
+                if book_id in structure_map:
+                    target_subdir = structure_map[book_id] # Ví dụ: 'sutta/kn'
+                    
+                    # Tạo đường dẫn đích: data/bilara/tree/sutta/kn/dhp-tree.json
+                    final_dest_dir = dest_path / target_subdir
+                    final_dest_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    shutil.copy2(Path(root) / file, final_dest_dir / file)
+                    copied_count += 1
 
-    return f"   -> Copied: tree ({copied_count} files)"
+    return f"   -> Copied: tree ({copied_count} files organized by structure)"
 
 # -------------------------------------
 
@@ -190,6 +201,7 @@ def _copy_worker(task: Tuple[str, str]) -> str:
     if dest_rel == "tree":
         if dest_path.exists():
             shutil.rmtree(dest_path)
+        dest_path.mkdir(parents=True, exist_ok=True) # Tạo root tree dir trước
         return _smart_copy_tree(src_path, dest_path)
 
     # Logic copy thông thường
