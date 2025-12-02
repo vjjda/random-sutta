@@ -23,15 +23,12 @@ def get_file_path(sutta_id: str, category: str, author_uid: str = None) -> Optio
         if not author_uid: return None
         base = DATA_ROOT / "translation" / "en" / author_uid
         pattern = f"{sutta_id}_translation-en-{author_uid}.json"
-    
     elif category == "html":
         base = DATA_ROOT / "html"
         pattern = f"{sutta_id}_html.json"
-        
     elif category == "comment":
         base = DATA_ROOT / "comment" / "en"
         pattern = f"{sutta_id}_comment-en-*.json"
-    
     else:
         return None
 
@@ -62,10 +59,10 @@ def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Opt
         if data_trans:
             all_keys |= set(data_trans.keys())
             
+        # Sắp xếp key để đảm bảo Insertion Order cho Dictionary
         sorted_keys = sorted(list(all_keys), key=natural_keys)
 
-        # [UPDATE] Chuyển segments thành Dictionary
-        segments = {} 
+        segments = {} # [CONFIRMED] Dictionary (JS Object)
         has_content = False
         
         for key in sorted_keys:
@@ -79,7 +76,6 @@ def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Opt
 
             has_content = True
             
-            # Key chính là segment ID, value là nội dung
             entry = {}
             if pali: entry["pli"] = pali
             if eng: entry["en"] = eng
@@ -93,7 +89,7 @@ def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Opt
 
         final_data = {
             "author_uid": author_uid,
-            "segments": segments # Dict[str, Dict]
+            "segments": segments
         }
 
         return "success", sutta_id, final_data
