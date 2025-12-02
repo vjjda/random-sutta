@@ -8,7 +8,6 @@ from .config import DATA_API_DIR
 
 logger = logging.getLogger("SuttaProcessor")
 
-# Định nghĩa kiểu dữ liệu cho rõ ràng (Type Hinting)
 class SuttaNameInfo(TypedDict):
     acronym: str
     translated_title: str
@@ -16,40 +15,51 @@ class SuttaNameInfo(TypedDict):
 
 def load_names_map() -> Dict[str, SuttaNameInfo]:
     """
-    Đọc toàn bộ file JSON metadata và trả về một Dictionary khổng lồ.
-    Không còn logic viết file (IO) ở đây nữa.
+    Đọc toàn bộ file JSON metadata từ data/json (bao gồm cả thư mục con)
+    và trả về Dictionary map: uid -> thông tin tên.
     """
     if not DATA_API_DIR.exists():
         logger.warning(f"⚠️ API Data directory not found: {DATA_API_DIR}")
         return {}
 
-    logger.info("📚 Loading metadata into memory...")
+    logger.info("📚 Loading metadata into memory (Deep Scan)...")
     
     master_name_map: Dict[str, SuttaNameInfo] = {}
-    json_files = sorted(list(DATA_API_DIR.glob("*.json")))
+    
+    # [FIX] Dùng rglob thay vì glob để quét các folder con (sutta/kn, vinaya...)
+    json_files = sorted(list(DATA_API_DIR.rglob("*.json")))
 
     for file_path in json_files:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
-                raw_list = json.load(f)
+                raw_data = json.load(f)
 
-            if isinstance(raw_list, list):
-                for item in raw_list:
-                    uid = item.get("uid")
-                    if not uid:
-                        continue
-                    
-                    # Chuẩn hóa dữ liệu
-                    entry: SuttaNameInfo = {
-                        "acronym": item.get("acronym") or "",
-                        "translated_title": (item.get("translated_title") or "").strip(),
-                        "original_title": (item.get("original_title") or "").strip()
-                    }
-                    
-                    master_name_map[uid] = entry
+            # API SuttaCentral trả về list các suttaplex object hoặc 1 object (root)
+            # Tuy nhiên file metadata mình tải về thường là List (như sample mn.json bạn gửi)
+            if isinstance(raw_data, list):
+                iterable = raw_data
+            elif isinstance(raw_data, dict):
+                # Trường hợp file json root (ít gặp với cách fetch hiện tại nhưng phòng hờ)
+                iterable = [raw_data]
+            else:
+                continue
+
+            for item in iterable:
+                uid = item.get("uid")
+                if not uid:
+                    continue
+                
+                # Trích xuất metadata quan trọng
+                entry: SuttaNameInfo = {
+                    "acronym": item.get("acronym") or "",
+                    "translated_title": (item.get("translated_title") or "").strip(),
+                    "original_title": (item.get("original_title") or "").strip()
+                }
+                
+                master_name_map[uid] = entry
 
         except Exception as e:
             logger.error(f"❌ Error reading API file {file_path.name}: {e}")
 
-    logger.info(f"   -> Loaded {len(master_name_map)} name entries.")
+    logger.info(f"   -> Loaded metadata for {len(master_name_map)} suttas.")
     return master_name_map
