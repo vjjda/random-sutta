@@ -1,7 +1,7 @@
 # Path: src/sutta_processor/logic/content_merger.py
 import json
-import re
 import logging
+import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Any, Set
 
@@ -59,10 +59,10 @@ def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Opt
         if data_trans:
             all_keys |= set(data_trans.keys())
             
-        # Sắp xếp key để đảm bảo Insertion Order cho Dictionary
         sorted_keys = sorted(list(all_keys), key=natural_keys)
 
-        segments = {} # [CONFIRMED] Dictionary (JS Object)
+        # [CHANGED] Không còn key "segments" bao bọc
+        segments_dict = {} 
         has_content = False
         
         for key in sorted_keys:
@@ -78,21 +78,23 @@ def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Opt
             
             entry = {}
             if pali: entry["pli"] = pali
-            if eng: entry["en"] = eng
+            if eng: entry["eng"] = eng   # [CHANGED] en -> eng
             if html: entry["html"] = html
             if comm: entry["comm"] = comm
             
-            segments[key] = entry
+            segments_dict[key] = entry
 
         if not has_content:
              return "skipped", sutta_id, None
 
+        # Trả về cấu trúc phẳng hơn để structure_handler xử lý
         final_data = {
             "author_uid": author_uid,
-            "segments": segments
+            "data": segments_dict 
         }
 
         return "success", sutta_id, final_data
 
     except Exception as e:
+        logger.error(f"Error processing {sutta_id}: {e}")
         return "error", sutta_id, None

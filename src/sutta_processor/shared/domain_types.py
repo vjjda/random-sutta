@@ -9,20 +9,24 @@ class SuttaMeta(TypedDict):
     original_title: str
     blurb: Optional[str]
     best_author_uid: Optional[str]
+    # [NEW] Author UID sẽ được chuyển vào đây khi merge dữ liệu
+    author_uid: Optional[str] 
 
 class SuttaSegment(TypedDict, total=False):
     pli: str
-    en: str
+    eng: str   # [CHANGED] en -> eng
     html: str
     comm: str
 
-class SuttaData(TypedDict):
+# [CHANGED] Payload trả về từ worker
+class WorkerOutput(TypedDict):
     author_uid: Optional[str]
-    segments: Dict[str, SuttaSegment]
+    # Không còn key "segments" bao bọc, trả về trực tiếp dict của segments
+    data: Dict[str, SuttaSegment] 
 
 class BookOutput(TypedDict):
     id: str
     title: str
     structure: Any
     meta: Dict[str, Dict[str, Any]]
-    data: Dict[str, SuttaData]
+    content: Dict[str, Dict[str, SuttaSegment]] # [CHANGED] data -> content

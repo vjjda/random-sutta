@@ -9,12 +9,10 @@ from ..shared.domain_types import SuttaMeta
 logger = logging.getLogger("SuttaProcessor.Logic.Structure")
 
 def load_original_tree(group_name: str) -> Dict[str, Any]:
-    """Tải file tree gốc từ thư mục data."""
     book_id = group_name.split("/")[-1]
     tree_path = DATA_ROOT / "tree" / group_name / f"{book_id}-tree.json"
     
     if not tree_path.exists():
-        # Fallback tìm kiếm
         found = list((DATA_ROOT / "tree").rglob(f"{book_id}-tree.json"))
         if found:
             tree_path = found[0]
@@ -29,27 +27,20 @@ def load_original_tree(group_name: str) -> Dict[str, Any]:
         return {book_id: []}
 
 def simplify_structure(node: Any) -> Any:
-    """Loại bỏ các lớp bọc không cần thiết trong cấu trúc Tree."""
     if isinstance(node, list):
-        # Nếu list chỉ chứa string (leaves), giữ nguyên
         if all(isinstance(x, str) for x in node):
             return node
-        
-        # Nếu list chứa dict, flatten nhẹ
         new_dict = {}
         for item in node:
             if isinstance(item, dict):
                 for key, val in item.items():
                     new_dict[key] = simplify_structure(val)
         return new_dict
-    
     elif isinstance(node, dict):
         return {k: simplify_structure(v) for k, v in node.items()}
-    
     return node
 
 def flatten_tree_leaves(node: Any) -> List[str]:
-    """Trích xuất danh sách phẳng các UID (lá) từ Tree."""
     leaves = []
     if isinstance(node, str):
         return [node]
@@ -69,11 +60,12 @@ def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta],
             "acronym": info.get("acronym", ""),
             "translated_title": info.get("translated_title", ""),
             "original_title": info.get("original_title", ""),
-            "blurb": info.get("blurb")
+            "blurb": info.get("blurb"),
+            # author_uid sẽ được update sau nếu có dữ liệu
+            "author_uid": None 
         }
 
 def collect_meta_from_structure(node: Any, meta_map: Dict[str, SuttaMeta], target_dict: Dict[str, Any]) -> None:
-    """Duyệt Tree và nhặt ra metadata cho từng node (nhánh và lá)."""
     if isinstance(node, str):
         _add_meta_entry(node, "leaf", meta_map, target_dict)
     elif isinstance(node, list):
@@ -90,13 +82,13 @@ def build_book_data(
     names_map: Dict[str, SuttaMeta]
 ) -> Dict[str, Any]:
     """
-    Hàm Factory: Tổng hợp Structure, Meta và Data thành object Book hoàn chỉnh.
+    Hàm Factory: Tổng hợp Structure, Meta và Content.
     """
     # 1. Structure
     raw_tree = load_original_tree(group_name)
     structure = simplify_structure(raw_tree)
 
-    # 2. Meta
+    # 2. Meta Base
     meta_dict: Dict[str, Any] = {}
     collect_meta_from_structure(structure, names_map, meta_dict)
     
@@ -105,19 +97,36 @@ def build_book_data(
         if sid not in meta_dict:
             _add_meta_entry(sid, "leaf", names_map, meta_dict)
 
-    # 3. Data Ordering (Theo Tree)
+    # 3. Process Data -> Split into Content & Meta Update
+    content_dict = {}
+    
+    # Duyệt qua raw_data (Output từ worker)
+    # raw_data[uid] = { "author_uid": "sujato", "data": { "segment_1": {...} } }
+    
+    for uid, payload in raw_data.items():
+        if not payload: continue
+        
+        # A. Cập nhật Content
+        # [CHANGED] Lấy trực tiếp dict segments, không qua wrapper
+        content_dict[uid] = payload.get("data", {}) 
+        
+        # B. Cập nhật Meta (Inject Author)
+        author = payload.get("author_uid")
+        if uid in meta_dict and author:
+             # [CHANGED] Move author_uid to meta
+            meta_dict[uid]["author_uid"] = author
+
+    # Sắp xếp content theo Tree (nếu cần thiết cho JSON đẹp, dù JS Object không đảm bảo thứ tự)
     ordered_leaves = flatten_tree_leaves(structure)
-    data_dict = {}
-    
-    # Add data theo thứ tự Tree
+    final_content_ordered = {}
     for uid in ordered_leaves:
-        if uid in raw_data:
-            data_dict[uid] = raw_data[uid]
+        if uid in content_dict:
+            final_content_ordered[uid] = content_dict[uid]
     
-    # Add data còn sót (orphan)
-    for uid, content in raw_data.items():
-        if uid not in data_dict:
-            data_dict[uid] = content
+    # Add orphan content
+    for uid, content in content_dict.items():
+        if uid not in final_content_ordered:
+            final_content_ordered[uid] = content
 
     book_id = group_name.split("/")[-1]
     book_meta = names_map.get(book_id, {}) # type: ignore
@@ -127,5 +136,5 @@ def build_book_data(
         "title": book_meta.get("translated_title", book_id.upper()),
         "structure": structure,
         "meta": meta_dict,
-        "data": data_dict
+        "content": final_content_ordered # [CHANGED] Key 'content'
     }
