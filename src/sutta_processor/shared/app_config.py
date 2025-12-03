@@ -8,14 +8,14 @@ DATA_API_DIR = PROJECT_ROOT / "data" / "json"
 ASSETS_ROOT = PROJECT_ROOT / "web" / "assets"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
-# [REFACTORED NAMES]
-# Nơi chứa file loader chính (sutta_loader.js) -> Nằm ở root của assets
 OUTPUT_LOADER_DIR = ASSETS_ROOT
-
-# Nơi chứa các file dữ liệu chi tiết (.js) của từng cuốn sách
 OUTPUT_DB_DIR = ASSETS_ROOT / "books"
 
 DATA_ROOT_DIR = DATA_ROOT / "root"
 PROCESS_LIMIT = 0
+
+# [NEW] Super Data Paths
+SUPER_TREE_PATH = DATA_ROOT / "tree" / "super-tree.json"
+SUPER_META_DIR = DATA_API_DIR / "super" # Nơi chứa sutta.json, vinaya.json...
 
 AUTHOR_PRIORITY = ["sujato", "brahmali", "kelly"]
