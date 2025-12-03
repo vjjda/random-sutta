@@ -288,6 +288,9 @@ header {
     font-weight: bold;
     color: var(--primary-color);
     outline: none;
+    
+    /* [FIX] Đặt font-size tối thiểu 16px để ngăn iOS Safari tự động zoom */
+    font-size: 16px; 
 }
 
 #nav-search-btn {
