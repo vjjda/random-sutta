@@ -134,15 +134,14 @@ window.renderSutta = function (suttaId, checkHash = true) {
             <p>You can try checking on SuttaCentral:</p>
             <p>
                 <a href="${scLink}" target="_blank" rel="noopener noreferrer" class="sc-link">
-                    Open ${id.toUpperCase()} on SuttaCentral ➜
+                    SuttaCentral ➜
                 </a>
             </p>
         </div>`;
         
     statusDiv.textContent = "Sutta not found.";
     statusDiv.classList.remove("hidden");
-    // Giữ navHeader hiện để người dùng có thể nhập lại ngay
-    navHeader.classList.remove("hidden"); 
+    navHeader.classList.remove("hidden");
     
     // Reset Title về trạng thái chờ
     const navMainTitle = document.getElementById("nav-main-title");
