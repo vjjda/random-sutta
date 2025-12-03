@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         Router.updateURL(suttaId, generateBookParam());
       }
     } else {
-      const match = suttaId.match(/^[a-z]+/);
+      const match = suttaId.match(/^[a-z\-]+/);
       if(match) {
           const requiredBook = match[0];
           SuttaLoader.loadBook(requiredBook).then(() => {

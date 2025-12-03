@@ -55,7 +55,8 @@ export const SuttaLoader = (function () {
       let criticalFiles = new Set();
 
       if (queryId) {
-        const match = queryId.match(/^[a-z]+/);
+        // [FIX] Thêm \- vào regex để bắt được ID dạng "pli-tv-kd"
+        const match = queryId.match(/^[a-z\-]+/i); 
         if (match) {
             const bookId = match[0];
             const f = getFileNameForBook(bookId);
