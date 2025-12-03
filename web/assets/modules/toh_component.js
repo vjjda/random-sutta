@@ -7,7 +7,6 @@ export function setupTableOfHeadings() {
     const list = document.getElementById("toh-list");
     const container = document.getElementById("sutta-container");
 
-    // Nếu thiếu DOM thì trả về hàm rỗng để không gây lỗi logic ở nơi gọi
     if (!wrapper || !fab || !menu || !list || !container) {
         console.warn("ToH: DOM elements missing.");
         return { generate: () => {} };
@@ -37,43 +36,49 @@ export function setupTableOfHeadings() {
         menu.classList.add("hidden");
         fab.classList.remove("active");
         
-        // 2. Tìm Heading (h2, h3, h4) trong #sutta-container
-        // Bỏ qua h1 (thường là tiêu đề bài kinh đã có trên top nav)
-        const headings = container.querySelectorAll("h2, h3, h4", "h5");
+        // 2. Tìm Heading (h2, h3, h4, h5) trong #sutta-container
+        const headings = container.querySelectorAll("h2, h3, h4, h5");
 
-        // Nếu bài kinh quá ngắn (ít hơn 2 mục), ẩn luôn nút ToH
         if (headings.length < 2) {
             wrapper.classList.add("hidden");
             return;
         }
 
-        // Hiện nút nếu có dữ liệu
         wrapper.classList.remove("hidden");
 
         // 3. Build List
         headings.forEach((heading, index) => {
-            // Đảm bảo heading có ID để neo
             if (!heading.id) {
                 heading.id = `toh-heading-${index}`;
             }
 
             const li = document.createElement("li");
-            // Class để style indent: toh-h2, toh-h3...
             li.className = `toh-item toh-${heading.tagName.toLowerCase()}`;
             
             const span = document.createElement("span"); 
             span.className = "toh-link";
-            span.textContent = heading.textContent;
             
-            // Xử lý click cuộn mượt
+            // [FIXED] Logic chọn text thông minh hơn để tránh duplicate
+            // Ưu tiên lấy tiếng Anh (.eng), nếu không có thì lấy tiếng Pali (.pli),
+            // đường cùng mới lấy toàn bộ textContent.
+            const engNode = heading.querySelector(".eng");
+            const pliNode = heading.querySelector(".pli");
+            
+            let labelText = heading.textContent; // Mặc định (fallback)
+
+            if (engNode && engNode.textContent.trim()) {
+                labelText = engNode.textContent.trim();
+            } else if (pliNode && pliNode.textContent.trim()) {
+                labelText = pliNode.textContent.trim();
+            }
+            
+            // Làm sạch text (nếu cần thiết, ví dụ bỏ khoảng trắng thừa)
+            span.textContent = labelText.replace(/\s+/g, ' ').trim();
+            
             span.onclick = () => {
                 heading.scrollIntoView({ behavior: "smooth", block: "center" });
-                
-                // Hiệu ứng highlight heading mục tiêu
                 heading.classList.add("highlight");
                 setTimeout(() => heading.classList.remove("highlight"), 2000);
-                
-                // Đóng menu (đặc biệt quan trọng trên mobile)
                 menu.classList.add("hidden");
                 fab.classList.remove("active");
             };
