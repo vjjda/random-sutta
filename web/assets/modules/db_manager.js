@@ -93,12 +93,13 @@ export const DB = {
       if (!meta) return null; // Không phải branch hợp lệ
 
       // 1. Tìm danh sách con
-      // Trường hợp đặc biệt: Nếu branchId trùng với Book ID, thì structure chính là root
-      let childrenNode = null;
-      if (book.id === branchId) {
+      // [FIX] Luôn ưu tiên dùng _findNodeInStructure để nó tự động "bóc" lớp vỏ { "mn": [...] } ra
+      let childrenNode = this._findNodeInStructure(book.structure, branchId);
+      
+      // Fallback: Nếu tìm không thấy key (có thể do cấu trúc là mảng phẳng ngay từ đầu)
+      // VÀ người dùng đang hỏi đúng ID sách -> Trả về toàn bộ structure coi như là children
+      if (!childrenNode && book.id === branchId) {
           childrenNode = book.structure;
-      } else {
-          childrenNode = this._findNodeInStructure(book.structure, branchId);
       }
       
       if (!childrenNode) return null;
