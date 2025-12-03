@@ -688,46 +688,55 @@ p {
 /* --- 12. TABLE OF HEADINGS (ToH) --- */
 #toh-wrapper {
     position: fixed;
-    top: 90px; 
-    right: 20px;
-    z-index: 900;
+    /* Điều chỉnh vị trí ở đây */
+    top: 15px;   /* Đẩy sát lên trên (trước đây là 90px) */
+    right: 15px; /* Đẩy sát sang phải (trước đây là 20px) */
+    z-index: 1000; /* Tăng Z-index để đè lên Header nếu cần */
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    pointer-events: none; /* Để wrapper không chắn click xung quanh */
+    pointer-events: none;
 }
 
-/* Cho phép click vào các phần tử con */
 #toh-fab, #toh-menu {
     pointer-events: auto;
 }
 
 #toh-fab {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-light);
-    box-shadow: var(--shadow-soft);
+    /* Kích thước vùng bấm (hit area) vẫn nên đủ lớn để dễ bấm trên mobile */
+    width: 32px;
+    height: 32px;
+    
+    /* Xóa bỏ khung và nền để đạt hiệu ứng "chỉ có chấm tròn" */
+    border-radius: 50%; /* Vẫn giữ border-radius để hiệu ứng hover đẹp */
+    background-color: transparent; /* Nền trong suốt */
+    border: none; /* Bỏ viền */
+    box-shadow: none; /* Bỏ bóng */
+    
+    color: var(--text-light); /* Màu xám nhạt */
+    
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    opacity: 0.3; /* Low profile */
+    
+    /* Cực kỳ mờ khi không dùng */
+    opacity: 0.2; 
 }
 
 #toh-fab:hover, #toh-fab.active {
     opacity: 1;
     color: var(--primary-color);
-    border-color: var(--primary-color);
+    /* Chỉ hiện nền mờ nhẹ khi hover để người dùng biết đang tương tác */
+    background-color: rgba(0, 0, 0, 0.05); 
     transform: scale(1.1);
-    box-shadow: var(--shadow-card);
 }
 
+/* Menu giữ nguyên, chỉ chỉnh lại margin top chút xíu nếu cần */
 #toh-menu {
-    margin-top: 10px;
+    margin-top: 5px;
+    /* ... các thuộc tính khác giữ nguyên ... */
     background-color: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
@@ -778,6 +787,7 @@ p {
 /* Indentation Hierarchy */
 .toh-h3 { margin-left: 12px; font-size: 0.85rem; }
 .toh-h4 { margin-left: 24px; font-size: 0.8rem; color: var(--text-muted); }
+.toh-h5 { margin-left: 36px; font-size: 0.75rem; color: var(--text-light); font-style: italic; }
 
 /* Responsive */
 @media (max-width: 600px) {

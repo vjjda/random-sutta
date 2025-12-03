@@ -39,7 +39,7 @@ export function setupTableOfHeadings() {
         
         // 2. Tìm Heading (h2, h3, h4) trong #sutta-container
         // Bỏ qua h1 (thường là tiêu đề bài kinh đã có trên top nav)
-        const headings = container.querySelectorAll("h2, h3, h4");
+        const headings = container.querySelectorAll("h2, h3, h4", "h5");
 
         // Nếu bài kinh quá ngắn (ít hơn 2 mục), ẩn luôn nút ToH
         if (headings.length < 2) {
