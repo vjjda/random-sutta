@@ -889,6 +889,8 @@ p {
     flex: 1;
     display: flex;
     flex-direction: column;
+    /* Thêm padding phải một chút để chữ không dính sát vào cái ID bên phải */
+    padding-right: 15px; 
 }
 
 .b-title {
@@ -914,4 +916,24 @@ p {
 /* Phân biệt Group và Leaf */
 .branch-link-group {
     border-left: 4px solid var(--primary-color);
+}
+
+/* [NEW] Style cho Blurb trong card */
+.b-blurb {
+    font-size: 0.85rem;       /* Chữ nhỏ hơn title */
+    color: var(--text-muted); /* Màu xám nhạt */
+    margin-top: 6px;          /* Tách biệt với tiêu đề */
+    line-height: 1.4;
+    
+    /* Kỹ thuật Line Clamping (Giới hạn dòng) */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;    /* Chỉ hiện tối đa 2 dòng */
+    -webkit-box-orient: vertical;
+    overflow: hidden;         /* Ẩn phần thừa */
+    text-overflow: ellipsis;  /* Thêm dấu ... */
+}
+
+/* Khi hover vào thẻ a, làm blurb đậm hơn chút cho dễ đọc */
+.branch-list a:hover .b-blurb {
+    color: var(--text-main);
 }
