@@ -446,18 +446,27 @@ p {
     width: 90%;
     max-width: 600px;
     
-    /* [NEW] Giới hạn chiều cao và thêm thanh cuộn */
-    max-height: 50vh;        /* Chiều cao tối đa 50% chiều cao màn hình */
-    overflow-y: auto;        /* Tự động hiện thanh cuộn khi nội dung dài */
-    overscroll-behavior: contain; /* Ngăn việc cuộn lan ra body phía sau (Mobile) */
+    max-height: 50vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     
     background-color: var(--bg-card);
     border-left: 5px solid #d35400;
-    box-shadow: var(--shadow-card);
+    
+    /* [FIX] Shadow phức hợp: 
+       - Lớp 1 (0 10px...): Bóng đổ xuống dưới sâu hơn để tạo độ nổi.
+       - Lớp 2 (0 -5px...): Bóng đổ lên trên để làm rõ mép trên (upper edge).
+    */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 -5px 15px rgba(0,0,0,0.05);
+    
     padding: 20px 40px 20px 25px;
     border-radius: 4px;
     z-index: 1000;
-    font-size: 0.95rem;
+    
+    /* [FIX] Tăng font-size lên 1rem (bằng văn bản thường) hoặc 1.05rem */
+    font-size: 1rem; 
+    line-height: 1.6; /* Giãn dòng cho dễ đọc */
+    
     color: var(--text-main);
     transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
     opacity: 1;
