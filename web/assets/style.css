@@ -684,3 +684,104 @@ p {
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
+
+/* --- 12. TABLE OF CONTENTS (Floating) --- */
+#toc-wrapper {
+    position: fixed;
+    top: 80px; /* Dưới header một chút */
+    right: 20px;
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+#toc-fab {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.4; /* Low profile: Mờ khi không dùng */
+}
+
+#toc-fab:hover, #toc-fab.active {
+    opacity: 1;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+    box-shadow: var(--shadow-card);
+}
+
+#toc-menu {
+    margin-top: 10px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    width: 250px;
+    max-height: 60vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-card);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.toc-header {
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+    color: var(--text-light);
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 5px;
+    text-transform: uppercase;
+}
+
+#toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.toc-item {
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.toc-link {
+    text-decoration: none;
+    color: var(--text-main);
+    display: block;
+    padding: 2px 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.toc-link:hover {
+    background-color: #f0f0f0;
+    color: var(--primary-color);
+}
+
+/* Indent cho các thẻ con */
+.toc-h3 { margin-left: 10px; font-size: 0.85rem; }
+.toc-h4 { margin-left: 20px; font-size: 0.8rem; color: var(--text-muted); }
+
+/* Mobile Adjustment */
+@media (max-width: 600px) {
+    #toc-wrapper {
+        top: auto;
+        bottom: 80px; /* Đặt ở dưới cho dễ với ngón cái */
+        right: 15px;
+    }
+    #toc-menu {
+        margin-bottom: 10px;
+        width: 220px;
+    }
+}

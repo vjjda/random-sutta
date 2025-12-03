@@ -84,3 +84,81 @@ export function initCommentPopup() {
 
     return { hideComment };
 }
+
+export function initTableOfContents() {
+    const wrapper = document.getElementById("toc-wrapper");
+    const fab = document.getElementById("toc-fab");
+    const menu = document.getElementById("toc-menu");
+    const list = document.getElementById("toc-list");
+    const container = document.getElementById("sutta-container");
+
+    if (!wrapper || !fab || !menu || !list) return { generateToC: () => {} };
+
+    // Toggle menu
+    fab.onclick = (e) => {
+        menu.classList.toggle("hidden");
+        fab.classList.toggle("active");
+        e.stopPropagation();
+    };
+
+    // Close when clicking outside
+    document.addEventListener("click", (e) => {
+        if (!menu.classList.contains("hidden") && !wrapper.contains(e.target)) {
+            menu.classList.add("hidden");
+            fab.classList.remove("active");
+        }
+    });
+
+    function generateToC() {
+        // Reset state
+        list.innerHTML = "";
+        menu.classList.add("hidden");
+        fab.classList.remove("active");
+        
+        // 1. Find Headings (h2, h3, h4) inside the article
+        // Note: h1 is usually the title, we skip it.
+        const headings = container.querySelectorAll("h2, h3, h4");
+
+        // Nếu có ít hơn 2 heading thì không cần hiện ToC
+        if (headings.length < 2) {
+            wrapper.classList.add("hidden");
+            return;
+        }
+
+        wrapper.classList.remove("hidden");
+
+        // 2. Build List
+        headings.forEach((heading, index) => {
+            // Ensure heading has an ID
+            if (!heading.id) {
+                heading.id = `toc-heading-${index}`;
+            }
+
+            const li = document.createElement("li");
+            li.className = `toc-item toc-${heading.tagName.toLowerCase()}`;
+            
+            const a = document.createElement("span"); // Dùng span để handle click tay cho mượt
+            a.className = "toc-link";
+            a.textContent = heading.textContent;
+            
+            a.onclick = () => {
+                // Smooth scroll
+                heading.scrollIntoView({ behavior: "smooth", block: "center" });
+                // Highlight effect
+                heading.classList.add("highlight");
+                setTimeout(() => heading.classList.remove("highlight"), 2000);
+                
+                // Close menu (mobile friendly)
+                if (window.innerWidth < 768) {
+                    menu.classList.add("hidden");
+                    fab.classList.remove("active");
+                }
+            };
+
+            li.appendChild(a);
+            list.appendChild(li);
+        });
+    }
+
+    return { generateToC };
+}
