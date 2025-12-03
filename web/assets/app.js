@@ -19,19 +19,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- Business Logic Functions ---
 
-  // 1. Load Single Sutta
+// 1. Load Single Sutta
   window.loadSutta = function (suttaId, shouldUpdateUrl = true) {
     hideComment();
     
-    // Thử render nếu dữ liệu đã có
     if (window.renderSutta(suttaId, false)) {
       if (shouldUpdateUrl) {
         window.Router.updateURL(suttaId, window.generateBookParam());
       }
     } else {
       // Fallback: Gọi Loader tải thêm file nếu thiếu
-      // ID sutta thường bắt đầu bằng mã sách, vd mn20 -> mn. 
-      // Nhưng một số id phức tạp hơn, regex này lấy phần chữ cái đầu.
       const match = suttaId.match(/^[a-z]+/);
       if(match) {
           const requiredBook = match[0];
@@ -41,15 +38,24 @@ document.addEventListener("DOMContentLoaded", async () => {
                 window.Router.updateURL(suttaId, window.generateBookParam());
               }
             } else {
-              alert("Sutta not found.");
+              // [FIX] Xóa alert("Sutta not found.")
+              // Tự động mở ô tìm kiếm để nhập lại
+              if (window.activateSearchMode) {
+                  window.activateSearchMode();
+              }
             }
           });
       } else {
-          alert("Invalid Sutta ID format.");
+          // Trường hợp format sai (ví dụ nhập số 123 không có chữ)
+          // Vẫn render màn hình lỗi thông báo
+          window.renderSutta(suttaId, false);
+          if (window.activateSearchMode) {
+              window.activateSearchMode();
+          }
       }
     }
   };
-
+  
   // 2. Load Random Sutta (LOGIC MỚI)
   function loadRandomSutta(shouldUpdateUrl = true) {
     hideComment();

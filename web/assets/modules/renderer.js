@@ -48,7 +48,7 @@ function updateTopNavLocal(currentId, prevId, nextId) {
   statusDiv.classList.add("hidden");
 }
 
-// --- [RESTORED] TÍNH NĂNG QUICK NAV ---
+// --- TÍNH NĂNG QUICK NAV ---
 window.setupQuickNav = function () {
   const displayContainer = document.getElementById("nav-title-display");
   const textMode = document.getElementById("nav-title-text");
@@ -58,47 +58,40 @@ window.setupQuickNav = function () {
 
   if (!displayContainer || !textMode || !inputMode) return;
 
+  // [NEW] Hàm helper để kích hoạt chế độ tìm kiếm từ bên ngoài (API)
+  window.activateSearchMode = function() {
+      textMode.classList.add("hidden");
+      inputMode.classList.remove("hidden");
+      inputField.value = ""; 
+      inputField.focus();
+  };
+
   // 1. Chuyển sang Input Mode khi click vào tiêu đề
   displayContainer.addEventListener("click", (e) => {
-    // Bỏ qua nếu đang click vào chính input hoặc nút Go
     if (e.target === inputField || e.target === goBtn || inputMode.contains(e.target)) {
       return;
     }
-
-    textMode.classList.add("hidden");
-    inputMode.classList.remove("hidden");
-    
-    // Reset và Focus
-    inputField.value = ""; 
-    inputField.focus();
+    window.activateSearchMode();
   });
 
-  // 2. Thực hiện Search
+  // ... (Phần logic performSearch, cancelSearch, Event Listeners giữ nguyên) ...
   const performSearch = () => {
     const query = inputField.value.trim().toLowerCase().replace(/\s/g, "");
     if (!query) {
       cancelSearch();
       return;
     }
-
-    // Gọi loadSutta từ app.js (Hàm này đã có logic tự tìm và tải sách nếu thiếu)
     if (window.loadSutta) {
         window.loadSutta(query);
-    } else {
-        console.error("loadSutta function missing");
     }
-    
-    // Ẩn input ngay lập tức cho mượt
     cancelSearch();
   };
 
-  // 3. Hủy Search (Quay lại Text Mode)
   const cancelSearch = () => {
     inputMode.classList.add("hidden");
     textMode.classList.remove("hidden");
   };
 
-  // Event Listeners
   goBtn.addEventListener("click", performSearch);
 
   inputField.addEventListener("keydown", (e) => {
@@ -109,10 +102,8 @@ window.setupQuickNav = function () {
     }
   });
 
-  // Xử lý khi click ra ngoài (Blur)
   inputField.addEventListener("blur", (e) => {
     setTimeout(() => {
-      // Kiểm tra xem focus có chuyển sang phần tử con nào của inputMode không (ví dụ nút Go)
       if (!inputMode.contains(document.activeElement)) {
         cancelSearch();
       }
@@ -128,25 +119,46 @@ window.renderSutta = function (suttaId, checkHash = true) {
 
   const id = suttaId.toLowerCase().trim();
   
-  // 1. Kiểm tra xem sách chứa bài kinh này đã load chưa
+  // 1. Kiểm tra sách
   const book = window.DB.findBookContaining(id);
 
   if (!book) {
-    container.innerHTML = `<p class="placeholder" style="color:red">Sutta ID "<b>${id}</b>" not found in loaded books.</p>`;
-    statusDiv.textContent = "Error: Sutta not found.";
+    // [FIX] Thay đổi nội dung hiển thị lỗi: Có link SuttaCentral
+    const scLink = `https://suttacentral.net/${id}/en/sujato`;
+    
+    container.innerHTML = `
+        <div class="error-message">
+            <p style="color: #d35400; font-weight: bold; font-size: 1.2rem;">
+                Sutta ID "${id}" not found.
+            </p>
+            <p>You can try checking on SuttaCentral:</p>
+            <p>
+                <a href="${scLink}" target="_blank" rel="noopener noreferrer" class="sc-link">
+                    Open ${id.toUpperCase()} on SuttaCentral ➜
+                </a>
+            </p>
+        </div>`;
+        
+    statusDiv.textContent = "Sutta not found.";
     statusDiv.classList.remove("hidden");
-    navHeader.classList.add("hidden");
+    // Giữ navHeader hiện để người dùng có thể nhập lại ngay
+    navHeader.classList.remove("hidden"); 
+    
+    // Reset Title về trạng thái chờ
+    const navMainTitle = document.getElementById("nav-main-title");
+    const navSubTitle = document.getElementById("nav-sub-title");
+    if(navMainTitle) navMainTitle.textContent = "Not Found";
+    if(navSubTitle) navSubTitle.textContent = "---";
+    
     return false;
   }
 
-  // 2. Tính toán Navigation (Prev/Next) từ DB Structure
+  // ... (Phần logic render thành công phía dưới giữ nguyên) ...
   const nav = window.DB.getNavigation(id);
   updateTopNavLocal(id, nav.prev, nav.next);
 
-  // 3. Compile HTML từ dữ liệu thô
   const htmlContent = window.DB.compileHtml(id);
   
-  // 4. Render Bottom Nav
   let bottomNavHtml = '<div class="sutta-nav">';
   if (nav.prev) {
     const prevInfo = window.getSuttaDisplayInfo(nav.prev);
@@ -162,7 +174,6 @@ window.renderSutta = function (suttaId, checkHash = true) {
 
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  // 5. Xử lý Hash scroll
   const hash = window.location.hash;
   if (checkHash && hash) {
     const targetId = hash.substring(1);
