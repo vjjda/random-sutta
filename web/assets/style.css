@@ -936,18 +936,30 @@ p {
 
 /* [NEW] ID nằm bên trái (Cho Leaf) */
 .b-id-left {
-    font-family: "Noto Sans", sans-serif; /* Hoặc font số bạn thích */
-    font-weight: bold;
+    /* Typography: Nhỏ lại để tinh tế hơn */
+    font-family: monospace;
+    font-size: 0.75rem;       /* [CHANGED] Giảm từ 0.85rem xuống 0.75rem */
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-weight: normal;      /* [CHANGED] Bỏ bold để đỡ nặng nề */
     
-    /* Tạo chiều rộng cố định để các title thẳng hàng */
-    min-width: 60px; 
+    /* Badge Style */
+    background-color: #f0f0f0; 
+    padding: 2px 6px;         /* [CHANGED] Padding gọn hơn */
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.05);
+
+    /* Positioning */
     margin-right: 15px;
-    margin-top: 2px; /* Căn chỉnh nhẹ với dòng title đầu tiên */
+    margin-top: 0;
     
-    text-align: right; /* Số căn lề phải cho đẹp (MN 1, MN 10...) */
+    /* Layout Alignment */
+    min-width: 65px;      /* [CHANGED] Giảm min-width một chút cho gọn */
+    text-align: center;
     white-space: nowrap;
+    flex-shrink: 0;
+    
+    /* [CHANGED] Căn giữa theo chiều dọc của cả thẻ card */
+    align-self: center; 
 }
 
 /* [NEW] ID nằm bên phải (Cho Branch - Giữ style badge cũ) */
