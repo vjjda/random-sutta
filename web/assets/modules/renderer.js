@@ -48,6 +48,78 @@ function updateTopNavLocal(currentId, prevId, nextId) {
   statusDiv.classList.add("hidden");
 }
 
+// --- [RESTORED] TÍNH NĂNG QUICK NAV ---
+window.setupQuickNav = function () {
+  const displayContainer = document.getElementById("nav-title-display");
+  const textMode = document.getElementById("nav-title-text");
+  const inputMode = document.getElementById("nav-search-container");
+  const inputField = document.getElementById("nav-sutta-input");
+  const goBtn = document.getElementById("nav-search-btn");
+
+  if (!displayContainer || !textMode || !inputMode) return;
+
+  // 1. Chuyển sang Input Mode khi click vào tiêu đề
+  displayContainer.addEventListener("click", (e) => {
+    // Bỏ qua nếu đang click vào chính input hoặc nút Go
+    if (e.target === inputField || e.target === goBtn || inputMode.contains(e.target)) {
+      return;
+    }
+
+    textMode.classList.add("hidden");
+    inputMode.classList.remove("hidden");
+    
+    // Reset và Focus
+    inputField.value = ""; 
+    inputField.focus();
+  });
+
+  // 2. Thực hiện Search
+  const performSearch = () => {
+    const query = inputField.value.trim().toLowerCase().replace(/\s/g, "");
+    if (!query) {
+      cancelSearch();
+      return;
+    }
+
+    // Gọi loadSutta từ app.js (Hàm này đã có logic tự tìm và tải sách nếu thiếu)
+    if (window.loadSutta) {
+        window.loadSutta(query);
+    } else {
+        console.error("loadSutta function missing");
+    }
+    
+    // Ẩn input ngay lập tức cho mượt
+    cancelSearch();
+  };
+
+  // 3. Hủy Search (Quay lại Text Mode)
+  const cancelSearch = () => {
+    inputMode.classList.add("hidden");
+    textMode.classList.remove("hidden");
+  };
+
+  // Event Listeners
+  goBtn.addEventListener("click", performSearch);
+
+  inputField.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") performSearch();
+    if (e.key === "Escape") {
+      cancelSearch();
+      e.stopPropagation();
+    }
+  });
+
+  // Xử lý khi click ra ngoài (Blur)
+  inputField.addEventListener("blur", (e) => {
+    setTimeout(() => {
+      // Kiểm tra xem focus có chuyển sang phần tử con nào của inputMode không (ví dụ nút Go)
+      if (!inputMode.contains(document.activeElement)) {
+        cancelSearch();
+      }
+    }, 150);
+  });
+};
+
 // Hàm render chính
 window.renderSutta = function (suttaId, checkHash = true) {
   const container = document.getElementById("sutta-container");
@@ -57,7 +129,6 @@ window.renderSutta = function (suttaId, checkHash = true) {
   const id = suttaId.toLowerCase().trim();
   
   // 1. Kiểm tra xem sách chứa bài kinh này đã load chưa
-  // (Lưu ý: Logic load sách thực hiện ở app.js, ở đây chỉ render)
   const book = window.DB.findBookContaining(id);
 
   if (!book) {
@@ -72,7 +143,7 @@ window.renderSutta = function (suttaId, checkHash = true) {
   const nav = window.DB.getNavigation(id);
   updateTopNavLocal(id, nav.prev, nav.next);
 
-  // 3. Compile HTML từ dữ liệu thô (QUAN TRỌNG)
+  // 3. Compile HTML từ dữ liệu thô
   const htmlContent = window.DB.compileHtml(id);
   
   // 4. Render Bottom Nav
@@ -91,11 +162,10 @@ window.renderSutta = function (suttaId, checkHash = true) {
 
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  // 5. Xử lý Hash scroll (giữ nguyên logic cũ)
+  // 5. Xử lý Hash scroll
   const hash = window.location.hash;
   if (checkHash && hash) {
     const targetId = hash.substring(1);
-    // Cần setTimeout nhẹ để DOM render xong (dù innerHTML là sync nhưng browser repaint có thể delay)
     setTimeout(() => {
         const targetElement = document.getElementById(targetId);
         if (targetElement) {
