@@ -76,9 +76,11 @@ export function setupTableOfHeadings() {
             span.textContent = labelText.replace(/\s+/g, ' ').trim();
             
             span.onclick = () => {
-                heading.scrollIntoView({ behavior: "smooth", block: "center" });
+                heading.scrollIntoView({ behavior: "smooth", block: "start" });
+                
                 heading.classList.add("highlight");
                 setTimeout(() => heading.classList.remove("highlight"), 2000);
+                
                 menu.classList.add("hidden");
                 fab.classList.remove("active");
             };
