@@ -1,80 +1,71 @@
 // Path: web/assets/app.js
+import { SuttaLoader } from './modules/loader.js';
+import { Router } from './modules/router.js';
+import { initFilters, getActiveFilters, generateBookParam } from './modules/filters.js';
+import { initCommentPopup } from './modules/utils.js';
+import { DB } from './modules/db_manager.js';
+import { renderSutta } from './modules/renderer.js';
+import { setupQuickNav } from './modules/search_component.js';
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // --- UI Elements ---
   const statusDiv = document.getElementById("status");
   const randomBtn = document.getElementById("btn-random");
   const navHeader = document.getElementById("nav-header");
+  
+  // UI Init
   const toggleDrawerBtn = document.getElementById("btn-toggle-drawer");
   const filterDrawer = document.getElementById("filter-drawer");
-
-  // --- UI Init ---
   if (toggleDrawerBtn && filterDrawer) {
     toggleDrawerBtn.addEventListener("click", () => {
       filterDrawer.classList.toggle("hidden");
       toggleDrawerBtn.classList.toggle("open");
     });
   }
-  const { hideComment } = window.initCommentPopup();
 
-  // --- Business Logic Functions ---
+  const { hideComment } = initCommentPopup();
 
-// 1. Load Single Sutta
+  // --- CORE FUNCTIONS ---
+
+  // Gán vào window để HTML onclick (trong nút điều hướng) gọi được
   window.loadSutta = function (suttaId, shouldUpdateUrl = true) {
     hideComment();
     
-    if (window.renderSutta(suttaId, false)) {
+    if (renderSutta(suttaId, false)) {
       if (shouldUpdateUrl) {
-        window.Router.updateURL(suttaId, window.generateBookParam());
+        Router.updateURL(suttaId, generateBookParam());
       }
     } else {
-      // Fallback: Gọi Loader tải thêm file nếu thiếu
       const match = suttaId.match(/^[a-z]+/);
       if(match) {
           const requiredBook = match[0];
-          window.SuttaLoader.loadBook(requiredBook).then(() => {
-            if (window.renderSutta(suttaId, false)) {
+          SuttaLoader.loadBook(requiredBook).then(() => {
+            if (renderSutta(suttaId, false)) {
               if (shouldUpdateUrl) {
-                window.Router.updateURL(suttaId, window.generateBookParam());
+                Router.updateURL(suttaId, generateBookParam());
               }
             } else {
-              // [FIX] Xóa alert("Sutta not found.")
-              // Tự động mở ô tìm kiếm để nhập lại
-              if (window.activateSearchMode) {
-                  window.activateSearchMode();
-              }
+              // Nếu không thấy thì mở ô search để nhập lại
+              if (searchControl) searchControl.activateSearchMode();
             }
           });
       } else {
-          // Trường hợp format sai (ví dụ nhập số 123 không có chữ)
-          // Vẫn render màn hình lỗi thông báo
-          window.renderSutta(suttaId, false);
-          if (window.activateSearchMode) {
-              window.activateSearchMode();
-          }
+          renderSutta(suttaId, false);
+          if (searchControl) searchControl.activateSearchMode();
       }
     }
   };
-  
-  // 2. Load Random Sutta (LOGIC MỚI)
+
   function loadRandomSutta(shouldUpdateUrl = true) {
     hideComment();
     if (!window.SUTTA_DB) return;
 
-    // Lấy tất cả ID bài kinh đang có
-    const allSuttas = window.DB.getAllAvailableSuttas();
+    const allSuttas = DB.getAllAvailableSuttas();
     if (allSuttas.length === 0) return;
 
-    const activePrefixes = window.getActiveFilters(); // ["mn", "dn", ...]
-
-    // Lọc danh sách dựa trên Filter
+    const activePrefixes = getActiveFilters();
     const filteredKeys = allSuttas.filter((key) => {
-      // key là "mn20", prefix là "mn". 
-      // Logic kiểm tra: key phải bắt đầu bằng prefix 
-      // VÀ ký tự tiếp theo phải là số (để tránh nhầm mn vs mnd)
       return activePrefixes.some((prefix) => {
         if (!key.startsWith(prefix)) return false;
-        // Kiểm tra ký tự ngay sau prefix có phải là số không
         const nextChar = key.charAt(prefix.length);
         return /\d/.test(nextChar); 
       });
@@ -89,32 +80,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.loadSutta(filteredKeys[randomIndex], shouldUpdateUrl);
   }
 
-  // --- Main Execution Flow ---
+  // --- INIT FEATURE MODULES ---
   
+  const searchControl = setupQuickNav((query) => {
+      window.loadSutta(query);
+  });
+
   statusDiv.textContent = "Loading core library...";
   try {
-    // A. Chạy Smart Loader
-    await window.SuttaLoader.initSmartLoading();
+    // 1. Load Data
+    await SuttaLoader.initSmartLoading();
 
-    // B. App Ready
+    // 2. App Ready
     statusDiv.classList.add("hidden");
     navHeader.classList.remove("hidden");
     randomBtn.disabled = false;
     
-    window.initFilters();
-    if (window.setupQuickNav) window.setupQuickNav();
+    initFilters();
 
-    // C. Handle Initial Route
-    const params = window.Router.getParams();
+    // 3. Routing Init
+    const params = Router.getParams();
     if (params.q) {
-      window.loadSutta(params.q, true); // Dùng loadSutta thay vì renderSutta để handle lazy load
+      window.loadSutta(params.q, true);
     } else {
       if (params.r) {
         loadRandomSutta(false);
       } else {
-        // Mặc định load random nếu không có params, nhưng update URL sạch
         loadRandomSutta(false);
-        window.Router.updateURL(null, window.generateBookParam(), true);
+        Router.updateURL(null, generateBookParam(), true);
       }
     }
 
@@ -123,14 +116,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     statusDiv.textContent = "Error loading library.";
   }
 
-  // --- Event Listeners ---
+  // Events
   randomBtn.addEventListener("click", () => loadRandomSutta(true));
 
   window.addEventListener("popstate", (event) => {
     if (event.state && event.state.suttaId) {
-      window.loadSutta(event.state.suttaId, false); // Không update URL đè lại
+      window.loadSutta(event.state.suttaId, false);
     } else {
-      const q = window.Router.getParams().q;
+      const q = Router.getParams().q;
       if(q) window.loadSutta(q, false);
     }
   });

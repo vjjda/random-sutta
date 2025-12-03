@@ -1,9 +1,9 @@
 // Path: web/assets/modules/router.js
-window.Router = {
+
+export const Router = {
   updateURL: function (suttaId, bookParam, enableRandomMode = false) {
     try {
       const params = new URLSearchParams(window.location.search);
-
       if (enableRandomMode) {
         params.set("r", "1");
         params.delete("q");
@@ -20,7 +20,6 @@ window.Router = {
 
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       const stateId = enableRandomMode ? null : suttaId || params.get("q");
-
       window.history.pushState({ suttaId: stateId }, "", newUrl);
     } catch (e) {
       console.warn("Router Error:", e);

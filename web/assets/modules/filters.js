@@ -1,36 +1,33 @@
 // Path: web/assets/modules/filters.js
+import { PRIMARY_BOOKS, SECONDARY_BOOKS } from './constants.js';
+import { Router } from './router.js';
 
 const filterSet = new Set();
 
-window.getActiveFilters = function () {
+export function getActiveFilters() {
   return Array.from(filterSet);
-};
+}
 
-// NEW: Hàm tính toán tham số URL cho sách (Chuyển từ app.js sang)
-window.generateBookParam = function () {
+export function generateBookParam() {
   const active = Array.from(filterSet);
-  const defaults = window.PRIMARY_BOOKS;
+  const defaults = PRIMARY_BOOKS;
 
-  // 1. Nếu số lượng khác nhau -> Custom
   if (active.length !== defaults.length) {
     return active.join(",");
   }
 
-  // 2. Nếu số lượng bằng, check nội dung
   const activeSetCheck = new Set(active);
   for (let book of defaults) {
     if (!activeSetCheck.has(book)) {
-      return active.join(","); // Có sách lạ
+      return active.join(",");
     }
   }
-
-  // 3. Giống hệt default -> null
   return null;
-};
+}
 
 function toggleFilter(bookId, btnElement) {
   if (filterSet.has(bookId)) {
-    if (filterSet.size === 1) return; // Giữ ít nhất 1
+    if (filterSet.size === 1) return;
     filterSet.delete(bookId);
     btnElement.classList.remove("active");
   } else {
@@ -38,16 +35,15 @@ function toggleFilter(bookId, btnElement) {
     btnElement.classList.add("active");
   }
 
-  // UPDATED: Cập nhật URL ngay lập tức
-  const bookParam = window.generateBookParam();
-  // Truyền null vào tham số đầu tiên để giữ nguyên Sutta ID hiện tại
-  window.updateURL(null, bookParam);
+  const bookParam = generateBookParam();
+  // Giữ nguyên sutta hiện tại (null param đầu), chỉ update ?b=
+  Router.updateURL(null, bookParam);
 }
 
 function createFilterButton(bookId, container, isDefaultActive) {
   const btn = document.createElement("button");
   btn.className = "filter-btn";
-
+  
   if (["dn", "mn", "sn", "an"].includes(bookId)) {
     btn.textContent = bookId.toUpperCase();
   } else {
@@ -63,41 +59,35 @@ function createFilterButton(bookId, container, isDefaultActive) {
   container.appendChild(btn);
 }
 
-window.initFilters = function () {
+export function initFilters() {
   const primaryDiv = document.getElementById("primary-filters");
   const secondaryDiv = document.getElementById("secondary-filters");
   const moreBtn = document.getElementById("btn-more-filters");
 
+  if (!primaryDiv || !secondaryDiv) return;
+
   primaryDiv.innerHTML = "";
   secondaryDiv.innerHTML = "";
-
   filterSet.clear();
 
-  // Parse URL param ?b= để init state
   const params = new URLSearchParams(window.location.search);
   const bParam = params.get("b");
-
   let initialBooks = new Set();
   let hasSecondaryActive = false;
 
   if (bParam) {
-    const booksFromUrl = bParam
-      .toLowerCase()
-      .split(",")
-      .map((s) => s.trim());
+    const booksFromUrl = bParam.toLowerCase().split(",").map((s) => s.trim());
     booksFromUrl.forEach((b) => initialBooks.add(b));
   } else {
-    window.PRIMARY_BOOKS.forEach((b) => initialBooks.add(b));
+    PRIMARY_BOOKS.forEach((b) => initialBooks.add(b));
   }
 
-  // Render Primary
-  window.PRIMARY_BOOKS.forEach((book) => {
+  PRIMARY_BOOKS.forEach((book) => {
     const isActive = initialBooks.has(book);
     createFilterButton(book, primaryDiv, isActive);
   });
 
-  // Render Secondary
-  window.SECONDARY_BOOKS.forEach((book) => {
+  SECONDARY_BOOKS.forEach((book) => {
     const isActive = initialBooks.has(book);
     if (isActive) hasSecondaryActive = true;
     createFilterButton(book, secondaryDiv, isActive);
@@ -113,8 +103,6 @@ window.initFilters = function () {
 
   moreBtn.onclick = () => {
     secondaryDiv.classList.toggle("hidden");
-    moreBtn.textContent = secondaryDiv.classList.contains("hidden")
-      ? "Others"
-      : "Hide";
+    moreBtn.textContent = secondaryDiv.classList.contains("hidden") ? "Others" : "Hide";
   };
-};
+}
