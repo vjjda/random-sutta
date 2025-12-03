@@ -301,6 +301,7 @@ header {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap; 
+    padding: 0 5px; 
 }
 
 /* --- INPUT MODE (Ô nhập liệu) --- */
