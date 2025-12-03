@@ -860,7 +860,7 @@ p {
 
 /* --- 13. BRANCH VIEW (Table of Contents Style) --- */
 .branch-container {
-  padding: 10px;
+  padding: 0;
 }
 
 .branch-title {
@@ -884,10 +884,9 @@ p {
     color: var(--text-light);
     
     /* Center the block */
-    max-width: 650px;
+    max-width: 100%; 
     margin: 0 auto 25px auto;
     
-    /* Align text inside */
     text-align: left; 
     line-height: 1.6;
     font-size: 0.95rem;
