@@ -15,13 +15,15 @@ WEB_DIR = PROJECT_ROOT / "web"
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
-# Danh sách các file cốt lõi bắt buộc phải có (Critical Path)
+# [UPDATED] Danh sách các file cốt lõi bắt buộc phải có
 CRITICAL_ASSETS = [
     "assets/app.js",
-    "assets/modules/loader.js",   # MỚI
-    "assets/modules/router.js",   # MỚI
+    "assets/modules/loader.js",
+    "assets/modules/router.js",
     "assets/modules/utils.js",
-    "assets/sutta/sutta_loader.js"
+    "assets/modules/renderer.js",
+    "assets/modules/db_manager.js",   # [NEW] Module quản lý DB
+    "assets/books/sutta_loader.js"    # [CHANGED] Đường dẫn mới
 ]
 
 def update_file_content(file_path: Path, pattern: str, replacement: str) -> bool:
@@ -40,7 +42,7 @@ def update_file_content(file_path: Path, pattern: str, replacement: str) -> bool
         new_content = re.sub(pattern, replacement, content)
 
         if content == new_content:
-             # Cảnh báo nhẹ nếu không tìm thấy pattern (có thể do file sạch hoặc regex lệch)
+             # Cảnh báo nhẹ nếu không tìm thấy pattern
              logger.warning(f"   ⚠️ No changes in {file_path.name} (Pattern match might be updated already)")
              return True
         
@@ -53,7 +55,7 @@ def update_file_content(file_path: Path, pattern: str, replacement: str) -> bool
         logger.error(f"❌ Error updating {file_path.name}: {e}")
         return False
 
-def check_critical_assets():
+def check_critical_assets() -> bool:
     """Kiểm tra xem các file quan trọng có tồn tại không"""
     logger.info("🔍 Checking critical assets...")
     missing = []
@@ -72,7 +74,6 @@ def update_version_tags(version_tag: str) -> bool:
 
     # 1. Update index.html (Asset versioning)
     # Regex này bắt tất cả các file .js/.css nằm trong thư mục assets/
-    # Bao gồm cả modules/loader.js, modules/router.js
     if not update_file_content(
         WEB_DIR / "index.html",
         r'(assets\/.*?\.(?:js|css))(?:\?v=[^"\']*)?',
