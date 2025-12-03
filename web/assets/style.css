@@ -880,12 +880,17 @@ p {
 }
 
 .branch-blurb {
-  font-style: italic;
-  color: var(--text-light);
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto 20px auto;
-  line-height: 1.5;
+    font-style: italic;
+    color: var(--text-light);
+    
+    /* Center the block */
+    max-width: 650px;
+    margin: 0 auto 25px auto;
+    
+    /* Align text inside */
+    text-align: left; 
+    line-height: 1.6;
+    font-size: 0.95rem;
 }
 
 .branch-divider {
@@ -905,15 +910,15 @@ p {
 }
 
 .branch-list a {
-  display: flex;
-  align-items: center;
-  padding: 12px 15px;
-  background-color: #fcfcfc;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  color: var(--text-main);
-  transition: all 0.2s;
+    display: flex;
+    align-items: flex-start; /* Căn lề trên để ID không bị chạy lung tung nếu title dài */
+    padding: 12px 15px;
+    background-color: #fcfcfc;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--text-main);
+    transition: all 0.2s;
 }
 
 .branch-list a:hover {
@@ -923,18 +928,38 @@ p {
   box-shadow: var(--shadow-soft);
 }
 
-.b-icon {
-  font-size: 1.2rem;
-  margin-right: 15px;
-  opacity: 0.7;
-}
-
 .b-info {
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* Thêm padding phải một chút để chữ không dính sát vào cái ID bên phải */
-  padding-right: 15px;
+}
+
+/* [NEW] ID nằm bên trái (Cho Leaf) */
+.b-id-left {
+    font-family: "Noto Sans", sans-serif; /* Hoặc font số bạn thích */
+    font-weight: bold;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    
+    /* Tạo chiều rộng cố định để các title thẳng hàng */
+    min-width: 60px; 
+    margin-right: 15px;
+    margin-top: 2px; /* Căn chỉnh nhẹ với dòng title đầu tiên */
+    
+    text-align: right; /* Số căn lề phải cho đẹp (MN 1, MN 10...) */
+    white-space: nowrap;
+}
+
+/* [NEW] ID nằm bên phải (Cho Branch - Giữ style badge cũ) */
+.b-id-right {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    font-family: monospace;
+    background: #eee;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 10px;
+    align-self: center; /* Căn giữa theo trục dọc */
 }
 
 .b-title {
@@ -962,20 +987,19 @@ p {
   border-left: 4px solid var(--primary-color);
 }
 
-/* [NEW] Style cho Blurb trong card */
+/* Style cho Blurb nhỏ trong Card */
 .b-blurb {
-  font-size: 0.85rem; /* Chữ nhỏ hơn title */
-  color: var(--text-muted); /* Màu xám nhạt */
-  margin-top: 6px; /* Tách biệt với tiêu đề */
-  line-height: 1.4;
-
-  /* Kỹ thuật Line Clamping (Giới hạn dòng) */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden; /* Ẩn phần thừa */
-  text-overflow: ellipsis; /* Thêm dấu ... */
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+    
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Khi hover vào thẻ a, làm blurb đậm hơn chút cho dễ đọc */
