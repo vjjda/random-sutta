@@ -1,7 +1,7 @@
 // Path: web/sw.js
 
 // Tên cache mới (Nên bump version khi deploy)
-const CACHE_NAME = "sutta-reader-cache-v1.2.0";
+const CACHE_NAME = "sutta-reader-cache-v1.2.1";
 
 const SUTTA_DATA_FILES = [
   "an.js",
