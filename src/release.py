@@ -18,14 +18,15 @@ WEB_DIR = PROJECT_ROOT / "web"
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
-# Thứ tự ghép file cực kỳ quan trọng (File được import phải đứng trước file import nó)
+# Thứ tự ghép file cực kỳ quan trọng
 BUNDLE_ORDER = [
     "assets/modules/constants.js",
-    "assets/modules/db_manager.js", # Độc lập
-    "assets/modules/utils.js",      # Dùng DB
+    "assets/modules/db_manager.js",
+    "assets/modules/utils.js",
+    "assets/modules/toh_component.js",  # [NEW] Insert here
     "assets/modules/router.js",
-    "assets/modules/loader.js",     # Dùng Constants
-    "assets/modules/filters.js",    # Dùng Router, Constants
+    "assets/modules/loader.js",
+    "assets/modules/filters.js",
     "assets/modules/search_component.js",
     "assets/modules/renderer.js",   # Dùng DB, Utils
     "assets/app.js"                 # Entry Point

@@ -1,9 +1,10 @@
 // Path: web/assets/modules/renderer.js
 import { DB } from './db_manager.js';
-import { getSuttaDisplayInfo, initTableOfContents } from './utils.js'; // [UPDATED]
+import { getSuttaDisplayInfo } from './utils.js';
+import { setupTableOfHeadings } from './toh_component.js'; // [NEW]
 
-// Khởi tạo instance ToC (Singleton trong module scope)
-let tocInstance = null;
+// Singleton instance
+let tohInstance = null;
 
 function updateTopNavLocal(currentId, prevId, nextId) {
   const navHeader = document.getElementById("nav-header");
@@ -92,15 +93,12 @@ export function renderSutta(suttaId, checkHash = true) {
 
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  // [NEW] Generate Table of Contents
-  // Lazy init instance nếu chưa có
-  if (!tocInstance) {
-      tocInstance = initTableOfContents();
+  // [UPDATED] Generate Table of Headings
+  if (!tohInstance) {
+      tohInstance = setupTableOfHeadings();
   }
-  // Gọi hàm regenerate
-  if (tocInstance && tocInstance.generateToC) {
-      tocInstance.generateToC();
-  }
+  // Gọi hàm generate mỗi khi render bài kinh mới
+  tohInstance.generate();
 
   if (checkHash && window.location.hash) {
     const targetId = window.location.hash.substring(1);
