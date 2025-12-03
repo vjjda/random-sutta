@@ -43,14 +43,11 @@ window.SuttaLoader = (function () {
         return Promise.resolve();
       },
 
-      initSmartLoading: async function () {
+    initSmartLoading: async function () {
         if (!window.ALL_SUTTA_FILES) {
-           // Fallback nếu chưa load được manifest
            console.warn("Manifest missing, waiting...");
            return; 
         }
-        // ... (Giữ nguyên logic cũ) ...
-        // Chỉ cần đảm bảo logic loadScript ở trên đã sửa path
         
         console.log("🚀 Starting Smart Loading...");
         const params = new URLSearchParams(window.location.search);
@@ -59,9 +56,8 @@ window.SuttaLoader = (function () {
         
         let criticalFiles = new Set();
 
-        // 1. Phân tích Critical Path
+        // 1. Phân tích Critical Path (Dựa trên URL)
         if (queryId) {
-            // Lấy phần chữ cái đầu (vd: mn20 -> mn)
             const match = queryId.match(/^[a-z]+/);
             if (match) {
                 const bookId = match[0];
@@ -69,25 +65,42 @@ window.SuttaLoader = (function () {
                 if (f) criticalFiles.add(f);
             }
         }
+
+        if (bookParam) {
+            bookParam.split(",").forEach((b) => {
+                const f = getFileNameForBook(b.trim());
+                if (f) criticalFiles.add(f);
+            });
+        }
         
-        // ... (Logic cũ) ...
-        // Tạm thời load các file quan trọng trước
-        // Logic super_book.js nên được thêm vào đây nếu cần
+        // Luôn tải super_book để có cấu trúc menu
         const superBook = window.ALL_SUTTA_FILES.find(f => f.includes("super_book.js"));
         if(superBook) criticalFiles.add(superBook);
 
+        // [FIX QUAN TRỌNG]: Nếu không có file nào được yêu cầu cụ thể (Mở trang chủ)
+        // Ta phải tải bộ Primary Books ngay lập tức để chức năng Random hoạt động.
+        if (criticalFiles.size <= 1) { // <= 1 vì có thể đã add superBook
+             if (window.PRIMARY_BOOKS) {
+                 window.PRIMARY_BOOKS.forEach(bookId => {
+                     const f = getFileNameForBook(bookId);
+                     if (f) criticalFiles.add(f);
+                 });
+             }
+        }
+
+        // 2. Tải Critical Files (Lúc này đã bao gồm MN, DN, SN...)
         await Promise.all(Array.from(criticalFiles).map(loadScript));
         console.log("✅ Critical files loaded.");
 
-        // Lazy load phần còn lại
+        // 3. Lazy load phần còn lại (Các bộ phụ KN nhỏ lẻ)
         setTimeout(async () => {
             console.log("⏳ Background loading remaining files...");
             const remaining = window.ALL_SUTTA_FILES.filter(
             (f) => !loadedFiles.has(f)
             );
             for (const file of remaining) {
-            await loadScript(file);
-            await new Promise((r) => setTimeout(r, 50)); 
+                await loadScript(file);
+                await new Promise((r) => setTimeout(r, 50)); 
             }
             console.log("✅ All library loaded.");
         }, 2000);
