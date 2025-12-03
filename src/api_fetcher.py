@@ -7,7 +7,7 @@ import urllib.request
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Set
 
 # --- Configuration ---
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -15,11 +15,18 @@ DATA_ROOT_DIR = PROJECT_ROOT / "data" / "bilara" / "root"
 DATA_JSON_DIR = PROJECT_ROOT / "data" / "json"
 API_TEMPLATE = "https://suttacentral.net/api/suttaplex/{}"
 
-# [NEW] Danh sách các UID bổ sung (không tìm thấy qua quét thư mục)
+# 1. Các UID bổ sung (Vinaya rules)
 EXTRA_UIDS = {
     "pli-tv-bi-pm": "vinaya",
     "pli-tv-bu-pm": "vinaya"
 }
+
+# 2. Priority 1: Super Categories (File khổng lồ)
+SUPER_TARGETS = ["sutta", "vinaya", "abhidhamma"]
+
+# 3. Priority 2: Large Nikayas (File lớn)
+# Dùng Set để tra cứu nhanh O(1)
+LARGE_TARGETS: Set[str] = {"dn", "mn", "sn", "an"}
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -31,65 +38,76 @@ logger = logging.getLogger("APIFetcher")
 
 def discover_books() -> List[Tuple[str, str]]:
     """
-    Quét thư mục data/bilara/root để tìm ID sách và Category.
+    Quét thư mục root để tìm sách và sắp xếp theo thứ tự ưu tiên:
+    1. Super (sutta, vinaya...)
+    2. Large (dn, mn, sn, an)
+    3. Normal (kn, etc.)
     """
     if not DATA_ROOT_DIR.exists():
         logger.error(f"❌ Root data not found at {DATA_ROOT_DIR}. Please run sutta_fetcher.py first.")
         return []
 
-    found_books: List[Tuple[str, str]] = []
+    # --- PHASE 1: Priority 1 (Super) ---
+    priority_super = [(uid, "super") for uid in SUPER_TARGETS]
     
-    # 1. Scan Sutta Pitaka
-    sutta_dir = DATA_ROOT_DIR / "sutta"
-    if sutta_dir.exists():
-        logger.info("   🔍 Scanning Sutta Pitaka...")
-        for item in sutta_dir.iterdir():
-            if not item.is_dir(): continue
-            
-            if item.name == 'kn':
-                for kn_book in item.iterdir():
-                    if kn_book.is_dir():
-                        found_books.append((kn_book.name, "sutta/kn"))
-            else:
-                found_books.append((item.name, "sutta"))
+    # --- PHASE 2: Scanning ---
+    found_raw: List[Tuple[str, str]] = []
+    
+    # Helper để quét thư mục
+    def scan_dir(path: Path, category: str):
+        if path.exists():
+            for item in path.iterdir():
+                if not item.is_dir(): continue
+                # Xử lý đệ quy cho Tiểu bộ (KN)
+                if item.name == 'kn':
+                    for kn_book in item.iterdir():
+                        if kn_book.is_dir():
+                            found_raw.append((kn_book.name, f"{category}/kn"))
+                else:
+                    found_raw.append((item.name, category))
 
-    # 2. Scan Vinaya Pitaka
-    vinaya_dir = DATA_ROOT_DIR / "vinaya"
-    if vinaya_dir.exists():
-        logger.info("   🔍 Scanning Vinaya Pitaka...")
-        for item in vinaya_dir.iterdir():
-            if item.is_dir():
-                found_books.append((item.name, "vinaya"))
+    logger.info("   🔍 Scanning directories...")
+    scan_dir(DATA_ROOT_DIR / "sutta", "sutta")
+    scan_dir(DATA_ROOT_DIR / "vinaya", "vinaya")
+    scan_dir(DATA_ROOT_DIR / "abhidhamma", "abhidhamma")
 
-    # 3. Scan Abhidhamma Pitaka
-    abhi_dir = DATA_ROOT_DIR / "abhidhamma"
-    if abhi_dir.exists():
-        logger.info("   🔍 Scanning Abhidhamma Pitaka...")
-        for item in abhi_dir.iterdir():
-            if item.is_dir():
-                found_books.append((item.name, "abhidhamma"))
-
-    # 4. [NEW] Inject Extra UIDs
+    # Inject Extra UIDs
     for uid, category in EXTRA_UIDS.items():
-        # Kiểm tra xem có file root tương ứng không thì mới thêm
-        # (Để tránh fetch thừa nếu người dùng chưa chạy sutta_fetcher đủ)
-        # Tuy nhiên, fetch dư metadata cũng không sao.
-        found_books.append((uid, category))
+        found_raw.append((uid, category))
 
+    # --- PHASE 3: Filtering & Sorting ---
     params_to_ignore = {'xplayground', '__pycache__', '.git', '.DS_Store'}
-    # Remove duplicates and ignore list
-    unique_books = {}
-    for book, cat in found_books:
-        if book not in params_to_ignore:
-            unique_books[book] = cat
-            
-    final_list = sorted([(k, v) for k, v in unique_books.items()])
     
-    logger.info(f"✅ Discovered {len(final_list)} books (including extras).")
-    return final_list
+    priority_large: List[Tuple[str, str]] = []
+    normal_books: List[Tuple[str, str]] = []
+    seen_books = set()
+
+    # Phân loại sách tìm được vào Large hoặc Normal
+    for book, cat in found_raw:
+        if book in params_to_ignore or book in seen_books:
+            continue
+        
+        seen_books.add(book)
+        
+        if book in LARGE_TARGETS:
+            priority_large.append((book, cat))
+        else:
+            normal_books.append((book, cat))
+
+    # Sắp xếp nội bộ từng nhóm để log đẹp hơn
+    priority_large.sort()
+    normal_books.sort()
+    
+    logger.info(f"   ⚡ Priority 1 (Super): {len(priority_super)} tasks")
+    logger.info(f"   🔥 Priority 2 (Large): {len(priority_large)} tasks ({', '.join(b[0] for b in priority_large)})")
+    logger.info(f"   📚 Priority 3 (Normal): {len(normal_books)} tasks")
+
+    # --- PHASE 4: Merge ---
+    # Thứ tự trả về quyết định thứ tự submit vào ThreadPool
+    return priority_super + priority_large + normal_books
 
 def fetch_book_json(book_info: Tuple[str, str]) -> str:
-    """Tải metadata từ API SuttaCentral."""
+    """Tải metadata từ API."""
     book_id, category_path = book_info
     url = API_TEMPLATE.format(book_id)
     
@@ -99,7 +117,17 @@ def fetch_book_json(book_info: Tuple[str, str]) -> str:
     dest_file = category_dir / f"{book_id}.json"
     
     try:
-        with urllib.request.urlopen(url, timeout=60) as response:
+        # Timeout Strategy:
+        # - Super (rất nặng): 120s
+        # - Large (nặng): 90s
+        # - Normal: 60s
+        timeout = 60
+        if category_path == "super":
+            timeout = 120
+        elif book_id in LARGE_TARGETS:
+            timeout = 90
+        
+        with urllib.request.urlopen(url, timeout=timeout) as response:
             if response.status != 200:
                 return f"❌ {book_id}: HTTP {response.status}"
             
@@ -112,7 +140,7 @@ def fetch_book_json(book_info: Tuple[str, str]) -> str:
         
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return f"⚠️ {category_path}/{book_id}: Not found on API (404)"
+            return f"⚠️ {category_path}/{book_id}: Not found (404)"
         return f"❌ {category_path}/{book_id}: HTTP {e.code}"
     except Exception as e:
         return f"❌ {category_path}/{book_id}: Error {e}"
@@ -122,13 +150,14 @@ def orchestrate_api_fetch() -> None:
     
     target_books = discover_books()
     if not target_books:
-        logger.warning("⚠️ No books found to fetch.")
+        logger.warning("⚠️ No targets found to fetch.")
         return
 
     if not DATA_JSON_DIR.exists():
         DATA_JSON_DIR.mkdir(parents=True)
 
-    workers = min(10, os.cpu_count() * 2) 
+    # Tối ưu số lượng worker
+    workers = min(12, (os.cpu_count() or 1) * 2)
     logger.info(f"   Using {workers} threads for {len(target_books)} requests...")
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
