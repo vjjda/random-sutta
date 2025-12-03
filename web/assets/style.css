@@ -326,16 +326,20 @@ header {
 
 #nav-sutta-input {
     width: 100%;
-    padding: 6px 10px;
+    /* [FIX] Giảm padding dọc để input gọn hơn */
+    padding: 0 10px; 
     border: 1px solid var(--primary-color);
     border-radius: var(--radius-sm);
     text-align: center;
     font-weight: bold;
     color: var(--primary-color);
     outline: none;
-    font-size: 16px; /* Chặn zoom trên iOS */
-    height: 2.4rem;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* Shadow nhẹ cho đẹp */
+    font-size: 16px; 
+    
+    /* [FIX] Giảm chiều cao xuống 2rem cho gọn gàng */
+    height: 2rem; 
+    
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     background: white;
 }
 
@@ -345,10 +349,18 @@ header {
     border: none;
     border-radius: var(--radius-sm);
     padding: 0 12px;
-    height: 2.4rem;
+    
+    /* [FIX] Chiều cao nút phải khớp với input */
+    height: 2rem; 
+    
     font-size: 1rem;
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    
+    /* Căn chỉnh text/icon bên trong nút */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* --- 7. MAIN SUTTA CONTAINER --- */
