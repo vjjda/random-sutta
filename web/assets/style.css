@@ -53,7 +53,7 @@
 
 /* --- 3. RESET & BASE STYLES --- */
 * {
-    box_sizing: border-box;
+    box-sizing: border-box;
 }
 
 body {
@@ -927,7 +927,8 @@ p {
     
     /* Kỹ thuật Line Clamping (Giới hạn dòng) */
     display: -webkit-box;
-    -webkit-line-clamp: 2;    /* Chỉ hiện tối đa 2 dòng */
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;         /* Ẩn phần thừa */
     text-overflow: ellipsis;  /* Thêm dấu ... */
