@@ -609,13 +609,11 @@ p {
     }
 }
 
-/* Error Message Styling */
 .error-message {
     text-align: center;
     padding: 40px 20px;
-    background-color: #fff5f5; /* Nền đỏ rất nhạt */
     border-radius: 8px;
-    border: 1px dashed #feb2b2;
+    border: none; 
 }
 
 .sc-link {
