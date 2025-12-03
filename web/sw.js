@@ -48,15 +48,17 @@ const SUTTA_DATA_FILES = [
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./manifest.json",
   "./assets/style.css",
   "./assets/app.js",
   "./assets/modules/constants.js",
   "./assets/modules/utils.js",
   "./assets/modules/filters.js",
   "./assets/modules/renderer.js",
-  "./assets/modules/loader.js", // MỚI
-  "./assets/modules/router.js", // MỚI
+  "./assets/modules/loader.js",
+  "./assets/modules/router.js",
+  "./assets/modules/search_component.js",
+  "./assets/modules/toh_component.js",
+  "./assets/modules/db_manager.js",
   "./assets/books/sutta_loader.js",
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",
