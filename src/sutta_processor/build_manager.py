@@ -10,8 +10,7 @@ from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
 from .logic.content_merger import process_worker
 from .logic.structure_handler import build_book_data
-# [NEW IMPORT]
-from .logic.super_generator import generate_super_book_data 
+from .logic.super_generator import generate_super_book_data
 from .output.asset_generator import write_book_file, write_loader_script
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
@@ -26,18 +25,40 @@ class BuildManager:
         self.book_progress: Dict[str, int] = {}
         self.completed_files: List[str] = []
         
-        # [NEW] Theo dõi ID các sách đã build để truyền cho SuperGen
+        # Theo dõi ID các sách đã build để truyền cho SuperGen
         self.processed_book_ids: List[str] = [] 
         
         self.sutta_group_map: Dict[str, str] = {}
 
-    # ... (Các hàm _prepare_environment, _handle_task_completion giữ nguyên) ...
+    def _prepare_environment(self) -> None:
+        """Chuẩn bị thư mục output."""
+        target_dir = PROCESSED_DIR if self.dry_run else OUTPUT_DB_DIR
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        mode = "🧪 DRY-RUN" if self.dry_run else "🚀 PRODUCTION"
+        logger.info(f"{mode} MODE INITIALIZED")
+
+    def _handle_task_completion(self, group: str, sutta_id: str, content: Any) -> None:
+        """Xử lý kết quả trả về từ worker."""
+        if content:
+            self.buffers[group][sutta_id] = content
+        
+        self.book_progress[group] += 1
+        
+        # Nếu đã xử lý xong toàn bộ sách trong nhóm -> Ghi file
+        if self.book_progress[group] >= self.book_totals[group]:
+            self._finalize_book(group)
+            if group in self.buffers:
+                del self.buffers[group]
 
     def _finalize_book(self, group: str) -> None:
+        """Tổng hợp dữ liệu và ghi file sách."""
         raw_data = self.buffers.get(group, {})
         book_obj = build_book_data(group, raw_data, self.names_map)
         
-        # [NEW] Lưu lại ID sách (ví dụ: 'dn', 'mn', 'pli-tv-bi-pm')
+        # Lưu lại ID sách (ví dụ: 'dn', 'mn', 'pli-tv-bi-pm') để dùng cho Super Book
         if book_obj and "id" in book_obj:
             self.processed_book_ids.append(book_obj["id"])
 
@@ -48,6 +69,7 @@ class BuildManager:
     def run(self) -> None:
         self._prepare_environment()
         
+        # 1. Generate Tasks
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
@@ -59,6 +81,7 @@ class BuildManager:
                 all_tasks.append(task)
                 self.sutta_group_map[task[0]] = group_name
 
+        # 2. Execute Workers
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
 
@@ -79,28 +102,16 @@ class BuildManager:
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
-        # --- [NEW STEP] GENERATE SUPER BOOK ---
-        # Chỉ chạy sau khi đã xác định được tất cả các sách có sẵn
+        # 3. Generate Super Book (Menu Structure)
         if self.processed_book_ids:
             super_book_data = generate_super_book_data(self.processed_book_ids)
             if super_book_data:
-                # Ghi file super-book (sử dụng logic ghi file có sẵn)
-                # Tên group là "super" -> file sẽ là super_book.js / super_book.json
-                # Tuy nhiên user yêu cầu file tên là "super-book.json"
-                # write_book_file tự động thêm suffix _book.js/.json
-                # Ta dùng group name là "super" => output: super_book.js
-                
-                # Nếu muốn chính xác là "super-book" (dấu gạch ngang), ta có thể hack group name
-                # Nhưng để đồng bộ, tôi khuyên dùng "super" => super_book.js
-                # Ở đây tôi sẽ dùng "super" để khớp với logic system.
-                
+                # Ghi file super_book.js / .json
                 super_filename = write_book_file("super", super_book_data, self.dry_run)
                 if super_filename:
-                    # KHÔNG thêm vào completed_files để tránh loader.js load nhầm nó như một cuốn sách
-                    # Hoặc thêm vào tùy thuộc strategy của Frontend. 
-                    # Với yêu cầu hiện tại, nó là file cấu trúc, không phải content book.
                     logger.info(f"🌟 Super Book generated: {super_filename}")
 
+        # 4. Generate Loader (Only in Prod)
         if not self.dry_run:
             write_loader_script(self.completed_files)
             
