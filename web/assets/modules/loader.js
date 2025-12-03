@@ -9,7 +9,6 @@ export const SuttaLoader = (function () {
       if (loadedFiles.has(fileName)) return resolve();
 
       const script = document.createElement("script");
-      // Trỏ vào thư mục books mới
       script.src = `assets/books/${fileName}`; 
       script.async = true;
 
@@ -27,7 +26,6 @@ export const SuttaLoader = (function () {
   }
 
   function getFileNameForBook(bookId) {
-    // window.ALL_SUTTA_FILES được load từ file sutta_loader.js (Global script)
     if (!window.ALL_SUTTA_FILES) return null;
     return window.ALL_SUTTA_FILES.find(
       (f) => f === `${bookId}.js` || f.endsWith(`/${bookId}.js`) || f.includes(`_${bookId}_book.js`) || f.includes(`/${bookId}_book.js`)
@@ -52,50 +50,65 @@ export const SuttaLoader = (function () {
       const queryId = params.get("q");
       const bookParam = params.get("b");
       
+      // Tập hợp các file bắt buộc phải có để render màn hình đầu tiên
       let criticalFiles = new Set();
+      let hasTargetBook = false;
 
+      // 1. Ưu tiên cao nhất: Sách được yêu cầu qua ?q=
       if (queryId) {
-        // [FIX] Thêm \- vào regex để bắt được ID dạng "pli-tv-kd"
-        const match = queryId.match(/^[a-z\-]+/i); 
+        // [Regex Update] Hỗ trợ cả sách có dấu gạch ngang (vinaya)
+        const match = queryId.match(/^[a-z\-]+/i);
         if (match) {
-            const bookId = match[0];
+            const bookId = match[0].toLowerCase();
             const f = getFileNameForBook(bookId);
-            if (f) criticalFiles.add(f);
+            if (f) {
+                criticalFiles.add(f);
+                hasTargetBook = true;
+            }
         }
       }
 
-      if (bookParam) {
+      // 2. Ưu tiên nhì: Sách được lọc qua ?b=
+      if (bookParam && !hasTargetBook) {
         bookParam.split(",").forEach((b) => {
           const f = getFileNameForBook(b.trim());
           if (f) criticalFiles.add(f);
         });
       }
 
-      // Load Super Book
-      const superBook = window.ALL_SUTTA_FILES.find(f => f.includes("super_book.js"));
-      if(superBook) criticalFiles.add(superBook);
-
-      // Nếu không có yêu cầu cụ thể, load Primary Books ngay
-      if (criticalFiles.size <= 1) { 
+      // 3. Nếu KHÔNG có sách cụ thể nào được yêu cầu, mới tải bộ Primary
+      // Logic cũ: if (criticalFiles.size <= 1) -> Luôn tải Primary
+      // Logic mới: Chỉ tải Primary nếu hoàn toàn không biết người dùng muốn đọc gì
+      if (criticalFiles.size === 0) { 
          PRIMARY_BOOKS.forEach(bookId => {
              const f = getFileNameForBook(bookId);
              if (f) criticalFiles.add(f);
          });
       }
+      
+      // Luôn load Super Book nếu có (để render menu cấu trúc)
+      const superBook = window.ALL_SUTTA_FILES.find(f => f.includes("super_book.js"));
+      if(superBook) criticalFiles.add(superBook);
 
+      // Giai đoạn 1: Chặn luồng để tải Critical Files
       await Promise.all(Array.from(criticalFiles).map(loadScript));
       console.log("✅ Critical files loaded.");
 
+      // Giai đoạn 2: Tải ngầm tất cả các file còn lại (bao gồm cả Primary Books nếu chưa tải)
       setTimeout(async () => {
         console.log("⏳ Background loading remaining files...");
         const remaining = window.ALL_SUTTA_FILES.filter(
           (f) => !loadedFiles.has(f)
         );
+        
+        // Tải tuần tự để đỡ chiếm băng thông, hoặc song song tùy ý
+        // Ở đây dùng song song theo lô nhỏ hoặc song song toàn bộ vì browser tự giới hạn connection
         for (const file of remaining) {
-          await loadScript(file);
-          await new Promise((r) => setTimeout(r, 50)); 
+           loadScript(file); // Không await để chạy song song "fire and forget"
         }
-        console.log("✅ All library loaded.");
+        
+        // (Optional) Nếu muốn log khi HOÀN TẤT tất cả thì mới dùng Promise.all ở đây
+        // Nhưng để tránh chiếm thread, ta cứ để nó tự chạy.
       }, 2000);
     },
   };
