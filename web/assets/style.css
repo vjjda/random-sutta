@@ -371,6 +371,19 @@ header {
     border-radius: 8px;
     box-shadow: var(--shadow-soft);
     min-height: 300px;
+    
+    /* [MỚI] Bắt buộc ngắt dòng để không vỡ layout trên mobile */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word; 
+    max-width: 100%; /* Đảm bảo không tràn container */
+}
+
+/* Thêm quy tắc cho ảnh và bảng nếu có */
+#sutta-container img, 
+#sutta-container table {
+    max-width: 100%;
+    height: auto;
 }
 
 .placeholder {
