@@ -440,9 +440,12 @@ p {
 .segment:target,
 .segment.highlight {
     background-color: var(--highlight-color);
-    padding: 2px 5px;
+    padding: 0; 
+    box-shadow: 0 0 0 5px var(--highlight-color);
     border-radius: 4px;
-    transition: background-color 0.5s;
+    position: relative;
+    z-index: 1;
+    transition: background-color 0.5s, box-shadow 0.5s;
 }
 
 /* --- 8. FOOTER NAVIGATION (Prev/Next in content) --- */
