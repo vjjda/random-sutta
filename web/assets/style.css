@@ -266,7 +266,6 @@ header {
 /* --- TEXT MODE (Hiển thị tiêu đề) --- */
 #nav-title-text {
     width: 100%;
-    /* [FIX] Sử dụng Flex Column để bắt buộc xuống dòng */
     display: flex;
     flex-direction: column; 
     align-items: center; /* Căn giữa theo trục dọc */
@@ -275,8 +274,6 @@ header {
 }
 
 /* Logic ẩn hiện đặc biệt: */
-/* Khi Text bị ẩn (do đang nhập liệu), ta dùng visibility:hidden 
-   thay vì display:none để nó VẪN CHIẾM CHỖ, giúp mũi tên không bị giật vào trong. */
 #nav-title-display #nav-title-text.hidden {
     display: flex !important; /* Vẫn giữ flex để giữ kích thước */
     visibility: hidden;       /* Chỉ tàng hình thôi */
@@ -296,7 +293,6 @@ header {
     font-size: 0.9rem;
     color: var(--text-muted);
     font-style: italic;
-    /* Cho phép tên dài được xuống dòng nếu cần, hoặc cắt bớt */
     max-width: 100%; 
     overflow: hidden;
     text-overflow: ellipsis;
@@ -796,6 +792,19 @@ p {
     background-color: #f5f5f5;
     color: var(--primary-color);
 }
+
+.toh-h1 { 
+    margin-left: 0; 
+    font-size: 0.95rem; 
+    font-weight: 700; /* Đậm hơn các mục khác */
+    color: var(--primary-color);
+    margin-bottom: 8px; /* Tách biệt một chút so với h2 bên dưới */
+    padding-bottom: 4px;
+    border-bottom: 1px dashed var(--border-light); /* (Tùy chọn) Gạch chân nhẹ để tách header */
+}
+
+/* Các cấp khác giữ nguyên */
+.toh-h2 { margin-left: 0; font-weight: 600; } /* Đảm bảo h2 cũng không thụt */
 
 /* Indentation Hierarchy */
 .toh-h3 { margin-left: 12px; font-size: 0.85rem; }

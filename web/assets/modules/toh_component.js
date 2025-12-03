@@ -37,7 +37,7 @@ export function setupTableOfHeadings() {
         fab.classList.remove("active");
         
         // 2. Tìm Heading (h2, h3, h4, h5) trong #sutta-container
-        const headings = container.querySelectorAll("h2, h3, h4, h5");
+        const headings = container.querySelectorAll("h1, h2, h3, h4, h5");
 
         if (headings.length < 2) {
             wrapper.classList.add("hidden");
