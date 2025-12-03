@@ -28,7 +28,7 @@ const SUTTA_DATA_FILES = [
   "kn/vv.js",
   "mn.js",
   "sn.js",
-].map((file) => `./assets/sutta/books/${file}`);
+].map((file) => `./assets/books/${file}`);
 
 // REMOVED: const NAME_DATA_FILES = ...
 
@@ -44,7 +44,7 @@ const CORE_ASSETS = [
   "./assets/modules/renderer.js",
   "./assets/modules/loader.js", // MỚI
   "./assets/modules/router.js", // MỚI
-  "./assets/sutta/sutta_loader.js",
+  "./assets/books/sutta_loader.js",
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",
   "./assets/icons/favicon.ico",
