@@ -35,21 +35,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         Router.updateURL(suttaId, generateBookParam());
       }
     } else {
-      const match = suttaId.match(/^[a-z\-]+/);
-      if(match) {
-          const requiredBook = match[0];
-          SuttaLoader.loadBook(requiredBook).then(() => {
+      // [FIX] Thay thế Regex đoán mò bằng hàm tìm kiếm chính xác từ Loader
+      // Thay vì: const match = suttaId.match(/^[a-z\-]+/i);
+      
+      const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
+      
+      if(bookFile) {
+          const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
+          
+          SuttaLoader.loadBook(bookId).then(() => {
             if (renderSutta(suttaId, false)) {
               if (shouldUpdateUrl) {
                 Router.updateURL(suttaId, generateBookParam());
               }
             } else {
-              // Nếu không thấy thì mở ô search để nhập lại
               if (searchControl) searchControl.activateSearchMode();
             }
           });
       } else {
-          renderSutta(suttaId, false);
+          // Không tìm thấy sách nào chứa ID này
+          renderSutta(suttaId, false); // Để nó hiện màn hình lỗi 404
           if (searchControl) searchControl.activateSearchMode();
       }
     }

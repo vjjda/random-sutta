@@ -5,13 +5,12 @@ export const SuttaLoader = (function () {
   const loadedFiles = new Set();
 
   function loadScript(fileName) {
+    // ... (Giữ nguyên hàm này)
     return new Promise((resolve, reject) => {
       if (loadedFiles.has(fileName)) return resolve();
-
       const script = document.createElement("script");
       script.src = `assets/books/${fileName}`; 
       script.async = true;
-
       script.onload = () => {
         loadedFiles.add(fileName);
         console.log(`📦 Loaded: ${fileName}`);
@@ -26,13 +25,48 @@ export const SuttaLoader = (function () {
   }
 
   function getFileNameForBook(bookId) {
+    // ... (Giữ nguyên hàm này)
     if (!window.ALL_SUTTA_FILES) return null;
     return window.ALL_SUTTA_FILES.find(
       (f) => f === `${bookId}.js` || f.endsWith(`/${bookId}.js`) || f.includes(`_${bookId}_book.js`) || f.includes(`/${bookId}_book.js`)
     );
   }
 
+  // [NEW] Hàm tìm file sách dựa trên Sutta ID bất kỳ (Reverse Lookup)
+  function findBookFileFromSuttaId(suttaId) {
+      if (!window.ALL_SUTTA_FILES || !suttaId) return null;
+      
+      const cleanId = suttaId.toLowerCase().trim();
+      let bestMatchFile = null;
+      let maxLen = 0;
+
+      // Duyệt qua tất cả các file sách đang có
+      window.ALL_SUTTA_FILES.forEach(filePath => {
+          // Trích xuất Book ID từ tên file
+          // Ví dụ: "vinaya/pli-tv-bu-vb_book.js" -> "pli-tv-bu-vb"
+          // Ví dụ: "sutta/mn_book.js" -> "mn"
+          const baseName = filePath.split('/').pop().replace('_book.js', '').replace('.js', '');
+          
+          // Kiểm tra xem Sutta ID có bắt đầu bằng Book ID này không
+          // Ví dụ: "pli-tv-bu-vb-pj1" startsWith "pli-tv-bu-vb" -> TRUE
+          // Ví dụ: "mn1" startsWith "mn" -> TRUE
+          if (cleanId.startsWith(baseName)) {
+              // Chọn sách có tên dài nhất để chính xác nhất
+              // (Tránh trường hợp 'pli-tv' khớp nhầm thay vì 'pli-tv-bu-vb')
+              if (baseName.length > maxLen) {
+                  maxLen = baseName.length;
+                  bestMatchFile = filePath;
+              }
+          }
+      });
+      
+      return bestMatchFile;
+  }
+
   return {
+    // Expose hàm tìm file để App dùng
+    findBookFileFromSuttaId: findBookFileFromSuttaId,
+
     loadBook: function (bookId) {
       const fileName = getFileNameForBook(bookId);
       if (fileName) return loadScript(fileName);
@@ -50,21 +84,16 @@ export const SuttaLoader = (function () {
       const queryId = params.get("q");
       const bookParam = params.get("b");
       
-      // Tập hợp các file bắt buộc phải có để render màn hình đầu tiên
       let criticalFiles = new Set();
       let hasTargetBook = false;
 
-      // 1. Ưu tiên cao nhất: Sách được yêu cầu qua ?q=
+      // 1. Ưu tiên cao nhất: Sách chứa Sutta đang request
       if (queryId) {
-        // [Regex Update] Hỗ trợ cả sách có dấu gạch ngang (vinaya)
-        const match = queryId.match(/^[a-z\-]+/i);
-        if (match) {
-            const bookId = match[0].toLowerCase();
-            const f = getFileNameForBook(bookId);
-            if (f) {
-                criticalFiles.add(f);
-                hasTargetBook = true;
-            }
+        // [FIX] Dùng thuật toán tìm kiếm thông minh thay vì Regex đoán mò
+        const f = findBookFileFromSuttaId(queryId);
+        if (f) {
+            criticalFiles.add(f);
+            hasTargetBook = true;
         }
       }
 
@@ -76,9 +105,7 @@ export const SuttaLoader = (function () {
         });
       }
 
-      // 3. Nếu KHÔNG có sách cụ thể nào được yêu cầu, mới tải bộ Primary
-      // Logic cũ: if (criticalFiles.size <= 1) -> Luôn tải Primary
-      // Logic mới: Chỉ tải Primary nếu hoàn toàn không biết người dùng muốn đọc gì
+      // 3. Fallback: Load Primary
       if (criticalFiles.size === 0) { 
          PRIMARY_BOOKS.forEach(bookId => {
              const f = getFileNameForBook(bookId);
@@ -86,29 +113,20 @@ export const SuttaLoader = (function () {
          });
       }
       
-      // Luôn load Super Book nếu có (để render menu cấu trúc)
       const superBook = window.ALL_SUTTA_FILES.find(f => f.includes("super_book.js"));
       if(superBook) criticalFiles.add(superBook);
 
-      // Giai đoạn 1: Chặn luồng để tải Critical Files
       await Promise.all(Array.from(criticalFiles).map(loadScript));
       console.log("✅ Critical files loaded.");
 
-      // Giai đoạn 2: Tải ngầm tất cả các file còn lại (bao gồm cả Primary Books nếu chưa tải)
       setTimeout(async () => {
         console.log("⏳ Background loading remaining files...");
         const remaining = window.ALL_SUTTA_FILES.filter(
           (f) => !loadedFiles.has(f)
         );
-        
-        // Tải tuần tự để đỡ chiếm băng thông, hoặc song song tùy ý
-        // Ở đây dùng song song theo lô nhỏ hoặc song song toàn bộ vì browser tự giới hạn connection
         for (const file of remaining) {
-           loadScript(file); // Không await để chạy song song "fire and forget"
+           loadScript(file); 
         }
-        
-        // (Optional) Nếu muốn log khi HOÀN TẤT tất cả thì mới dùng Promise.all ở đây
-        // Nhưng để tránh chiếm thread, ta cứ để nó tự chạy.
       }, 2000);
     },
   };
