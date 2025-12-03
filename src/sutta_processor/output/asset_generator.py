@@ -1,11 +1,12 @@
 # Path: src/sutta_processor/output/asset_generator.py
 import json
 import logging
+import re  # [NEW] Import regex
 from pathlib import Path
 from typing import Dict, Any, List
 
 # Import biến cấu hình mới
-from ..shared.app_config import OUTPUT_DB_DIR, OUTPUT_LOADER_DIR, PROCESSED_DIR
+from ..shared.app_config import OUTPUT_DB_DIR, OUTPUT_LOADER_DIR, PROCESSED_DIR, ASSETS_ROOT # [NEW] Added ASSETS_ROOT
 
 logger = logging.getLogger("SuttaProcessor.Output.Generator")
 
@@ -18,6 +19,7 @@ def write_book_file(
     book_content: Dict[str, Any], 
     dry_run: bool = False
 ) -> str:
+    # ... (Giữ nguyên toàn bộ nội dung hàm này) ...
     """
     Ghi nội dung sách ra file.
     - Dry-run: .json (để debug)
@@ -49,11 +51,7 @@ def write_book_file(
                 f.write(json_str)
         else:
             # Ghi file JS (JSONP style)
-            # Biến group_name có thể chứa dấu gạch chéo (ví dụ: vinaya/pli-tv-bi-pm)
-            # Cần replace thành dấu gạch dưới để làm key trong object JS
             safe_group = group_name.replace("/", "_")
-            
-            # Kỹ thuật này giúp tránh CORS: gán dữ liệu vào biến toàn cục ngay khi load script
             js_content = (
                 f"window.SUTTA_DB = window.SUTTA_DB || {{}};\n"
                 f"window.SUTTA_DB['{safe_group}'] = {json_str};"
@@ -67,6 +65,44 @@ def write_book_file(
     except Exception as e:
         logger.error(f"❌ Failed to write {file_name}: {e}")
         return ""
+
+def update_service_worker(file_list: List[str]) -> None:
+    """
+    [NEW] Tự động cập nhật danh sách file trong web/sw.js
+    để đảm bảo Service Worker cache đúng file thật.
+    """
+    sw_path = ASSETS_ROOT.parent / "sw.js" # web/sw.js
+    if not sw_path.exists():
+        logger.warning("⚠️ sw.js not found, skipping cache update.")
+        return
+
+    # Tạo danh sách đường dẫn đầy đủ: "./assets/books/sutta/mn_book.js"
+    sw_paths = [f"./assets/books/{f}" for f in file_list if f]
+    
+    # Tạo chuỗi JS array
+    js_array_str = json.dumps(sw_paths, indent=2)
+    new_declaration = f"const SUTTA_DATA_FILES = {js_array_str};"
+
+    try:
+        with open(sw_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Regex tìm biến SUTTA_DATA_FILES cũ (kể cả multiline và .map)
+        # Tìm từ "const SUTTA_DATA_FILES =" cho đến dấu chấm phẩy đầu tiên
+        pattern = r"const SUTTA_DATA_FILES\s*=\s*[\s\S]*?;"
+        
+        # Thay thế
+        if re.search(pattern, content):
+            new_content = re.sub(pattern, new_declaration, content, count=1)
+            
+            with open(sw_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
+            logger.info("   🔄 Updated sw.js with fresh file list.")
+        else:
+            logger.warning("⚠️ Could not find SUTTA_DATA_FILES variable in sw.js")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to update sw.js: {e}")
 
 def write_loader_script(file_list: List[str]) -> None:
     """Tạo file sutta_loader.js chứa danh sách file cần load."""
@@ -83,5 +119,9 @@ def write_loader_script(file_list: List[str]) -> None:
         with open(loader_path, "w", encoding="utf-8") as f:
             f.write(js_content)
         logger.info(f"✅ Loader generated with {len(valid_files)} entries.")
+        
+        # [NEW] Gọi hàm update SW ngay sau khi có danh sách file
+        update_service_worker(valid_files)
+        
     except Exception as e:
         logger.error(f"❌ Failed to write loader: {e}")
