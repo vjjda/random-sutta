@@ -1,7 +1,7 @@
 // Path: web/sw.js
 
 // Tên cache mới (Nên bump version khi deploy)
-const CACHE_NAME = "sutta-reader-cache-v6db5b24";
+const CACHE_NAME = "sutta-reader-cache-v1.2.4";
 
 const SUTTA_DATA_FILES = [
   "./assets/books/abhidhamma/ds_book.js",
