@@ -90,31 +90,27 @@ export function renderSutta(suttaId, checkHash = true) {
     return false;
   }
 
-  const nav = DB.getNavigation(id);
-  updateTopNavLocal(id, nav.prev, nav.next);
-  
   let bottomNavHtml = '<div class="sutta-nav">';
-  
+
   const makeBtnImp = (sid, align) => {
-       if(!sid) return `<span class="nav-spacer"></span>`;
-       const info = getSuttaDisplayInfo(sid);
-       const arrowLeft = align === 'left' ? '← ' : '';
-       const arrowRight = align === 'right' ? ' →' : '';
-       
-       // [UPDATED] Tính toán align-items cho Flexbox
-       const alignItems = align === 'left' ? 'flex-start' : 'flex-end';
-       
-       // [UPDATED] Thêm text-align:${align} để ép văn bản bên trong (đặc biệt là subtitle)
-       // tuân thủ căn trái/phải khớp với nút.
-       return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
+    // [UPDATED] Dùng <div> cho spacer thay vì <span> để đảm bảo tính chất khối (block)
+    if (!sid) return `<div class="nav-spacer"></div>`;
+
+    const info = getSuttaDisplayInfo(sid);
+    const arrowLeft = align === "left" ? "← " : "";
+    const arrowRight = align === "right" ? " →" : "";
+
+    const alignItems = align === "left" ? "flex-start" : "flex-end";
+
+    return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
                 <span class="nav-main-text">${arrowLeft}${info.title}${arrowRight}</span>
                 <span class="nav-title">${info.subtitle}</span>
               </button>`;
   };
 
-  bottomNavHtml += makeBtnImp(nav.prev, 'left');
+  bottomNavHtml += makeBtnImp(nav.prev, "left");
 
-  // [UPDATED] Nút Random giữ nguyên SVG Dot
+  // [UPDATED] Giữ nguyên SVG Dot
   bottomNavHtml += `
       <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
@@ -123,21 +119,21 @@ export function renderSutta(suttaId, checkHash = true) {
       </button>
   `;
 
-  bottomNavHtml += makeBtnImp(nav.next, 'right');
+  bottomNavHtml += makeBtnImp(nav.next, "right");
   bottomNavHtml += "</div>";
 
   container.innerHTML = htmlContent + bottomNavHtml;
 
   // Xử lý ToH (Table of Headings)
   if (!tohInstance) {
-      tohInstance = setupTableOfHeadings();
+    tohInstance = setupTableOfHeadings();
   }
   // Nếu là Branch thì ẩn ToH (vì bản thân nó đã là mục lục rồi), hoặc tùy bạn.
   // Thường Branch view ngắn, không cần ToH.
   if (isBranch) {
-      document.getElementById("toh-wrapper")?.classList.add("hidden");
+    document.getElementById("toh-wrapper")?.classList.add("hidden");
   } else {
-      tohInstance.generate();
+    tohInstance.generate();
   }
 
   if (checkHash && window.location.hash) {

@@ -515,35 +515,28 @@ p {
 }
 
 /* --- 8. FOOTER NAVIGATION (Prev/Next in content) --- */
-.sutta-nav button.nav-btn {
-    /* ... giữ nguyên các dòng cũ ... */
-    background: none;
-    border: 1px solid transparent;
-    color: var(--primary-color);
-    padding: 8px 12px;
-    font-size: 0.95rem;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-
-    /* Flexbox */
+.sutta-nav {
+    position: relative; /* Mốc cho Absolute */
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    /* align-items và text-align được set inline từ JS */
-    
-    gap: 4px; 
+    justify-content: space-between; /* Đẩy 2 bên ra xa nhất có thể */
+    align-items: center;
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    min-height: 60px;
+    width: 100%; /* Đảm bảo chiếm hết chiều ngang */
 }
 
 /* Spacer và Button chia đều không gian 2 bên */
 .sutta-nav button.nav-btn,
 .nav-spacer {
     flex: 1;
-    /* Giới hạn max-width khoảng 40% để không đè lên nút tròn ở giữa */
+    flex-basis: 0; 
+    min-width: 0;
     max-width: 42%; 
 }
 
-/* Style cho nút điều hướng (Prev/Next) */
+/* Style cho nút điều hướng */
 .sutta-nav button.nav-btn {
     background: none;
     border: 1px solid transparent;
@@ -554,13 +547,10 @@ p {
     cursor: pointer;
     transition: background-color 0.2s ease;
 
-    /* [NEW] Dùng Flexbox để xếp 2 dòng text dọc */
+    /* Flexbox Column cho text bên trong */
     display: flex;
     flex-direction: column;
     justify-content: center;
-    /* align-items được set inline từ JS (flex-start/flex-end) */
-    
-    /* [NEW] Gap nhỏ để kiểm soát khoảng cách giữa Title và Subtitle */
     gap: 4px; 
 }
 
@@ -569,16 +559,17 @@ p {
     border-color: var(--border-light);
 }
 
+/* [UPDATED] Spacer: Phải hiển thị (để chiếm chỗ) nhưng ẩn nội dung */
 .nav-spacer {
     visibility: hidden;
+    height: 1px; /* Đảm bảo nó tồn tại vật lý */
 }
 
+/* Typography */
 .nav-main-text {
     font-weight: 600;
     display: block;
-    margin-bottom: 0; 
     line-height: 1.2;
-    /* [NEW] Đảm bảo inherit text-align từ cha */
     text-align: inherit; 
 }
 
@@ -591,19 +582,16 @@ p {
     text-overflow: ellipsis;
     width: 100%; 
     line-height: 1.2;
-    /* [NEW] Đảm bảo inherit text-align từ cha */
     text-align: inherit;
 }
 
 /* --- RANDOM ICON (Absolute Center) --- */
 .nav-random-icon {
-    /* [CHANGED] Tuyệt chiêu căn giữa tuyệt đối */
     position: absolute;
     left: 50%;
     top: 50%;
-    transform: translate(-50%, -50%); /* Dịch lùi lại 50% kích thước bản thân để tâm trùng tâm */
-    
-    z-index: 10; /* Nổi lên trên để không bị text dài đè (nếu có lỗi layout) */
+    transform: translate(-50%, -50%);
+    z-index: 10;
 
     width: 44px;
     height: 44px;
@@ -613,30 +601,28 @@ p {
     
     background: none;
     border: none;
-    color: var(--border-color); 
+    
+    /* [UPDATED] Đổi màu đậm hơn để nhìn thấy rõ (thay vì border-color quá nhạt) */
+    color: #999; 
+    
     cursor: pointer;
     border-radius: 50%;
     transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
-    
-    /* Background màu nền để che đường kẻ border-top của container đi qua nó (nếu muốn) */
-    background-color: var(--bg-card); 
+    background-color: var(--bg-card); /* Che đường kẻ border-top */
 }
 
-/* Hover effect: Chỉ áp dụng cho thiết bị có chuột (PC) */
 @media (hover: hover) {
     .nav-random-icon:hover {
         color: var(--primary-color);
         background-color: rgba(0, 0, 0, 0.03);
-        transform: none; /* Giữ tĩnh tại, không xoay */
     }
 }
 
-/* Active effect: Hiệu ứng bấm lún nhẹ (Feedback vật lý) */
 .nav-random-icon:active {
     color: var(--primary-color);
     background-color: rgba(0, 0, 0, 0.05);
-    transform: scale(0.9); /* Thu nhỏ nhẹ */
+    transform: translate(-50%, -50%) scale(0.9); /* Giữ vị trí center khi scale */
 }
 
 /* --- 9. COMMENT POPUP --- */
