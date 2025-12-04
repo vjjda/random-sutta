@@ -1,9 +1,9 @@
 // Path: web/assets/modules/renderer.js
-import { DB } from "./db_manager.js";
-import { getSuttaDisplayInfo } from "./utils.js";
-import { setupTableOfHeadings } from "./toh_component.js"; // [NEW]
+import { DB } from './db_manager.js';
+import { getSuttaDisplayInfo } from './utils.js';
+import { setupTableOfHeadings } from './toh_component.js';
 
-// Singleton instance
+// Singleton instance cho Table of Headings
 let tohInstance = null;
 
 function updateTopNavLocal(currentId, prevId, nextId) {
@@ -13,9 +13,8 @@ function updateTopNavLocal(currentId, prevId, nextId) {
   const navMainTitle = document.getElementById("nav-main-title");
   const navSubTitle = document.getElementById("nav-sub-title");
   const statusDiv = document.getElementById("status");
-
+  
   const currentInfo = getSuttaDisplayInfo(currentId);
-
   if (navMainTitle) navMainTitle.textContent = currentInfo.title;
   if (navSubTitle) navSubTitle.textContent = currentInfo.subtitle;
 
@@ -27,16 +26,16 @@ function updateTopNavLocal(currentId, prevId, nextId) {
   }
 
   const setupBtn = (btn, id, type) => {
-    if (id) {
-      btn.disabled = false;
-      // window.loadSutta sẽ được gán ở app.js
-      btn.onclick = () => window.loadSutta(id);
-      btn.title = `${type}: ${getSuttaDisplayInfo(id).title}`;
-    } else {
-      btn.disabled = true;
-      btn.onclick = null;
-      btn.title = "";
-    }
+      if (id) {
+          btn.disabled = false;
+          // window.loadSutta được định nghĩa ở app.js
+          btn.onclick = () => window.loadSutta(id);
+          btn.title = `${type}: ${getSuttaDisplayInfo(id).title}`;
+      } else {
+          btn.disabled = true;
+          btn.onclick = null;
+          btn.title = "";
+      }
   };
 
   setupBtn(navPrevBtn, prevId, "Previous");
@@ -53,64 +52,71 @@ export function renderSutta(suttaId, checkHash = true) {
   const id = suttaId.toLowerCase().trim();
   const book = DB.findBookContaining(id);
 
+  // --- XỬ LÝ LỖI KHÔNG TÌM THẤY ---
   if (!book) {
     const scLink = `https://suttacentral.net/${id}/en/sujato`;
     container.innerHTML = `
         <div class="error-message">
-            <p style="color: #d35400; font-weight: bold; font-size: 1.2rem;">ID "${id}" not found.</p>
+            <p style="color: #d35400; font-weight: bold; font-size: 1.2rem;">Sutta ID "${id}" not found.</p>
             <p>You can try checking on SuttaCentral:</p>
             <p><a href="${scLink}" target="_blank" rel="noopener noreferrer" class="sc-link">SuttaCentral ➜</a></p>
         </div>`;
     statusDiv.textContent = "Sutta not found.";
     statusDiv.classList.remove("hidden");
     navHeader.classList.remove("hidden");
-
-    // Reset title display
+    
     const mTitle = document.getElementById("nav-main-title");
     const sTitle = document.getElementById("nav-sub-title");
-    if (mTitle) mTitle.textContent = "Not Found";
-    if (sTitle) sTitle.textContent = "---";
-
+    if(mTitle) mTitle.textContent = "Not Found";
+    if(sTitle) sTitle.textContent = "---";
+    
     return false;
   }
 
-  // 1. Thử render LEAF (Bài kinh)
+  // --- RENDER NỘI DUNG ---
+  // 1. Thử render dạng Bài kinh (Leaf)
   let htmlContent = DB.compileHtml(id);
   let isBranch = false;
 
-  // 2. Nếu không phải Leaf, thử render BRANCH (Mục lục nhóm)
+  // 2. Nếu không được, thử render dạng Mục lục (Branch)
   if (!htmlContent) {
-    htmlContent = DB.compileBranchHtml(id);
-    isBranch = true;
+      htmlContent = DB.compileBranchHtml(id);
+      isBranch = true;
   }
 
-  // Nếu cả 2 đều không được -> Lỗi (dù đã tìm thấy sách nhưng ID không hợp lệ)
+  // Nếu cả 2 đều thất bại
   if (!htmlContent) {
-    // Fallback error...
-    return false;
+      return false; 
   }
 
+  // --- RENDER TOP NAVIGATION ---
+  const nav = DB.getNavigation(id);
+  updateTopNavLocal(id, nav.prev, nav.next);
+
+  // --- RENDER BOTTOM NAVIGATION ---
   let bottomNavHtml = '<div class="sutta-nav">';
-
+  
   const makeBtnImp = (sid, align) => {
-    // [UPDATED] Dùng <div> cho spacer thay vì <span> để đảm bảo tính chất khối (block)
-    if (!sid) return `<div class="nav-spacer"></div>`;
-
-    const info = getSuttaDisplayInfo(sid);
-    const arrowLeft = align === "left" ? "← " : "";
-    const arrowRight = align === "right" ? " →" : "";
-
-    const alignItems = align === "left" ? "flex-start" : "flex-end";
-
-    return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
+       // Dùng thẻ div cho spacer để đảm bảo tính chất khối (chiếm không gian)
+       if(!sid) return `<div class="nav-spacer"></div>`;
+       
+       const info = getSuttaDisplayInfo(sid);
+       const arrowLeft = align === 'left' ? '← ' : '';
+       const arrowRight = align === 'right' ? ' →' : '';
+       
+       // Căn chỉnh flexbox và text
+       const alignItems = align === 'left' ? 'flex-start' : 'flex-end';
+       
+       return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
                 <span class="nav-main-text">${arrowLeft}${info.title}${arrowRight}</span>
                 <span class="nav-title">${info.subtitle}</span>
               </button>`;
   };
 
-  bottomNavHtml += makeBtnImp(nav.prev, "left");
+  // Nút Trái
+  bottomNavHtml += makeBtnImp(nav.prev, 'left');
 
-  // [UPDATED] Giữ nguyên SVG Dot
+  // Nút Giữa (Random Dot)
   bottomNavHtml += `
       <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
@@ -119,33 +125,36 @@ export function renderSutta(suttaId, checkHash = true) {
       </button>
   `;
 
-  bottomNavHtml += makeBtnImp(nav.next, "right");
+  // Nút Phải
+  bottomNavHtml += makeBtnImp(nav.next, 'right');
   bottomNavHtml += "</div>";
 
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  // Xử lý ToH (Table of Headings)
+  // --- RENDER TABLE OF HEADINGS (ToH) ---
   if (!tohInstance) {
-    tohInstance = setupTableOfHeadings();
+      tohInstance = setupTableOfHeadings();
   }
-  // Nếu là Branch thì ẩn ToH (vì bản thân nó đã là mục lục rồi), hoặc tùy bạn.
-  // Thường Branch view ngắn, không cần ToH.
+  
+  // Nếu là Branch thì ẩn ToH (vì chính nó là mục lục rồi)
+  // Nếu là Leaf thì tạo ToH
   if (isBranch) {
-    document.getElementById("toh-wrapper")?.classList.add("hidden");
+      document.getElementById("toh-wrapper")?.classList.add("hidden");
   } else {
-    tohInstance.generate();
+      tohInstance.generate();
   }
 
+  // --- XỬ LÝ SCROLL / HASH ---
   if (checkHash && window.location.hash) {
     const targetId = window.location.hash.substring(1);
     setTimeout(() => {
-      const el = document.getElementById(targetId);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.add("highlight");
-      } else {
-        window.scrollTo(0, 0);
-      }
+        const el = document.getElementById(targetId);
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("highlight");
+        } else {
+            window.scrollTo(0, 0);
+        }
     }, 0);
   } else {
     window.scrollTo(0, 0);
