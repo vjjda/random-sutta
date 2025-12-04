@@ -116,13 +116,18 @@ export function renderSutta(suttaId, checkHash = true) {
   bottomNavHtml += makeBtn(nav.prev, 'left');
   bottomNavHtml += `
       <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-           <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-           <circle cx="12" cy="12" r="1"></circle>
-           <circle cx="8" cy="8" r="1"></circle>
-           <circle cx="16" cy="16" r="1"></circle>
-           <circle cx="8" cy="16" r="1"></circle>
-           <circle cx="16" cy="8" r="1"></circle>
+        <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="24" 
+            height="24" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+        >
+           <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"></path>
         </svg>
       </button>
   `;
