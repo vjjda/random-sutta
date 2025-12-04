@@ -30,21 +30,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.loadSutta = function (suttaId, shouldUpdateUrl = true) {
     hideComment();
     
-    if (renderSutta(suttaId, false)) {
+    // [FIX] Đổi false -> true để cho phép Renderer check hash và scroll
+    if (renderSutta(suttaId, true)) {
       if (shouldUpdateUrl) {
         Router.updateURL(suttaId, generateBookParam());
       }
     } else {
-      // [FIX] Thay thế Regex đoán mò bằng hàm tìm kiếm chính xác từ Loader
-      // Thay vì: const match = suttaId.match(/^[a-z\-]+/i);
-      
       const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
       
       if(bookFile) {
           const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
-          
           SuttaLoader.loadBook(bookId).then(() => {
-            if (renderSutta(suttaId, false)) {
+            // [FIX] Đổi false -> true ở đây nữa
+            if (renderSutta(suttaId, true)) {
               if (shouldUpdateUrl) {
                 Router.updateURL(suttaId, generateBookParam());
               }
@@ -53,8 +51,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
           });
       } else {
-          // Không tìm thấy sách nào chứa ID này
-          renderSutta(suttaId, false); // Để nó hiện màn hình lỗi 404
+          // [FIX] Đổi false -> true
+          renderSutta(suttaId, true); 
           if (searchControl) searchControl.activateSearchMode();
       }
     }
