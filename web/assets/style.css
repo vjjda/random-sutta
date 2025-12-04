@@ -580,12 +580,6 @@ p {
     transform: scale(0.95); /* [CHANGED] Nhún nhẹ 95% kích thước */
 }
 
-.nav-random-icon:hover {
-  color: var(--primary-color); /* Hover thì hiện màu chủ đạo */
-  background-color: rgba(0, 0, 0, 0.03);
-  transform: rotate(180deg); /* Hiệu ứng xoay nhẹ vui mắt */
-}
-
 .sutta-nav button.nav-btn:hover {
   background-color: #f9f9f9;
   border-color: var(--border-light);
