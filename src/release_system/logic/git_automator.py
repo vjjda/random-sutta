@@ -22,39 +22,44 @@ def _run_git_cmd(args: List[str]) -> bool:
     except subprocess.CalledProcessError as e:
         logger.error(f"❌ Git Error: {' '.join(args)}\n   {e.stderr.strip()}")
         return False
-    except FileNotFoundError:
-        logger.error("❌ Git not found. Please install Git.")
-        return False
 
-def commit_release_artifacts(version_tag: str) -> bool:
+def commit_source_changes(version_tag: str) -> bool:
     """
-    Thực hiện add và commit các file release.
-    Chỉ commit:
-    1. web/sw.js (Version bump)
-    2. release/ (File Zip mới)
-    3. assets/books/sutta_loader.js (Nếu có thay đổi danh sách sách)
+    Chỉ commit các thay đổi về Source Code (Version bump).
+    KHÔNG commit file Zip.
     """
-    logger.info("🐙 Committing release artifacts to Git...")
+    logger.info("🐙 Committing source changes...")
 
-    # 1. Danh sách file cần commit
-    # Lưu ý: Không commit index.html hay app.bundle.js vì chúng sẽ bị cleanup
+    # 1. Chỉ add các file source có thay đổi version
     files_to_add = [
         "web/sw.js",
         "web/assets/books/sutta_loader.js",
-        f"release/{APP_NAME}-{version_tag}.zip" if 'APP_NAME' in globals() else "release/"
+        "web/index.html" # Nếu bạn quyết định giữ version trong HTML source (tùy chọn)
     ]
 
-    # 2. Git Add
-    # Add từng file/folder, ignore lỗi nếu file không thay đổi
+    has_changes = False
     for path in files_to_add:
-        if not _run_git_cmd(["add", path]):
-            logger.warning(f"⚠️ Could not add {path} (maybe unchanged or ignored)")
+        full_path = PROJECT_ROOT / path
+        if full_path.exists():
+            # Add file, git sẽ tự bỏ qua nếu không có thay đổi
+            if _run_git_cmd(["add", path]):
+                has_changes = True
 
-    # 3. Git Commit
-    commit_msg = f"release: package {version_tag}"
+    # Kiểm tra xem thực sự có gì để commit không
+    status = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True)
+    if not status.stdout.strip():
+        logger.info("   ℹ️  No source changes to commit.")
+        return True
+
+    # 2. Commit
+    commit_msg = f"chore(release): bump version to {version_tag}"
     if _run_git_cmd(["commit", "-m", commit_msg]):
         logger.info(f"   ✅ Git commit successful: '{commit_msg}'")
         return True
-    else:
-        logger.warning("   ⚠️ Nothing to commit or commit failed.")
-        return False
+    
+    return False
+
+def push_changes() -> bool:
+    """Đẩy commit lên remote để chuẩn bị cho GitHub Release."""
+    logger.info("uwu Pushing changes to remote...")
+    return _run_git_cmd(["push"])

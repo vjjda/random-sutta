@@ -9,16 +9,24 @@ def main():
     setup_logging()
     
     parser = argparse.ArgumentParser(description="Random Sutta Release Builder")
+    
     parser.add_argument(
         "-g", "--git", 
         action="store_true", 
-        help="Auto git add and commit release artifacts (SW, Loader, Zip)"
+        help="Commit source changes (version bump) only."
+    )
+    
+    parser.add_argument(
+        "-f", "--publish", 
+        action="store_true", 
+        help="Full Release: Commit source -> Push -> GitHub Release (Upload Zip)."
     )
     
     args = parser.parse_args()
 
     try:
-        run_release_process(enable_git=args.git)
+        # Nếu dùng -f thì tự động bật logic git
+        run_release_process(enable_git=args.git, publish_gh=args.publish)
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")
         sys.exit(0)
