@@ -1,7 +1,7 @@
 // Path: web/sw.js
 
 // Tên cache mới (Nên bump version khi deploy)
-const CACHE_NAME = "sutta-cache-v20251204-204000";
+const CACHE_NAME = "sutta-cache-v20251205-040507";
 
 const SUTTA_DATA_FILES = [
   "./assets/books/abhidhamma/ds_book.js",
