@@ -1,12 +1,12 @@
 # Path: src/sutta_processor/output/asset_generator.py
 import json
 import logging
-import re  # [NEW] Import regex
+import re
 from pathlib import Path
 from typing import Dict, Any, List
 
 # Import biến cấu hình mới
-from ..shared.app_config import OUTPUT_DB_DIR, OUTPUT_LOADER_DIR, PROCESSED_DIR, ASSETS_ROOT # [NEW] Added ASSETS_ROOT
+from ..shared.app_config import OUTPUT_DB_DIR, OUTPUT_LOADER_DIR, PROCESSED_DIR, ASSETS_ROOT
 
 logger = logging.getLogger("SuttaProcessor.Output.Generator")
 
@@ -19,56 +19,59 @@ def write_book_file(
     book_content: Dict[str, Any], 
     dry_run: bool = False
 ) -> str:
-    # ... (Giữ nguyên toàn bộ nội dung hàm này) ...
     """
     Ghi nội dung sách ra file.
-    - Dry-run: .json (để debug)
-    - Production: .js (để chạy web offline)
+    - Luôn ghi bản JSON vào data/processed (để debug/dry-run).
+    - Nếu không phải dry-run, ghi thêm bản JS vào web/assets/books (để chạy app).
     """
     
-    # 1. Cấu hình Output
-    if dry_run:
-        output_base = PROCESSED_DIR
-        # Debug thì vẫn dùng .json
-        file_name = f"{group_name}_book.json"
-        indent = 2
-    else:
-        # Production dùng .js và lưu vào web/assets/books/
-        output_base = OUTPUT_DB_DIR
-        file_name = f"{group_name}_book.js" 
-        indent = None # Minify cho nhẹ
-
-    file_path = output_base / file_name
-    _ensure_dir(file_path)
-
-    # 2. Thực hiện ghi
+    # 1. ALWAYS WRITE JSON (For Debugging/Inspection)
+    json_path = PROCESSED_DIR / f"{group_name}_book.json"
+    _ensure_dir(json_path)
+    
     try:
-        json_str = json.dumps(book_content, ensure_ascii=False, indent=indent)
-        
+        # JSON cần indent đẹp để dễ đọc
+        json_str_pretty = json.dumps(book_content, ensure_ascii=False, indent=2)
+        with open(json_path, "w", encoding="utf-8") as f:
+            f.write(json_str_pretty)
+            
+        # Nếu là Dry-run, dừng ở đây và trả về tên file json
         if dry_run:
-            # Ghi file JSON thuần
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(json_str)
-        else:
-            # Ghi file JS (JSONP style)
-            safe_group = group_name.replace("/", "_")
-            js_content = (
-                f"window.SUTTA_DB = window.SUTTA_DB || {{}};\n"
-                f"window.SUTTA_DB['{safe_group}'] = {json_str};"
-            )
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(js_content)
+            logger.info(f"   💾 Saved JSON (Dry-run): {json_path.name}")
+            return json_path.name
 
-        logger.info(f"   💾 Saved: {file_name} ({len(book_content.get('data', {}))} items)")
-        return file_name
+    except Exception as e:
+        logger.error(f"❌ Failed to write JSON {json_path.name}: {e}")
+        return ""
+
+    # 2. WRITE JS (Production Only)
+    js_filename = f"{group_name}_book.js"
+    js_path = OUTPUT_DB_DIR / js_filename
+    _ensure_dir(js_path)
+
+    try:
+        # JS thì minify (không indent) để nhẹ
+        json_str_minified = json.dumps(book_content, ensure_ascii=False, indent=None)
+        
+        safe_group = group_name.replace("/", "_")
+        js_content = (
+            f"window.SUTTA_DB = window.SUTTA_DB || {{}};\n"
+            f"window.SUTTA_DB['{safe_group}'] = {json_str_minified};"
+        )
+        
+        with open(js_path, "w", encoding="utf-8") as f:
+            f.write(js_content)
+
+        logger.info(f"   💾 Saved JS & JSON: {js_filename} ({len(book_content.get('content', {}))} items)")
+        return js_filename # Trả về tên file JS để loader dùng
         
     except Exception as e:
-        logger.error(f"❌ Failed to write {file_name}: {e}")
+        logger.error(f"❌ Failed to write JS {js_filename}: {e}")
         return ""
 
 def update_service_worker(file_list: List[str]) -> None:
     """
-    [NEW] Tự động cập nhật danh sách file trong web/sw.js
+    Tự động cập nhật danh sách file trong web/sw.js
     để đảm bảo Service Worker cache đúng file thật.
     """
     sw_path = ASSETS_ROOT.parent / "sw.js" # web/sw.js
@@ -109,7 +112,7 @@ def write_loader_script(file_list: List[str]) -> None:
     file_list.sort()
     valid_files = [f for f in file_list if f]
     
-    # File này nằm ở OUTPUT_LOADER_DIR (tức là web/assets/)
+    # File này nằm ở OUTPUT_LOADER_DIR (tức là web/assets/books/)
     loader_path = OUTPUT_LOADER_DIR / "sutta_loader.js"
     _ensure_dir(loader_path)
     
@@ -120,7 +123,7 @@ def write_loader_script(file_list: List[str]) -> None:
             f.write(js_content)
         logger.info(f"✅ Loader generated with {len(valid_files)} entries.")
         
-        # [NEW] Gọi hàm update SW ngay sau khi có danh sách file
+        # Gọi hàm update SW ngay sau khi có danh sách file
         update_service_worker(valid_files)
         
     except Exception as e:

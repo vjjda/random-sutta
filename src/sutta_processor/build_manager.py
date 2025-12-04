@@ -31,13 +31,25 @@ class BuildManager:
         self.sutta_group_map: Dict[str, str] = {}
 
     def _prepare_environment(self) -> None:
-        """Chuẩn bị thư mục output."""
-        target_dir = PROCESSED_DIR if self.dry_run else OUTPUT_DB_DIR
-        if target_dir.exists():
-            shutil.rmtree(target_dir)
-        target_dir.mkdir(parents=True, exist_ok=True)
+        """
+        Chuẩn bị thư mục output.
+        - Luôn reset thư mục JSON (PROCESSED_DIR).
+        - Nếu Production: Reset thêm thư mục JS (OUTPUT_DB_DIR).
+        """
+        # 1. Always prepare JSON dir (Dry-run data)
+        if PROCESSED_DIR.exists():
+            shutil.rmtree(PROCESSED_DIR)
+        PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
         
-        mode = "🧪 DRY-RUN" if self.dry_run else "🚀 PRODUCTION"
+        # 2. If Production, prepare JS dir
+        if not self.dry_run:
+            if OUTPUT_DB_DIR.exists():
+                shutil.rmtree(OUTPUT_DB_DIR)
+            OUTPUT_DB_DIR.mkdir(parents=True, exist_ok=True)
+            mode = "🚀 PRODUCTION (Dual Output: JSON + JS)"
+        else:
+            mode = "🧪 DRY-RUN (JSON Only)"
+            
         logger.info(f"{mode} MODE INITIALIZED")
 
     def _handle_task_completion(self, group: str, sutta_id: str, content: Any) -> None:
@@ -62,8 +74,11 @@ class BuildManager:
         if book_obj and "id" in book_obj:
             self.processed_book_ids.append(book_obj["id"])
 
+        # Hàm này giờ sẽ tự xử lý việc ghi cả JSON và JS (nếu ko phải dry-run)
         filename = write_book_file(group, book_obj, self.dry_run)
-        if filename:
+        
+        # Chỉ thêm vào danh sách completed nếu có file JS (tức là return filename hợp lệ)
+        if filename and not self.dry_run:
             self.completed_files.append(filename)
 
     def run(self) -> None:
@@ -106,7 +121,7 @@ class BuildManager:
         if self.processed_book_ids:
             super_book_data = generate_super_book_data(self.processed_book_ids)
             if super_book_data:
-                # Ghi file super_book.js / .json
+                # Ghi file super_book
                 super_filename = write_book_file("super", super_book_data, self.dry_run)
                 if super_filename:
                     logger.info(f"🌟 Super Book generated: {super_filename}")
