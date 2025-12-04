@@ -59,6 +59,7 @@ const CORE_ASSETS = [
   "./assets/modules/search_component.js",
   "./assets/modules/toh_component.js",
   "./assets/modules/db_manager.js",
+  "./assets/modules/navigator.js",
   "./assets/books/sutta_loader.js",
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",

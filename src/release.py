@@ -21,6 +21,7 @@ APP_NAME = "random-sutta"
 # Thứ tự ghép file cực kỳ quan trọng
 BUNDLE_ORDER = [
     "assets/modules/constants.js",
+    "assets/modules/navigator.js",
     "assets/modules/db_manager.js",
     "assets/modules/utils.js",
     "assets/modules/toh_component.js",  # [NEW] Insert here
