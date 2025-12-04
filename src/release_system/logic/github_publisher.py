@@ -4,52 +4,41 @@ import subprocess
 import shutil
 from pathlib import Path
 
-from ..release_config import PROJECT_ROOT, APP_NAME
+from ..release_config import PROJECT_ROOT, APP_NAME, RELEASE_DIR # [UPDATED] Import RELEASE_DIR
 
 logger = logging.getLogger("Release.GitHubPublisher")
 
 def _check_gh_cli() -> bool:
-    """Kiểm tra xem 'gh' CLI đã được cài đặt và đăng nhập chưa."""
     if not shutil.which("gh"):
-        logger.error("❌ GitHub CLI ('gh') not found. Please install it: https://cli.github.com/")
+        logger.error("❌ GitHub CLI ('gh') not found.")
         return False
-    
-    try:
-        # Kiểm tra trạng thái auth
-        subprocess.run(
-            ["gh", "auth", "status"], 
-            cwd=PROJECT_ROOT, 
-            check=True, 
-            stdout=subprocess.DEVNULL, 
-            stderr=subprocess.DEVNULL
-        )
-        return True
-    except subprocess.CalledProcessError:
-        logger.error("❌ You are not logged into GitHub CLI. Run 'gh auth login'.")
-        return False
+    return True
 
 def publish_release(version_tag: str) -> bool:
     """
-    Tạo GitHub Release và upload file zip.
-    Lệnh tương đương: gh release create v1.0 release/app-v1.0.zip --title "v1.0" --notes "Auto release"
+    Tạo GitHub Release và upload CHÍNH XÁC file zip vừa tạo.
     """
     if not _check_gh_cli():
         return False
 
-    zip_path = f"release/{APP_NAME}-{version_tag}.zip"
-    full_zip_path = PROJECT_ROOT / zip_path
+    # [LOGIC] Xác định file zip dựa trên version_tag (có giây)
+    # Vì version_tag là duy nhất (v2023...-123456), nên file path là duy nhất.
+    zip_filename = f"{APP_NAME}-{version_tag}.zip"
+    full_zip_path = RELEASE_DIR / zip_filename
 
+    # Kiểm tra an toàn: File phải tồn tại (đã được tạo bởi zip_packager)
     if not full_zip_path.exists():
-        logger.error(f"❌ Artifact not found: {zip_path}")
+        logger.error(f"❌ Artifact not found for upload: {zip_filename}")
         return False
 
     logger.info(f"🚀 Publishing Release {version_tag} to GitHub...")
+    logger.info(f"   📦 Uploading artifact: {zip_filename}")
 
     cmd = [
         "gh", "release", "create", version_tag,
-        str(zip_path),
+        str(full_zip_path), # Chỉ upload đúng file này
         "--title", f"Release {version_tag}",
-        "--generate-notes" # Tự động sinh release notes từ commit
+        "--generate-notes"
     ]
 
     try:

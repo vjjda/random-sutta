@@ -16,16 +16,17 @@ def main():
         help="Commit source changes (version bump) only."
     )
     
+    # [CHANGED] Đổi cờ -f thành -p cho đúng ngữ nghĩa
     parser.add_argument(
-        "-f", "--publish", 
+        "-p", "--publish", 
         action="store_true", 
-        help="Full Release: Commit source -> Push -> GitHub Release (Upload Zip)."
+        help="Full Release: Commit source -> Push -> GitHub Release (Upload generated Zip)."
     )
     
     args = parser.parse_args()
 
     try:
-        # Nếu dùng -f thì tự động bật logic git
+        # Nếu dùng -p thì tự động bật logic git
         run_release_process(enable_git=args.git, publish_gh=args.publish)
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")

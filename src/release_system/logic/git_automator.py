@@ -24,42 +24,31 @@ def _run_git_cmd(args: List[str]) -> bool:
         return False
 
 def commit_source_changes(version_tag: str) -> bool:
-    """
-    Chỉ commit các thay đổi về Source Code (Version bump).
-    KHÔNG commit file Zip.
-    """
+    """Commit source changes (version bump)."""
     logger.info("🐙 Committing source changes...")
-
-    # 1. Chỉ add các file source có thay đổi version
-    files_to_add = [
-        "web/sw.js",
-        "web/assets/books/sutta_loader.js",
-        "web/index.html" # Nếu bạn quyết định giữ version trong HTML source (tùy chọn)
-    ]
-
-    has_changes = False
+    
+    files_to_add = ["web/sw.js", "web/assets/books/sutta_loader.js"]
+    
+    # ... (Logic add giữ nguyên) ...
     for path in files_to_add:
-        full_path = PROJECT_ROOT / path
-        if full_path.exists():
-            # Add file, git sẽ tự bỏ qua nếu không có thay đổi
-            if _run_git_cmd(["add", path]):
-                has_changes = True
+        if (PROJECT_ROOT / path).exists():
+            _run_git_cmd(["add", path])
 
-    # Kiểm tra xem thực sự có gì để commit không
     status = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True)
     if not status.stdout.strip():
         logger.info("   ℹ️  No source changes to commit.")
         return True
 
-    # 2. Commit
     commit_msg = f"chore(release): bump version to {version_tag}"
     if _run_git_cmd(["commit", "-m", commit_msg]):
-        logger.info(f"   ✅ Git commit successful: '{commit_msg}'")
+        logger.info(f"   ✅ Git committed: '{commit_msg}'")
         return True
-    
     return False
 
 def push_changes() -> bool:
-    """Đẩy commit lên remote để chuẩn bị cho GitHub Release."""
-    logger.info("uwu Pushing changes to remote...")
+    """
+    Đẩy mã nguồn lên Remote Git (để GitHub Actions/Pages chạy nếu có).
+    Lưu ý: Chỉ đẩy Code, không đẩy file Zip.
+    """
+    logger.info("⬆️  Pushing source code to remote...")
     return _run_git_cmd(["push"])
