@@ -246,8 +246,7 @@ header {
   align-items: center;
   justify-content: center;
   
-  /* [NEW] Đẩy icon lên 3px để cân bằng thị giác (bù trừ cho font baseline) */
-  padding-bottom: 3px; 
+  padding-bottom: 5px; 
   
   /* Reset các thuộc tính khác */
   padding-top: 0;
