@@ -1,12 +1,12 @@
-# Path: src/release_system/logic/content_modifier.py
+# Path: src/release_system/logic/web_content_modifier.py
 import logging
 import shutil
 import re
 from pathlib import Path
 
-from ..config import WEB_DIR
+from ..release_config import WEB_DIR # [UPDATED] Import
 
-logger = logging.getLogger("Release.ContentMod")
+logger = logging.getLogger("Release.WebContentMod")
 
 def _update_file_content(file_path: Path, pattern: str, replacement: str) -> bool:
     if not file_path.exists(): return False
@@ -22,16 +22,10 @@ def _update_file_content(file_path: Path, pattern: str, replacement: str) -> boo
         return False
 
 def prepare_html_for_release(version_tag: str) -> bool:
-    """
-    Backup và sửa index.html để trỏ tới bundle và thêm version param.
-    """
     logger.info("📝 Updating index.html for release...")
     index_path = WEB_DIR / "index.html"
-    
-    # Backup
     shutil.copy(index_path, str(index_path) + ".bak")
     
-    # 1. Switch to bundle
     success = _update_file_content(
         index_path,
         r'<script type="module" src="assets/app.js.*"></script>',
@@ -39,17 +33,14 @@ def prepare_html_for_release(version_tag: str) -> bool:
     )
     if not success: return False
 
-    # 2. Update assets versioning
     _update_file_content(
         index_path,
         r'(assets\/.*?\.(?:css|js))(?:\?v=[^"\']*)?',
         f'\\1?v={version_tag}'
     )
-    
     return True
 
 def update_service_worker(version_tag: str) -> None:
-    """Cập nhật Cache Name trong Service Worker."""
     sw_path = WEB_DIR / "sw.js"
     _update_file_content(
         sw_path,

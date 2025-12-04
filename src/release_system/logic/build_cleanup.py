@@ -1,21 +1,17 @@
-# Path: src/release_system/logic/cleaner.py
+# Path: src/release_system/logic/build_cleanup.py
 import logging
 import os
 import shutil
-from ..config import WEB_DIR
+from ..release_config import WEB_DIR # [UPDATED] Import
 
-logger = logging.getLogger("Release.Cleaner")
+logger = logging.getLogger("Release.BuildCleanup")
 
 def cleanup_artifacts() -> None:
-    """Khôi phục môi trường Dev và xóa file tạm."""
     logger.info("🧹 Cleaning up artifacts...")
-    
-    # 1. Remove bundle
     bundle_path = WEB_DIR / "assets" / "app.bundle.js"
     if bundle_path.exists():
         os.remove(bundle_path)
         
-    # 2. Restore HTML
     index_path = WEB_DIR / "index.html"
     backup_path = index_path.with_name("index.html.bak")
     if backup_path.exists():

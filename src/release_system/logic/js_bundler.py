@@ -1,23 +1,17 @@
-# Path: src/release_system/logic/bundler.py
+# Path: src/release_system/logic/js_bundler.py
 import logging
 import re
 from pathlib import Path
-from typing import List
 
-from ..config import WEB_DIR
-from .dependency_resolver import resolve_bundle_order # [NEW] Import Resolver
+from ..release_config import WEB_DIR # [UPDATED] Import
+from .js_dependency_resolver import resolve_bundle_order # [UPDATED] Import
 
-logger = logging.getLogger("Release.Bundler")
+logger = logging.getLogger("Release.JSBundler")
 
-def bundle_javascript() -> bool: # [CHANGED] Không cần tham số đầu vào
-    """
-    Tự động phân giải thứ tự và gộp file.
-    """
-    # 1. Tự động lấy danh sách file theo đúng thứ tự
+def bundle_javascript() -> bool:
     file_list = resolve_bundle_order()
-    
     if not file_list:
-        logger.error("❌ Dependency resolution failed or returned empty.")
+        logger.error("❌ Dependency resolution failed.")
         return False
 
     logger.info("🧶 Bundling JavaScript modules...")
@@ -25,20 +19,14 @@ def bundle_javascript() -> bool: # [CHANGED] Không cần tham số đầu vào
     
     try:
         combined_content = ["// Bundled for Offline Use (file:// protocol)"]
-        
         for rel_path in file_list:
             file_path = WEB_DIR / rel_path
-            
             with open(file_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
-                
+            
             file_content = []
             for line in lines:
-                # 1. Skip imports
-                if line.strip().startswith("import "):
-                    continue
-                
-                # 2. Remove 'export' keyword
+                if line.strip().startswith("import "): continue
                 line = re.sub(r'^export\s+', '', line)
                 file_content.append(line)
             
@@ -50,7 +38,6 @@ def bundle_javascript() -> bool: # [CHANGED] Không cần tham số đầu vào
             
         logger.info(f"   ✅ Created bundle: {bundle_path.name}")
         return True
-        
     except Exception as e:
         logger.error(f"❌ Bundling failed: {e}")
         return False

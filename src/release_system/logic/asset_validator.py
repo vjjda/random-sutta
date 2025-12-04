@@ -1,17 +1,15 @@
-# Path: src/release_system/logic/validator.py
+# Path: src/release_system/logic/asset_validator.py
 import logging
 from pathlib import Path
 from typing import List
 
-from ..config import WEB_DIR
+from ..release_config import WEB_DIR # [UPDATED] Import
 
-logger = logging.getLogger("Release.Validator")
+logger = logging.getLogger("Release.AssetValidator")
 
 def check_critical_assets(asset_list: List[str]) -> bool:
-    """Kiểm tra sự tồn tại của các file nguồn quan trọng."""
     logger.info("🔍 Checking critical assets...")
     missing = []
-    
     for rel_path in asset_list:
         full_path = WEB_DIR / rel_path
         if not full_path.exists():
@@ -20,5 +18,4 @@ def check_critical_assets(asset_list: List[str]) -> bool:
     if missing:
         logger.error(f"❌ FATAL: Missing source files: {missing}")
         return False
-        
     return True
