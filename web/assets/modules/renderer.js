@@ -162,20 +162,15 @@ export function renderSutta(suttaId, checkHash = true) {
 
     // Hàm đệ quy thử tìm và scroll
     const attemptScroll = (retriesLeft) => {
-      const el = document.getElementById(targetId);
-
-      if (el) {
-        // Tìm thấy! Cuộn và highlight ngay
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.add("highlight");
-        console.log(`📍 Scrolled to #${targetId}`);
-      } else if (retriesLeft > 0) {
-        // Chưa thấy? Đợi 100ms rồi thử lại (Max 10 lần = 1 giây)
-        // Giúp xử lý độ trễ khi render bài kinh dài
-        setTimeout(() => attemptScroll(retriesLeft - 1), 100);
-      } else {
-        console.warn(`⚠️ Could not find element #${targetId} after retries.`);
-      }
+        const el = document.getElementById(targetId);
+        
+        if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            
+            el.classList.add("highlight");
+        } else if (retriesLeft > 0) {
+            setTimeout(() => attemptScroll(retriesLeft - 1), 100);
+        }
     };
 
     // Bắt đầu thử (Thử 10 lần, mỗi lần cách nhau 100ms)
@@ -183,6 +178,6 @@ export function renderSutta(suttaId, checkHash = true) {
   } else {
     window.scrollTo(0, 0);
   }
-  
+
   return true;
 }
