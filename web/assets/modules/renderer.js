@@ -93,20 +93,29 @@ export function renderSutta(suttaId, checkHash = true) {
   const nav = DB.getNavigation(id);
   updateTopNavLocal(id, nav.prev, nav.next);
 
-  // Tạo Bottom Nav (Chỉ hiện nếu không phải Branch, hoặc tùy ý bạn)
-  let bottomNavHtml = "";
-  if (!isBranch) {
-    bottomNavHtml = '<div class="sutta-nav">';
-    const makeBtn = (sid, align) => {
-      if (!sid) return `<span></span>`;
+  // [UPDATED] Tạo Bottom Nav cho CẢ Leaf và Branch
+  // Trước đây: if (!isBranch) { ... } -> Giờ xóa if đi để luôn chạy
+  
+  let bottomNavHtml = '<div class="sutta-nav">';
+  
+  const makeBtn = (sid, align) => {
+      if(!sid) return `<span></span>`;
       const info = getSuttaDisplayInfo(sid);
-      const label = align === "left" ? `← ${info.title}` : `${info.title} →`;
-      return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="text-align:${align}">${label}<br><span class="nav-title">${info.subtitle}</span></button>`;
-    };
-    bottomNavHtml += makeBtn(nav.prev, "left");
-    bottomNavHtml += makeBtn(nav.next, "right");
-    bottomNavHtml += "</div>";
-  }
+      
+      // Icon mũi tên
+      const arrowLeft = align === 'left' ? '← ' : '';
+      const arrowRight = align === 'right' ? ' →' : '';
+      
+      return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="text-align:${align}">
+                <span class="nav-main-text">${arrowLeft}${info.title}${arrowRight}</span>
+                <br>
+                <span class="nav-title">${info.subtitle}</span>
+              </button>`;
+  };
+
+  bottomNavHtml += makeBtn(nav.prev, 'left');
+  bottomNavHtml += makeBtn(nav.next, 'right');
+  bottomNavHtml += "</div>";
 
   container.innerHTML = htmlContent + bottomNavHtml;
 
