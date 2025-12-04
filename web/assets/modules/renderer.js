@@ -1,7 +1,7 @@
 // Path: web/assets/modules/renderer.js
-import { DB } from './db_manager.js';
-import { getSuttaDisplayInfo } from './utils.js';
-import { setupTableOfHeadings } from './toh_component.js';
+import { DB } from "./db_manager.js";
+import { getSuttaDisplayInfo } from "./utils.js";
+import { setupTableOfHeadings } from "./toh_component.js";
 
 // Singleton instance cho Table of Headings
 let tohInstance = null;
@@ -13,7 +13,7 @@ function updateTopNavLocal(currentId, prevId, nextId) {
   const navMainTitle = document.getElementById("nav-main-title");
   const navSubTitle = document.getElementById("nav-sub-title");
   const statusDiv = document.getElementById("status");
-  
+
   const currentInfo = getSuttaDisplayInfo(currentId);
   if (navMainTitle) navMainTitle.textContent = currentInfo.title;
   if (navSubTitle) navSubTitle.textContent = currentInfo.subtitle;
@@ -26,16 +26,16 @@ function updateTopNavLocal(currentId, prevId, nextId) {
   }
 
   const setupBtn = (btn, id, type) => {
-      if (id) {
-          btn.disabled = false;
-          // window.loadSutta được định nghĩa ở app.js
-          btn.onclick = () => window.loadSutta(id);
-          btn.title = `${type}: ${getSuttaDisplayInfo(id).title}`;
-      } else {
-          btn.disabled = true;
-          btn.onclick = null;
-          btn.title = "";
-      }
+    if (id) {
+      btn.disabled = false;
+      // window.loadSutta được định nghĩa ở app.js
+      btn.onclick = () => window.loadSutta(id);
+      btn.title = `${type}: ${getSuttaDisplayInfo(id).title}`;
+    } else {
+      btn.disabled = true;
+      btn.onclick = null;
+      btn.title = "";
+    }
   };
 
   setupBtn(navPrevBtn, prevId, "Previous");
@@ -64,12 +64,12 @@ export function renderSutta(suttaId, checkHash = true) {
     statusDiv.textContent = "Sutta not found.";
     statusDiv.classList.remove("hidden");
     navHeader.classList.remove("hidden");
-    
+
     const mTitle = document.getElementById("nav-main-title");
     const sTitle = document.getElementById("nav-sub-title");
-    if(mTitle) mTitle.textContent = "Not Found";
-    if(sTitle) sTitle.textContent = "---";
-    
+    if (mTitle) mTitle.textContent = "Not Found";
+    if (sTitle) sTitle.textContent = "---";
+
     return false;
   }
 
@@ -80,13 +80,13 @@ export function renderSutta(suttaId, checkHash = true) {
 
   // 2. Nếu không được, thử render dạng Mục lục (Branch)
   if (!htmlContent) {
-      htmlContent = DB.compileBranchHtml(id);
-      isBranch = true;
+    htmlContent = DB.compileBranchHtml(id);
+    isBranch = true;
   }
 
   // Nếu cả 2 đều thất bại
   if (!htmlContent) {
-      return false; 
+    return false;
   }
 
   // --- RENDER TOP NAVIGATION ---
@@ -95,26 +95,38 @@ export function renderSutta(suttaId, checkHash = true) {
 
   // --- RENDER BOTTOM NAVIGATION ---
   let bottomNavHtml = '<div class="sutta-nav">';
-  
+
   const makeBtnImp = (sid, align) => {
-       // Dùng thẻ div cho spacer để đảm bảo tính chất khối (chiếm không gian)
-       if(!sid) return `<div class="nav-spacer"></div>`;
-       
-       const info = getSuttaDisplayInfo(sid);
-       const arrowLeft = align === 'left' ? '← ' : '';
-       const arrowRight = align === 'right' ? ' →' : '';
-       
-       // Căn chỉnh flexbox và text
-       const alignItems = align === 'left' ? 'flex-start' : 'flex-end';
-       
-       return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
-                <span class="nav-main-text">${arrowLeft}${info.title}${arrowRight}</span>
-                <span class="nav-title">${info.subtitle}</span>
-              </button>`;
+    if (!sid) return `<div class="nav-spacer"></div>`;
+    const info = getSuttaDisplayInfo(sid);
+
+    // [NEW] Sử dụng SVG thay vì text arrow
+    // Lưu ý: class "nav-icon" sẽ được thêm vào CSS bên dưới nếu cần chỉnh riêng
+    const arrowLeft =
+      align === "left"
+        ? `<svg class="nav-icon-inline left" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>`
+        : "";
+
+    const arrowRight =
+      align === "right"
+        ? `<svg class="nav-icon-inline right" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`
+        : "";
+
+    const alignItems = align === "left" ? "flex-start" : "flex-end";
+
+    // Sửa lại cấu trúc HTML một chút để icon thẳng hàng với text
+    return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
+            <span class="nav-main-text">
+                ${arrowLeft}
+                <span>${info.title}</span>
+                ${arrowRight}
+            </span>
+            <span class="nav-title">${info.subtitle}</span>
+          </button>`;
   };
 
   // Nút Trái
-  bottomNavHtml += makeBtnImp(nav.prev, 'left');
+  bottomNavHtml += makeBtnImp(nav.prev, "left");
 
   // Nút Giữa (Random Dot)
   bottomNavHtml += `
@@ -126,35 +138,35 @@ export function renderSutta(suttaId, checkHash = true) {
   `;
 
   // Nút Phải
-  bottomNavHtml += makeBtnImp(nav.next, 'right');
+  bottomNavHtml += makeBtnImp(nav.next, "right");
   bottomNavHtml += "</div>";
 
   container.innerHTML = htmlContent + bottomNavHtml;
 
   // --- RENDER TABLE OF HEADINGS (ToH) ---
   if (!tohInstance) {
-      tohInstance = setupTableOfHeadings();
+    tohInstance = setupTableOfHeadings();
   }
-  
+
   // Nếu là Branch thì ẩn ToH (vì chính nó là mục lục rồi)
   // Nếu là Leaf thì tạo ToH
   if (isBranch) {
-      document.getElementById("toh-wrapper")?.classList.add("hidden");
+    document.getElementById("toh-wrapper")?.classList.add("hidden");
   } else {
-      tohInstance.generate();
+    tohInstance.generate();
   }
 
   // --- XỬ LÝ SCROLL / HASH ---
   if (checkHash && window.location.hash) {
     const targetId = window.location.hash.substring(1);
     setTimeout(() => {
-        const el = document.getElementById(targetId);
-        if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-            el.classList.add("highlight");
-        } else {
-            window.scrollTo(0, 0);
-        }
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("highlight");
+      } else {
+        window.scrollTo(0, 0);
+      }
     }, 0);
   } else {
     window.scrollTo(0, 0);
