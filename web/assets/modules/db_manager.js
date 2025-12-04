@@ -126,60 +126,51 @@ export const DB = {
     // 3. Build List Children
     html += `<ul class="branch-list">`;
 
-      // Helper để duyệt qua childrenNode
-      const processItem = (item) => {
-          let id, type;
-          if (typeof item === 'string') {
-              id = item;
-              type = 'leaf';
-          } else {
-              id = Object.keys(item)[0];
-              type = 'branch';
-          }
-          
-          const childMeta = this.getMeta(id) || { translated_title: id };
-          const title = childMeta.translated_title || childMeta.acronym || id;
-          const subtitle = childMeta.original_title || "";
-          const blurb = childMeta.blurb || "";
-          
-          const cssClass = type === 'branch' ? 'branch-link-group' : 'branch-link-leaf';
-          const displayText = childMeta.acronym || id;
+    // Helper để duyệt qua childrenNode
+    const processItem = (item) => {
+      let id, type;
+      if (typeof item === "string") {
+        id = item;
+        type = "leaf";
+      } else {
+        id = Object.keys(item)[0];
+        type = "branch";
+      }
 
-          // [UPDATED] Logic Layout mới:
-          // 1. Leaf: ID nằm bên trái (thay thế icon doc), Info bên phải.
-          // 2. Branch: Info bên trái, ID nằm bên phải (badge).
-          
-          let innerHtml = "";
+      const childMeta = this.getMeta(id) || { translated_title: id };
+      const title = childMeta.translated_title || childMeta.acronym || id;
+      const subtitle = childMeta.original_title || "";
+      const blurb = childMeta.blurb || "";
+      const displayText = childMeta.acronym || id;
 
-          if (type === 'leaf') {
-              // Layout cho Leaf: [ID] [Info]
-              innerHtml = `
-                  <span class="b-id-left">${displayText}</span>
-                  <div class="b-info">
-                      <span class="b-title">${title}</span>
-                      ${subtitle ? `<span class="b-orig">${subtitle}</span>` : ''}
-                      ${blurb ? `<div class="b-blurb">${blurb}</div>` : ''} 
-                  </div>
-              `;
-          } else {
-              // Layout cho Branch: [Info] [ID (bên phải)]
-              // Bỏ icon folder
-              innerHtml = `
-                  <div class="b-info">
-                      <span class="b-title">${title}</span>
-                      ${subtitle ? `<span class="b-orig">${subtitle}</span>` : ''}
-                      ${blurb ? `<div class="b-blurb">${blurb}</div>` : ''} 
-                  </div>
-                  <span class="b-id-right">${displayText}</span>
-              `;
-          }
+      // Phân biệt màu sắc viền để người dùng nhận biết Group vs Leaf
+      const cssClass =
+        type === "branch" ? "branch-card-group" : "branch-card-leaf";
 
-          return `<li class="${cssClass}">
-                    <a href="#" onclick="window.loadSutta('${id}'); return false;">
-                        ${innerHtml}
+      // Cấu trúc HTML mới: Stack dọc (Title -> Subtitle -> Blurb -> Footer[ID])
+      return `<li class="${cssClass}">
+                    <a href="#" onclick="window.loadSutta('${id}'); return false;" class="b-card-link">
+                        <div class="b-content">
+                            <div class="b-header">
+                                <span class="b-title">${title}</span>
+                                ${
+                                  subtitle
+                                    ? `<span class="b-orig">${subtitle}</span>`
+                                    : ""
+                                }
+                            </div>
+                            
+                            ${
+                              blurb ? `<div class="b-blurb">${blurb}</div>` : ""
+                            } 
+                            
+                            <div class="b-footer">
+                                <span class="b-badge">${displayText}</span>
+                            </div>
+                        </div>
                     </a>
                   </li>`;
-      };
+    };
 
     if (Array.isArray(childrenNode)) {
       childrenNode.forEach((item) => {

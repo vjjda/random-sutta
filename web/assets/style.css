@@ -859,161 +859,129 @@ p {
 }
 
 /* --- 13. BRANCH VIEW (Table of Contents Style) --- */
+/* Reset padding container */
 .branch-container {
-  padding: 0;
+    padding: 0;
 }
 
-.branch-title {
-  text-align: center;
-  color: var(--primary-color);
-  margin-bottom: 5px;
-  font-size: 1.8rem;
+/* Style cho thẻ <li> bao ngoài */
+.branch-card-group, .branch-card-leaf {
+    margin-bottom: 15px;
+    list-style: none;
 }
 
-.branch-subtitle {
-  text-align: center;
-  font-size: 1.2rem;
-  color: var(--text-muted);
-  font-weight: normal;
-  margin-top: 0;
-  margin-bottom: 20px;
-}
-
-.branch-blurb {
-    font-style: italic;
-    color: var(--text-light);
-    
-    /* Center the block */
-    max-width: 100%; 
-    margin: 0 auto 25px auto;
-    
-    text-align: left; 
-    line-height: 1.6;
-    font-size: 0.95rem;
-}
-
-.branch-divider {
-  border: 0;
-  height: 1px;
-  background: var(--border-light);
-  margin: 20px 0;
-}
-
-.branch-list {
-  list-style: none;
-  padding: 0;
-}
-
-.branch-list li {
-  margin-bottom: 10px;
-}
-
-.branch-list a {
-    display: flex;
-    align-items: flex-start; /* Căn lề trên để ID không bị chạy lung tung nếu title dài */
-    padding: 12px 15px;
-    background-color: #fcfcfc;
+/* Style cho thẻ <a> - Biến nó thành Card Container */
+.b-card-link {
+    display: block; /* Quan trọng: Block để chứa div bên trong */
+    background-color: #fff;
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     text-decoration: none;
     color: var(--text-main);
-    transition: all 0.2s;
-}
-
-.branch-list a:hover {
-  background-color: #fff;
-  border-color: var(--primary-color);
-  transform: translateX(5px);
-  box-shadow: var(--shadow-soft);
-}
-
-.b-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-/* [NEW] ID nằm bên trái (Cho Leaf) */
-.b-id-left {
-    /* Typography: Nhỏ lại để tinh tế hơn */
-    font-family: monospace;
-    font-size: 0.75rem;       /* [CHANGED] Giảm từ 0.85rem xuống 0.75rem */
-    color: var(--text-muted);
-    font-weight: normal;      /* [CHANGED] Bỏ bold để đỡ nặng nề */
+    transition: all 0.2s ease;
     
-    /* Badge Style */
-    background-color: #f0f0f0; 
-    padding: 2px 6px;         /* [CHANGED] Padding gọn hơn */
-    border-radius: 4px;
-    border: 1px solid rgba(0,0,0,0.05);
-
-    /* Positioning */
-    margin-right: 15px;
-    margin-top: 0;
-    
-    /* Layout Alignment */
-    min-width: 65px;      /* [CHANGED] Giảm min-width một chút cho gọn */
-    text-align: center;
-    white-space: nowrap;
-    flex-shrink: 0;
-    
-    /* [CHANGED] Căn giữa theo chiều dọc của cả thẻ card */
-    align-self: center; 
+    /* Hiệu ứng đổ bóng nhẹ để tạo độ nổi */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    overflow: hidden; /* Bo góc ảnh nền nếu có */
 }
 
-/* [NEW] ID nằm bên phải (Cho Branch - Giữ style badge cũ) */
-.b-id-right {
-    font-size: 0.8rem;
-    color: var(--text-light);
-    font-family: monospace;
-    background: #eee;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: 10px;
-    align-self: center; /* Căn giữa theo trục dọc */
+.b-card-link:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+/* Phân biệt Group (Branch) bằng viền trái màu đậm */
+.branch-card-group .b-card-link {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Phân biệt Leaf bằng viền trái màu nhạt hoặc trong suốt */
+.branch-card-leaf .b-card-link {
+    border-left: 4px solid transparent; 
+}
+
+/* Nội dung bên trong Card */
+.b-content {
+    padding: 15px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Khoảng cách giữa các thành phần */
+}
+
+/* 1. Header: Title & Subtitle */
+.b-header {
+    display: flex;
+    flex-direction: column;
 }
 
 .b-title {
-  font-weight: 600;
-  font-size: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.3;
 }
 
 .b-orig {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.b-id {
-  font-size: 0.8rem;
-  color: var(--text-light);
-  font-family: monospace;
-  background: #eee;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* Phân biệt Group và Leaf */
-.branch-link-group {
-  border-left: 4px solid var(--primary-color);
-}
-
-/* Style cho Blurb nhỏ trong Card */
-.b-blurb {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     color: var(--text-muted);
-    margin-top: 4px;
-    line-height: 1.4;
+    font-style: italic;
+    margin-top: 2px;
+}
+
+/* 2. Blurb: Mô tả */
+.b-blurb {
+    font-size: 0.95rem; /* [FIX] Tăng size chữ theo yêu cầu */
+    color: #555;
+    line-height: 1.5;
+    margin-top: 5px;
     
+    /* Line Clamping thoáng hơn */
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 4; /* [FIX] Tăng lên 4 dòng để hiện nhiều thông tin hơn */
+    line-clamp: 4;
     -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* 3. Footer: Chứa Badge ID */
+.b-footer {
+    display: flex;
+    justify-content: flex-end; /* Đẩy badge sang phải */
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #f0f0f0; /* Đường kẻ mờ ngăn cách */
+}
+
+.b-badge {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    background-color: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #eee;
+    
+    /* Đảm bảo badge không bao giờ bị vỡ dòng nếu quá dài */
+    white-space: nowrap;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Khi hover vào thẻ a, làm blurb đậm hơn chút cho dễ đọc */
-.branch-list a:hover .b-blurb {
-  color: var(--text-main);
+/* --- Responsive Adjustments --- */
+@media (max-width: 600px) {
+    .b-content {
+        padding: 12px 15px; /* Giảm padding một chút trên mobile */
+    }
+    
+    .b-title {
+        font-size: 1.05rem;
+    }
+    
+    .b-blurb {
+        font-size: 0.9rem; /* Chữ mobile nhỏ hơn chút cho gọn */
+        -webkit-line-clamp: 3; /* Mobile chỉ hiện 3 dòng */
+        line-clamp: 3;
+    }
 }
