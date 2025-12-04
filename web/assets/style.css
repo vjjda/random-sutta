@@ -582,7 +582,11 @@ p {
     background: none;
     border: 1px solid transparent;
     color: var(--primary-color);
-    padding: 8px 12px;
+    
+    /* [FIX] Đổi padding từ "8px 12px" thành "8px 0" */
+    /* Để chữ chạm sát mép trái/phải container */
+    padding: 8px 0;
+    
     font-size: 0.95rem;
     border-radius: var(--radius-sm);
     cursor: pointer;
@@ -590,7 +594,7 @@ p {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 4px; 
+    gap: 4px;
 }
 
 .sutta-nav button.nav-btn:hover {
@@ -604,16 +608,13 @@ p {
 }
 
 .nav-main-text {
-    /* Dùng Flex để căn icon và text thẳng hàng ngang */
     display: inline-flex; 
     align-items: center;
-    justify-content: center; /* Căn giữa nội dung */
-    gap: 6px; /* Khoảng cách giữa mũi tên SVG và chữ */
+    gap: 6px;
     
     font-weight: 600;
     line-height: 1.2;
     text-align: inherit;
-    width: 100%; /* Chiếm hết chiều rộng nút */
 }
 
 .nav-icon-inline {
