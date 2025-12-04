@@ -516,18 +516,20 @@ p {
 
 /* --- 8. FOOTER NAVIGATION (Prev/Next in content) --- */
 .sutta-nav {
-    position: relative; /* Mốc cho Absolute */
+    position: relative;
     display: flex;
-    justify-content: space-between; /* Đẩy 2 bên ra xa nhất có thể */
+    justify-content: space-between;
     align-items: center;
     margin-top: 50px;
-    padding-top: 20px;
+    
+    /* [UPDATED] Padding trên dưới bằng nhau (20px) để tâm của khung trùng với tâm của nút text */
+    padding: 20px 0; 
+    
     border-top: 1px solid var(--border-light);
     min-height: 60px;
-    width: 100%; /* Đảm bảo chiếm hết chiều ngang */
+    width: 100%;
 }
 
-/* Spacer và Button chia đều không gian 2 bên */
 .sutta-nav button.nav-btn,
 .nav-spacer {
     flex: 1;
@@ -536,7 +538,6 @@ p {
     max-width: 42%; 
 }
 
-/* Style cho nút điều hướng */
 .sutta-nav button.nav-btn {
     background: none;
     border: 1px solid transparent;
@@ -546,8 +547,6 @@ p {
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: background-color 0.2s ease;
-
-    /* Flexbox Column cho text bên trong */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -559,13 +558,11 @@ p {
     border-color: var(--border-light);
 }
 
-/* [UPDATED] Spacer: Phải hiển thị (để chiếm chỗ) nhưng ẩn nội dung */
 .nav-spacer {
     visibility: hidden;
-    height: 1px; /* Đảm bảo nó tồn tại vật lý */
+    height: 1px;
 }
 
-/* Typography */
 .nav-main-text {
     font-weight: 600;
     display: block;
@@ -588,11 +585,12 @@ p {
 /* --- RANDOM ICON (Absolute Center) --- */
 .nav-random-icon {
     position: absolute;
+    /* Căn giữa tuyệt đối */
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
+    
     z-index: 10;
-
     width: 44px;
     height: 44px;
     display: flex;
@@ -602,27 +600,33 @@ p {
     background: none;
     border: none;
     
-    /* [UPDATED] Đổi màu đậm hơn để nhìn thấy rõ (thay vì border-color quá nhạt) */
-    color: #999; 
+    /* [UPDATED] Màu đen/xám nhưng chỉnh độ mờ bằng Opacity */
+    color: var(--text-main); 
+    opacity: 0.15; /* Rất mờ (Low profile) */
     
     cursor: pointer;
     border-radius: 50%;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
     -webkit-tap-highlight-color: transparent;
-    background-color: var(--bg-card); /* Che đường kẻ border-top */
+    
+    /* Nền trùng màu background cha để che đường kẻ border-top */
+    background-color: var(--bg-card); 
 }
 
 @media (hover: hover) {
     .nav-random-icon:hover {
+        /* Khi hover thì hiện rõ lên và đổi màu */
         color: var(--primary-color);
+        opacity: 1; 
         background-color: rgba(0, 0, 0, 0.03);
     }
 }
 
 .nav-random-icon:active {
     color: var(--primary-color);
+    opacity: 1;
     background-color: rgba(0, 0, 0, 0.05);
-    transform: translate(-50%, -50%) scale(0.9); /* Giữ vị trí center khi scale */
+    transform: translate(-50%, -50%) scale(0.9);
 }
 
 /* --- 9. COMMENT POPUP --- */

@@ -120,7 +120,7 @@ export function renderSutta(suttaId, checkHash = true) {
   bottomNavHtml += `
       <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-           <circle cx="12" cy="12" r="3"></circle>
+           <circle cx="12" cy="12" r="2"></circle>
         </svg>
       </button>
   `;
