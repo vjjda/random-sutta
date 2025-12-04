@@ -29,33 +29,56 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- CORE FUNCTIONS ---
 
-  // Gán vào window để HTML onclick (trong nút điều hướng) gọi được
-  window.loadSutta = function (suttaId, shouldUpdateUrl = true) {
+  window.loadSutta = function (suttaIdInput, shouldUpdateUrl = true) {
     hideComment();
     
-    // [FIX] Đổi false -> true để cho phép Renderer check hash và scroll
-    if (renderSutta(suttaId, true)) {
+    // 1. Phân tích Input: "mn5#1.2" -> id="mn5", hash="1.2"
+    let [baseId, hashPart] = suttaIdInput.split('#');
+    const suttaId = baseId.trim().toLowerCase();
+    const explicitHash = hashPart ? hashPart : null;
+
+    // 2. Quyết định xem có nên dùng Hash cũ của trình duyệt không?
+    // Lấy ID hiện tại trên URL
+    const params = new URLSearchParams(window.location.search);
+    const currentUrlId = params.get("q");
+
+    // Logic: 
+    // - Nếu có explicitHash (người dùng gõ mn5#1.2) -> Dùng nó.
+    // - Nếu KHÔNG có explicitHash:
+    //    + Nếu đang Reload (suttaId == currentUrlId) -> Dùng hash cũ của trình duyệt (checkHash=true).
+    //    + Nếu đang Chuyển bài (suttaId != currentUrlId) -> BỎ hash cũ (checkHash=false).
+    
+    let renderOptions = {};
+    if (explicitHash) {
+        renderOptions = { highlightId: explicitHash };
+    } else {
+        // Nếu bài mới != bài cũ, ta CẤM renderer nhìn vào window.location.hash
+        const isSamePage = currentUrlId === suttaId;
+        renderOptions = { checkHash: isSamePage }; 
+    }
+
+    // 3. Gọi Renderer
+    if (renderSutta(suttaId, renderOptions)) {
       if (shouldUpdateUrl) {
-        Router.updateURL(suttaId, generateBookParam());
+        // Truyền explicitHash cho Router để nó cập nhật URL đúng
+        Router.updateURL(suttaId, generateBookParam(), false, explicitHash ? `#${explicitHash}` : null);
       }
     } else {
+      // ... (Phần logic Lazy Load giữ nguyên, nhưng cập nhật gọi renderSutta với renderOptions) ...
       const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
-      
       if(bookFile) {
           const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
           SuttaLoader.loadBook(bookId).then(() => {
-            // [FIX] Đổi false -> true ở đây nữa
-            if (renderSutta(suttaId, true)) {
+            if (renderSutta(suttaId, renderOptions)) {
               if (shouldUpdateUrl) {
-                Router.updateURL(suttaId, generateBookParam());
+                Router.updateURL(suttaId, generateBookParam(), false, explicitHash ? `#${explicitHash}` : null);
               }
             } else {
               if (searchControl) searchControl.activateSearchMode();
             }
           });
       } else {
-          // [FIX] Đổi false -> true
-          renderSutta(suttaId, true); 
+          renderSutta(suttaId, renderOptions);
           if (searchControl) searchControl.activateSearchMode();
       }
     }

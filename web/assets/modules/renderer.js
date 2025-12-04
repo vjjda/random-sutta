@@ -45,7 +45,18 @@ function updateTopNavLocal(currentId, prevId, nextId) {
   statusDiv.classList.add("hidden");
 }
 
-export function renderSutta(suttaId, checkHash = true) {
+export function renderSutta(suttaId, options = {}) {
+  // Backwards compatibility: Nếu truyền boolean vào tham số thứ 2
+  let checkHash = true;
+  let explicitId = null;
+
+  if (typeof options === "boolean") {
+      checkHash = options;
+  } else {
+      checkHash = options.checkHash !== false; // Default true
+      explicitId = options.highlightId; // ID cụ thể (ví dụ: "1.2")
+  }
+
   const container = document.getElementById("sutta-container");
   const statusDiv = document.getElementById("status");
   const navHeader = document.getElementById("nav-header");
@@ -87,6 +98,16 @@ export function renderSutta(suttaId, checkHash = true) {
   // Nếu cả 2 đều thất bại
   if (!htmlContent) {
     return false;
+  }
+
+  let targetId = null;
+  
+  if (explicitId) {
+      // Ưu tiên 1: ID được truyền trực tiếp (từ Search input: mn5#1.2)
+      targetId = explicitId.replace('#', ''); 
+  } else if (checkHash && window.location.hash) {
+      // Ưu tiên 2: Hash trên URL (chỉ dùng khi checkHash = true)
+      targetId = window.location.hash.substring(1);
   }
 
   // --- RENDER TOP NAVIGATION ---
@@ -157,23 +178,16 @@ export function renderSutta(suttaId, checkHash = true) {
   }
 
   // --- XỬ LÝ SCROLL / HASH ---
-  if (checkHash && window.location.hash) {
-    const targetId = window.location.hash.substring(1);
-
-    // Hàm đệ quy thử tìm và scroll
+  if (targetId) { // Thay vì check window.location.hash, ta check targetId đã tính toán
     const attemptScroll = (retriesLeft) => {
         const el = document.getElementById(targetId);
-        
         if (el) {
             el.scrollIntoView({ behavior: "smooth", block: "start" });
-            
             el.classList.add("highlight");
         } else if (retriesLeft > 0) {
             setTimeout(() => attemptScroll(retriesLeft - 1), 100);
         }
     };
-
-    // Bắt đầu thử (Thử 10 lần, mỗi lần cách nhau 100ms)
     attemptScroll(10);
   } else {
     window.scrollTo(0, 0);

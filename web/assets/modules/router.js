@@ -1,12 +1,11 @@
 // Path: web/assets/modules/router.js
 
 export const Router = {
-  updateURL: function (suttaId, bookParam, enableRandomMode = false) {
+  updateURL: function (suttaId, bookParam, enableRandomMode = false, explicitHash = null) {
     try {
       const params = new URLSearchParams(window.location.search);
-      // [NEW] Logic kiểm tra để giữ Hash
       const currentSuttaId = params.get("q");
-      
+
       if (enableRandomMode) {
         params.set("r", "1");
         params.delete("q");
@@ -21,21 +20,23 @@ export const Router = {
         params.delete("b");
       }
 
-      // [FIX] Nếu đang ở cùng một bài kinh (ví dụ: reload trang), giữ lại hash
-      // Nếu chuyển sang bài khác (suttaId != currentSuttaId), hash sẽ tự mất (để tránh scroll nhầm)
+      // [LOGIC HASH MỚI]
       let hash = "";
-      if (suttaId === currentSuttaId && window.location.hash) {
+      if (explicitHash) {
+          // 1. Nếu có hash mới từ hành động Search (ví dụ: mn5#1.2)
+          hash = explicitHash.startsWith("#") ? explicitHash : `#${explicitHash}`;
+      } else if (suttaId === currentSuttaId && window.location.hash) {
+          // 2. Nếu đang Reload trang cũ, giữ lại hash cũ
           hash = window.location.hash;
       }
+      // 3. Nếu chuyển trang mới mà không có explicitHash -> hash rỗng (Xóa hash cũ)
 
       const newUrl = `${window.location.pathname}?${params.toString()}${hash}`;
       const stateId = enableRandomMode ? null : suttaId || params.get("q");
       
-      // Chỉ pushState nếu URL thực sự thay đổi để tránh rác history
       if (newUrl !== window.location.search + window.location.hash) {
          window.history.pushState({ suttaId: stateId }, "", newUrl);
       }
-      
     } catch (e) {
       console.warn("Router Error:", e);
     }
