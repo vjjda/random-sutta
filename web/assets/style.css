@@ -233,30 +233,33 @@ header {
 .nav-arrow {
   background: none;
   border: none;
-  font-size: 1.8rem;
   color: var(--primary-color);
   
-  /* Cố định kích thước */
+  /* Layout */
   width: 48px; 
   height: 48px;
   flex-shrink: 0;
-  
-  /* Căn icon vào giữa vùng bấm */
   display: flex;
   align-items: center;
   justify-content: center;
   
-  padding-bottom: 5px; 
+  /* [IMPORTANT] Reset padding về 0 để Flexbox căn giữa SVG chuẩn xác */
+  padding: 0; 
   
-  /* Reset các thuộc tính khác */
-  padding-top: 0;
-  padding-left: 0;
-  padding-right: 0;
+  /* Xóa các thuộc tính text cũ không còn cần thiết */
+  /* font-size: 1.8rem; -> Xóa */
+  /* line-height: 1; -> Xóa */
   
-  line-height: 1;
   opacity: 0.6;
   border-radius: 50%;
   transition: background-color 0.2s, transform 0.2s;
+}
+
+/* [NEW] Style cho SVG bên trong */
+.nav-arrow svg {
+  width: 28px; /* Kích thước icon */
+  height: 28px;
+  display: block; /* Loại bỏ khoảng trắng thừa của inline element */
 }
 
 .nav-arrow:hover:not(:disabled) {
@@ -274,15 +277,12 @@ header {
 #nav-title-display {
   text-align: center;
   
-  /* [NEW] Flexible Width Logic */
-  flex-grow: 1; /* Chiếm hết khoảng trống ở giữa */
-  width: 0; /* Quan trọng: Hack để text-overflow hoạt động trong Flex item */
+  /* [FIXED] Sửa width: 0 thành min-width: 0 để không bị biến mất */
+  flex-grow: 1;
+  min-width: 0; /* Quan trọng: Để text-overflow hoạt động đúng trong Flex item */
+  width: auto;  /* Bỏ width: 0 cũ đi */
   
-  /* Reset kích thước cũ */
-  min-width: unset; 
-  max-width: unset;
   min-height: 3.5rem;
-  
   padding: 4px 8px;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -604,10 +604,23 @@ p {
 }
 
 .nav-main-text {
+    /* Dùng Flex để căn icon và text thẳng hàng ngang */
+    display: inline-flex; 
+    align-items: center;
+    justify-content: center; /* Căn giữa nội dung */
+    gap: 6px; /* Khoảng cách giữa mũi tên SVG và chữ */
+    
     font-weight: 600;
-    display: block;
     line-height: 1.2;
-    text-align: inherit; 
+    text-align: inherit;
+    width: 100%; /* Chiếm hết chiều rộng nút */
+}
+
+.nav-icon-inline {
+    width: 1.1em; /* Kích thước tương đối theo cỡ chữ */
+    height: 1.1em;
+    position: relative;
+    top: 1px; /* Tinh chỉnh nhỏ để khớp baseline mắt nhìn */
 }
 
 .nav-title {
@@ -1103,3 +1116,5 @@ p {
     line-clamp: 3;
   }
 }
+
+
