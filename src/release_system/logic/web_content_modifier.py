@@ -1,14 +1,13 @@
 # Path: src/release_system/logic/web_content_modifier.py
 import logging
-import shutil
 import re
 from pathlib import Path
 
-from ..release_config import WEB_DIR # [UPDATED] Import
+from ..release_config import WEB_DIR
 
 logger = logging.getLogger("Release.WebContentMod")
 
-def _update_file_content(file_path: Path, pattern: str, replacement: str) -> bool:
+def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
     if not file_path.exists(): return False
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -21,30 +20,38 @@ def _update_file_content(file_path: Path, pattern: str, replacement: str) -> boo
         logger.error(f"❌ Error updating {file_path.name}: {e}")
         return False
 
-def prepare_html_for_release(version_tag: str) -> bool:
-    logger.info("📝 Updating index.html for release...")
-    index_path = WEB_DIR / "index.html"
-    shutil.copy(index_path, str(index_path) + ".bak")
-    
-    success = _update_file_content(
-        index_path,
-        r'<script type="module" src="assets/app.js.*"></script>',
-        f'<script src="assets/app.bundle.js?v={version_tag}"></script>'
-    )
-    if not success: return False
-
-    _update_file_content(
-        index_path,
-        r'(assets\/.*?\.(?:css|js))(?:\?v=[^"\']*)?',
-        f'\\1?v={version_tag}'
-    )
-    return True
-
-def update_service_worker(version_tag: str) -> None:
+def update_source_version(version_tag: str) -> bool:
+    """
+    [PERSISTENT] Cập nhật version trong Source Code (web/) để commit.
+    """
+    logger.info("📝 Bumping version in source code...")
     sw_path = WEB_DIR / "sw.js"
-    _update_file_content(
+    
+    return _update_file(
         sw_path,
         r'const CACHE_NAME\s*=\s*["\'].*?["\'];', 
         f'const CACHE_NAME = "sutta-cache-{version_tag}";'
     )
-    logger.info(f"   🔄 Updated SW Cache Name: {version_tag}")
+
+def patch_build_html(build_dir: Path, version_tag: str) -> bool:
+    """
+    [TEMPORARY] Sửa index.html trong thư mục BUILD để dùng bundle.
+    """
+    logger.info("📝 Patching index.html in build sandbox...")
+    index_path = build_dir / "index.html"
+    
+    # 1. Thay module app.js bằng bundle
+    success = _update_file(
+        index_path,
+        r'<script type="module" src="assets/app.js.*"></script>',
+        f'<script src="assets/app.bundle.js?v={version_tag}"></script>'
+    )
+    
+    if success:
+        # 2. Gắn version vào css/js khác
+        _update_file(
+            index_path,
+            r'(assets\/.*?\.(?:css|js))(?:\?v=[^"\']*)?',
+            f'\\1?v={version_tag}'
+        )
+    return success

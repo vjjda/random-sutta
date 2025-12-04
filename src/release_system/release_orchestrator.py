@@ -2,61 +2,72 @@
 import logging
 import sys
 
-from .release_config import CRITICAL_ASSETS
+from .release_config import BUILD_DIR, CRITICAL_ASSETS
 from .logic import (
     release_versioning,
     asset_validator,
+    build_preparer,      # [NEW]
     js_bundler,
     web_content_modifier,
     zip_packager,
     build_cleanup,
     git_automator,
-    github_publisher # [NEW]
+    github_publisher
 )
 
 logger = logging.getLogger("Release.Orchestrator")
 
 def run_release_process(enable_git: bool = False, publish_gh: bool = False) -> None:
-    # Nếu muốn publish, bắt buộc phải enable git để commit code trước
-    if publish_gh:
-        enable_git = True
+    if publish_gh: enable_git = True
 
     version_tag = release_versioning.generate_version_tag()
     logger.info(f"🚀 STARTING RELEASE BUILD: {version_tag}")
 
+    # 1. Validate Source
     if not asset_validator.check_critical_assets(CRITICAL_ASSETS):
         sys.exit(1)
 
     try:
-        # ... (Các bước Build giữ nguyên) ...
-        if not js_bundler.bundle_javascript(): raise Exception("Bundling failed")
-        if not web_content_modifier.prepare_html_for_release(version_tag): raise Exception("HTML prep failed")
-        web_content_modifier.update_service_worker(version_tag)
-        
-        # Tạo Zip (nhưng KHÔNG commit zip này vào git)
-        if zip_packager.create_zip(version_tag):
+        # 2. Update Source Version (Persistent Change)
+        if not web_content_modifier.update_source_version(version_tag):
+            raise Exception("Failed to bump version in source.")
+
+        # 3. Prepare Sandbox
+        if not build_preparer.prepare_build_directory():
+            raise Exception("Failed to create build sandbox.")
+
+        # 4. Bundle JS (Inside Sandbox)
+        if not js_bundler.bundle_javascript(BUILD_DIR):
+            raise Exception("Bundling failed.")
+
+        # 5. Patch HTML (Inside Sandbox)
+        if not web_content_modifier.patch_build_html(BUILD_DIR, version_tag):
+            raise Exception("HTML patching failed.")
+
+        # 6. Create Zip (From Sandbox)
+        if zip_packager.create_zip_from_build(BUILD_DIR, version_tag):
             logger.info("✨ Build Artifacts Created.")
         else:
             raise Exception("Archiving failed")
 
-        # --- GIT OPERATIONS ---
+        # 7. Git Operations
         if enable_git:
-            # 1. Commit source changes (sw.js update...)
             if not git_automator.commit_source_changes(version_tag):
                 logger.warning("⚠️ Source commit skipped or failed.")
             
-            # 2. Nếu publish, phải Push code lên trước
             if publish_gh:
                 if not git_automator.push_changes():
-                    raise Exception("Git Push failed. Cannot publish release.")
+                    raise Exception("Git Push failed.")
                 
-                # 3. Tạo GitHub Release và Upload Zip
                 if not github_publisher.publish_release(version_tag):
                     raise Exception("GitHub Release failed.")
 
     except Exception as e:
         logger.error(f"❌ BUILD FAILED: {e}")
+        # Nếu lỗi, có thể cần revert version bump ở source? 
+        # (Ở đây ta chấp nhận version bump đã save)
         sys.exit(1)
         
     finally:
-        build_cleanup.cleanup_artifacts()
+        # 8. Cleanup Sandbox
+        build_cleanup.remove_build_dir()

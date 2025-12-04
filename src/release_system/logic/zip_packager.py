@@ -4,11 +4,12 @@ import os
 import zipfile
 from pathlib import Path
 
-from ..release_config import WEB_DIR, RELEASE_DIR, APP_NAME # [UPDATED] Import
+from ..release_config import RELEASE_DIR, APP_NAME
 
 logger = logging.getLogger("Release.ZipPackager")
 
-def create_zip(version_tag: str) -> bool:
+def create_zip_from_build(build_dir: Path, version_tag: str) -> bool:
+    """Nén toàn bộ thư mục build thành zip."""
     if not RELEASE_DIR.exists():
         RELEASE_DIR.mkdir(parents=True)
 
@@ -16,15 +17,17 @@ def create_zip(version_tag: str) -> bool:
     if zip_filename.exists():
         os.remove(zip_filename)
 
-    logger.info(f"📦 Zipping to {zip_filename.name}...")
+    logger.info(f"📦 Zipping artifacts from {build_dir.name}...")
+    
     try:
         with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zf:
-            for root, _, files in os.walk(WEB_DIR):
+            for root, _, files in os.walk(build_dir):
                 for file in files:
-                    if file.endswith((".bak", ".map", ".DS_Store", "Thumbs.db")):
-                        continue
                     file_path = Path(root) / file
-                    relative_path = file_path.relative_to(WEB_DIR)
+                    # Relative path bên trong zip sẽ bắt đầu từ gốc folder
+                    relative_path = file_path.relative_to(build_dir)
+                    
+                    # Cấu trúc zip: random-sutta/index.html ...
                     archive_name = Path(APP_NAME) / relative_path
                     zf.write(file_path, archive_name)
         return True
