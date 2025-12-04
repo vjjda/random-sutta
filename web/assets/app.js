@@ -84,6 +84,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const randomIndex = Math.floor(Math.random() * filteredKeys.length);
     window.loadSutta(filteredKeys[randomIndex], shouldUpdateUrl);
   }
+  
+  window.triggerRandomSutta = () => loadRandomSutta(true);
 
   // --- INIT FEATURE MODULES ---
   
