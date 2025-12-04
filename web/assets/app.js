@@ -8,6 +8,9 @@ import { renderSutta } from './modules/renderer.js';
 import { setupQuickNav } from './modules/search_component.js';
 
 document.addEventListener("DOMContentLoaded", async () => {
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
   const statusDiv = document.getElementById("status");
   const randomBtn = document.getElementById("btn-random");
   const navHeader = document.getElementById("nav-header");
