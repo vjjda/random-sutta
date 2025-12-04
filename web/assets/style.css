@@ -516,58 +516,74 @@ p {
 
 /* --- 8. FOOTER NAVIGATION (Prev/Next in content) --- */
 .sutta-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center; /* [FIX] Căn giữa theo chiều dọc */
-    margin-top: 50px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* [FIX] Căn giữa theo chiều dọc */
+  margin-top: 50px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-light);
 }
 
 .sutta-nav button.nav-btn {
-    background: none;
-    border: 1px solid transparent;
-    color: var(--primary-color);
-    padding: 8px 12px;
-    font-size: 0.95rem;
-    text-align: left;
-    border-radius: var(--radius-sm);
-    
-    /* [FIX] Cho phép nút Prev/Next co giãn để nhường chỗ cho nút giữa */
-    flex: 1; 
-    max-width: 45%; /* Giới hạn để không đè vào nút giữa */
+  background: none;
+  border: 1px solid transparent;
+  color: var(--primary-color);
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  text-align: left;
+  border-radius: var(--radius-sm);
+
+  /* [FIX] Cho phép nút Prev/Next co giãn để nhường chỗ cho nút giữa */
+  flex: 1;
+  max-width: 45%; /* Giới hạn để không đè vào nút giữa */
 }
 
 /* Spacer cho trường hợp không có nút prev hoặc next */
 .nav-spacer {
-    flex: 1;
-    max-width: 45%;
+  flex: 1;
+  max-width: 45%;
 }
 
 /* [NEW] Style cho nút Random Icon ở giữa */
 .nav-random-icon {
-    background: none;
-    border: none;
-    color: var(--border-color); /* Màu xám rất nhạt (Low profile) */
-    padding: 10px;
-    cursor: pointer;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-    
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    /* Không cho co giãn */
-    width: 44px;
-    height: 44px;
-    flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--border-color); /* Màu xám rất nhạt (Low profile) */
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.2s ease; /* Giảm time xuống chút cho mượt */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Không cho co giãn */
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* [FIX] Chỉ áp dụng hiệu ứng xoay và hover màu trên thiết bị có chuột (PC) */
+@media (hover: hover) {
+    .nav-random-icon:hover {
+        color: var(--primary-color);
+        background-color: rgba(0, 0, 0, 0.03);
+        transform: rotate(180deg);
+    }
+}
+
+/* [NEW] Hiệu ứng Active cho Mobile (Khi ngón tay chạm vào) */
+.nav-random-icon:active {
+    color: var(--primary-color);
+    background-color: rgba(0, 0, 0, 0.05);
+    transform: scale(0.9); /* Thu nhỏ nhẹ thay vì xoay để tạo cảm giác bấm nút thật */
 }
 
 .nav-random-icon:hover {
-    color: var(--primary-color); /* Hover thì hiện màu chủ đạo */
-    background-color: rgba(0, 0, 0, 0.03);
-    transform: rotate(180deg); /* Hiệu ứng xoay nhẹ vui mắt */
+  color: var(--primary-color); /* Hover thì hiện màu chủ đạo */
+  background-color: rgba(0, 0, 0, 0.03);
+  transform: rotate(180deg); /* Hiệu ứng xoay nhẹ vui mắt */
 }
 
 .sutta-nav button.nav-btn:hover {
@@ -897,128 +913,129 @@ p {
 /* --- 13. BRANCH VIEW (Table of Contents Style) --- */
 /* Reset padding container */
 .branch-container {
-    padding: 0;
+  padding: 0;
 }
 
 /* Style cho thẻ <li> bao ngoài */
-.branch-card-group, .branch-card-leaf {
-    margin-bottom: 15px;
-    list-style: none;
+.branch-card-group,
+.branch-card-leaf {
+  margin-bottom: 15px;
+  list-style: none;
 }
 
 /* Style cho thẻ <a> - Biến nó thành Card Container */
 .b-card-link {
-    display: block; /* Quan trọng: Block để chứa div bên trong */
-    background-color: #fff;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    color: var(--text-main);
-    transition: all 0.2s ease;
-    
-    /* Hiệu ứng đổ bóng nhẹ để tạo độ nổi */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-    overflow: hidden; /* Bo góc ảnh nền nếu có */
+  display: block; /* Quan trọng: Block để chứa div bên trong */
+  background-color: #fff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+
+  /* Hiệu ứng đổ bóng nhẹ để tạo độ nổi */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+  overflow: hidden; /* Bo góc ảnh nền nếu có */
 }
 
 .b-card-link:hover {
-    border-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 /* Phân biệt Group (Branch) bằng viền trái màu đậm */
 .branch-card-group .b-card-link {
-    border-left: 4px solid var(--primary-color);
+  border-left: 4px solid var(--primary-color);
 }
 
 /* Phân biệt Leaf bằng viền trái màu nhạt hoặc trong suốt */
 .branch-card-leaf .b-card-link {
-    border: 1px solid var(--border-light);
-    border-radius: 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
 }
 
 /* Nội dung bên trong Card */
 .b-content {
-    padding: 15px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px; /* Khoảng cách giữa các thành phần */
+  padding: 15px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Khoảng cách giữa các thành phần */
 }
 
 /* 1. Header: Title & Subtitle */
 .b-header {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .b-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-main);
-    line-height: 1.3;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
 }
 
 .b-orig {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    font-style: italic;
-    margin-top: 2px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 2px;
 }
 
 /* 2. Blurb: Mô tả */
 .b-blurb {
-    font-size: 0.95rem; /* [FIX] Tăng size chữ theo yêu cầu */
-    color: #555;
-    line-height: 1.5;
-    margin-top: 5px;
-    
-    /* Line Clamping thoáng hơn */
-    display: -webkit-box;
-    -webkit-line-clamp: 4; /* [FIX] Tăng lên 4 dòng để hiện nhiều thông tin hơn */
-    line-clamp: 4;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  font-size: 0.95rem; /* [FIX] Tăng size chữ theo yêu cầu */
+  color: #555;
+  line-height: 1.5;
+  margin-top: 5px;
+
+  /* Line Clamping thoáng hơn */
+  display: -webkit-box;
+  -webkit-line-clamp: 4; /* [FIX] Tăng lên 4 dòng để hiện nhiều thông tin hơn */
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* 3. Footer: Chứa Badge ID */
 .b-footer {
-    display: flex;
-    justify-content: flex-end; /* Đẩy badge sang phải */
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed #f0f0f0; /* Đường kẻ mờ ngăn cách */
+  display: flex;
+  justify-content: flex-end; /* Đẩy badge sang phải */
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #f0f0f0; /* Đường kẻ mờ ngăn cách */
 }
 
 .b-badge {
-    font-family: monospace;
-    font-size: 0.8rem;
-    color: var(--text-light);
-    background-color: #f5f5f5;
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid #eee;
-    
-    /* Đảm bảo badge không bao giờ bị vỡ dòng nếu quá dài */
-    white-space: nowrap;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--text-light);
+  background-color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+
+  /* Đảm bảo badge không bao giờ bị vỡ dòng nếu quá dài */
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 600px) {
-    .b-content {
-        padding: 12px 15px; /* Giảm padding một chút trên mobile */
-    }
-    
-    .b-title {
-        font-size: 1.05rem;
-    }
-    
-    .b-blurb {
-        font-size: 0.9rem; /* Chữ mobile nhỏ hơn chút cho gọn */
-        -webkit-line-clamp: 3; /* Mobile chỉ hiện 3 dòng */
-        line-clamp: 3;
-    }
+  .b-content {
+    padding: 12px 15px; /* Giảm padding một chút trên mobile */
+  }
+
+  .b-title {
+    font-size: 1.05rem;
+  }
+
+  .b-blurb {
+    font-size: 0.9rem; /* Chữ mobile nhỏ hơn chút cho gọn */
+    -webkit-line-clamp: 3; /* Mobile chỉ hiện 3 dòng */
+    line-clamp: 3;
+  }
 }
