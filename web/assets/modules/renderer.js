@@ -104,8 +104,9 @@ export function renderSutta(suttaId, checkHash = true) {
        // [UPDATED] Tính toán align-items cho Flexbox
        const alignItems = align === 'left' ? 'flex-start' : 'flex-end';
        
-       // [UPDATED] Bỏ thẻ <br>, dùng display:flex để stack dòng và kiểm soát khoảng cách (gap)
-       return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}">
+       // [UPDATED] Thêm text-align:${align} để ép văn bản bên trong (đặc biệt là subtitle)
+       // tuân thủ căn trái/phải khớp với nút.
+       return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
                 <span class="nav-main-text">${arrowLeft}${info.title}${arrowRight}</span>
                 <span class="nav-title">${info.subtitle}</span>
               </button>`;

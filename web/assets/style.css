@@ -515,18 +515,24 @@ p {
 }
 
 /* --- 8. FOOTER NAVIGATION (Prev/Next in content) --- */
-.sutta-nav {
-    /* [CHANGED] Dùng relative để làm mốc tọa độ cho nút Random tuyệt đối */
-    position: relative;
+.sutta-nav button.nav-btn {
+    /* ... giữ nguyên các dòng cũ ... */
+    background: none;
+    border: 1px solid transparent;
+    color: var(--primary-color);
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    /* Flexbox */
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 50px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-light);
+    flex-direction: column;
+    justify-content: center;
+    /* align-items và text-align được set inline từ JS */
     
-    /* Đảm bảo chiều cao tối thiểu để nút Random không bị đè */
-    min-height: 60px; 
+    gap: 4px; 
 }
 
 /* Spacer và Button chia đều không gian 2 bên */
@@ -570,9 +576,10 @@ p {
 .nav-main-text {
     font-weight: 600;
     display: block;
-    /* Bỏ margin bottom cũ vì đã có gap của flex */
     margin-bottom: 0; 
     line-height: 1.2;
+    /* [NEW] Đảm bảo inherit text-align từ cha */
+    text-align: inherit; 
 }
 
 .nav-title {
@@ -582,9 +589,10 @@ p {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    /* Đảm bảo text title con không bị quá rộng */
     width: 100%; 
     line-height: 1.2;
+    /* [NEW] Đảm bảo inherit text-align từ cha */
+    text-align: inherit;
 }
 
 /* --- RANDOM ICON (Absolute Center) --- */
