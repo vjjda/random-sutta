@@ -2,7 +2,7 @@
 import logging
 import sys
 
-from .config import BUNDLE_ORDER, CRITICAL_ASSETS
+from .config import CRITICAL_ASSETS
 from .logic import (
     versioning,
     validator,
@@ -15,17 +15,17 @@ from .logic import (
 logger = logging.getLogger("Release.Orchestrator")
 
 def run_release_process() -> None:
-    # 1. Generate Version (Timestamp)
+    # 1. Generate Version (Timestamp with Seconds)
     version_tag = versioning.generate_version_tag()
     logger.info(f"🚀 STARTING RELEASE BUILD: {version_tag}")
 
-    # 2. Validation
+    # 2. Validation (Basic checks)
     if not validator.check_critical_assets(CRITICAL_ASSETS):
         sys.exit(1)
 
     try:
-        # 3. Bundling
-        if not bundler.bundle_javascript(BUNDLE_ORDER):
+        # 3. Bundling (Auto-resolve dependencies inside)
+        if not bundler.bundle_javascript(): # [CHANGED] Không truyền tham số
             raise Exception("Bundling failed")
 
         # 4. Content Modification

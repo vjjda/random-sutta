@@ -7,19 +7,9 @@ WEB_DIR = PROJECT_ROOT / "web"
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
-# Bundle Order (Dependency Graph)
-BUNDLE_ORDER = [
-    "assets/modules/constants.js",
-    "assets/modules/navigator.js",
-    "assets/modules/db_manager.js",
-    "assets/modules/utils.js",
-    "assets/modules/toh_component.js",
-    "assets/modules/router.js",
-    "assets/modules/loader.js",
-    "assets/modules/filters.js",
-    "assets/modules/search_component.js",
-    "assets/modules/renderer.js",
-    "assets/app.js"
-]
+# [CHANGED] Không còn Hardcode Order nữa.
+# Chỉ cần chỉ định file gốc, script sẽ tự mò ra cây phụ thuộc.
+ENTRY_POINT = "assets/app.js"
 
-CRITICAL_ASSETS = BUNDLE_ORDER + ["assets/books/sutta_loader.js"]
+# Các file không nằm trong import tree nhưng bắt buộc phải có
+CRITICAL_ASSETS = ["assets/books/sutta_loader.js"]

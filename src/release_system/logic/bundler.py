@@ -5,14 +5,21 @@ from pathlib import Path
 from typing import List
 
 from ..config import WEB_DIR
+from .dependency_resolver import resolve_bundle_order # [NEW] Import Resolver
 
 logger = logging.getLogger("Release.Bundler")
 
-def bundle_javascript(file_list: List[str]) -> bool:
+def bundle_javascript() -> bool: # [CHANGED] Không cần tham số đầu vào
     """
-    Gộp các file ES Modules thành app.bundle.js.
-    Loại bỏ 'import' và 'export' để chạy trên file:// protocol.
+    Tự động phân giải thứ tự và gộp file.
     """
+    # 1. Tự động lấy danh sách file theo đúng thứ tự
+    file_list = resolve_bundle_order()
+    
+    if not file_list:
+        logger.error("❌ Dependency resolution failed or returned empty.")
+        return False
+
     logger.info("🧶 Bundling JavaScript modules...")
     bundle_path = WEB_DIR / "assets" / "app.bundle.js"
     
