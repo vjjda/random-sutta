@@ -4,7 +4,7 @@ import subprocess
 import shutil
 from pathlib import Path
 
-from ..release_config import PROJECT_ROOT, APP_NAME, RELEASE_DIR # [UPDATED] Import RELEASE_DIR
+from ..release_config import PROJECT_ROOT, APP_NAME, RELEASE_DIR
 
 logger = logging.getLogger("Release.GitHubPublisher")
 
@@ -14,32 +14,39 @@ def _check_gh_cli() -> bool:
         return False
     return True
 
-def publish_release(version_tag: str) -> bool:
+def publish_release(version_tag: str, is_official: bool = False) -> bool:
     """
-    Tạo GitHub Release và upload CHÍNH XÁC file zip vừa tạo.
+    Tạo GitHub Release.
+    - Mặc định: Pre-release.
+    - Nếu is_official=True: Latest Release.
     """
     if not _check_gh_cli():
         return False
 
-    # [LOGIC] Xác định file zip dựa trên version_tag (có giây)
-    # Vì version_tag là duy nhất (v2023...-123456), nên file path là duy nhất.
     zip_filename = f"{APP_NAME}-{version_tag}.zip"
     full_zip_path = RELEASE_DIR / zip_filename
 
-    # Kiểm tra an toàn: File phải tồn tại (đã được tạo bởi zip_packager)
     if not full_zip_path.exists():
         logger.error(f"❌ Artifact not found for upload: {zip_filename}")
         return False
 
-    logger.info(f"🚀 Publishing Release {version_tag} to GitHub...")
+    release_type = "OFFICIAL (Latest)" if is_official else "PRE-RELEASE"
+    logger.info(f"🚀 Publishing {release_type} {version_tag} to GitHub...")
     logger.info(f"   📦 Uploading artifact: {zip_filename}")
 
+    # Xây dựng lệnh gh
     cmd = [
         "gh", "release", "create", version_tag,
-        str(full_zip_path), # Chỉ upload đúng file này
+        str(full_zip_path),
         "--title", f"Release {version_tag}",
         "--generate-notes"
     ]
+
+    # [LOGIC MỚI] Kiểm tra cờ official
+    if is_official:
+        cmd.append("--latest")
+    else:
+        cmd.append("--prerelease")
 
     try:
         subprocess.run(

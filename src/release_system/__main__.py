@@ -10,24 +10,42 @@ def main():
     
     parser = argparse.ArgumentParser(description="Random Sutta Release Builder")
     
+    # Git & Publish flags
     parser.add_argument(
         "-g", "--git", 
         action="store_true", 
         help="Commit source changes (version bump) only."
     )
     
-    # [CHANGED] Đổi cờ -f thành -p cho đúng ngữ nghĩa
     parser.add_argument(
         "-p", "--publish", 
         action="store_true", 
-        help="Full Release: Commit source -> Push -> GitHub Release (Upload generated Zip)."
+        help="Full Release: Commit -> Push -> GitHub Release (Default: Pre-release)."
+    )
+
+    # [NEW] Release Type Flag
+    parser.add_argument(
+        "-o", "--official", 
+        action="store_true", 
+        help="Mark as Official/Latest release (Requires -p). Default is Pre-release."
+    )
+
+    # [NEW] Cleanup Flag
+    parser.add_argument(
+        "-c", "--clean", 
+        action="store_true", 
+        help="Cleanup build directory after finishing. Default: Keep files for debugging."
     )
     
     args = parser.parse_args()
 
     try:
-        # Nếu dùng -p thì tự động bật logic git
-        run_release_process(enable_git=args.git, publish_gh=args.publish)
+        run_release_process(
+            enable_git=args.git, 
+            publish_gh=args.publish,
+            is_official=args.official,
+            do_cleanup=args.clean
+        )
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")
         sys.exit(0)
