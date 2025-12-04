@@ -898,7 +898,8 @@ p {
 
 /* Phân biệt Leaf bằng viền trái màu nhạt hoặc trong suốt */
 .branch-card-leaf .b-card-link {
-    border-left: 4px solid transparent; 
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
 }
 
 /* Nội dung bên trong Card */
