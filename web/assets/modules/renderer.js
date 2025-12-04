@@ -118,8 +118,8 @@ export function renderSutta(suttaId, checkHash = true) {
       <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
         <svg 
             xmlns="http://www.w3.org/2000/svg" 
-            width="24" 
-            height="24" 
+            width="15" 
+            height="15" 
             viewBox="0 0 24 24" 
             fill="currentColor" 
             stroke="none"
