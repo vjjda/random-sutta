@@ -516,80 +516,119 @@ p {
 
 /* --- 8. FOOTER NAVIGATION (Prev/Next in content) --- */
 .sutta-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center; /* [FIX] Căn giữa theo chiều dọc */
-  margin-top: 50px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-light);
+    /* [CHANGED] Dùng relative để làm mốc tọa độ cho nút Random tuyệt đối */
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+    
+    /* Đảm bảo chiều cao tối thiểu để nút Random không bị đè */
+    min-height: 60px; 
 }
 
+/* Spacer và Button chia đều không gian 2 bên */
 .sutta-nav button.nav-btn,
 .nav-spacer {
     flex: 1;
-    flex-basis: 0; 
-    min-width: 0; 
-    max-width: none; 
+    /* Giới hạn max-width khoảng 40% để không đè lên nút tròn ở giữa */
+    max-width: 42%; 
 }
 
-/* Spacer cho trường hợp không có nút prev hoặc next */
-.nav-spacer {
-  flex: 1;
-  max-width: 45%;
-}
-
-/* [NEW] Style cho nút Random Icon ở giữa */
-.nav-random-icon {
-    flex: 0 0 auto; 
-    margin: 0 10px; 
+/* Style cho nút điều hướng (Prev/Next) */
+.sutta-nav button.nav-btn {
     background: none;
-    border: none;
-    color: var(--border-color);
-    padding: 10px;
+    border: 1px solid transparent;
+    color: var(--primary-color);
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    border-radius: 50%;
-    transition: all 0.2s ease;
+    transition: background-color 0.2s ease;
+
+    /* [NEW] Dùng Flexbox để xếp 2 dòng text dọc */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* align-items được set inline từ JS (flex-start/flex-end) */
+    
+    /* [NEW] Gap nhỏ để kiểm soát khoảng cách giữa Title và Subtitle */
+    gap: 4px; 
+}
+
+.sutta-nav button.nav-btn:hover {
+    background-color: #f9f9f9;
+    border-color: var(--border-light);
+}
+
+.nav-spacer {
+    visibility: hidden;
+}
+
+.nav-main-text {
+    font-weight: 600;
+    display: block;
+    /* Bỏ margin bottom cũ vì đã có gap của flex */
+    margin-bottom: 0; 
+    line-height: 1.2;
+}
+
+.nav-title {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Đảm bảo text title con không bị quá rộng */
+    width: 100%; 
+    line-height: 1.2;
+}
+
+/* --- RANDOM ICON (Absolute Center) --- */
+.nav-random-icon {
+    /* [CHANGED] Tuyệt chiêu căn giữa tuyệt đối */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%); /* Dịch lùi lại 50% kích thước bản thân để tâm trùng tâm */
+    
+    z-index: 10; /* Nổi lên trên để không bị text dài đè (nếu có lỗi layout) */
+
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    
+    background: none;
+    border: none;
+    color: var(--border-color); 
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
     -webkit-tap-highlight-color: transparent;
+    
+    /* Background màu nền để che đường kẻ border-top của container đi qua nó (nếu muốn) */
+    background-color: var(--bg-card); 
 }
 
-/* [UPDATED] Chỉ đổi màu khi hover, BỎ XOAY */
+/* Hover effect: Chỉ áp dụng cho thiết bị có chuột (PC) */
 @media (hover: hover) {
     .nav-random-icon:hover {
         color: var(--primary-color);
         background-color: rgba(0, 0, 0, 0.03);
-        transform: none; /* [CHANGED] Xóa bỏ rotate(180deg) */
+        transform: none; /* Giữ tĩnh tại, không xoay */
     }
 }
 
-/* Hiệu ứng Active (Khi bấm xuống): Nhún nhẹ một chút */
+/* Active effect: Hiệu ứng bấm lún nhẹ (Feedback vật lý) */
 .nav-random-icon:active {
     color: var(--primary-color);
     background-color: rgba(0, 0, 0, 0.05);
-    transform: scale(0.95); /* [CHANGED] Nhún nhẹ 95% kích thước */
-}
-
-.sutta-nav button.nav-btn:hover {
-  background-color: #f9f9f9;
-  border-color: var(--border-light);
-}
-
-.sutta-nav button.nav-btn:last-child {
-  text-align: right;
-}
-
-.nav-title {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--text-light);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    transform: scale(0.9); /* Thu nhỏ nhẹ */
 }
 
 /* --- 9. COMMENT POPUP --- */

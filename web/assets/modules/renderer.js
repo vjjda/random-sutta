@@ -92,43 +92,37 @@ export function renderSutta(suttaId, checkHash = true) {
 
   const nav = DB.getNavigation(id);
   updateTopNavLocal(id, nav.prev, nav.next);
-
-  // [UPDATED] Tạo Bottom Nav cho CẢ Leaf và Branch
-  // Trước đây: if (!isBranch) { ... } -> Giờ xóa if đi để luôn chạy
   
   let bottomNavHtml = '<div class="sutta-nav">';
   
-  const makeBtn = (sid, align) => {
-      if(!sid) return `<span></span>`;
-      const info = getSuttaDisplayInfo(sid);
-      
-      // Icon mũi tên
-      const arrowLeft = align === 'left' ? '← ' : '';
-      const arrowRight = align === 'right' ? ' →' : '';
-      
-      return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="text-align:${align}">
+  const makeBtnImp = (sid, align) => {
+       if(!sid) return `<span class="nav-spacer"></span>`;
+       const info = getSuttaDisplayInfo(sid);
+       const arrowLeft = align === 'left' ? '← ' : '';
+       const arrowRight = align === 'right' ? ' →' : '';
+       
+       // [UPDATED] Tính toán align-items cho Flexbox
+       const alignItems = align === 'left' ? 'flex-start' : 'flex-end';
+       
+       // [UPDATED] Bỏ thẻ <br>, dùng display:flex để stack dòng và kiểm soát khoảng cách (gap)
+       return `<button onclick="window.loadSutta('${sid}')" class="nav-btn" style="align-items:${alignItems}">
                 <span class="nav-main-text">${arrowLeft}${info.title}${arrowRight}</span>
-                <br>
                 <span class="nav-title">${info.subtitle}</span>
               </button>`;
   };
 
-  bottomNavHtml += makeBtn(nav.prev, 'left');
+  bottomNavHtml += makeBtnImp(nav.prev, 'left');
+
+  // [UPDATED] Nút Random giữ nguyên SVG Dot
   bottomNavHtml += `
       <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
-        <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="15" 
-            height="15" 
-            viewBox="0 0 24 24" 
-            fill="currentColor" 
-            stroke="none"
-        >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
            <circle cx="12" cy="12" r="3"></circle>
         </svg>
       </button>
   `;
-  bottomNavHtml += makeBtn(nav.next, 'right');
+
+  bottomNavHtml += makeBtnImp(nav.next, 'right');
   bottomNavHtml += "</div>";
 
   container.innerHTML = htmlContent + bottomNavHtml;
