@@ -524,18 +524,12 @@ p {
   border-top: 1px solid var(--border-light);
 }
 
-.sutta-nav button.nav-btn {
-  background: none;
-  border: 1px solid transparent;
-  color: var(--primary-color);
-  padding: 8px 12px;
-  font-size: 0.95rem;
-  text-align: left;
-  border-radius: var(--radius-sm);
-
-  /* [FIX] Cho phép nút Prev/Next co giãn để nhường chỗ cho nút giữa */
-  flex: 1;
-  max-width: 45%; /* Giới hạn để không đè vào nút giữa */
+.sutta-nav button.nav-btn,
+.nav-spacer {
+    flex: 1;
+    flex-basis: 0; 
+    min-width: 0; 
+    max-width: none; 
 }
 
 /* Spacer cho trường hợp không có nút prev hoặc next */
@@ -546,22 +540,21 @@ p {
 
 /* [NEW] Style cho nút Random Icon ở giữa */
 .nav-random-icon {
-  background: none;
-  border: none;
-  color: var(--border-color); /* Màu xám rất nhạt (Low profile) */
-  padding: 10px;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: all 0.2s ease; /* Giảm time xuống chút cho mượt */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  /* Không cho co giãn */
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
+    flex: 0 0 auto; 
+    margin: 0 10px; 
+    background: none;
+    border: none;
+    color: var(--border-color);
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* [UPDATED] Chỉ đổi màu khi hover, BỎ XOAY */
