@@ -564,20 +564,20 @@ p {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* [FIX] Chỉ áp dụng hiệu ứng xoay và hover màu trên thiết bị có chuột (PC) */
+/* [UPDATED] Chỉ đổi màu khi hover, BỎ XOAY */
 @media (hover: hover) {
     .nav-random-icon:hover {
         color: var(--primary-color);
         background-color: rgba(0, 0, 0, 0.03);
-        transform: rotate(180deg);
+        transform: none; /* [CHANGED] Xóa bỏ rotate(180deg) */
     }
 }
 
-/* [NEW] Hiệu ứng Active cho Mobile (Khi ngón tay chạm vào) */
+/* Hiệu ứng Active (Khi bấm xuống): Nhún nhẹ một chút */
 .nav-random-icon:active {
     color: var(--primary-color);
     background-color: rgba(0, 0, 0, 0.05);
-    transform: scale(0.9); /* Thu nhỏ nhẹ thay vì xoay để tạo cảm giác bấm nút thật */
+    transform: scale(0.95); /* [CHANGED] Nhún nhẹ 95% kích thước */
 }
 
 .nav-random-icon:hover {
