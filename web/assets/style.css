@@ -582,11 +582,7 @@ p {
     background: none;
     border: 1px solid transparent;
     color: var(--primary-color);
-    
-    /* [FIX] Đổi padding từ "8px 12px" thành "8px 0" */
-    /* Để chữ chạm sát mép trái/phải container */
     padding: 8px 12px;
-    
     font-size: 0.95rem;
     border-radius: var(--radius-sm);
     cursor: pointer;
