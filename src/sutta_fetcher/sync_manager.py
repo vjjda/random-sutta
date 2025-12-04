@@ -1,17 +1,14 @@
 # Path: src/sutta_fetcher/sync_manager.py
-import logging
 import sys
+# [NEW] Import logging config
+from src.logging_config import setup_logging
 
 # Import nội bộ
 from .vcs.git_wrapper import GitWrapper
 from .logic.content_manager import ContentManager
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%H:%M:%S'
-)
-logger = logging.getLogger("SuttaFetcher.SyncManager")
+# [CHANGED] Init logger
+logger = setup_logging("SuttaFetcher.SyncManager")
 
 def run_sync():
     """Hàm điều phối quá trình đồng bộ dữ liệu từ Git về Local."""

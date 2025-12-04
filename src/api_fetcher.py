@@ -1,6 +1,5 @@
 # Path: src/api_fetcher.py
 import json
-import logging
 import os
 import sys
 import urllib.request
@@ -8,6 +7,7 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Tuple, Set
+from src.logging_config import setup_logging
 
 # --- Configuration ---
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -28,13 +28,7 @@ SUPER_TARGETS = ["sutta", "vinaya", "abhidhamma"]
 # Dùng Set để tra cứu nhanh O(1)
 LARGE_TARGETS: Set[str] = {"dn", "mn", "sn", "an"}
 
-# --- Logging Setup ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%H:%M:%S'
-)
-logger = logging.getLogger("APIFetcher")
+logger = setup_logging("APIFetcher")
 
 def discover_books() -> List[Tuple[str, str]]:
     """

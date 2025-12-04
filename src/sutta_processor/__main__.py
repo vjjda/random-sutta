@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 # Path: src/sutta_processor/__main__.py
-import logging
 import sys
 import argparse
+# [NEW] Import logging config
+from src.logging_config import setup_logging
 from .build_manager import BuildManager
 
-def setup_logging() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%H:%M:%S'
-    )
-
 def main() -> None:
-    setup_logging()
+    # [CHANGED] Sử dụng config chung
+    setup_logging("SuttaProcessor")
     
     parser = argparse.ArgumentParser(description="Sutta Data Processor")
     parser.add_argument("-d", "--dry-run", action="store_true", help="Run in dry-run mode")
