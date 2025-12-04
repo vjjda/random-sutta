@@ -214,10 +214,17 @@ header {
 /* --- 6. NAVIGATION HEADER (Top Nav) --- */
 #nav-header {
   display: flex;
-  justify-content: center;
+  justify-content: space-between; /* Đẩy 2 mũi tên ra 2 đầu */
   align-items: center;
   margin-top: 20px;
-  gap: 15px;
+  gap: 10px; /* Khoảng cách an toàn giữa tên và mũi tên */
+  
+  /* [NEW] Cố định chiều rộng header để mũi tên không chạy lung tung */
+  width: 100%;
+  max-width: 500px; /* Kích thước tối ưu cho cả Mobile và Desktop */
+  margin-left: auto;
+  margin-right: auto;
+  
   animation: fadeIn 0.5s;
 }
 
@@ -226,13 +233,27 @@ header {
   border: none;
   font-size: 1.8rem;
   color: var(--primary-color);
-  padding: 0 10px;
+  
+  /* [NEW] Cố định kích thước vùng bấm (Touch Target) */
+  width: 48px; 
+  height: 48px;
+  flex-shrink: 0; /* Ngăn không cho mũi tên bị bóp méo khi màn hình nhỏ */
+  
+  /* Căn icon vào giữa vùng bấm */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  padding: 0; /* Reset padding cũ */
   line-height: 1;
   opacity: 0.6;
+  border-radius: 50%; /* [Optional] Hiệu ứng tròn khi hover */
+  transition: background-color 0.2s, transform 0.2s;
 }
 
 .nav-arrow:hover:not(:disabled) {
-  transform: scale(1.2);
+  background-color: rgba(0,0,0,0.05); /* Feedback nhẹ khi hover */
+  transform: none; /* Bỏ scale cũ để tránh làm lệch layout */
   opacity: 1;
 }
 
@@ -244,20 +265,24 @@ header {
 
 #nav-title-display {
   text-align: center;
-  /* Kích thước tối thiểu/tối đa để ổn định layout */
-  min-width: 220px;
-  max-width: 450px;
+  
+  /* [NEW] Flexible Width Logic */
+  flex-grow: 1; /* Chiếm hết khoảng trống ở giữa */
+  width: 0; /* Quan trọng: Hack để text-overflow hoạt động trong Flex item */
+  
+  /* Reset kích thước cũ */
+  min-width: unset; 
+  max-width: unset;
   min-height: 3.5rem;
-  padding: 4px 12px;
+  
+  padding: 4px 8px;
   border-radius: var(--radius-md);
   cursor: pointer;
-
-  /* Layout: Flexbox để căn giữa toàn bộ khối */
+  
   display: flex;
   justify-content: center;
   align-items: center;
-
-  position: relative; /* Quan trọng để neo ô Input */
+  position: relative;
   transition: background-color 0.2s;
 }
 
@@ -285,9 +310,14 @@ header {
 #nav-main-title {
   display: block;
   font-weight: 700;
-  font-size: 1.15rem; /* Tăng nhẹ cỡ chữ chính */
+  font-size: 1.15rem;
   color: var(--text-main);
-  white-space: nowrap; /* Tránh ngắt dòng giữa chừng nếu tên ngắn */
+  
+  /* [NEW] Truncate Text */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 #nav-sub-title {
@@ -295,10 +325,12 @@ header {
   font-size: 0.9rem;
   color: var(--text-muted);
   font-style: italic;
-  max-width: 100%;
+  
+  /* [NEW] Truncate Text */
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  width: 100%;
   padding: 0 5px;
 }
 
