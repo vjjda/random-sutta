@@ -1,8 +1,7 @@
 // Path: web/sw.js
 
-// Tên cache mới (Nên bump version khi deploy)
-const CACHE_NAME = "sutta-cache-v20251205-065443";
-
+// Tên cache mới (Bump version để cache file mới)
+const CACHE_NAME = "sutta-cache-v20251205-refactor-01";
 const SUTTA_DATA_FILES = [
   "./assets/books/abhidhamma/ds_book.js",
   "./assets/books/abhidhamma/dt_book.js",
@@ -43,8 +42,6 @@ const SUTTA_DATA_FILES = [
   "./assets/books/vinaya/pli-tv-pvr_book.js"
 ];
 
-// REMOVED: const NAME_DATA_FILES = ...
-
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -60,6 +57,8 @@ const CORE_ASSETS = [
   "./assets/modules/toh_component.js",
   "./assets/modules/db_manager.js",
   "./assets/modules/navigator.js",
+  "./assets/modules/ui_factory.js",      // [NEW]
+  "./assets/modules/sutta_controller.js", // [NEW]
   "./assets/books/sutta_loader.js",
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",
@@ -70,7 +69,6 @@ const CORE_ASSETS = [
   "./assets/icons/web-app-manifest-512x512.png",
 ];
 
-// Combine files
 const ALL_ASSETS = CORE_ASSETS.concat(SUTTA_DATA_FILES);
 
 self.addEventListener("install", (event) => {
@@ -83,7 +81,6 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Activate và Fetch logic giữ nguyên
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
