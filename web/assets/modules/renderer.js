@@ -2,7 +2,7 @@
 import { DB } from "./db_manager.js";
 import { getSuttaDisplayInfo } from "./utils.js";
 import { setupTableOfHeadings } from "./toh_component.js";
-import { UIFactory } from "./ui_factory.js"; // [NEW] Import Factory
+import { UIFactory } from "./ui_factory.js";
 
 let tohInstance = null;
 
@@ -19,7 +19,6 @@ function updateTopNavDOM(currentId, prevId, nextId) {
   if (navMainTitle) navMainTitle.textContent = currentInfo.title;
   if (navSubTitle) navSubTitle.textContent = currentInfo.subtitle;
 
-  // Reset Display Mode
   document.getElementById("nav-title-text")?.classList.remove("hidden");
   document.getElementById("nav-search-container")?.classList.add("hidden");
 
@@ -46,16 +45,15 @@ function handleNotFound(suttaId) {
   const container = document.getElementById("sutta-container");
   const statusDiv = document.getElementById("status");
   const navHeader = document.getElementById("nav-header");
-  const mTitle = document.getElementById("nav-main-title");
-  const sTitle = document.getElementById("nav-sub-title");
-
-  // [UPDATED] Use Factory
+  
   container.innerHTML = UIFactory.createErrorHtml(suttaId);
   
   statusDiv.textContent = "Sutta not found.";
   statusDiv.classList.remove("hidden");
   navHeader.classList.remove("hidden");
-
+  
+  const mTitle = document.getElementById("nav-main-title");
+  const sTitle = document.getElementById("nav-sub-title");
   if (mTitle) mTitle.textContent = "Not Found";
   if (sTitle) sTitle.textContent = "---";
 }
@@ -63,17 +61,16 @@ function handleNotFound(suttaId) {
 export function renderSutta(suttaId, options = {}) {
   const checkHash = options.checkHash !== false;
   const explicitId = options.highlightId;
+  const noHighlight = options.noHighlight === true; // [NEW] Flag tắt highlight
   const id = suttaId.toLowerCase().trim();
   const container = document.getElementById("sutta-container");
 
-  // 1. Check Data Existence
   const book = DB.findBookContaining(id);
   if (!book) {
     handleNotFound(id);
     return false;
   }
 
-  // 2. Generate Content HTML
   let htmlContent = DB.compileHtml(id);
   let isBranch = false;
 
@@ -84,26 +81,20 @@ export function renderSutta(suttaId, options = {}) {
 
   if (!htmlContent) return false;
 
-  // 3. Generate Navigation HTML & Update Top Nav
   const nav = DB.getNavigation(id);
   updateTopNavDOM(id, nav.prev, nav.next);
-  
-  // [UPDATED] Use Factory for Bottom Nav
   const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next);
 
-  // 4. Render to DOM
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  // 5. Setup Components (ToH)
   if (!tohInstance) tohInstance = setupTableOfHeadings();
-  
   if (isBranch) {
     document.getElementById("toh-wrapper")?.classList.add("hidden");
   } else {
     tohInstance.generate();
   }
 
-  // 6. Handle Scroll / Highlight
+  // --- Logic Scroll & Highlight Mới ---
   let targetId = null;
   if (explicitId) {
       targetId = explicitId.replace('#', '');
@@ -116,7 +107,11 @@ export function renderSutta(suttaId, options = {}) {
         const el = document.getElementById(targetId);
         if (el) {
             el.scrollIntoView({ behavior: "smooth", block: "start" });
-            el.classList.add("highlight");
+            
+            // [NEW] Chỉ highlight nếu không bị cấm
+            if (!noHighlight) {
+                el.classList.add("highlight");
+            }
         } else if (retries > 0) {
             setTimeout(() => attemptScroll(retries - 1), 100);
         }
