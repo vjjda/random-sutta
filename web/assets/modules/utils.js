@@ -1,8 +1,7 @@
-// Path: web/assets/modules/utils.js
+/* Path: web/assets/modules/utils.js */
 import { DB } from './db_manager.js';
 
 export function getSuttaDisplayInfo(id) {
-  // ... (Giữ nguyên)
   let info = { title: id.toUpperCase(), subtitle: "" };
   const meta = DB.getMeta(id);
   if (meta) {
@@ -46,20 +45,21 @@ export function initCommentPopup() {
     content.addEventListener("click", (event) => {
         const link = event.target.closest("a");
         if (link) {
-            // [FIX] Sử dụng API URL chuẩn thay vì parse chuỗi thủ công
-            // link.href luôn trả về đường dẫn tuyệt đối (http://localhost...) dễ parse hơn
+            // [FIX] Dùng new URL() để parse chính xác mọi thành phần
+            // link.href luôn trả về absolute path (http://...) nên rất an toàn
             const urlObj = new URL(link.href);
             
-            // Chỉ xử lý nếu có param ?q=
+            // Kiểm tra xem có param ?q= không
             if (urlObj.searchParams.has("q")) {
                 event.preventDefault();
                 
-                let suttaId = urlObj.searchParams.get("q"); // Lấy ID (vd: mn38)
-                const urlHash = urlObj.hash; // Lấy hash (vd: #35.1) - Đã bao gồm dấu #
+                let suttaId = urlObj.searchParams.get("q"); // Lấy ID sạch (vd: dn1)
+                const urlHash = urlObj.hash; // Lấy hash (vd: #2.38.18) - bao gồm cả dấu #
 
-                // Nếu có hash, nối vào ID để controller biết đường update URL
+                // Nối lại thành chuỗi ID đầy đủ để gửi cho Controller
+                // Controller sẽ dùng phần này để update URL browser
                 if (suttaId && urlHash) {
-                    suttaId += urlHash; // mn38 + #35.1 -> mn38#35.1
+                    suttaId += urlHash; 
                 }
                 
                 if (suttaId && window.loadSutta) {
@@ -74,22 +74,24 @@ export function initCommentPopup() {
                     });
 
                     setTimeout(() => {
-                        // 1. Load Sutta (Controller update URL browser tại đây)
-                        // Truyền noScroll: true để Renderer đứng yên
+                        // 1. Load Sutta 
+                        // Truyền noScroll: true để Renderer chỉ render HTML, không cuộn lung tung
                         window.loadSutta(suttaId, true, 0, { noScroll: true });
 
-                        // 2. Scroll thủ công (Ẩn sau màn Fade)
+                        // 2. Xử lý Scroll thủ công (Ẩn sau màn Fade)
                         if (urlHash) {
-                            // urlHash có dạng "#35.1", cần bỏ dấu # để tìm ID
+                            // Bỏ dấu # để lấy ID phần tử (vd: 2.38.18)
                             const targetId = urlHash.substring(1); 
+                            
+                            // Tìm và cuộn
                             const el = document.getElementById(targetId);
                             if(el) {
-                                // Scroll tức thì (không animation)
+                                // behavior: "auto" để cuộn tức thì (người dùng không thấy chạy chạy)
                                 el.scrollIntoView({behavior: "auto", block: "center"});
                                 el.classList.add("highlight");
                             }
                         } else {
-                            // Nếu không có hash, về đầu trang
+                            // Không có hash thì về đầu trang
                             window.scrollTo(0, 0);
                         }
 
@@ -102,7 +104,7 @@ export function initCommentPopup() {
                             }, 150);
                         });
 
-                    }, 150);
+                    }, 150); 
                     // --- END: STATIC FADE NAVIGATION ---
                 }
             }
