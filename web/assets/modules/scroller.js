@@ -3,7 +3,6 @@ import { getLogger } from './logger.js';
 
 const logger = getLogger("Scroller");
 
-// [FIX] Đưa về 0 để sát mép trên
 const SCROLL_OFFSET = 0; 
 
 function getTargetPosition(element) {
@@ -12,9 +11,22 @@ function getTargetPosition(element) {
     return currentScrollY + rectTop - SCROLL_OFFSET;
 }
 
+// Hàm dọn dẹp highlight cũ
+function clearHighlights() {
+    document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+}
+
+// Hàm thêm highlight mới (có dọn dẹp trước)
+function applyHighlight(element) {
+    if (!element) return;
+    clearHighlights();
+    element.classList.add('highlight');
+}
+
 export const Scroller = {
     /**
-     * Cuộn ngay lập tức (Initial Load / Direct Link)
+     * Cuộn ngay lập tức (Initial Load / Shortcut / Direct Link)
+     * -> CÓ HIGHLIGHT
      */
     scrollToId: function(targetId) {
         if (!targetId) {
@@ -27,23 +39,27 @@ export const Scroller = {
             if (element) {
                 const targetY = getTargetPosition(element);
                 window.scrollTo(0, targetY);
-                // [FIX] Đã xóa logic add class 'highlight'
+                // [YES] Shortcut cần highlight
+                applyHighlight(element);
             } else if (retries > 0) {
                 setTimeout(() => attemptFind(retries - 1), 50);
             }
         };
-        // Thử tìm trong 500ms (10 lần x 50ms) đề phòng DOM render chậm
         attemptFind(10);
     },
 
     /**
-     * [NEW] Hiệu ứng Fade -> Jump -> Fade (Dùng cho TOH)
+     * Cuộn có hiệu ứng Fade (Dùng cho TOH - Table of Headings)
+     * -> KHÔNG HIGHLIGHT (Chỉ xóa cái cũ cho sạch mắt)
      */
     animateScrollTo: async function(targetId) {
         const container = document.getElementById("sutta-container");
         const element = document.getElementById(targetId);
         
         if (!container || !element) return;
+
+        // [NO HIGHLIGHT] Chỉ dọn dẹp highlight cũ để màn hình sạch sẽ
+        clearHighlights();
 
         // 1. Fade Out
         container.classList.add('nav-transitioning');
@@ -54,12 +70,13 @@ export const Scroller = {
         // 2. Jump
         const targetY = getTargetPosition(element);
         window.scrollTo(0, targetY);
+        
+        // [QUAN TRỌNG] Không gọi applyHighlight(element) ở đây!
 
-        // 3. Prepare Fade In
+        // 3. Fade In
         container.classList.remove('exit-up');
         container.classList.add('enter-from-bottom');
 
-        // 4. Fade In
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 container.classList.remove('enter-from-bottom');
@@ -71,7 +88,8 @@ export const Scroller = {
     },
 
     /**
-     * Chuyển cảnh khi load Sutta mới (Popup, Link)
+     * Chuyển cảnh khi load Sutta mới (Shortcut / Link Popup / Next-Prev)
+     * -> CÓ HIGHLIGHT (Nếu có targetId)
      */
     transitionTo: async function(renderAction, targetId) {
         const container = document.getElementById("sutta-container");
@@ -90,18 +108,16 @@ export const Scroller = {
         if (renderAction) renderAction();
 
         // 3. JUMP
-        // [IMPORTANT FIX] Đợi lâu hơn 1 chút để Browser tính toán lại Layout (Reflow)
-        // 50ms là đủ để render engine cập nhật vị trí các phần tử mới
         await new Promise(r => setTimeout(r, 50));
         
         if (targetId) {
-            // Thử tìm phần tử (logic retry nhẹ)
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = getTargetPosition(element);
                 window.scrollTo(0, targetY);
+                // [YES] Shortcut/Link cần highlight
+                applyHighlight(element);
             } else {
-                // Fallback nếu không tìm thấy ID (ví dụ ID sai)
                 window.scrollTo(0, 0);
             }
         } else {
