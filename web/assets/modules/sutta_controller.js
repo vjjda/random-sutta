@@ -3,26 +3,26 @@ import { SuttaLoader } from './loader.js';
 import { Router } from './router.js';
 import { DB } from './db_manager.js';
 import { renderSutta } from './renderer.js';
-import { getActiveFilters, generateBookParam } from './filters.js';
+import { getActiveFilters } from './filters.js';
 import { initCommentPopup } from './utils.js';
+// [NEW]
+import { getLogger } from './logger.js';
 
+const logger = getLogger("SuttaController");
 const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
   loadSutta: async function (suttaIdInput, shouldUpdateUrl = true, scrollY = 0, options = {}) {
+    // ... (Giữ nguyên logic scroll) ...
     const currentScrollBeforeRender = window.scrollY;
     hideComment();
     
     // --- 1. DEFINITIONS ---
     const doUpdateUrl = (idToUrl) => {
         if (shouldUpdateUrl) {
-            // [FIX] Luôn lấy hash từ input đầu vào (suttaIdInput)
-            // suttaIdInput lúc này là "mn38#35.1" do bên utils.js truyền sang
             const parts = suttaIdInput.split('#');
             const explicitHash = parts.length > 1 ? `#${parts[1]}` : null;
-            
-            // Truyền explicitHash vào Router để nó gắn lên URL
-            Router.updateURL(idToUrl, generateBookParam(), false, explicitHash, currentScrollBeforeRender);
+            Router.updateURL(idToUrl, null, false, explicitHash, currentScrollBeforeRender);
         }
     };
 
@@ -31,12 +31,14 @@ export const SuttaController = {
     const suttaId = baseId.trim().toLowerCase();
     const explicitHash = hashPart ? hashPart : null;
     
+    // [LOGGING]
+    logger.info(`Request to load: ${suttaId} ${explicitHash ? `(Hash: ${explicitHash})` : ''}`);
+    
+    // ... (Giữ nguyên params) ...
     const params = new URLSearchParams(window.location.search);
     const currentUrlId = params.get("q");
 
-    // --- 3. RENDER OPTIONS ---
     let renderOptions = { ...options };
-
     if (explicitHash) {
         renderOptions.highlightId = explicitHash;
     } else {
@@ -49,8 +51,11 @@ export const SuttaController = {
     const meta = DB.getMeta(suttaId);
     if (meta && meta.type === 'shortcut') {
         const parentId = meta.parent_uid;
+        logger.debug(`Shortcut detected: ${suttaId} -> ${parentId}`);
+        
         const targetScrollId = meta.scroll_target;
         const shouldDisableHighlight = meta.is_implicit === true;
+        
         const success = renderSutta(parentId, {
             highlightId: targetScrollId,
             noHighlight: shouldDisableHighlight,
@@ -64,7 +69,7 @@ export const SuttaController = {
 
     // --- 5. NORMAL RENDER LOGIC ---
     if (renderSutta(suttaId, renderOptions)) {
-      doUpdateUrl(suttaId); 
+      doUpdateUrl(suttaId);
       return;
     } 
 
@@ -72,21 +77,24 @@ export const SuttaController = {
     const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
     if (bookFile) {
         const dbKey = bookFile.replace(/_book\.js$/, '').replace(/\//g, '_');
+        
         if (window.SUTTA_DB && window.SUTTA_DB[dbKey]) {
-             console.warn(`🛑 Infinite Loop detected: Book '${dbKey}' is loaded but does not contain '${suttaId}'.`);
+             logger.warn(`Infinite Loop detected: Book '${dbKey}' loaded but '${suttaId}' missing.`);
              renderSutta(suttaId, renderOptions);
              return;
         }
 
         const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
         try {
+            logger.debug(`Lazy loading book: ${bookId} for ${suttaId}`);
             await SuttaLoader.loadBook(bookId);
             this.loadSutta(suttaIdInput, shouldUpdateUrl, scrollY, options);
         } catch (err) {
-            console.error("Lazy load failed:", err);
+            logger.error(`Lazy load failed for ${bookId}`, err);
             renderSutta(suttaId, renderOptions);
         }
     } else {
+        logger.warn(`No book file found for ${suttaId}`);
         renderSutta(suttaId, renderOptions);
     }
   },
@@ -105,12 +113,16 @@ export const SuttaController = {
         return /\d/.test(nextChar); 
       });
     });
+    
     if (filteredKeys.length === 0) {
       alert("No suttas match your selected filters!");
       return;
     }
 
     const randomIndex = Math.floor(Math.random() * filteredKeys.length);
-    this.loadSutta(filteredKeys[randomIndex], shouldUpdateUrl);
+    const target = filteredKeys[randomIndex];
+    
+    logger.info(`Random selection: ${target} (Pool: ${filteredKeys.length})`);
+    this.loadSutta(target, shouldUpdateUrl);
   }
 };

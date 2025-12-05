@@ -1,8 +1,6 @@
 // Path: web/sw.js
 
 const CACHE_NAME = "sutta-cache-dev-placeholder";
-
-// [NEW] Log ngay lập tức khi trình duyệt đọc file này
 console.log(`%c [SW] Loading Version: ${CACHE_NAME}`, 'background: #333; color: #bada55; padding: 2px 5px; border-radius: 2px;');
 
 const SUTTA_DATA_FILES = [
@@ -48,7 +46,7 @@ const SUTTA_DATA_FILES = [
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./assets/style.css", // Vẫn giữ cái này ở Source, Build Tool sẽ tự sửa (xem Bước 3)
+  "./assets/style.css",
   "./assets/app.js",
   "./assets/modules/constants.js",
   "./assets/modules/utils.js",
@@ -62,7 +60,9 @@ const CORE_ASSETS = [
   "./assets/modules/navigator.js",
   "./assets/modules/ui_factory.js",
   "./assets/modules/sutta_controller.js",
-  "./assets/modules/file_index.js", 
+  "./assets/modules/file_index.js",
+  // [NEW] Add Logger
+  "./assets/modules/logger.js", 
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",
   "./assets/icons/favicon.ico",
