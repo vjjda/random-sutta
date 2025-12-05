@@ -29,7 +29,6 @@ export function initCommentPopup() {
         popup.classList.add("hidden");
     }
     
-    // Delegate event cho comment marker
     container.addEventListener("click", (event) => {
         if (event.target.classList.contains("comment-marker")) {
             const text = event.target.dataset.comment;
@@ -42,52 +41,52 @@ export function initCommentPopup() {
         }
     });
 
-    // Delegate event cho link trong popup (SPA Navigation)
+    // Delegate event cho link trong popup
     content.addEventListener("click", (event) => {
         const link = event.target.closest("a");
         if (link) {
             const href = link.getAttribute("href");
-            // Chỉ xử lý link nội bộ (SPA)
+            
+            // Chỉ xử lý link nội bộ
             if (href && href.startsWith("index.html?q=")) {
                 event.preventDefault();
                 
-                const urlParts = href.split("?");
+                // [FIX LOGIC LẤY ID] 
+                // Tách phần Query và phần Hash riêng biệt để đảm bảo không bị mất Hash
+                const [urlBase, urlHash] = href.split("#");
+                const urlParts = urlBase.split("?");
+
                 if (urlParts.length > 1) {
                     const params = new URLSearchParams(urlParts[1]);
-                    const suttaId = params.get("q");
+                    let suttaId = params.get("q"); // Lấy ID cơ bản (vd: mn38)
+
+                    // Nếu link gốc có hash (#35.1), nối nó vào suttaId (thành mn38#35.1)
+                    if (suttaId && urlHash) {
+                        suttaId += `#${urlHash}`;
+                    }
                     
                     if (suttaId && window.loadSutta) {
                         hideComment();
                         
                         // --- START: STATIC FADE NAVIGATION ---
                         const container = document.getElementById("sutta-container");
-                        
-                        // 1. Thêm class transition (để đảm bảo mượt)
                         container.classList.add("static-fade-transition");
                         
-                        // 2. Trigger Fade Out
                         requestAnimationFrame(() => {
                             container.classList.add("static-fade-out");
                         });
 
-                        // 3. Đợi Fade Out xong (150ms) thì mới load nội dung mới
                         setTimeout(() => {
-                            // [UPDATED] Không tách hash nữa, dùng nguyên suttaId (VD: mn38#35.1)
-                            // Để URL trên browser hiển thị đầy đủ hash.
-                            
-                            // [UPDATED] Gọi loadSutta với tham số thứ 4 là options
+                            // Gọi loadSutta với FULL ID (bao gồm hash)
+                            // Truyền noScroll: true để chặn renderer tự cuộn (tránh giật)
                             window.loadSutta(suttaId, true, 0, { noScroll: true });
 
-                            // Xử lý Hash Scroll (nếu link có #)
-                            // Logic: Load xong -> Scroll đến vị trí -> Mới hiện lại (Fade In)
-                            // [UPDATED] Logic lấy hash từ suttaId input
-                            const hashPart = suttaId.includes("#") ? suttaId.split("#")[1] : null;
-                            const targetHash = hashPart || (href.includes("#") ? href.split("#")[1] : null);
+                            // Xử lý cuộn thủ công đến Hash
+                            const targetHash = urlHash; // Dùng trực tiếp hash lấy từ href
                             
                             if (targetHash) {
                                 const el = document.getElementById(targetHash);
                                 if(el) {
-                                    // Scroll ngay lập tức (behavior: auto)
                                     el.scrollIntoView({behavior: "auto", block: "center"});
                                     el.classList.add("highlight");
                                 }
@@ -95,17 +94,14 @@ export function initCommentPopup() {
                                 window.scrollTo(0, 0);
                             }
 
-                            // 4. Trigger Fade In
                             requestAnimationFrame(() => {
                                 container.classList.remove("static-fade-out");
-                                
-                                // Dọn dẹp class transition sau khi xong để không ảnh hưởng tương lai
                                 setTimeout(() => {
                                     container.classList.remove("static-fade-transition");
                                 }, 150);
                             });
 
-                        }, 150); // Thời gian khớp với CSS
+                        }, 150);
                         // --- END: STATIC FADE NAVIGATION ---
                     }
                 }
@@ -117,10 +113,8 @@ export function initCommentPopup() {
         hideComment();
         e.stopPropagation();
     });
-
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") hideComment();
     });
-
     return { hideComment };
 }
