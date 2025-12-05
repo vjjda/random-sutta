@@ -1,7 +1,7 @@
 // Path: web/sw.js
 
 // [IMPORTANT] Hãy Bump version này lên mỗi khi bạn muốn update SW
-const CACHE_NAME = "sutta-cache-v20251205-163912";
+const CACHE_NAME = "sutta-cache-v20251205-164406";
 
 // [NEW] Log ngay lập tức khi trình duyệt đọc file này
 console.log(`%c [SW] Loading Version: ${CACHE_NAME}`, 'background: #333; color: #bada55; padding: 2px 5px; border-radius: 2px;');

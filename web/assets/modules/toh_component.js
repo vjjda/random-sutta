@@ -6,36 +6,27 @@ function smoothScrollTo(element, duration = 800) {
 
     const startPosition = window.scrollY || window.pageYOffset;
     const targetBounding = element.getBoundingClientRect();
-    
-    // Tính toán vị trí đích
-    // [Tinh chỉnh] Offset 60px để chừa khoảng thở phía trên, tránh sát mép hoặc bị Header che
     const offset = 60; 
     const targetPosition = startPosition + targetBounding.top - offset;
     const distance = targetPosition - startPosition;
     
     let startTime = null;
 
-    // Hàm Easing: easeInOutCubic (Chậm lúc đầu, nhanh ở giữa, chậm lúc cuối)
+    // [UPDATED] Hàm EaseOutExpo: Nhanh ở đầu, đỗ từ từ ở cuối -> Cảm giác nhẹ như bay
     function ease(t, b, c, d) {
-        t /= d / 2;
-        if (t < 1) return c / 2 * t * t * t + b;
-        t -= 2;
-        return c / 2 * (t * t * t + 2) + b;
+        return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
     }
 
     function animation(currentTime) {
         if (startTime === null) startTime = currentTime;
         const timeElapsed = currentTime - startTime;
         
-        // Tính toán vị trí tiếp theo
         const run = ease(timeElapsed, startPosition, distance, duration);
         window.scrollTo(0, run);
 
-        // Tiếp tục animation nếu chưa hết thời gian
         if (timeElapsed < duration) {
             requestAnimationFrame(animation);
         } else {
-            // Đảm bảo kết thúc chính xác tại đích
             window.scrollTo(0, targetPosition);
         }
     }
@@ -56,14 +47,12 @@ export function setupTableOfHeadings() {
         return { generate: () => {} };
     }
 
-    // Toggle Menu
     fab.onclick = (e) => {
         menu.classList.toggle("hidden");
         fab.classList.toggle("active");
         e.stopPropagation();
     };
 
-    // Close when clicking outside
     document.addEventListener("click", (e) => {
         if (!menu.classList.contains("hidden") && !wrapper.contains(e.target)) {
             menu.classList.add("hidden");
@@ -71,16 +60,11 @@ export function setupTableOfHeadings() {
         }
     });
 
-    /**
-     * Hàm chính: Quét nội dung bài kinh và tạo danh sách headings
-     */
     function generate() {
-        // 1. Reset trạng thái
         list.innerHTML = "";
         menu.classList.add("hidden");
         fab.classList.remove("active");
         
-        // 2. Tìm Heading (h2, h3, h4, h5) trong #sutta-container
         const headings = container.querySelectorAll("h1, h2, h3, h4, h5");
         if (headings.length < 2) {
             wrapper.classList.add("hidden");
@@ -89,7 +73,6 @@ export function setupTableOfHeadings() {
 
         wrapper.classList.remove("hidden");
 
-        // 3. Build List
         headings.forEach((heading, index) => {
             if (!heading.id) {
                 heading.id = `toh-heading-${index}`;
@@ -101,11 +84,10 @@ export function setupTableOfHeadings() {
             const span = document.createElement("span"); 
             span.className = "toh-link";
             
-            // Logic chọn text thông minh
             const engNode = heading.querySelector(".eng");
             const pliNode = heading.querySelector(".pli");
             
-            let labelText = heading.textContent; // Mặc định (fallback)
+            let labelText = heading.textContent;
 
             if (engNode && engNode.textContent.trim()) {
                 labelText = engNode.textContent.trim();
@@ -115,10 +97,9 @@ export function setupTableOfHeadings() {
             
             span.textContent = labelText.replace(/\s+/g, ' ').trim();
             
-            // [UPDATED] Sử dụng Custom Smooth Scroll
             span.onclick = () => {
-                // Thay thế scrollIntoView bằng hàm tự viết
-                smoothScrollTo(heading, 800); // Thời gian 800ms
+                // [UPDATED] Giảm thời gian xuống 400ms cho cảm giác "Snap" nhanh gọn
+                smoothScrollTo(heading, 400); 
                 
                 menu.classList.add("hidden");
                 fab.classList.remove("active");
