@@ -23,7 +23,8 @@ function applyHighlight(element) {
 
 export const Scroller = {
     /**
-     * Cuộn ngay lập tức đến ID mục tiêu
+     * Cuộn ngay lập tức đến ID mục tiêu.
+     * Sử dụng cơ chế Retry (thử lại) kiên trì để đảm bảo DOM đã render xong.
      */
     scrollToId: function(targetId) {
         if (!targetId) {
@@ -31,18 +32,40 @@ export const Scroller = {
             return;
         }
 
-        const attemptFind = (retries) => {
+        let retries = 0;
+        // Tăng số lần thử lên 60 frames (~1 giây) để an toàn cho cả máy yếu
+        const maxRetries = 60; 
+
+        const attemptFind = () => {
             const element = document.getElementById(targetId);
             if (element) {
+                // Đã tìm thấy element -> Cuộn ngay
                 const targetY = getTargetPosition(element);
-                // [FIX] Thêm behavior: 'instant' để ghi đè smooth scroll của CSS
                 window.scrollTo({ top: targetY, behavior: 'instant' });
                 applyHighlight(element);
-            } else if (retries > 0) {
-                setTimeout(() => attemptFind(retries - 1), 20);
+                
+                // [SAFETY] Đôi khi layout bị đẩy do hình ảnh/font load chậm
+                // Cuộn lại lần nữa sau 50ms để chắc chắn
+                setTimeout(() => {
+                     const newY = getTargetPosition(element);
+                     if (Math.abs(newY - window.scrollY) > 2) {
+                        window.scrollTo({ top: newY, behavior: 'instant' });
+                     }
+                }, 50);
+
+            } else {
+                // Chưa thấy -> Thử lại ở frame tiếp theo
+                retries++;
+                if (retries < maxRetries) {
+                    requestAnimationFrame(attemptFind);
+                } else {
+                    logger.warn(`Could not scroll. Element not found: ${targetId}`);
+                }
             }
         };
-        attemptFind(5);
+
+        // Bắt đầu tìm kiếm ngay
+        requestAnimationFrame(attemptFind);
     },
 
     animateScrollTo: function(targetId) {
@@ -51,7 +74,9 @@ export const Scroller = {
 
     transitionTo: async function(renderAction, targetId) {
         if (renderAction) renderAction();
-        await new Promise(r => setTimeout(r, 0));
+
+        // Chờ 1 frame để browser nhận diện thay đổi DOM
+        await new Promise(r => requestAnimationFrame(r));
 
         if (targetId) {
             this.scrollToId(targetId);
