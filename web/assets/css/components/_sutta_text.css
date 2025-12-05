@@ -15,7 +15,9 @@ h1.sutta-title {
   line-height: 1.3;
 }
 @media (max-width: 600px) {
-  h1.sutta-title { font-size: 1.4rem; }
+  h1.sutta-title {
+    font-size: 1.4rem;
+  }
 }
 
 h1.sutta-title .pli {
@@ -25,27 +27,54 @@ h1.sutta-title .pli {
   font-weight: normal;
 }
 
-h2, h3, h4, h5, h6 {
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: var(--text-main);
   line-height: 1.4;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
 }
 
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.3rem; }
-h4 { font-size: 1.15rem; font-weight: 600; }
-h5 { font-size: 1.05rem; font-weight: 600; color: var(--text-muted); font-style: italic; }
-h6 { font-size: 1rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-light); }
+h2 {
+  font-size: 1.5rem;
+}
+h3 {
+  font-size: 1.3rem;
+}
+h4 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+h5 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-style: italic;
+}
+h6 {
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-light);
+}
 
 .evam {
   font-variant: small-caps;
   font-weight: bold;
   color: var(--text-main);
 }
-p { margin-bottom: 1.2em; }
+p {
+  margin-bottom: 1.2em;
+}
 
-.segment { display: block; margin-bottom: 0; }
+.segment {
+  display: block;
+  margin-bottom: 0;
+}
 .pli {
   font-family: var(--font-sutta);
   color: var(--text-pali);
@@ -59,14 +88,19 @@ p { margin-bottom: 1.2em; }
   font-weight: 400;
 }
 
-.endsection, .endsutta, .endvagga {
+.endsection,
+.endsutta,
+.endvagga {
   text-align: center;
   margin-top: 30px;
   margin-bottom: 20px;
   font-style: italic;
   color: var(--text-muted);
 }
-.endsutta { font-weight: bold; color: var(--text-main); }
+.endsutta {
+  font-weight: bold;
+  color: var(--text-main);
+}
 
 /* Highlight System */
 .highlight {
@@ -75,11 +109,16 @@ p { margin-bottom: 1.2em; }
   padding-left: 15px;
   padding-right: 15px;
   border-radius: 4px;
-  transition: all 0.5s ease;
+  transition: background-color 0.5s ease, box-shadow 0.5s ease;
   box-shadow: none;
 }
 
-.segment:target, .segment.highlight {
+.segment:target {
+    /* Đảm bảo tắt target mặc định của browser nếu chưa xóa */
+    animation: none;
+}
+
+.segment.highlight {
   background-color: var(--highlight-color);
   box-shadow: 0 0 0 5px var(--highlight-color);
   border-left: none;
