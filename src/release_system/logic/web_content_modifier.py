@@ -41,10 +41,11 @@ def patch_build_html(build_dir: Path, version_tag: str) -> bool:
     index_path = build_dir / "index.html"
     
     # 1. Thay module app.js bằng bundle
+    # [FIX] Thêm thuộc tính 'defer' để script chạy sau khi DOM ready (như type="module")
     success = _update_file(
         index_path,
         r'<script type="module" src="assets/app.js.*"></script>',
-        f'<script src="assets/app.bundle.js?v={version_tag}"></script>'
+        f'<script defer src="assets/app.bundle.js?v={version_tag}"></script>'
     )
     
     if success:
