@@ -10,7 +10,6 @@ def main():
     
     parser = argparse.ArgumentParser(description="Random Sutta Release Builder")
     
-    # Git & Publish flags
     parser.add_argument(
         "-g", "--git", 
         action="store_true", 
@@ -20,31 +19,24 @@ def main():
     parser.add_argument(
         "-p", "--publish", 
         action="store_true", 
-        help="Full Release: Commit -> Push -> GitHub Release (Default: Pre-release)."
+        help="Full Release: Commit -> Push -> GitHub Release."
     )
 
-    # [NEW] Release Type Flag
     parser.add_argument(
         "-o", "--official", 
         action="store_true", 
-        help="Mark as Official/Latest release (Requires -p). Default is Pre-release."
+        help="Mark as Official/Latest release (Requires -p)."
     )
 
-    # [NEW] Cleanup Flag
-    parser.add_argument(
-        "-c", "--clean", 
-        action="store_true", 
-        help="Cleanup build directory after finishing. Default: Keep files for debugging."
-    )
-    
+    # [REMOVED] Removed -c/--clean flag
+
     args = parser.parse_args()
 
     try:
         run_release_process(
             enable_git=args.git, 
             publish_gh=args.publish,
-            is_official=args.official,
-            do_cleanup=args.clean
+            is_official=args.official
         )
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")

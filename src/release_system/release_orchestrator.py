@@ -10,18 +10,17 @@ from .logic import (
     js_bundler,
     web_content_modifier,
     zip_packager,
-    build_cleanup,
     git_automator,
     github_publisher
 )
+# [REMOVED] import build_cleanup
 
 logger = logging.getLogger("Release.Orchestrator")
 
 def run_release_process(
     enable_git: bool = False, 
     publish_gh: bool = False,
-    is_official: bool = False,  # [NEW]
-    do_cleanup: bool = False    # [NEW] Default is False (Keep files)
+    is_official: bool = False
 ) -> None:
     
     if publish_gh: enable_git = True
@@ -42,7 +41,7 @@ def run_release_process(
         if not build_preparer.prepare_build_directory():
             raise Exception("Failed to create build sandbox.")
 
-        # 4. Bundle JS
+        # 4. Bundle JS (Includes Auto-Cleanup of modules)
         if not js_bundler.bundle_javascript(BUILD_DIR):
             raise Exception("Bundling failed.")
 
@@ -56,7 +55,7 @@ def run_release_process(
         else:
             raise Exception("Archiving failed")
 
-        # 7. Git & Publish Operations
+        # 7. Git & Publish
         if enable_git:
             if not git_automator.commit_source_changes(version_tag):
                 logger.warning("⚠️ Source commit skipped or failed.")
@@ -65,17 +64,12 @@ def run_release_process(
                 if not git_automator.push_changes():
                     raise Exception("Git Push failed.")
                 
-                # [CHANGED] Truyền cờ is_official
                 if not github_publisher.publish_release(version_tag, is_official):
                     raise Exception("GitHub Release failed.")
+        
+        # [NEW] Thông báo rõ ràng vị trí build
+        logger.info(f"🛡️  Offline build (unzipped) kept at: {BUILD_DIR}")
 
     except Exception as e:
         logger.error(f"❌ BUILD FAILED: {e}")
         sys.exit(1)
-        
-    finally:
-        # 8. Cleanup Sandbox [LOGIC MỚI]
-        if do_cleanup:
-            build_cleanup.remove_build_dir()
-        else:
-            logger.info(f"🛡️  Cleanup skipped. Build artifacts kept in: {BUILD_DIR.name}/")

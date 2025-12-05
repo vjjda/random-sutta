@@ -3,8 +3,11 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parents[2]
 WEB_DIR = PROJECT_ROOT / "web"
-# [NEW] Thư mục tạm để xử lý build
-BUILD_DIR = PROJECT_ROOT / "build" 
+
+# [UPDATED] Cô lập bản build vào thư mục 'dev-offline' để tránh lẫn lộn
+BUILD_ROOT = PROJECT_ROOT / "build"
+BUILD_DIR = BUILD_ROOT / "dev-offline"
+
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
