@@ -1,0 +1,39 @@
+#!/opt/homebrew/bin/zsh
+
+# 1. Kiểm tra xem có file nào trong thư mục web/ đang được stage (chờ commit) không
+# Lọc bỏ các file trong assets/books/ (data) để tránh loop nếu cần, 
+# nhưng tốt nhất cứ detect mọi thay đổi trong web/
+STAGED_WEB_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep "^web/")
+
+if [ -n "$STAGED_WEB_FILES" ]; then
+    echo "--------------------------------------------------------"
+    echo "⚡ Phát hiện thay đổi trong 'web/'. Đang chạy Auto Build..."
+    echo "--------------------------------------------------------"
+
+    # 2. Chạy lệnh build hệ thống (Mặc định không zip, không git commit đệ quy)
+    python3 -m src.release_system
+
+    # Lấy mã lỗi trả về
+    RETVAL=$?
+
+    # 3. Nếu build thất bại (exit code != 0), chặn commit ngay lập tức
+    if [ $RETVAL -ne 0 ]; then
+        echo "❌ Build thất bại. Hủy bỏ Commit."
+        exit 1
+    fi
+
+    # 4. [QUAN TRỌNG] Add các file artifact vừa sinh ra vào commit hiện tại
+    # Nếu không có bước này, bạn sẽ commit code nguồn nhưng file build cũ.
+    echo "➕ Đang thêm file build mới vào commit..."
+    
+    # Add sw.js (nơi chứa version cache)
+    git add web/sw.js
+    
+    # Add toàn bộ assets (bao gồm css bundle, js bundle, file_index.js...)
+    git add web/assets/
+    
+    echo "✅ Auto Build hoàn tất. Tiếp tục Commit."
+    echo "--------------------------------------------------------"
+fi
+
+exit 0
