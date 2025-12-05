@@ -13,7 +13,7 @@
   --text-pali: #777777;
   --text-eng: #222222;
   --highlight-color-background: rgba(115, 61, 23, 0.05);
-  --highlight-color-segment: #ac6240;
+  --highlight-color-segment: hsla(40, 100%, 50%, 0.15);
 
 
   /* UI Elements */

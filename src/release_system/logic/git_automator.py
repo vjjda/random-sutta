@@ -9,6 +9,7 @@ from ..release_config import PROJECT_ROOT
 logger = logging.getLogger("Release.GitAutomator")
 
 def _run_git_cmd(args: List[str]) -> bool:
+    # ... (Giữ nguyên hàm này) ...
     try:
         subprocess.run(
             ["git"] + args,
@@ -27,20 +28,24 @@ def commit_source_changes(version_tag: str) -> bool:
     """Commit source changes (version bump)."""
     logger.info("🐙 Committing source changes...")
     
-    # [UPDATED] Thay sutta_loader.js bằng file_index.js
-    files_to_add = ["web/sw.js", "web/assets/modules/file_index.js"]
+    # [FIX 1] Thay vì chỉ add sw.js, hãy add toàn bộ thay đổi trong folder web/
+    # Hoặc dùng ["add", "."] nếu muốn add tất cả
+    target_path = "web/" 
     
-    for path in files_to_add:
-        if (PROJECT_ROOT / path).exists():
-            _run_git_cmd(["add", path])
+    if (PROJECT_ROOT / target_path).exists():
+        _run_git_cmd(["add", target_path])
 
+    # Kiểm tra xem có gì để commit không
     status = subprocess.run(["git", "status", "--porcelain"], cwd=PROJECT_ROOT, capture_output=True, text=True)
     if not status.stdout.strip():
         logger.info("   ℹ️  No source changes to commit.")
         return True
 
     commit_msg = f"chore(release): bump version to {version_tag}"
-    if _run_git_cmd(["commit", "-m", commit_msg]):
+    
+    # [FIX 2] Thêm cờ '-n' (no-verify) để bỏ qua pre-commit hook
+    # Tránh việc script commit -> kích hoạt hook -> hook lại chạy script build -> vòng lặp
+    if _run_git_cmd(["commit", "-n", "-m", commit_msg]):
         logger.info(f"   ✅ Git committed: '{commit_msg}'")
         return True
     return False
