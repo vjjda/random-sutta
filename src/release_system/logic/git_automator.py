@@ -27,9 +27,9 @@ def commit_source_changes(version_tag: str) -> bool:
     """Commit source changes (version bump)."""
     logger.info("🐙 Committing source changes...")
     
-    files_to_add = ["web/sw.js", "web/assets/books/sutta_loader.js"]
+    # [UPDATED] Thay sutta_loader.js bằng file_index.js
+    files_to_add = ["web/sw.js", "web/assets/modules/file_index.js"]
     
-    # ... (Logic add giữ nguyên) ...
     for path in files_to_add:
         if (PROJECT_ROOT / path).exists():
             _run_git_cmd(["add", path])
@@ -46,9 +46,5 @@ def commit_source_changes(version_tag: str) -> bool:
     return False
 
 def push_changes() -> bool:
-    """
-    Đẩy mã nguồn lên Remote Git (để GitHub Actions/Pages chạy nếu có).
-    Lưu ý: Chỉ đẩy Code, không đẩy file Zip.
-    """
     logger.info("⬆️  Pushing source code to remote...")
     return _run_git_cmd(["push"])
