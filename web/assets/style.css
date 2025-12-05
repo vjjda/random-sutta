@@ -542,16 +542,42 @@ p {
   color: var(--text-main);
 }
 
-/* Highlighting */
-.segment:target,
-.highlight { /* [FIX] Bỏ ".segment" ở trước để áp dụng cho mọi thẻ có class highlight */
-  background-color: var(--highlight-color);
-  /* box-shadow tạo hiệu ứng lan tỏa màu ra xung quanh một chút */
-  box-shadow: 0 0 0 5px var(--highlight-color); 
+.highlight {
+  /* Thay vì tô vàng, ta dùng vạch kẻ bên trái */
+  border-left: 5px solid var(--primary-color);
+  
+  /* Nền pha màu chủ đạo nhưng độ mờ cực thấp (5%) để dịu mắt */
+  background-color: rgba(139, 69, 19, 0.05);
+  
+  /* Padding để nội dung không dính vào vạch kẻ */
+  padding-left: 15px;
+  padding-right: 15px; /* Cân đối 2 bên */
+  
+  /* Bo góc nhẹ */
   border-radius: 4px;
+  
+  /* Transition mượt mà */
+  transition: all 0.5s ease;
+  
+  /* Đảm bảo đè lên các style mặc định */
+  box-shadow: none; 
+}
+
+.segment:target,
+.segment.highlight {
+  /* Giữ màu vàng truyền thống cho text */
+  background-color: var(--highlight-color);
+  
+  /* Hiệu ứng lan tỏa (glow) nhẹ xung quanh chữ */
+  box-shadow: 0 0 0 5px var(--highlight-color);
+  
+  /* Reset lại các style của khối lớn (không cần border trái) */
+  border-left: none;
+  border-radius: 4px;
+  padding: 0; /* Reset padding vì segment nằm trong dòng văn bản */
+  
   position: relative;
   z-index: 1;
-  transition: background-color 0.5s, box-shadow 0.5s;
 }
 
 /* --- 8. FOOTER NAVIGATION (Prev/Next in content) --- */
