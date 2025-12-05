@@ -12,9 +12,10 @@ def main():
     parser.add_argument("-g", "--git", action="store_true", help="Commit source changes only.")
     parser.add_argument("-p", "--publish", action="store_true", help="Full Release: Commit -> Push -> GitHub Release.")
     parser.add_argument("-o", "--official", action="store_true", help="Mark as Official/Latest release.")
-    
-    # [NEW] Thêm flag web
     parser.add_argument("-w", "--web", action="store_true", help="Deploy web/ to GitHub Pages (Ghost Folder method).")
+    
+    # [NEW] Thêm cờ zip
+    parser.add_argument("-z", "--zip", action="store_true", help="Create ZIP artifact (default: Skip if not publishing).")
 
     args = parser.parse_args()
 
@@ -23,7 +24,8 @@ def main():
             enable_git=args.git, 
             publish_gh=args.publish,
             is_official=args.official,
-            deploy_web=args.web # Truyền tham số
+            deploy_web=args.web,
+            create_zip=args.zip  # Truyền tham số này vào logic
         )
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")

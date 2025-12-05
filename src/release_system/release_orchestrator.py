@@ -8,7 +8,7 @@ from .logic import (
     asset_validator,
     build_preparer,
     js_bundler,
-    css_bundler,        # [NEW]
+    css_bundler,
     web_content_modifier,
     zip_packager,
     git_automator,
@@ -22,11 +22,15 @@ def run_release_process(
     enable_git: bool = False, 
     publish_gh: bool = False,
     is_official: bool = False,
-    deploy_web: bool = False
+    deploy_web: bool = False,
+    create_zip: bool = False # [NEW] Nhận tham số
 ) -> None:
     
-    if publish_gh: enable_git = True
-    
+    # Logic ràng buộc: Publish thì bắt buộc phải có Git và Zip
+    if publish_gh: 
+        enable_git = True
+        create_zip = True # [AUTO] Force zip if publishing
+
     version_tag = release_versioning.generate_version_tag()
     logger.info(f"🚀 STARTING PROCESS: {version_tag}")
 
@@ -44,15 +48,15 @@ def run_release_process(
         if not web_content_modifier.inject_version_into_sw(BUILD_ONLINE_DIR, version_tag):
              raise Exception("Failed to inject version (Online).")
 
-        # 2. Bundle CSS (Online cũng cần bundle CSS để tối ưu)
+        # 2. Bundle CSS
         if not css_bundler.bundle_css(BUILD_ONLINE_DIR):
             raise Exception("Online CSS Bundling failed.")
 
-        # 3. Patch HTML (Online Mode: ESM JS + CSS Bundle)
+        # 3. Patch HTML
         if not web_content_modifier.patch_online_html(BUILD_ONLINE_DIR, version_tag):
             raise Exception("Online HTML patching failed.")
 
-        # 4. Deploy (nếu có cờ)
+        # 4. Deploy (nếu có cờ -w)
         if deploy_web:
             if not web_deployer.deploy_web_to_ghpages(BUILD_ONLINE_DIR, version_tag):
                 raise Exception("Web deployment failed.")
@@ -75,15 +79,18 @@ def run_release_process(
         if not css_bundler.bundle_css(BUILD_OFFLINE_DIR):
             raise Exception("Offline CSS Bundling failed.")
 
-        # 4. Patch HTML (Offline Mode: JS Bundle + CSS Bundle)
+        # 4. Patch HTML
         if not web_content_modifier.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
             raise Exception("HTML patching failed.")
 
-        # 5. Create Zip
-        if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):
-            logger.info("✨ Offline Artifacts Created.")
+        # 5. Create Zip (Chỉ chạy khi có cờ -z hoặc -p)
+        if create_zip:
+            if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):
+                logger.info("✨ Offline Artifacts Created.")
+            else:
+                raise Exception("Archiving failed")
         else:
-            raise Exception("Archiving failed")
+            logger.info("⏩ Skipped Zip packaging.")
 
         # =========================================================
         # PHASE 3: PUBLISH
