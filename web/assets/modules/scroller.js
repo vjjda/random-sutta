@@ -3,7 +3,7 @@ import { getLogger } from './logger.js';
 
 const logger = getLogger("Scroller");
 
-// [FIX] Đưa về 0 để không còn khoảng trống thừa phía trên
+// [FIX] Đưa về 0 để sát mép trên
 const SCROLL_OFFSET = 0; 
 
 function getTargetPosition(element) {
@@ -14,7 +14,7 @@ function getTargetPosition(element) {
 
 export const Scroller = {
     /**
-     * Cuộn ngay lập tức (Dùng cho Initial Load)
+     * Cuộn ngay lập tức (Initial Load / Direct Link)
      */
     scrollToId: function(targetId) {
         if (!targetId) {
@@ -26,19 +26,18 @@ export const Scroller = {
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = getTargetPosition(element);
-                logger.debug(`Direct scroll to #${targetId}: ${targetY}`);
                 window.scrollTo(0, targetY);
-                
-                // [FIX] Đã xóa logic add('highlight')
+                // [FIX] Đã xóa logic add class 'highlight'
             } else if (retries > 0) {
                 setTimeout(() => attemptFind(retries - 1), 50);
             }
         };
+        // Thử tìm trong 500ms (10 lần x 50ms) đề phòng DOM render chậm
         attemptFind(10);
     },
 
     /**
-     * [NEW] Cuộn có hiệu ứng Fade trong cùng 1 trang (Dùng cho TOH)
+     * [NEW] Hiệu ứng Fade -> Jump -> Fade (Dùng cho TOH)
      */
     animateScrollTo: async function(targetId) {
         const container = document.getElementById("sutta-container");
@@ -46,11 +45,9 @@ export const Scroller = {
         
         if (!container || !element) return;
 
-        logger.debug(`Animating scroll to #${targetId}`);
-
         // 1. Fade Out
         container.classList.add('nav-transitioning');
-        container.classList.add('exit-up'); // Bay lên nhẹ
+        container.classList.add('exit-up');
 
         await new Promise(r => setTimeout(r, 150));
 
@@ -60,7 +57,7 @@ export const Scroller = {
 
         // 3. Prepare Fade In
         container.classList.remove('exit-up');
-        container.classList.add('enter-from-bottom'); // Từ dưới lên nhẹ
+        container.classList.add('enter-from-bottom');
 
         // 4. Fade In
         requestAnimationFrame(() => {
@@ -74,7 +71,7 @@ export const Scroller = {
     },
 
     /**
-     * Chuyển cảnh khi load Sutta mới (Popup, Link, Next/Prev)
+     * Chuyển cảnh khi load Sutta mới (Popup, Link)
      */
     transitionTo: async function(renderAction, targetId) {
         const container = document.getElementById("sutta-container");
@@ -82,8 +79,6 @@ export const Scroller = {
             if (renderAction) renderAction();
             return;
         }
-
-        logger.debug(`Transitioning to #${targetId || 'top'}`);
 
         // 1. FADE OUT
         container.classList.add('nav-transitioning');
@@ -95,16 +90,18 @@ export const Scroller = {
         if (renderAction) renderAction();
 
         // 3. JUMP
-        // Chờ 1 tick để DOM render xong
-        await new Promise(r => requestAnimationFrame(r));
+        // [IMPORTANT FIX] Đợi lâu hơn 1 chút để Browser tính toán lại Layout (Reflow)
+        // 50ms là đủ để render engine cập nhật vị trí các phần tử mới
+        await new Promise(r => setTimeout(r, 50));
         
         if (targetId) {
+            // Thử tìm phần tử (logic retry nhẹ)
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = getTargetPosition(element);
                 window.scrollTo(0, targetY);
-                // [FIX] Đã xóa logic highlight
             } else {
+                // Fallback nếu không tìm thấy ID (ví dụ ID sai)
                 window.scrollTo(0, 0);
             }
         } else {

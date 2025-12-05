@@ -79,9 +79,9 @@ p { margin-bottom: 1.2em; }
   box-shadow: none;
 }
 
-.segment:target, .segment.highlight {
-  background-color: var(--highlight-color);
-  box-shadow: 0 0 0 5px var(--highlight-color);
+.segment.highlight {
+  /* background-color: var(--highlight-color);  <-- Tắt dòng này nếu muốn bỏ highlight hoàn toàn */
+  /* box-shadow: 0 0 0 5px var(--highlight-color); <-- Tắt dòng này luôn */
   border-left: none;
   border-radius: 4px;
   padding: 0;
