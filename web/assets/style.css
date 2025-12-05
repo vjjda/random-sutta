@@ -544,10 +544,10 @@ p {
 
 /* Highlighting */
 .segment:target,
-.segment.highlight {
+.highlight { /* [FIX] Bỏ ".segment" ở trước để áp dụng cho mọi thẻ có class highlight */
   background-color: var(--highlight-color);
-  padding: 0;
-  box-shadow: 0 0 0 5px var(--highlight-color);
+  /* box-shadow tạo hiệu ứng lan tỏa màu ra xung quanh một chút */
+  box-shadow: 0 0 0 5px var(--highlight-color); 
   border-radius: 4px;
   position: relative;
   z-index: 1;
