@@ -11,7 +11,6 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # [IMPORTANT] Dùng re.sub để thay thế, chỉ thay thế 1 lần đầu tìm thấy
         new_content = re.sub(pattern, replacement, content, count=1)
         
         with open(file_path, "w", encoding="utf-8") as f:
@@ -22,36 +21,62 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
         return False
 
 def inject_version_into_sw(target_dir: Path, version_tag: str) -> bool:
-    """
-    [BUILD ONLY] Tiêm version tag vào file sw.js tại thư mục đích (build folder).
-    Không đụng vào source code gốc.
-    """
+    """Tiêm version tag vào sw.js."""
     logger.info(f"💉 Injecting cache version '{version_tag}' into {target_dir.name}/sw.js...")
     sw_path = target_dir / "sw.js"
-    
-    # Regex bắt dòng: const CACHE_NAME = "bat-ky-cai-gi-o-day";
     return _update_file(
         sw_path,
         r'const CACHE_NAME\s*=\s*["\'].*?["\'];', 
         f'const CACHE_NAME = "sutta-cache-{version_tag}";'
     )
 
-def patch_build_html(build_dir: Path, version_tag: str) -> bool:
-    # ... (Giữ nguyên hàm này như cũ, vì nó đã sửa trên build_dir rồi)
-    # [Code cũ của hàm patch_build_html giữ nguyên]
-    logger.info("📝 Patching index.html in build sandbox...")
+def _patch_css_link(index_path: Path, version_tag: str) -> bool:
+    """Chuyển đổi style.css thành style.bundle.css."""
+    return _update_file(
+        index_path,
+        r'<link rel="stylesheet" href="assets/style\.css.*?"\s*/>',
+        f'<link rel="stylesheet" href="assets/style.bundle.css?v={version_tag}" />'
+    )
+
+def patch_online_html(build_dir: Path, version_tag: str) -> bool:
+    """
+    Online Mode:
+    - CSS: Bundle.
+    - JS: Giữ nguyên ESM (app.js) nhưng thêm version param để burst cache.
+    """
+    logger.info("📝 Patching index.html (Online Mode)...")
     index_path = build_dir / "index.html"
     
-    success = _update_file(
+    # 1. Patch CSS -> Bundle
+    css_ok = _patch_css_link(index_path, version_tag)
+
+    # 2. Patch JS -> Giữ app.js, thêm version
+    # Tìm: src="assets/app.js" -> src="assets/app.js?v=..."
+    js_ok = _update_file(
         index_path,
-        r'<script type="module" src="assets/app.js.*"></script>',
+        r'src="assets/app\.js.*?"',
+        f'src="assets/app.js?v={version_tag}"'
+    )
+
+    return css_ok and js_ok
+
+def patch_offline_html(build_dir: Path, version_tag: str) -> bool:
+    """
+    Offline Mode:
+    - CSS: Bundle.
+    - JS: Bundle (app.bundle.js), xóa type="module", thêm defer.
+    """
+    logger.info("📝 Patching index.html (Offline Mode)...")
+    index_path = build_dir / "index.html"
+    
+    # 1. Patch CSS -> Bundle
+    css_ok = _patch_css_link(index_path, version_tag)
+
+    # 2. Patch JS -> Bundle IIFE
+    js_ok = _update_file(
+        index_path,
+        r'<script type="module" src="assets/app\.js.*?"></script>',
         f'<script defer src="assets/app.bundle.js?v={version_tag}"></script>'
     )
     
-    if success:
-        _update_file(
-            index_path,
-            r'(assets\/.*?\.(?:css|js))(?:\?v=[^"\']*)?',
-            f'\\1?v={version_tag}'
-        )
-    return success
+    return css_ok and js_ok

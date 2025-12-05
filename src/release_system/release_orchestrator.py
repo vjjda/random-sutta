@@ -2,13 +2,13 @@
 import logging
 import sys
 
-# [UPDATED] Import các hằng số đường dẫn mới
 from .release_config import BUILD_OFFLINE_DIR, BUILD_ONLINE_DIR, CRITICAL_ASSETS
 from .logic import (
     release_versioning,
     asset_validator,
     build_preparer,
     js_bundler,
+    css_bundler,        # [NEW]
     web_content_modifier,
     zip_packager,
     git_automator,
@@ -30,66 +30,67 @@ def run_release_process(
     version_tag = release_versioning.generate_version_tag()
     logger.info(f"🚀 STARTING PROCESS: {version_tag}")
 
-    # 1. Validate Source
     if not asset_validator.check_critical_assets(CRITICAL_ASSETS):
         sys.exit(1)
 
     try:
-        # ⚠️ BỎ BƯỚC Update Source Version vào web/
-        # Thay vào đó, chúng ta sẽ tạo bản Online Build trước
-        
-        # ---------------------------------------------------------
-        # PHASE 1: ONLINE BUILD (Dùng cho Deploy & Test ESM)
-        # ---------------------------------------------------------
+        # =========================================================
+        # PHASE 1: ONLINE BUILD (ESM JS + Bundle CSS)
+        # =========================================================
         if not build_preparer.prepare_build_directory(BUILD_ONLINE_DIR):
              raise Exception("Failed to prepare Online Build.")
         
-        # Tiêm version vào file sw.js của bản Online
+        # 1. Inject SW Version
         if not web_content_modifier.inject_version_into_sw(BUILD_ONLINE_DIR, version_tag):
              raise Exception("Failed to inject version (Online).")
 
-        # Deploy nếu được yêu cầu (Lấy nguồn từ BUILD_ONLINE_DIR)
+        # 2. Bundle CSS (Online cũng cần bundle CSS để tối ưu)
+        if not css_bundler.bundle_css(BUILD_ONLINE_DIR):
+            raise Exception("Online CSS Bundling failed.")
+
+        # 3. Patch HTML (Online Mode: ESM JS + CSS Bundle)
+        if not web_content_modifier.patch_online_html(BUILD_ONLINE_DIR, version_tag):
+            raise Exception("Online HTML patching failed.")
+
+        # 4. Deploy (nếu có cờ)
         if deploy_web:
             if not web_deployer.deploy_web_to_ghpages(BUILD_ONLINE_DIR, version_tag):
                 raise Exception("Web deployment failed.")
 
-        # ---------------------------------------------------------
-        # PHASE 2: OFFLINE BUILD (Dùng cho Zip & Artifacts)
-        # ---------------------------------------------------------
-        # Lưu ý: Ta copy lại từ web/ gốc để đảm bảo sạch sẽ, hoặc copy từ Online Build cũng được.
-        # Nhưng copy từ web/ gốc an toàn hơn để tránh các side-effect không mong muốn.
-        
+        # =========================================================
+        # PHASE 2: OFFLINE BUILD (Bundle JS + Bundle CSS)
+        # =========================================================
         if not build_preparer.prepare_build_directory(BUILD_OFFLINE_DIR):
             raise Exception("Failed to prepare Offline Build.")
 
-        # Tiêm version vào file sw.js của bản Offline
+        # 1. Inject SW Version
         if not web_content_modifier.inject_version_into_sw(BUILD_OFFLINE_DIR, version_tag):
              raise Exception("Failed to inject version (Offline).")
 
-        # Bundle & Clean Modules (Chỉ làm cho bản Offline)
+        # 2. Bundle JS (Offline Only)
         if not js_bundler.bundle_javascript(BUILD_OFFLINE_DIR):
-            raise Exception("Bundling failed.")
+            raise Exception("JS Bundling failed.")
 
-        # Patch HTML (Chuyển sang dùng bundle.js)
-        if not web_content_modifier.patch_build_html(BUILD_OFFLINE_DIR, version_tag):
+        # 3. Bundle CSS (Offline)
+        if not css_bundler.bundle_css(BUILD_OFFLINE_DIR):
+            raise Exception("Offline CSS Bundling failed.")
+
+        # 4. Patch HTML (Offline Mode: JS Bundle + CSS Bundle)
+        if not web_content_modifier.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
             raise Exception("HTML patching failed.")
 
-        # Create Zip
+        # 5. Create Zip
         if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):
             logger.info("✨ Offline Artifacts Created.")
         else:
             raise Exception("Archiving failed")
 
-        # ---------------------------------------------------------
-        # PHASE 3: PUBLISH (Git Tag & Release)
-        # ---------------------------------------------------------
+        # =========================================================
+        # PHASE 3: PUBLISH
+        # =========================================================
         if enable_git:
-            # Lưu ý: Bây giờ ta KHÔNG commit thay đổi source code (vì sw.js giữ nguyên)
-            # Trừ khi có thay đổi logic khác. 
-            # Flag commit_source_changes sẽ chỉ commit nếu bạn đã sửa code thật sự trong web/.
-            
             if not git_automator.commit_source_changes(version_tag):
-                logger.info("ℹ️  No source changes detected (Clean Source Policy).")
+                logger.info("ℹ️  No source changes detected.")
             
             if publish_gh:
                 if not git_automator.push_changes():
@@ -99,8 +100,8 @@ def run_release_process(
                     raise Exception("GitHub Release failed.")
         
         logger.info(f"🛡️  Builds Ready:")
-        logger.info(f"   👉 Online (ESM): {BUILD_ONLINE_DIR}")
-        logger.info(f"   👉 Offline (Bundle): {BUILD_OFFLINE_DIR}")
+        logger.info(f"   👉 Online (ESM + CSS Bundle): {BUILD_ONLINE_DIR}")
+        logger.info(f"   👉 Offline (Full Bundle): {BUILD_OFFLINE_DIR}")
 
     except Exception as e:
         logger.error(f"❌ FAILED: {e}")
