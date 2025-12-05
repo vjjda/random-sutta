@@ -3,7 +3,6 @@ import { DB } from "./db_manager.js";
 import { getSuttaDisplayInfo } from "./utils.js";
 import { setupTableOfHeadings } from "./toh_component.js";
 import { UIFactory } from "./ui_factory.js";
-import { Scroller } from "./scroller.js";
 
 let tohInstance = null;
 
@@ -102,37 +101,6 @@ export function renderSutta(suttaId, options = {}) {
     document.getElementById("toh-wrapper")?.classList.add("hidden");
   } else {
     tohInstance.generate();
-  }
-
-  // --- Logic Scroll & Highlight ---
-
-  // Nếu bị cấm cuộn (thường dùng khi pre-load hoặc back/forward history đặc biệt)
-  if (noScroll) return true;
-
-  // Xác định Target ID
-  let targetId = null;
-  if (explicitId) {
-    targetId = explicitId.replace("#", "");
-  } else if (checkHash && window.location.hash) {
-    targetId = window.location.hash.substring(1);
-  } else {
-    const meta = DB.getMeta(id); // id lấy từ closure bên trên
-    if (meta && meta.scroll_target) {
-      targetId = meta.scroll_target;
-    }
-  }
-
-  if (targetId) {
-    // [UPDATED] Gọi Scroller thống nhất
-    // Sử dụng setTimeout 0 để đảm bảo DOM đã paint xong trước khi tính toán tọa độ
-    setTimeout(() => Scroller.scrollToId(targetId), 0);
-  } else {
-    // Logic restore scroll hoặc về đầu trang
-    if (restoreScrollY > 0) {
-      window.scrollTo(0, restoreScrollY);
-    } else {
-      window.scrollTo(0, 0);
-    }
   }
 
   return true;

@@ -10,8 +10,12 @@ import { setupLogging, LogLevel, getLogger } from './modules/logger.js';
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1. Config Init
-  // [NEW] Detect Debug Mode from URL (?debug=1 or ?debug=true)
+  // [NEW] Ngăn trình duyệt tự restore vị trí scroll cũ hoặc native hash jump
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+  // Force về đầu trang ngay lập tức để tránh cái "flush" native của browser
+  window.scrollTo(0, 0);
   const params = new URLSearchParams(window.location.search);
   const isDebug = params.get("debug") === "1" || params.get("debug") === "true";
   

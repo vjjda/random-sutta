@@ -1,21 +1,5 @@
-/* Path: web/assets/modules/utils.js */
-import { Scroller } from './scroller.js';
-import { DB } from './db_manager.js';
-
-export function getSuttaDisplayInfo(id) {
-  let info = { title: id.toUpperCase(), subtitle: "" };
-  const meta = DB.getMeta(id);
-  if (meta) {
-    if (meta.acronym) info.title = meta.acronym;
-    if (meta.translated_title) {
-      info.subtitle = meta.translated_title;
-    } else if (meta.original_title) {
-      info.subtitle = meta.original_title;
-    }
-  }
-  return info;
-}
-
+// Path: web/assets/modules/utils.js
+// ...
 export function initCommentPopup() {
     const popup = document.getElementById("comment-popup");
     const content = document.getElementById("comment-content");
@@ -47,32 +31,17 @@ export function initCommentPopup() {
         const link = event.target.closest("a");
         if (link) {
             const urlObj = new URL(link.href);
-            
             if (urlObj.searchParams.has("q")) {
                 event.preventDefault();
-                
                 let suttaId = urlObj.searchParams.get("q");
-                const urlHash = urlObj.hash; 
+                const urlHash = urlObj.hash;
+                if (suttaId && urlHash) suttaId += urlHash;
 
-                if (suttaId && urlHash) {
-                    suttaId += urlHash; 
-                }
-                
                 if (suttaId && window.loadSutta) {
                     hideComment();
-                    
-                    // [UPDATED] Logic gọn gàng hơn nhiều
-                    // Load nội dung mới (noScroll: true để Renderer không tự cuộn linh tinh)
-                    window.loadSutta(suttaId, true, 0, { noScroll: true });
-
-                    // Sau đó ủy quyền việc cuộn cho Scroller (nó sẽ tự làm hiệu ứng Fade)
-                    if (urlHash) {
-                        const targetId = urlHash.substring(1);
-                        // Đợi 1 chút để render xong rồi mới scroll
-                        setTimeout(() => Scroller.scrollToId(targetId), 50); 
-                    } else {
-                         window.scrollTo(0, 0);
-                    }
+                    // [UPDATED] Gọi loadSutta với cờ transition: true
+                    // Controller sẽ tự lo liệu việc Fade Out -> Render -> Fade In -> Scroll
+                    window.loadSutta(suttaId, true, 0, { transition: true });
                 }
             }
         }
