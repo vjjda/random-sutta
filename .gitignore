@@ -27,6 +27,7 @@ Thumbs.db
 /logs/*
 !/logs/.gitkeep
 
-/build
+/build/
+/dist/
 
 /tmp

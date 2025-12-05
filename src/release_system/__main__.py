@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Path: src/release_system/__main__.py
 import sys
 import argparse
@@ -10,25 +9,12 @@ def main():
     
     parser = argparse.ArgumentParser(description="Random Sutta Release Builder")
     
-    parser.add_argument(
-        "-g", "--git", 
-        action="store_true", 
-        help="Commit source changes (version bump) only."
-    )
+    parser.add_argument("-g", "--git", action="store_true", help="Commit source changes only.")
+    parser.add_argument("-p", "--publish", action="store_true", help="Full Release: Commit -> Push -> GitHub Release.")
+    parser.add_argument("-o", "--official", action="store_true", help="Mark as Official/Latest release.")
     
-    parser.add_argument(
-        "-p", "--publish", 
-        action="store_true", 
-        help="Full Release: Commit -> Push -> GitHub Release."
-    )
-
-    parser.add_argument(
-        "-o", "--official", 
-        action="store_true", 
-        help="Mark as Official/Latest release (Requires -p)."
-    )
-
-    # [REMOVED] Removed -c/--clean flag
+    # [NEW] Thêm flag web
+    parser.add_argument("-w", "--web", action="store_true", help="Deploy web/ to GitHub Pages (Ghost Folder method).")
 
     args = parser.parse_args()
 
@@ -36,7 +22,8 @@ def main():
         run_release_process(
             enable_git=args.git, 
             publish_gh=args.publish,
-            is_official=args.official
+            is_official=args.official,
+            deploy_web=args.web # Truyền tham số
         )
     except KeyboardInterrupt:
         print("\n🛑 Stopped by user.")
