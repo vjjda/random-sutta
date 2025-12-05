@@ -1,11 +1,14 @@
 // Path: web/assets/modules/router.js
 
 export const Router = {
-  updateURL: function (suttaId, bookParam, enableRandomMode = false, explicitHash = null) {
-    // 1. [SAFEGUARD] Cố gắng lưu vị trí cuộn (Scroll Position)
-    // Đặt trong try-catch riêng để không ảnh hưởng luồng chính
+  // [UPDATED] Thêm tham số thứ 5: savedScrollPosition (mặc định null)
+  updateURL: function (suttaId, bookParam, enableRandomMode = false, explicitHash = null, savedScrollPosition = null) {
+    // 1. [SAFEGUARD] Lưu vị trí cuộn
     try {
-      const currentScrollY = window.scrollY || 0;
+      // Logic: Ưu tiên lấy giá trị được truyền vào (chính xác hơn), 
+      // nếu không có mới lấy window.scrollY (fallback)
+      const currentScrollY = (savedScrollPosition !== null) ? savedScrollPosition : (window.scrollY || 0);
+      
       const currentState = window.history.state || {};
       window.history.replaceState(
           { ...currentState, scrollY: currentScrollY }, 
@@ -35,7 +38,6 @@ export const Router = {
         params.delete("b");
       }
 
-      // Xử lý Hash
       let hash = "";
       if (explicitHash) {
           hash = explicitHash.startsWith("#") ? explicitHash : `#${explicitHash}`;
@@ -46,9 +48,7 @@ export const Router = {
       const newUrl = `${window.location.pathname}?${params.toString()}${hash}`;
       const stateId = enableRandomMode ? null : suttaId || params.get("q");
       
-      // Chỉ pushState nếu URL thực sự thay đổi
       if (newUrl !== window.location.search + window.location.hash) {
-         // Reset scrollY về 0 cho trang mới
          window.history.pushState({ suttaId: stateId, scrollY: 0 }, "", newUrl);
       }
     } catch (e) {

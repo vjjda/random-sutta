@@ -6,21 +6,24 @@ import { renderSutta } from './renderer.js';
 import { getActiveFilters, generateBookParam } from './filters.js';
 import { initCommentPopup } from './utils.js';
 
-// Khởi tạo popup comment một lần ở cấp module
 const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
   loadSutta: async function (suttaIdInput, shouldUpdateUrl = true, scrollY = 0) {
+    // [FIX QUAN TRỌNG NHẤT]
+    // Lưu vị trí cuộn NGAY LẬP TỨC trước khi DOM bị thay đổi bởi renderSutta
+    const currentScrollBeforeRender = window.scrollY;
+
     hideComment();
     
-    // --- 1. DEFINITIONS (Định nghĩa hàm helper ngay đầu để tránh lỗi ReferenceError) ---
+    // --- 1. DEFINITIONS ---
     const doUpdateUrl = (idToUrl) => {
         if (shouldUpdateUrl) {
-            // Lấy hash từ input ban đầu nếu có
             const [, hashPart] = suttaIdInput.split('#');
             const explicitHash = hashPart ? `#${hashPart}` : null;
             
-            Router.updateURL(idToUrl, generateBookParam(), false, explicitHash);
+            // [UPDATED] Truyền currentScrollBeforeRender vào Router
+            Router.updateURL(idToUrl, generateBookParam(), false, explicitHash, currentScrollBeforeRender);
         }
     };
 
@@ -40,7 +43,7 @@ export const SuttaController = {
         const isSamePage = currentUrlId === suttaId;
         renderOptions = { 
             checkHash: isSamePage,
-            restoreScroll: scrollY // Truyền scrollY để khôi phục vị trí
+            restoreScroll: scrollY 
         }; 
     }
 
@@ -72,25 +75,22 @@ export const SuttaController = {
     // --- 6. LAZY LOAD LOGIC ---
     const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
     if (bookFile) {
-        // Infinite Loop Guard
         const dbKey = bookFile.replace(/_book\.js$/, '').replace(/\//g, '_');
         if (window.SUTTA_DB && window.SUTTA_DB[dbKey]) {
              console.warn(`🛑 Infinite Loop detected: Book '${dbKey}' is loaded but does not contain '${suttaId}'.`);
-             renderSutta(suttaId, renderOptions); // Hiển thị lỗi 404
+             renderSutta(suttaId, renderOptions);
              return;
         }
 
         const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
         try {
             await SuttaLoader.loadBook(bookId);
-            // Đệ quy: Gọi lại chính hàm này sau khi load xong
             this.loadSutta(suttaIdInput, shouldUpdateUrl, scrollY);
         } catch (err) {
             console.error("Lazy load failed:", err);
             renderSutta(suttaId, renderOptions);
         }
     } else {
-        // Không tìm thấy sách -> Render 404
         renderSutta(suttaId, renderOptions);
     }
   },
