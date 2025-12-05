@@ -1,41 +1,70 @@
 // Path: web/assets/modules/toh_component.js
 
-// --- 1. Helper Function: Custom Smooth Scroll ---
-function smoothScrollTo(element, duration = 800) {
+// --- 1. Helper Function: Fade & Jump Navigation ---
+function fadeJumpTo(element) {
     if (!element) return;
-
-    const startPosition = window.scrollY || window.pageYOffset;
-    const targetBounding = element.getBoundingClientRect();
-    const offset = 60; 
-    const targetPosition = startPosition + targetBounding.top - offset;
-    const distance = targetPosition - startPosition;
     
-    let startTime = null;
+    const container = document.getElementById("sutta-container");
+    if (!container) return;
 
-    // [UPDATED] Hàm EaseOutExpo: Nhanh ở đầu, đỗ từ từ ở cuối -> Cảm giác nhẹ như bay
-    function ease(t, b, c, d) {
-        return (t === d) ? b + c : c * (-Math.pow(2, -10 * t / d) + 1) + b;
-    }
+    // A. Tính toán vị trí đích
+    // [UPDATED] Giảm offset từ 60 xuống 10 để sát mép trên hơn
+    const offset = 10; 
+    const startY = window.scrollY || window.pageYOffset;
+    const rect = element.getBoundingClientRect();
+    // Vị trí tuyệt đối = vị trí hiện tại + vị trí tương đối trong viewport - offset
+    const targetY = startY + rect.top - offset;
 
-    function animation(currentTime) {
-        if (startTime === null) startTime = currentTime;
-        const timeElapsed = currentTime - startTime;
+    // B. Xác định hướng di chuyển (Lên hay Xuống)
+    const isGoingDown = targetY > startY;
+
+    // C. Chuẩn bị Class Animation
+    const exitClass = isGoingDown ? 'exit-up' : 'exit-down';
+    const entryClass = isGoingDown ? 'enter-from-bottom' : 'enter-from-top';
+
+    // --- BƯỚC 1: FADE OUT (Biến mất theo hướng) ---
+    container.classList.add('nav-transitioning');
+    
+    // Force Reflow để browser nhận diện trạng thái ban đầu
+    void container.offsetWidth; 
+    
+    container.classList.add(exitClass);
+
+    // --- BƯỚC 2: TELEPORT (Sau khi fade out xong - 250ms) ---
+    setTimeout(() => {
+        // 2.1. Nhảy đến đích ngay lập tức
+        window.scrollTo(0, targetY);
+
+        // 2.2. Chuẩn bị trạng thái để Fade In
+        // Tắt transition tạm thời để set vị trí bắt đầu của nội dung mới mà không bị animation
+        container.classList.remove('nav-transitioning'); 
+        container.classList.remove(exitClass);
         
-        const run = ease(timeElapsed, startPosition, distance, duration);
-        window.scrollTo(0, run);
+        // Đặt vị trí bắt đầu cho entry (ví dụ: đang ở dưới đất để chuẩn bị bay lên)
+        container.classList.add(entryClass);
 
-        if (timeElapsed < duration) {
-            requestAnimationFrame(animation);
-        } else {
-            window.scrollTo(0, targetPosition);
-        }
-    }
+        // --- BƯỚC 3: FADE IN (Hiện lại) ---
+        requestAnimationFrame(() => {
+            // Bật lại transition
+            container.classList.add('nav-transitioning');
+            
+            requestAnimationFrame(() => {
+                // Xóa class entry để nó trượt về vị trí 0 (reset-transform)
+                container.classList.remove(entryClass);
+                
+                // Dọn dẹp sau khi animation kết thúc
+                setTimeout(() => {
+                    container.classList.remove('nav-transitioning');
+                }, 250);
+            });
+        });
 
-    requestAnimationFrame(animation);
+    }, 250); // Thời gian khớp với CSS transition
 }
 
 // --- 2. Main Component ---
 export function setupTableOfHeadings() {
+    // ... (Giữ nguyên phần khai báo biến wrapper, fab, menu...)
     const wrapper = document.getElementById("toh-wrapper");
     const fab = document.getElementById("toh-fab");
     const menu = document.getElementById("toh-menu");
@@ -47,6 +76,7 @@ export function setupTableOfHeadings() {
         return { generate: () => {} };
     }
 
+    // ... (Giữ nguyên phần Event Listener cho fab và document click) ...
     fab.onclick = (e) => {
         menu.classList.toggle("hidden");
         fab.classList.toggle("active");
@@ -64,7 +94,7 @@ export function setupTableOfHeadings() {
         list.innerHTML = "";
         menu.classList.add("hidden");
         fab.classList.remove("active");
-        
+
         const headings = container.querySelectorAll("h1, h2, h3, h4, h5");
         if (headings.length < 2) {
             wrapper.classList.add("hidden");
@@ -98,8 +128,8 @@ export function setupTableOfHeadings() {
             span.textContent = labelText.replace(/\s+/g, ' ').trim();
             
             span.onclick = () => {
-                // [UPDATED] Giảm thời gian xuống 400ms cho cảm giác "Snap" nhanh gọn
-                smoothScrollTo(heading, 400); 
+                // [UPDATED] Sử dụng hàm fadeJumpTo mới thay cho smoothScrollTo
+                fadeJumpTo(heading);
                 
                 menu.classList.add("hidden");
                 fab.classList.remove("active");

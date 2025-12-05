@@ -68,3 +68,35 @@
 .toh-h3 { margin-left: 12px; font-size: 0.85rem; }
 .toh-h4 { margin-left: 24px; font-size: 0.8rem; color: var(--text-muted); }
 .toh-h5 { margin-left: 36px; font-size: 0.75rem; color: var(--text-light); font-style: italic; }
+
+/* Trạng thái mặc định khi đang chuyển cảnh */
+.nav-transitioning {
+  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+  pointer-events: none; /* Chặn click khi đang bay */
+}
+
+/* 1. Khi đi xuống (Next): Nội dung cũ bay lên, Nội dung mới từ dưới lên */
+.exit-up {
+  opacity: 0;
+  transform: translateY(-40px); /* Bay lên trời */
+}
+.enter-from-bottom {
+  opacity: 0;
+  transform: translateY(40px); /* Chuẩn bị ở dưới đất */
+}
+
+/* 2. Khi đi lên (Prev): Nội dung cũ tụt xuống, Nội dung mới từ trên xuống */
+.exit-down {
+  opacity: 0;
+  transform: translateY(40px); /* Tụt xuống đất */
+}
+.enter-from-top {
+  opacity: 0;
+  transform: translateY(-40px); /* Chuẩn bị ở trên trời */
+}
+
+/* Reset về vị trí chuẩn */
+.reset-transform {
+  opacity: 1;
+  transform: translateY(0);
+}
