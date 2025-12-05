@@ -1,0 +1,89 @@
+/* Path: web/assets/css/layout/_drawer.css */
+#filter-container {
+  margin-bottom: 15px;
+}
+
+.icon-trigger {
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  padding: 5px 15px;
+  opacity: 0.6;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.icon-trigger:hover,
+.icon-trigger.open {
+  color: var(--primary-color);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.icon-trigger.open {
+  transform: rotate(180deg);
+}
+
+.icon-trigger svg {
+  width: 20px;
+  height: 20px;
+}
+
+#filter-drawer {
+  margin-top: 10px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-color);
+  animation: slideDown 0.3s ease-out;
+}
+
+.filter-label {
+  font-size: 0.85em;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.filter-btn {
+  background-color: #e8e0d9;
+  color: #5d4037;
+  border: 1px solid transparent;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+}
+
+.filter-btn:hover {
+  background-color: #d7ccc0;
+}
+
+.filter-btn.active {
+  background-color: var(--primary-color);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+.text-btn:hover {
+  opacity: 1;
+}

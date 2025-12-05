@@ -1,0 +1,26 @@
+/* Path: web/assets/css/components/_misc.css */
+.error-message {
+  text-align: center;
+  padding: 40px 20px;
+  border-radius: 8px;
+  border: none;
+}
+
+.sc-link {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 20px;
+  background-color: #d35400;
+  color: white;
+  text-decoration: none;
+  border-radius: 20px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.sc-link:hover {
+  background-color: #a04000;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}

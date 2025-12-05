@@ -1,0 +1,106 @@
+/* Path: web/assets/css/components/_navigation.css */
+.sutta-nav {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 50px;
+    padding: 20px 0;
+    border-top: 1px solid var(--border-light);
+    min-height: 60px;
+    width: 100%;
+}
+
+.sutta-nav button.nav-btn, .nav-spacer {
+    flex: 1;
+    flex-basis: 0; 
+    min-width: 0;
+    max-width: 42%; 
+}
+
+.sutta-nav button.nav-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--primary-color);
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+}
+
+.sutta-nav button.nav-btn:hover {
+    background-color: #f9f9f9;
+    border-color: var(--border-light);
+}
+
+.nav-spacer { visibility: hidden; height: 1px; }
+
+.nav-main-text {
+    display: inline-flex; 
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: inherit;
+}
+
+.nav-icon-inline {
+    width: 1.1em;
+    height: 1.1em;
+    position: relative;
+    top: 1px;
+}
+
+.nav-title {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%; 
+    line-height: 1.2;
+    text-align: inherit;
+}
+
+/* Random Icon */
+.nav-random-icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--text-main); 
+    opacity: 0.15;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
+    background-color: var(--bg-card);
+}
+
+@media (hover: hover) {
+    .nav-random-icon:hover {
+        color: var(--primary-color);
+        opacity: 1; 
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+}
+.nav-random-icon:active {
+    color: var(--primary-color);
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.05);
+    transform: translate(-50%, -50%) scale(0.9);
+}

@@ -1,0 +1,25 @@
+/* Path: web/assets/css/base/_reset.css */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 20px 20px 20px;
+  line-height: 1.6;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.hidden {
+  display: none !important;
+}

@@ -1,0 +1,31 @@
+/* Path: web/assets/css/base/_variables.css */
+:root {
+  /* Colors */
+  --primary-color: #8b4513;
+  --primary-hover: #a0522d;
+  --bg-body: #f4f4f9;
+  --bg-card: #ffffff;
+  --text-main: #333333;
+  --text-muted: #666666;
+  --text-light: #888888;
+  
+  /* Sutta Text Colors */
+  --text-pali: #777777;
+  --text-eng: #222222;
+  --highlight-color: #fff9c4;
+
+  /* UI Elements */
+  --border-color: #ddd;
+  --border-light: #eee;
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 4px 15px rgba(0, 0, 0, 0.1);
+
+  /* Typography */
+  --font-main: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --font-sutta: "Noto Sans", sans-serif;
+
+  /* Spacing */
+  --container-width: 800px;
+  --radius-md: 6px;
+  --radius-sm: 4px;
+}

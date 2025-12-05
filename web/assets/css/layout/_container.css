@@ -1,0 +1,37 @@
+/* Path: web/assets/css/layout/_container.css */
+#sutta-container {
+  background: var(--bg-card);
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  min-height: 300px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+#sutta-container img,
+#sutta-container table {
+  max-width: 100%;
+  height: auto;
+}
+
+.placeholder {
+  text-align: center;
+  color: var(--text-light);
+  margin-top: 40px;
+}
+
+/* Responsive Styles */
+@media (max-width: 600px) {
+  body {
+    padding: 0 10px 20px 10px;
+  }
+  #sutta-container {
+    padding: 20px 15px;
+  }
+  #nav-title-display {
+    min-width: 140px;
+  }
+}

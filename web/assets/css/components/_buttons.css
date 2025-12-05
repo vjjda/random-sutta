@@ -1,0 +1,24 @@
+/* Path: web/assets/css/components/_buttons.css */
+#btn-random {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  padding: 12px 28px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 6px rgba(139, 69, 19, 0.2);
+}
+
+#btn-random:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(139, 69, 19, 0.25);
+}
+
+#btn-random:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
