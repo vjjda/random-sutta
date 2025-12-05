@@ -15,6 +15,7 @@ function updateTopNavDOM(currentId, prevId, nextId) {
   const navSubTitle = document.getElementById("nav-sub-title");
   const statusDiv = document.getElementById("status");
 
+  // [QUAN TRỌNG] Lấy thông tin tiêu đề
   const currentInfo = getSuttaDisplayInfo(currentId);
   if (navMainTitle) navMainTitle.textContent = currentInfo.title;
   if (navSubTitle) navSubTitle.textContent = currentInfo.subtitle;
@@ -37,6 +38,7 @@ function updateTopNavDOM(currentId, prevId, nextId) {
   setupBtn(navPrevBtn, prevId, "Previous");
   setupBtn(navNextBtn, nextId, "Next");
 
+  // Đảm bảo header hiện ra
   navHeader.classList.remove("hidden");
   statusDiv.classList.add("hidden");
 }
@@ -47,7 +49,6 @@ function handleNotFound(suttaId) {
   const navHeader = document.getElementById("nav-header");
 
   container.innerHTML = UIFactory.createErrorHtml(suttaId);
-
   statusDiv.textContent = "Sutta not found.";
   statusDiv.classList.remove("hidden");
   navHeader.classList.remove("hidden");
@@ -59,12 +60,6 @@ function handleNotFound(suttaId) {
 }
 
 export function renderSutta(suttaId, options = {}) {
-  const checkHash = options.checkHash !== false;
-  const explicitId = options.highlightId;
-  const noHighlight = options.noHighlight === true;
-  const restoreScrollY = options.restoreScroll || 0;
-  const noScroll = options.noScroll === true;
-
   const id = suttaId.toLowerCase().trim();
   const container = document.getElementById("sutta-container");
   const book = DB.findBookContaining(id);
@@ -74,7 +69,7 @@ export function renderSutta(suttaId, options = {}) {
     return false;
   }
 
-  // ... (Logic compile HTML giữ nguyên) ...
+  // Compile HTML
   let htmlContent = DB.compileHtml(id);
   let isBranch = false;
   if (!htmlContent) {
@@ -83,20 +78,19 @@ export function renderSutta(suttaId, options = {}) {
   }
   if (!htmlContent) return false;
 
+  // Lấy thông tin điều hướng
   const nav = DB.getNavigation(id);
-  // (Giả sử hàm updateTopNavDOM đã import và có sẵn)
-  // updateTopNavDOM(id, nav.prev, nav.next);
-  // Code thực tế của bạn có updateTopNavDOM ở trên, cứ giữ nguyên.
 
-  // [FIX] Cần import hoặc define updateTopNavDOM nếu file này chưa export nó
-  // Giả định code cũ của bạn đã có updateTopNavDOM trong scope này.
+  // [FIX] BỎ COMMENT DÒNG NÀY ĐỂ TITLE HIỆN RA
+  updateTopNavDOM(id, nav.prev, nav.next);
 
-  // Render HTML
-  // (Giữ nguyên logic render UI)
-  const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next); // Cần đảm bảo UIFactory đã import
+  // Render HTML vào container
+  const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next);
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  if (!tohInstance) tohInstance = setupTableOfHeadings(); // Cần đảm bảo biến tohInstance
+  // Setup Table of Headings
+  if (!tohInstance) tohInstance = setupTableOfHeadings();
+  
   if (isBranch) {
     document.getElementById("toh-wrapper")?.classList.add("hidden");
   } else {

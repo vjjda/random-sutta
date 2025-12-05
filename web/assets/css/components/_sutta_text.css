@@ -71,7 +71,7 @@ p { margin-bottom: 1.2em; }
 /* Highlight System */
 .highlight {
   border-left: 5px solid var(--primary-color);
-  background-color: rgba(139, 69, 19, 0.05);
+  background-color: var(--highlight-color);
   padding-left: 15px;
   padding-right: 15px;
   border-radius: 4px;
@@ -79,9 +79,9 @@ p { margin-bottom: 1.2em; }
   box-shadow: none;
 }
 
-.segment.highlight {
-  /* background-color: var(--highlight-color);  <-- Tắt dòng này nếu muốn bỏ highlight hoàn toàn */
-  /* box-shadow: 0 0 0 5px var(--highlight-color); <-- Tắt dòng này luôn */
+.segment:target, .segment.highlight {
+  background-color: var(--highlight-color);
+  box-shadow: 0 0 0 5px var(--highlight-color);
   border-left: none;
   border-radius: 4px;
   padding: 0;
