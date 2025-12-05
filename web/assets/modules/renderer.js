@@ -45,13 +45,13 @@ function handleNotFound(suttaId) {
   const container = document.getElementById("sutta-container");
   const statusDiv = document.getElementById("status");
   const navHeader = document.getElementById("nav-header");
-  
+
   container.innerHTML = UIFactory.createErrorHtml(suttaId);
-  
+
   statusDiv.textContent = "Sutta not found.";
   statusDiv.classList.remove("hidden");
   navHeader.classList.remove("hidden");
-  
+
   const mTitle = document.getElementById("nav-main-title");
   const sTitle = document.getElementById("nav-sub-title");
   if (mTitle) mTitle.textContent = "Not Found";
@@ -96,25 +96,33 @@ export function renderSutta(suttaId, options = {}) {
 
   // --- Logic Scroll & Highlight Mới ---
   let targetId = null;
+
   if (explicitId) {
-      targetId = explicitId.replace('#', '');
+    targetId = explicitId.replace("#", "");
   } else if (checkHash && window.location.hash) {
-      targetId = window.location.hash.substring(1);
+    targetId = window.location.hash.substring(1);
+  } else {
+    // Priority 3: Lấy từ Metadata (Dữ liệu đã được làm sạch từ Python)
+    const meta = DB.getMeta(id);
+    // Chỉ cần check tồn tại, không cần so sánh với parent_uid nữa
+    if (meta && meta.scroll_target) {
+      targetId = meta.scroll_target;
+    }
   }
 
   if (targetId) {
     const attemptScroll = (retries) => {
-        const el = document.getElementById(targetId);
-        if (el) {
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
-            
-            // [NEW] Chỉ highlight nếu không bị cấm
-            if (!noHighlight) {
-                el.classList.add("highlight");
-            }
-        } else if (retries > 0) {
-            setTimeout(() => attemptScroll(retries - 1), 100);
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        // [NEW] Chỉ highlight nếu không bị cấm
+        if (!noHighlight) {
+          el.classList.add("highlight");
         }
+      } else if (retries > 0) {
+        setTimeout(() => attemptScroll(retries - 1), 100);
+      }
     };
     attemptScroll(10);
   } else {

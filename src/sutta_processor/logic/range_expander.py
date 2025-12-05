@@ -6,9 +6,6 @@ from typing import Dict, Any, Set, Optional, Tuple
 logger = logging.getLogger("SuttaProcessor.Logic.RangeExpander")
 
 def _parse_range_uid(uid: str) -> Optional[Tuple[str, int, int]]:
-    """
-    Regex: (?<=\D)(\d+)-(\d+)$
-    """
     pattern = re.compile(r"(?<=\D)(\d+)-(\d+)$")
     match = pattern.search(uid)
     

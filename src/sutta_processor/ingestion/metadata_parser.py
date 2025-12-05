@@ -4,9 +4,8 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-# Import từ Shared Layer
 from ..shared.app_config import DATA_API_DIR, AUTHOR_PRIORITY
-from ..shared.domain_types import SuttaMeta  # <--- Import thay vì định nghĩa lại
+from ..shared.domain_types import SuttaMeta
 
 logger = logging.getLogger("SuttaProcessor.Ingestion.Meta")
 
@@ -52,6 +51,16 @@ def load_names_map() -> Dict[str, SuttaMeta]:
                 translations = item.get("translations", [])
                 best_author = _find_best_author(translations)
                 
+                # --- [LOGIC QUAN TRỌNG: Lọc Scroll Target] ---
+                raw_scroll_target = item.get("scroll_target")
+                parent_uid = item.get("parent_uid")
+                final_scroll_target = raw_scroll_target
+                
+                # Nếu target trùng với container (parent), thì KHÔNG scroll
+                if raw_scroll_target == parent_uid:
+                    final_scroll_target = None
+                # ---------------------------------------------
+                
                 entry: SuttaMeta = {
                     "uid": uid,
                     "type": item.get("type", "leaf"),
@@ -59,7 +68,11 @@ def load_names_map() -> Dict[str, SuttaMeta]:
                     "translated_title": (item.get("translated_title") or "").strip(),
                     "original_title": (item.get("original_title") or "").strip(),
                     "blurb": item.get("blurb"),
-                    "best_author_uid": best_author
+                    "best_author_uid": best_author,
+                    "author_uid": None, # Sẽ được update khi merge content
+                    
+                    # Lưu giá trị đã xử lý vào đây
+                    "scroll_target": final_scroll_target 
                 }
                 
                 meta_map[uid] = entry

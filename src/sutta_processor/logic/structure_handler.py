@@ -68,7 +68,8 @@ def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta],
             "translated_title": info.get("translated_title", ""),
             "original_title": info.get("original_title", ""),
             "blurb": info.get("blurb"),
-            "author_uid": None 
+            "author_uid": None,
+            "scroll_target": info.get("scroll_target")
         }
 
 def collect_meta_from_structure(node: Any, meta_map: Dict[str, SuttaMeta], target_dict: Dict[str, Any]) -> None:

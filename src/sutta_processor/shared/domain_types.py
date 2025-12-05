@@ -9,19 +9,18 @@ class SuttaMeta(TypedDict):
     original_title: str
     blurb: Optional[str]
     best_author_uid: Optional[str]
-    # [NEW] Author UID sẽ được chuyển vào đây khi merge dữ liệu
-    author_uid: Optional[str] 
+    author_uid: Optional[str]
+    # [QUAN TRỌNG] Thêm trường này để lưu thông tin scroll đã xử lý
+    scroll_target: Optional[str] 
 
 class SuttaSegment(TypedDict, total=False):
     pli: str
-    eng: str   # [CHANGED] en -> eng
+    eng: str
     html: str
     comm: str
 
-# [CHANGED] Payload trả về từ worker
 class WorkerOutput(TypedDict):
     author_uid: Optional[str]
-    # Không còn key "segments" bao bọc, trả về trực tiếp dict của segments
     data: Dict[str, SuttaSegment] 
 
 class BookOutput(TypedDict):
@@ -29,4 +28,4 @@ class BookOutput(TypedDict):
     title: str
     structure: Any
     meta: Dict[str, Dict[str, Any]]
-    content: Dict[str, Dict[str, SuttaSegment]] # [CHANGED] data -> content
+    content: Dict[str, Dict[str, SuttaSegment]]
