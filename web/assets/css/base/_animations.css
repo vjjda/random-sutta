@@ -1,14 +1,32 @@
 /* Path: web/assets/css/base/_animations.css */
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+
+/* [UPDATED] NO-MOTION MODE
+   Đã xóa các định nghĩa @keyframes (slideDown, fadeIn) để loại bỏ chuyển động.
+   Các class tiện ích transition cũng bị vô hiệu hóa hoặc set về 0s.
+*/
 
 .static-fade-transition {
-  transition: opacity 0.15s ease-in-out; /* Snappy Speed */
+  transition: none !important;
   opacity: 1;
 }
 
 .static-fade-out {
-  opacity: 0 !important;
+  /* Luôn hiện để tránh ẩn nội dung do lỗi logic JS */
+  opacity: 1 !important; 
+}
+
+/* Vô hiệu hóa các class transition cũ trong JS (nếu còn sót lại) */
+.nav-transitioning,
+.exit-up,
+.enter-from-bottom, 
+.exit-down, 
+.enter-from-top {
+  transition: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+/* Đảm bảo đè lên các animation slideDown của Drawer/Menu */
+#filter-drawer, #toh-menu {
+    animation: none !important;
 }
