@@ -5,11 +5,11 @@ from typing import Dict, Any, List
 
 from ..shared.app_config import DATA_ROOT
 from ..shared.domain_types import SuttaMeta
+from .range_expander import generate_range_shortcuts # [NEW] Import
 
 logger = logging.getLogger("SuttaProcessor.Logic.Structure")
 
 def load_original_tree(group_name: str) -> Dict[str, Any]:
-    # ... (Giữ nguyên hàm này)
     book_id = group_name.split("/")[-1]
     tree_path = DATA_ROOT / "tree" / group_name / f"{book_id}-tree.json"
     
@@ -28,25 +28,13 @@ def load_original_tree(group_name: str) -> Dict[str, Any]:
         return {book_id: []}
 
 def simplify_structure(node: Any) -> Any:
-    """
-    Đơn giản hóa cấu trúc cây JSON.
-    - List[String] -> Giữ nguyên.
-    - List[Mixed] -> Giữ nguyên là List (FIX: để không mất leaf siblings).
-    - List[Dict] -> Gộp thành Dict (Logic cũ cho các branch thuần túy).
-    """
     if isinstance(node, list):
-        # Case 1: Toàn bộ là string (Leaves) -> Giữ nguyên
         if all(isinstance(x, str) for x in node):
             return node
         
-        # [FIX] Case 2: Danh sách hỗn hợp (Leaf nằm chung với Branch)
-        # Ví dụ: ["ne1", "ne2", {"branch": [...]}]
-        # Ta phải giữ nguyên dạng List để bảo toàn các string "ne1", "ne2"
         if any(isinstance(x, str) for x in node):
             return [simplify_structure(item) for item in node]
 
-        # Case 3: Chỉ toàn là Dict (Các Branch con) -> Gộp key lại cho gọn
-        # (Giữ logic cũ này để tương thích với các sách Nikaya lớn nếu có cấu trúc này)
         new_dict = {}
         for item in node:
             if isinstance(item, dict):
@@ -60,7 +48,6 @@ def simplify_structure(node: Any) -> Any:
     return node
 
 def flatten_tree_leaves(node: Any) -> List[str]:
-    # ... (Giữ nguyên hàm này)
     leaves = []
     if isinstance(node, str):
         return [node]
@@ -73,7 +60,6 @@ def flatten_tree_leaves(node: Any) -> List[str]:
     return leaves
 
 def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta], target_dict: Dict[str, Any]) -> None:
-    # ... (Giữ nguyên hàm này)
     if uid not in target_dict:
         info = meta_map.get(uid, {}) # type: ignore
         target_dict[uid] = {
@@ -86,7 +72,6 @@ def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta],
         }
 
 def collect_meta_from_structure(node: Any, meta_map: Dict[str, SuttaMeta], target_dict: Dict[str, Any]) -> None:
-    # ... (Giữ nguyên hàm này)
     if isinstance(node, str):
         _add_meta_entry(node, "leaf", meta_map, target_dict)
     elif isinstance(node, list):
@@ -102,7 +87,6 @@ def build_book_data(
     raw_data: Dict[str, Any], 
     names_map: Dict[str, SuttaMeta]
 ) -> Dict[str, Any]:
-    # ... (Giữ nguyên hàm này)
     # 1. Structure
     raw_tree = load_original_tree(group_name)
     structure = simplify_structure(raw_tree)
@@ -111,7 +95,6 @@ def build_book_data(
     meta_dict: Dict[str, Any] = {}
     collect_meta_from_structure(structure, names_map, meta_dict)
     
-    # Bổ sung meta cho các bài kinh lẻ (nếu không nằm trong tree)
     for sid in raw_data.keys():
         if sid not in meta_dict:
             _add_meta_entry(sid, "leaf", names_map, meta_dict)
@@ -129,6 +112,22 @@ def build_book_data(
         author = payload.get("author_uid")
         if uid in meta_dict and author:
             meta_dict[uid]["author_uid"] = author
+
+    # --- [NEW] 4. RANGE EXPANSION (Shortcut Generation) ---
+    # Tự động tạo shortcut cho các range ID (như an1.1-10, sn56.96-101)
+    
+    generated_shortcuts = {}
+    # Duyệt qua tất cả các bài kinh gốc (leafs) có trong sách
+    for uid, segments in content_dict.items():
+        # Gọi module range_expander
+        shortcuts = generate_range_shortcuts(uid, segments)
+        if shortcuts:
+            generated_shortcuts.update(shortcuts)
+            
+    # Merge shortcuts vào meta_dict chính
+    if generated_shortcuts:
+        meta_dict.update(generated_shortcuts)
+    # -------------------------------------------------------
 
     ordered_leaves = flatten_tree_leaves(structure)
     final_content_ordered = {}
