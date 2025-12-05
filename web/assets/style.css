@@ -1000,11 +1000,6 @@ p {
 
 /* Responsive */
 @media (max-width: 600px) {
-  #toh-wrapper {
-    top: auto;
-    bottom: 80px; /* Đặt phía dưới cho mobile */
-    right: 15px;
-  }
   #toh-menu {
     width: 200px;
   }
