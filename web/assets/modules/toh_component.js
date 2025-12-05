@@ -4,67 +4,69 @@
 function fadeJumpTo(element) {
     if (!element) return;
     
+    // Chúng ta sẽ animate toàn bộ container chứa nội dung bài kinh
     const container = document.getElementById("sutta-container");
     if (!container) return;
 
     // A. Tính toán vị trí đích
-    // [UPDATED] Giảm offset từ 60 xuống 10 để sát mép trên hơn
+    // [UPDATED] Offset nhỏ (10px) để sát mép trên
     const offset = 10; 
     const startY = window.scrollY || window.pageYOffset;
     const rect = element.getBoundingClientRect();
-    // Vị trí tuyệt đối = vị trí hiện tại + vị trí tương đối trong viewport - offset
+    // Vị trí tuyệt đối = vị trí hiện tại + vị trí tương đối - offset
     const targetY = startY + rect.top - offset;
 
     // B. Xác định hướng di chuyển (Lên hay Xuống)
     const isGoingDown = targetY > startY;
 
-    // C. Chuẩn bị Class Animation
+    // C. Chọn Class Animation phù hợp
+    // Nếu đi xuống: Nội dung cũ bay lên (Exit Up), Nội dung mới từ dưới lên (Enter Bottom)
     const exitClass = isGoingDown ? 'exit-up' : 'exit-down';
     const entryClass = isGoingDown ? 'enter-from-bottom' : 'enter-from-top';
 
-    // --- BƯỚC 1: FADE OUT (Biến mất theo hướng) ---
+    // --- BƯỚC 1: FADE OUT (Biến mất) ---
+    // Thêm class transition để bắt đầu hiệu ứng mờ dần và dịch chuyển
     container.classList.add('nav-transitioning');
     
-    // Force Reflow để browser nhận diện trạng thái ban đầu
+    // Force Reflow (Hack) để trình duyệt nhận diện trạng thái bắt đầu animation
     void container.offsetWidth; 
     
+    // Áp dụng class thoát
     container.classList.add(exitClass);
 
-    // --- BƯỚC 2: TELEPORT (Sau khi fade out xong - 250ms) ---
+    // --- BƯỚC 2: TELEPORT (Nhảy cóc) ---
     setTimeout(() => {
-        // 2.1. Nhảy đến đích ngay lập tức
+        // 2.1. Nhảy đến đích ngay lập tức (Native Scroll)
         window.scrollTo(0, targetY);
 
         // 2.2. Chuẩn bị trạng thái để Fade In
-        // Tắt transition tạm thời để set vị trí bắt đầu của nội dung mới mà không bị animation
+        // Tắt transition tạm thời để set vị trí khởi đầu của nội dung mới mà không bị "trượt"
         container.classList.remove('nav-transitioning'); 
         container.classList.remove(exitClass);
         
-        // Đặt vị trí bắt đầu cho entry (ví dụ: đang ở dưới đất để chuẩn bị bay lên)
+        // Đặt vị trí bắt đầu cho entry (VD: đang ở dưới đất để chuẩn bị bay lên)
         container.classList.add(entryClass);
 
         // --- BƯỚC 3: FADE IN (Hiện lại) ---
         requestAnimationFrame(() => {
             // Bật lại transition
-            container.classList.add('nav-transitioning');
-            
             requestAnimationFrame(() => {
-                // Xóa class entry để nó trượt về vị trí 0 (reset-transform)
+                container.classList.add('nav-transitioning');
+                // Xóa class entry để container trượt về vị trí mặc định (opacity 1, translate 0)
                 container.classList.remove(entryClass);
                 
-                // Dọn dẹp sau khi animation kết thúc
+                // Dọn dẹp class sau khi animation kết thúc
                 setTimeout(() => {
                     container.classList.remove('nav-transitioning');
-                }, 250);
+                }, 150);
             });
         });
 
-    }, 250); // Thời gian khớp với CSS transition
+    }, 150); 
 }
 
 // --- 2. Main Component ---
 export function setupTableOfHeadings() {
-    // ... (Giữ nguyên phần khai báo biến wrapper, fab, menu...)
     const wrapper = document.getElementById("toh-wrapper");
     const fab = document.getElementById("toh-fab");
     const menu = document.getElementById("toh-menu");
@@ -76,13 +78,14 @@ export function setupTableOfHeadings() {
         return { generate: () => {} };
     }
 
-    // ... (Giữ nguyên phần Event Listener cho fab và document click) ...
+    // Toggle Menu
     fab.onclick = (e) => {
         menu.classList.toggle("hidden");
         fab.classList.toggle("active");
         e.stopPropagation();
     };
 
+    // Close when clicking outside
     document.addEventListener("click", (e) => {
         if (!menu.classList.contains("hidden") && !wrapper.contains(e.target)) {
             menu.classList.add("hidden");
@@ -96,6 +99,8 @@ export function setupTableOfHeadings() {
         fab.classList.remove("active");
 
         const headings = container.querySelectorAll("h1, h2, h3, h4, h5");
+        
+        // Nếu ít heading quá thì ẩn luôn ToH
         if (headings.length < 2) {
             wrapper.classList.add("hidden");
             return;
@@ -114,6 +119,7 @@ export function setupTableOfHeadings() {
             const span = document.createElement("span"); 
             span.className = "toh-link";
             
+            // Ưu tiên hiển thị tiếng Anh, sau đó đến Pali
             const engNode = heading.querySelector(".eng");
             const pliNode = heading.querySelector(".pli");
             
@@ -127,8 +133,9 @@ export function setupTableOfHeadings() {
             
             span.textContent = labelText.replace(/\s+/g, ' ').trim();
             
+            // Click Handler
             span.onclick = () => {
-                // [UPDATED] Sử dụng hàm fadeJumpTo mới thay cho smoothScrollTo
+                // [UPDATED] Gọi hàm Fade Jump thay vì Scroll
                 fadeJumpTo(heading);
                 
                 menu.classList.add("hidden");
