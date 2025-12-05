@@ -61,30 +61,31 @@ function handleNotFound(suttaId) {
 export function renderSutta(suttaId, options = {}) {
   const checkHash = options.checkHash !== false;
   const explicitId = options.highlightId;
-  const noHighlight = options.noHighlight === true; // [NEW] Flag tắt highlight
+  const noHighlight = options.noHighlight === true;
+  // [NEW] Lấy giá trị restoreScroll
+  const restoreScrollY = options.restoreScroll || 0;
+
   const id = suttaId.toLowerCase().trim();
   const container = document.getElementById("sutta-container");
-
   const book = DB.findBookContaining(id);
+  
   if (!book) {
     handleNotFound(id);
     return false;
   }
 
+  // ... (Phần compileHtml và render giữ nguyên) ...
   let htmlContent = DB.compileHtml(id);
   let isBranch = false;
-
   if (!htmlContent) {
     htmlContent = DB.compileBranchHtml(id);
     isBranch = true;
   }
-
   if (!htmlContent) return false;
 
   const nav = DB.getNavigation(id);
   updateTopNavDOM(id, nav.prev, nav.next);
   const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next);
-
   container.innerHTML = htmlContent + bottomNavHtml;
 
   if (!tohInstance) tohInstance = setupTableOfHeadings();
@@ -94,29 +95,28 @@ export function renderSutta(suttaId, options = {}) {
     tohInstance.generate();
   }
 
-  // --- Logic Scroll & Highlight Mới ---
+  // --- Logic Scroll & Highlight ---
+  
+  // Ưu tiên 1: Explicit ID (Link #...)
   let targetId = null;
-
   if (explicitId) {
     targetId = explicitId.replace("#", "");
   } else if (checkHash && window.location.hash) {
     targetId = window.location.hash.substring(1);
   } else {
-    // Priority 3: Lấy từ Metadata (Dữ liệu đã được làm sạch từ Python)
+    // Ưu tiên 2: Metadata scroll_target
     const meta = DB.getMeta(id);
-    // Chỉ cần check tồn tại, không cần so sánh với parent_uid nữa
     if (meta && meta.scroll_target) {
       targetId = meta.scroll_target;
     }
   }
 
   if (targetId) {
+    // Nếu có target cụ thể (Hash/ID), dùng logic cuộn cũ (scrollIntoView)
     const attemptScroll = (retries) => {
       const el = document.getElementById(targetId);
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
-
-        // [NEW] Chỉ highlight nếu không bị cấm
         if (!noHighlight) {
           el.classList.add("highlight");
         }
@@ -126,7 +126,14 @@ export function renderSutta(suttaId, options = {}) {
     };
     attemptScroll(10);
   } else {
-    window.scrollTo(0, 0);
+    // [UPDATED] Nếu không có target ID, kiểm tra restoreScrollY
+    if (restoreScrollY > 0) {
+        // Khôi phục vị trí cũ (Back button)
+        window.scrollTo(0, restoreScrollY);
+    } else {
+        // Mặc định về đầu trang
+        window.scrollTo(0, 0);
+    }
   }
 
   return true;

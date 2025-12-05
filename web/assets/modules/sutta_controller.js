@@ -9,30 +9,29 @@ import { initCommentPopup } from './utils.js';
 const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
-  loadSutta: async function (suttaIdInput, shouldUpdateUrl = true) {
+  // [UPDATED] Thêm tham số scrollY mặc định là 0
+  loadSutta: async function (suttaIdInput, shouldUpdateUrl = true, scrollY = 0) {
     hideComment();
-    
     let [baseId, hashPart] = suttaIdInput.split('#');
     const suttaId = baseId.trim().toLowerCase();
     const explicitHash = hashPart ? hashPart : null;
-
+    
+    // ... (logic params giữ nguyên) ...
     const params = new URLSearchParams(window.location.search);
     const currentUrlId = params.get("q");
-    
+
     // Default Options
     let renderOptions = {};
     if (explicitHash) {
         renderOptions = { highlightId: explicitHash };
     } else {
         const isSamePage = currentUrlId === suttaId;
-        renderOptions = { checkHash: isSamePage }; 
+        // [UPDATED] Truyền restoreScroll vào options
+        renderOptions = { 
+            checkHash: isSamePage, 
+            restoreScroll: scrollY 
+        }; 
     }
-
-    const doUpdateUrl = (idToUrl) => {
-        if (shouldUpdateUrl) {
-            Router.updateURL(idToUrl, generateBookParam(), false, explicitHash ? `#${explicitHash}` : null);
-        }
-    };
 
     // --- SHORTCUT LOGIC ---
     const meta = DB.getMeta(suttaId);
@@ -78,11 +77,10 @@ export const SuttaController = {
         }
 
         const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
-        
         try {
             await SuttaLoader.loadBook(bookId);
-            // Sau khi load xong, gọi đệ quy lại chính hàm này
-            this.loadSutta(suttaIdInput, shouldUpdateUrl);
+            // [UPDATED] Gọi lại chính nó với tham số scrollY
+            this.loadSutta(suttaIdInput, shouldUpdateUrl, scrollY);
         } catch (err) {
             console.error("Lazy load failed:", err);
             renderSutta(suttaId, renderOptions);

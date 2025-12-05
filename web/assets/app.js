@@ -67,13 +67,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 7. Event Listeners
   randomBtn.addEventListener("click", () => SuttaController.loadRandomSutta(true));
-  
+
   window.addEventListener("popstate", (event) => {
     if (event.state && event.state.suttaId) {
-      SuttaController.loadSutta(event.state.suttaId, false);
+      // [UPDATED] Truyền thêm tham số thứ 3: event.state.scrollY
+      const savedScroll = event.state.scrollY || 0;
+      SuttaController.loadSutta(event.state.suttaId, false, savedScroll);
     } else {
       const q = Router.getParams().q;
-      if(q) SuttaController.loadSutta(q, false);
+      // Mặc định về 0 nếu không có state
+      if(q) SuttaController.loadSutta(q, false, 0);
     }
   });
 });
