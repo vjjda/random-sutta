@@ -33,5 +33,6 @@ Thumbs.db
 /tmp
 
 # Generated Data Assets
-/web/assets/books/
+/web/assets/books/*
+!/web/assets/books/sutta_loader.js
 /web/assets/sutta/
