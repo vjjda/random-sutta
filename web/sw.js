@@ -53,6 +53,7 @@ const CORE_ASSETS = [
   "./assets/modules/filters.js",
   "./assets/modules/renderer.js",
   "./assets/modules/loader.js",
+  "./assets/modules/scroller.js",
   "./assets/modules/router.js",
   "./assets/modules/search_component.js",
   "./assets/modules/toh_component.js",
@@ -61,7 +62,6 @@ const CORE_ASSETS = [
   "./assets/modules/ui_factory.js",
   "./assets/modules/sutta_controller.js",
   "./assets/modules/file_index.js",
-  // [NEW] Add Logger
   "./assets/modules/logger.js", 
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",

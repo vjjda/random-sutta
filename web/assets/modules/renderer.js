@@ -3,6 +3,7 @@ import { DB } from "./db_manager.js";
 import { getSuttaDisplayInfo } from "./utils.js";
 import { setupTableOfHeadings } from "./toh_component.js";
 import { UIFactory } from "./ui_factory.js";
+import { Scroller } from "./scroller.js";
 
 let tohInstance = null;
 
@@ -63,13 +64,12 @@ export function renderSutta(suttaId, options = {}) {
   const explicitId = options.highlightId;
   const noHighlight = options.noHighlight === true;
   const restoreScrollY = options.restoreScroll || 0;
-  // [NEW] Cờ chặn cuộn
   const noScroll = options.noScroll === true;
 
   const id = suttaId.toLowerCase().trim();
   const container = document.getElementById("sutta-container");
   const book = DB.findBookContaining(id);
-  
+
   if (!book) {
     handleNotFound(id);
     return false;
@@ -86,12 +86,12 @@ export function renderSutta(suttaId, options = {}) {
 
   const nav = DB.getNavigation(id);
   // (Giả sử hàm updateTopNavDOM đã import và có sẵn)
-  // updateTopNavDOM(id, nav.prev, nav.next); 
+  // updateTopNavDOM(id, nav.prev, nav.next);
   // Code thực tế của bạn có updateTopNavDOM ở trên, cứ giữ nguyên.
-  
+
   // [FIX] Cần import hoặc define updateTopNavDOM nếu file này chưa export nó
   // Giả định code cũ của bạn đã có updateTopNavDOM trong scope này.
-  
+
   // Render HTML
   // (Giữ nguyên logic render UI)
   const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next); // Cần đảm bảo UIFactory đã import
@@ -105,44 +105,33 @@ export function renderSutta(suttaId, options = {}) {
   }
 
   // --- Logic Scroll & Highlight ---
-  
-  // [UPDATED] Nếu có cờ noScroll, thoát ngay lập tức, không làm gì cả
-  if (noScroll) {
-      return true;
-  }
 
-  // Ưu tiên 1: Explicit ID (Link #...)
+  // Nếu bị cấm cuộn (thường dùng khi pre-load hoặc back/forward history đặc biệt)
+  if (noScroll) return true;
+
+  // Xác định Target ID
   let targetId = null;
   if (explicitId) {
     targetId = explicitId.replace("#", "");
   } else if (checkHash && window.location.hash) {
     targetId = window.location.hash.substring(1);
   } else {
-    // Ưu tiên 2: Metadata scroll_target
-    const meta = DB.getMeta(id);
+    const meta = DB.getMeta(id); // id lấy từ closure bên trên
     if (meta && meta.scroll_target) {
       targetId = meta.scroll_target;
     }
   }
 
   if (targetId) {
-    const attemptScroll = (retries) => {
-      const el = document.getElementById(targetId);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        if (!noHighlight) {
-          el.classList.add("highlight");
-        }
-      } else if (retries > 0) {
-        setTimeout(() => attemptScroll(retries - 1), 100);
-      }
-    };
-    attemptScroll(10);
+    // [UPDATED] Gọi Scroller thống nhất
+    // Sử dụng setTimeout 0 để đảm bảo DOM đã paint xong trước khi tính toán tọa độ
+    setTimeout(() => Scroller.scrollToId(targetId), 0);
   } else {
+    // Logic restore scroll hoặc về đầu trang
     if (restoreScrollY > 0) {
-        window.scrollTo(0, restoreScrollY);
+      window.scrollTo(0, restoreScrollY);
     } else {
-        window.scrollTo(0, 0);
+      window.scrollTo(0, 0);
     }
   }
 
