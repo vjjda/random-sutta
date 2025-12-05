@@ -11,8 +11,10 @@ export function getSuttaDisplayInfo(suttaId) {
     
     if (meta) {
         return {
-            title: meta.translated_title || meta.acronym || id,
-            subtitle: meta.original_title || ""
+            // [UPDATED] Main: Acronym -> Sutta ID
+            title: meta.acronym || id,
+            // [UPDATED] Sub: Translated Title -> Original Title
+            subtitle: meta.translated_title || meta.original_title || ""
         };
     }
     
@@ -79,7 +81,7 @@ export function initCommentPopup() {
                     
                     // [UPDATED] Load trực tiếp (Direct Jump)
                     // Không truyền { transition: true } để tránh hiệu ứng chuyển động text
-                    window.loadSutta(suttaId, true, 0); 
+                    window.loadSutta(suttaId, true, 0);
                 }
             }
         }
