@@ -4,9 +4,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parents[2]
 WEB_DIR = PROJECT_ROOT / "web"
 
-# [UPDATED] Cô lập bản build vào thư mục 'dev-offline' để tránh lẫn lộn
 BUILD_ROOT = PROJECT_ROOT / "build"
-BUILD_DIR = BUILD_ROOT / "dev-offline"
+# [UPDATED] Định nghĩa 2 môi trường build
+BUILD_OFFLINE_DIR = BUILD_ROOT / "dev-offline"
+BUILD_ONLINE_DIR = BUILD_ROOT / "dev-online" # [NEW]
 
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"

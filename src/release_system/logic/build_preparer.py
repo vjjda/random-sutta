@@ -1,30 +1,29 @@
 # Path: src/release_system/logic/build_preparer.py
 import logging
 import shutil
-import os
-from ..release_config import WEB_DIR, BUILD_DIR
+from pathlib import Path
+from ..release_config import WEB_DIR
 
 logger = logging.getLogger("Release.Preparer")
 
-def prepare_build_directory() -> bool:
+def prepare_build_directory(target_dir: Path) -> bool:
     """
-    Copy toàn bộ nội dung từ web/ sang build/ để xử lý an toàn.
+    Copy toàn bộ nội dung từ web/ sang target_dir.
     """
-    logger.info("sandbox 📦 Creating build sandbox...")
+    logger.info(f"sandbox 📦 Creating sandbox: {target_dir.name}...")
     
     # 1. Clean old build
-    if BUILD_DIR.exists():
-        shutil.rmtree(BUILD_DIR)
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
     
     try:
-        # 2. Copy Source to Sandbox
-        # ignore các file không cần thiết cho bản build cuối cùng (như file map, file ẩn)
+        # 2. Copy Source -> Target
         shutil.copytree(
             WEB_DIR, 
-            BUILD_DIR,
-            ignore=shutil.ignore_patterns("*.map", ".DS_Store", "Thumbs.db")
+            target_dir,
+            ignore=shutil.ignore_patterns("*.map", ".DS_Store", ".git")
         )
-        logger.info(f"   ✅ Copied source to {BUILD_DIR}")
+        logger.info(f"   ✅ Copied source to {target_dir.name}")
         return True
     except Exception as e:
         logger.error(f"❌ Failed to prepare build directory: {e}")

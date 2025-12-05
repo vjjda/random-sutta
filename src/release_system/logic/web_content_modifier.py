@@ -3,8 +3,6 @@ import logging
 import re
 from pathlib import Path
 
-from ..release_config import WEB_DIR
-
 logger = logging.getLogger("Release.WebContentMod")
 
 def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
@@ -12,7 +10,10 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
-        new_content = re.sub(pattern, replacement, content)
+        
+        # [IMPORTANT] Dùng re.sub để thay thế, chỉ thay thế 1 lần đầu tìm thấy
+        new_content = re.sub(pattern, replacement, content, count=1)
+        
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(new_content)
         return True
@@ -20,13 +21,15 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
         logger.error(f"❌ Error updating {file_path.name}: {e}")
         return False
 
-def update_source_version(version_tag: str) -> bool:
+def inject_version_into_sw(target_dir: Path, version_tag: str) -> bool:
     """
-    [PERSISTENT] Cập nhật version trong Source Code (web/) để commit.
+    [BUILD ONLY] Tiêm version tag vào file sw.js tại thư mục đích (build folder).
+    Không đụng vào source code gốc.
     """
-    logger.info("📝 Bumping version in source code...")
-    sw_path = WEB_DIR / "sw.js"
+    logger.info(f"💉 Injecting cache version '{version_tag}' into {target_dir.name}/sw.js...")
+    sw_path = target_dir / "sw.js"
     
+    # Regex bắt dòng: const CACHE_NAME = "bat-ky-cai-gi-o-day";
     return _update_file(
         sw_path,
         r'const CACHE_NAME\s*=\s*["\'].*?["\'];', 
@@ -34,14 +37,11 @@ def update_source_version(version_tag: str) -> bool:
     )
 
 def patch_build_html(build_dir: Path, version_tag: str) -> bool:
-    """
-    [TEMPORARY] Sửa index.html trong thư mục BUILD để dùng bundle.
-    """
+    # ... (Giữ nguyên hàm này như cũ, vì nó đã sửa trên build_dir rồi)
+    # [Code cũ của hàm patch_build_html giữ nguyên]
     logger.info("📝 Patching index.html in build sandbox...")
     index_path = build_dir / "index.html"
     
-    # 1. Thay module app.js bằng bundle
-    # [FIX] Thêm thuộc tính 'defer' để script chạy sau khi DOM ready (như type="module")
     success = _update_file(
         index_path,
         r'<script type="module" src="assets/app.js.*"></script>',
@@ -49,7 +49,6 @@ def patch_build_html(build_dir: Path, version_tag: str) -> bool:
     )
     
     if success:
-        # 2. Gắn version vào css/js khác
         _update_file(
             index_path,
             r'(assets\/.*?\.(?:css|js))(?:\?v=[^"\']*)?',
