@@ -4,31 +4,27 @@ import { Router } from './modules/router.js';
 import { initFilters, generateBookParam } from './modules/filters.js';
 import { setupQuickNav } from './modules/search_component.js';
 import { SuttaController } from './modules/sutta_controller.js';
-// [NEW] Import Logger setup
 import { setupLogging, LogLevel, getLogger } from './modules/logger.js';
 
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // [NEW] Ngăn trình duyệt tự restore vị trí scroll cũ hoặc native hash jump
+  // 1. Config Init
   if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
   }
-  // Force về đầu trang ngay lập tức để tránh cái "flush" native của browser
+  // Force về đầu trang ngay lập tức
   window.scrollTo(0, 0);
+
   const params = new URLSearchParams(window.location.search);
   const isDebug = params.get("debug") === "1" || params.get("debug") === "true";
   
   setupLogging({
       level: isDebug ? LogLevel.DEBUG : LogLevel.INFO
   });
-
-  if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-  }
   
-  // 2. DOM Elements
-  // ... (Giữ nguyên code cũ) ...
+  // 2. DOM Elements & UI Setup
+  // ... (Giữ nguyên phần này) ...
   const statusDiv = document.getElementById("status");
   const randomBtn = document.getElementById("btn-random");
   const navHeader = document.getElementById("nav-header");
@@ -42,7 +38,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
   }
 
-  // ... (Window expose giữ nguyên) ...
+  // Window expose
   window.loadSutta = (id, updateUrl, scrollY, options) => 
       SuttaController.loadSutta(id, updateUrl, scrollY, options);
   window.triggerRandomSutta = () => SuttaController.loadRandomSutta(true);
@@ -68,10 +64,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     initFilters();
 
     // 6. Initial Routing
-    const initialParams = Router.getParams(); // Đổi tên biến tránh trùng lặp scope
+    const initialParams = Router.getParams();
     if (initialParams.q) {
       logger.info(`Routing to initial sutta: ${initialParams.q}`);
-      SuttaController.loadSutta(initialParams.q, true);
+      
+      // [FIX] Ghép thêm Hash từ URL (nếu có) để Controller biết cần scroll đến đâu
+      // Ví dụ: q=an1.1-10 và hash=#an1.3 -> loadId = an1.1-10#an1.3
+      let loadId = initialParams.q;
+      if (window.location.hash) {
+          loadId += window.location.hash;
+      }
+      
+      SuttaController.loadSutta(loadId, true);
     } else {
       logger.info("No initial sutta, loading random/default logic.");
       SuttaController.loadRandomSutta(false);
