@@ -78,9 +78,6 @@ export function setupTableOfHeadings() {
             span.onclick = () => {
                 heading.scrollIntoView({ behavior: "smooth", block: "start" });
                 
-                heading.classList.add("highlight");
-                setTimeout(() => heading.classList.remove("highlight"), 2000);
-                
                 menu.classList.add("hidden");
                 fab.classList.remove("active");
             };
