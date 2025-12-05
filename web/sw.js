@@ -1,7 +1,11 @@
 // Path: web/sw.js
 
-// Tên cache mới (Bump version để cache file mới)
-const CACHE_NAME = "sutta-cache-v20251205-refactor-01";
+// [IMPORTANT] Hãy Bump version này lên mỗi khi bạn muốn update SW
+const CACHE_NAME = "sutta-cache-v20251205-070713";
+
+// [NEW] Log ngay lập tức khi trình duyệt đọc file này
+console.log(`%c [SW] Loading Version: ${CACHE_NAME}`, 'background: #333; color: #bada55; padding: 2px 5px; border-radius: 2px;');
+
 const SUTTA_DATA_FILES = [
   "./assets/books/abhidhamma/ds_book.js",
   "./assets/books/abhidhamma/dt_book.js",
@@ -57,8 +61,8 @@ const CORE_ASSETS = [
   "./assets/modules/toh_component.js",
   "./assets/modules/db_manager.js",
   "./assets/modules/navigator.js",
-  "./assets/modules/ui_factory.js",      // [NEW]
-  "./assets/modules/sutta_controller.js", // [NEW]
+  "./assets/modules/ui_factory.js",
+  "./assets/modules/sutta_controller.js",
   "./assets/books/sutta_loader.js",
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",
@@ -72,6 +76,9 @@ const CORE_ASSETS = [
 const ALL_ASSETS = CORE_ASSETS.concat(SUTTA_DATA_FILES);
 
 self.addEventListener("install", (event) => {
+  // [NEW] Log quá trình cài đặt
+  console.log(`[SW] Installing ${CACHE_NAME}...`);
+  
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -82,6 +89,9 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  // [NEW] Log khi activate thành công
+  console.log(`[SW] Activating ${CACHE_NAME}...`);
+
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
