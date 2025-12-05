@@ -2,6 +2,7 @@
 import logging
 import re
 import shutil
+import os # [NEW] Import os
 from pathlib import Path
 from typing import List
 
@@ -10,12 +11,24 @@ from .js_dependency_resolver import resolve_bundle_order
 logger = logging.getLogger("Release.JSBundler")
 
 def _cleanup_modules(base_dir: Path) -> None:
-    """Xóa thư mục modules gốc sau khi đã bundle để giảm dung lượng Zip."""
-    modules_dir = base_dir / "assets" / "modules"
+    """
+    Dọn dẹp các file nguồn JS thừa sau khi đã bundle xong.
+    1. Xóa thư mục assets/modules
+    2. Xóa file assets/app.js (vì đã có app.bundle.js)
+    """
+    assets_dir = base_dir / "assets"
+    
+    # 1. Xóa folder modules
+    modules_dir = assets_dir / "modules"
     if modules_dir.exists():
-        logger.info("🧹 Cleaning up raw modules from build artifact...")
         shutil.rmtree(modules_dir)
-        logger.info("   ✅ Removed assets/modules/")
+        logger.info("   🧹 Removed source: assets/modules/")
+
+    # 2. [NEW] Xóa file app.js gốc
+    app_js = assets_dir / "app.js"
+    if app_js.exists():
+        os.remove(app_js)
+        logger.info("   🧹 Removed source: assets/app.js")
 
 def _wrap_in_iife(content: str, file_name: str) -> str:
     """
