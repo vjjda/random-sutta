@@ -27,8 +27,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // --- EXPOSE GLOBAL API ---
-  // Để HTML onclick="window.loadSutta(...)" vẫn hoạt động
-  window.loadSutta = (id, updateUrl) => SuttaController.loadSutta(id, updateUrl);
+  // [UPDATED] Cho phép truyền thêm params (scrollY và options)
+  window.loadSutta = (id, updateUrl, scrollY, options) => 
+      SuttaController.loadSutta(id, updateUrl, scrollY, options);
+
   window.triggerRandomSutta = () => SuttaController.loadRandomSutta(true);
 
   // 4. Feature Modules Init

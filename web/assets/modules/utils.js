@@ -72,24 +72,26 @@ export function initCommentPopup() {
 
                         // 3. Đợi Fade Out xong (150ms) thì mới load nội dung mới
                         setTimeout(() => {
-                            const [cleanId, hash] = suttaId.split("#");
+                            // [UPDATED] Không tách hash nữa, dùng nguyên suttaId (VD: mn38#35.1)
+                            // Để URL trên browser hiển thị đầy đủ hash.
                             
-                            // Load dữ liệu mới (Render lại DOM)
-                            window.loadSutta(cleanId);
+                            // [UPDATED] Gọi loadSutta với tham số thứ 4 là options
+                            window.loadSutta(suttaId, true, 0, { noScroll: true });
 
                             // Xử lý Hash Scroll (nếu link có #)
                             // Logic: Load xong -> Scroll đến vị trí -> Mới hiện lại (Fade In)
-                            const targetHash = hash || (href.includes("#") ? href.split("#")[1] : null);
+                            // [UPDATED] Logic lấy hash từ suttaId input
+                            const hashPart = suttaId.includes("#") ? suttaId.split("#")[1] : null;
+                            const targetHash = hashPart || (href.includes("#") ? href.split("#")[1] : null);
                             
                             if (targetHash) {
                                 const el = document.getElementById(targetHash);
                                 if(el) {
-                                    // Scroll ngay lập tức (behavior: auto) khi đang ẩn để người dùng không thấy cảnh trượt
+                                    // Scroll ngay lập tức (behavior: auto)
                                     el.scrollIntoView({behavior: "auto", block: "center"});
                                     el.classList.add("highlight");
                                 }
                             } else {
-                                // Nếu không có hash, lên đầu trang
                                 window.scrollTo(0, 0);
                             }
 

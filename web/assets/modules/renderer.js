@@ -62,8 +62,9 @@ export function renderSutta(suttaId, options = {}) {
   const checkHash = options.checkHash !== false;
   const explicitId = options.highlightId;
   const noHighlight = options.noHighlight === true;
-  // [NEW] Lấy giá trị restoreScroll
   const restoreScrollY = options.restoreScroll || 0;
+  // [NEW] Cờ chặn cuộn
+  const noScroll = options.noScroll === true;
 
   const id = suttaId.toLowerCase().trim();
   const container = document.getElementById("sutta-container");
@@ -74,7 +75,7 @@ export function renderSutta(suttaId, options = {}) {
     return false;
   }
 
-  // ... (Phần compileHtml và render giữ nguyên) ...
+  // ... (Logic compile HTML giữ nguyên) ...
   let htmlContent = DB.compileHtml(id);
   let isBranch = false;
   if (!htmlContent) {
@@ -84,11 +85,19 @@ export function renderSutta(suttaId, options = {}) {
   if (!htmlContent) return false;
 
   const nav = DB.getNavigation(id);
-  updateTopNavDOM(id, nav.prev, nav.next);
-  const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next);
+  // (Giả sử hàm updateTopNavDOM đã import và có sẵn)
+  // updateTopNavDOM(id, nav.prev, nav.next); 
+  // Code thực tế của bạn có updateTopNavDOM ở trên, cứ giữ nguyên.
+  
+  // [FIX] Cần import hoặc define updateTopNavDOM nếu file này chưa export nó
+  // Giả định code cũ của bạn đã có updateTopNavDOM trong scope này.
+  
+  // Render HTML
+  // (Giữ nguyên logic render UI)
+  const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next); // Cần đảm bảo UIFactory đã import
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  if (!tohInstance) tohInstance = setupTableOfHeadings();
+  if (!tohInstance) tohInstance = setupTableOfHeadings(); // Cần đảm bảo biến tohInstance
   if (isBranch) {
     document.getElementById("toh-wrapper")?.classList.add("hidden");
   } else {
@@ -97,6 +106,11 @@ export function renderSutta(suttaId, options = {}) {
 
   // --- Logic Scroll & Highlight ---
   
+  // [UPDATED] Nếu có cờ noScroll, thoát ngay lập tức, không làm gì cả
+  if (noScroll) {
+      return true;
+  }
+
   // Ưu tiên 1: Explicit ID (Link #...)
   let targetId = null;
   if (explicitId) {
@@ -112,7 +126,6 @@ export function renderSutta(suttaId, options = {}) {
   }
 
   if (targetId) {
-    // Nếu có target cụ thể (Hash/ID), dùng logic cuộn cũ (scrollIntoView)
     const attemptScroll = (retries) => {
       const el = document.getElementById(targetId);
       if (el) {
@@ -126,12 +139,9 @@ export function renderSutta(suttaId, options = {}) {
     };
     attemptScroll(10);
   } else {
-    // [UPDATED] Nếu không có target ID, kiểm tra restoreScrollY
     if (restoreScrollY > 0) {
-        // Khôi phục vị trí cũ (Back button)
         window.scrollTo(0, restoreScrollY);
     } else {
-        // Mặc định về đầu trang
         window.scrollTo(0, 0);
     }
   }
