@@ -7,15 +7,7 @@ logger = logging.getLogger("SuttaProcessor.Logic.RangeExpander")
 
 def _parse_range_uid(uid: str) -> Optional[Tuple[str, int, int]]:
     """
-    Phân tích UID để xem có phải là dạng range gộp hay không.
-    Sử dụng Regex neo cuối chuỗi để xử lý đa dạng định dạng (AN, SN, Vinaya...).
-    
     Regex: (?<=\D)(\d+)-(\d+)$
-    - (?<=\D): Lookbehind, đảm bảo ký tự trước range KHÔNG phải là số.
-    - (\d+): Số bắt đầu (Group 1).
-    - -: Dấu gạch nối.
-    - (\d+): Số kết thúc (Group 2).
-    - $: Kết thúc chuỗi.
     """
     pattern = re.compile(r"(?<=\D)(\d+)-(\d+)$")
     match = pattern.search(uid)
@@ -23,45 +15,53 @@ def _parse_range_uid(uid: str) -> Optional[Tuple[str, int, int]]:
     if match:
         start_str = match.group(1)
         end_str = match.group(2)
-        
         try:
             start = int(start_str)
             end = int(end_str)
-            
-            # Prefix là phần chuỗi nằm trước đoạn match
-            # Ví dụ: pli-tv-bi-vb-as1-7 -> match '1-7' -> prefix 'pli-tv-bi-vb-as'
             prefix = uid[:match.start()]
-            
             if start < end:
                  return prefix, start, end
         except ValueError:
             pass
-            
     return None
 
 def _find_explicit_child_ids(content: Dict[str, Any], prefix: str, start: int, end: int) -> Set[str]:
-    """
-    Quét content để tìm xem những ID con nào thực sự tồn tại (Explicit).
-    Input content keys thường có dạng: 'uid:segment' (vd: an1.1:1.0)
-    """
     explicit_ids = set()
-    
-    # Tạo tập hợp các ID con lý thuyết để so khớp nhanh
     potential_ids = {f"{prefix}{i}" for i in range(start, end + 1)}
-
     for segment_key in content.keys():
-        # Tách lấy phần UID trước dấu hai chấm
         if ":" in segment_key:
             base_uid = segment_key.split(":")[0]
             if base_uid in potential_ids:
                 explicit_ids.add(base_uid)
-    
     return explicit_ids
 
-def generate_range_shortcuts(root_uid: str, content: Dict[str, Any]) -> Dict[str, Any]:
+def _generate_smart_acronym(parent_acronym: str, start: int, end: int, current_num: int) -> str:
     """
-    Hàm chính để sinh ra metadata cho các shortcut.
+    Tạo acronym con bằng cách thay thế dải số trong acronym cha.
+    Ví dụ: 
+    - Parent: "AN 1.1–10", start=1, end=10, current=5 -> "AN 1.5"
+    - Parent: "Bi As 1–7", start=1, end=7, current=3 -> "Bi As 3"
     """
+    if not parent_acronym:
+        return ""
+
+    # Tạo regex động để tìm đúng dải số start-end ở cuối chuỗi
+    # Chấp nhận cả dấu gạch ngang (-) và gạch nối dài (–, unicode \u2013)
+    # \s* cho phép có hoặc không có khoảng trắng
+    # $ neo vào cuối chuỗi
+    range_pattern = re.compile(rf"{start}\s*[-–]\s*{end}$")
+    
+    # Thay thế dải số tìm được bằng số hiện tại
+    new_acronym = range_pattern.sub(str(current_num), parent_acronym)
+    
+    return new_acronym
+
+def generate_range_shortcuts(
+    root_uid: str, 
+    content: Dict[str, Any], 
+    parent_acronym: str = "" # [NEW] Nhận thêm acronym cha
+) -> Dict[str, Any]:
+    
     result_meta = {}
     
     # 1. Parse Range
@@ -71,48 +71,42 @@ def generate_range_shortcuts(root_uid: str, content: Dict[str, Any]) -> Dict[str
         
     prefix, start, end = parsed
     
-    # Safety: Giới hạn range để tránh treo nếu parse nhầm số quá lớn
     if (end - start) > 500:
-        logger.warning(f"⚠️ Range too large for {root_uid} ({start}-{end}). Skipping expansion.")
+        logger.warning(f"⚠️ Range too large for {root_uid}. Skipping.")
         return {}
 
-    # 2. Scan Content for Explicit IDs
-    # content ở đây là dict của segments bên trong bài kinh đó
+    # 2. Scan Explicit
     explicit_ids = _find_explicit_child_ids(content, prefix, start, end)
 
-    # 3. Generate Shortcuts loop
+    # 3. Generate
     for i in range(start, end + 1):
         child_uid = f"{prefix}{i}"
-        
-        # Bỏ qua nếu trùng với chính root_uid
-        if child_uid == root_uid:
-            continue
+        if child_uid == root_uid: continue
             
         is_explicit = child_uid in explicit_ids
         
-        # Tạo Acronym đẹp: "an1.5" -> "AN 1.5", "sn56.100" -> "SN 56.100"
-        # Logic đơn giản: Uppercase và thay dấu chấm đầu tiên bằng khoảng trắng nếu cần
-        # Ở đây ta uppercase toàn bộ cho đơn giản.
-        acronym_display = child_uid.upper().replace('.', ' ')
+        # [NEW] Logic tạo Acronym thông minh
+        smart_acronym = _generate_smart_acronym(parent_acronym, start, end, i)
+        
+        # Fallback nếu không có parent acronym hoặc regex không khớp
+        if not smart_acronym:
+            smart_acronym = child_uid.upper().replace('.', ' ')
 
-        # Logic Scroll & Implicit
-        if is_explicit:
-            # Bài kinh có nội dung riêng -> Scroll tới chính nó -> Highlight
-            scroll_target = child_uid
-            is_implicit = False
-        else:
-            # Bài kinh bị gộp -> Scroll tới đầu bài cha -> Không highlight
-            scroll_target = root_uid
-            is_implicit = True
+        # Logic Scroll
+        scroll_target = child_uid if is_explicit else root_uid
+        is_implicit = not is_explicit
 
         shortcut_entry = {
             "type": "shortcut",
             "parent_uid": root_uid,
-            "acronym": acronym_display,
+            "acronym": smart_acronym, # Sử dụng acronym đẹp
             "scroll_target": scroll_target,
             "is_implicit": is_implicit
-            # Không tạo translated_title để giảm tải, Frontend sẽ dùng Acronym
         }
+        
+        # Với implicit, trỏ scroll_target về cha để đảm bảo mở đúng trang
+        if is_implicit:
+             shortcut_entry["scroll_target"] = root_uid
         
         result_meta[child_uid] = shortcut_entry
 

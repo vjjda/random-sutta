@@ -26,23 +26,17 @@ def load_json(path: Path) -> Any:
 
 def find_book_file(book_id: str) -> Optional[Path]:
     """Tìm file json trong data/processed khớp với book_id."""
-    # Pattern: {book_id}_book.json hoặc các biến thể
-    # Ưu tiên tìm chính xác
     exact_path = DATA_PROCESSED / f"{book_id}_book.json"
     if exact_path.exists():
         return exact_path
     
-    # Tìm kiếm rộng hơn nếu cần (ví dụ file tên vinaya_pli-tv-bi-pm_book.json)
     for f in DATA_PROCESSED.glob(f"*{book_id}*_book.json"):
         return f
-    
     return None
 
 def infer_book_id(sutta_id: str, available_books: List[str]) -> Optional[str]:
     """Đoán book_id dựa trên tiền tố của sutta_id."""
     sutta_id_lower = sutta_id.lower()
-    # Sắp xếp available books theo độ dài giảm dần để match chính xác nhất
-    # Ví dụ: match 'pli-tv-bi-vb' trước 'pli-tv'
     sorted_books = sorted(available_books, key=len, reverse=True)
     
     for bid in sorted_books:
@@ -55,27 +49,18 @@ def infer_book_id(sutta_id: str, available_books: List[str]) -> Optional[str]:
 def prune_structure(node: Any, target_uid: str, found_target: bool = False) -> Optional[Any]:
     """
     Đệ quy cắt tỉa cây cấu trúc.
-    - Giữ lại đường dẫn cha -> con đến target_uid.
-    - Giữ lại toàn bộ cây con cháu của target_uid.
     """
-    # 1. Nếu node hiện tại chính là target (Leaf string hoặc Key trong Dict)
-    # Logic này được xử lý bên trong các block if/else bên dưới
-    
     if isinstance(node, str):
-        # Leaf node
         if node == target_uid or found_target:
             return node
         return None
 
     if isinstance(node, list):
-        # List node (thường là danh sách con của một branch)
         new_list = []
         for item in node:
-            # Nếu đã tìm thấy target ở cấp cao hơn, giữ lại toàn bộ con cháu
             if found_target:
                 new_list.append(item)
             else:
-                # Nếu chưa, tiếp tục tìm kiếm
                 res = prune_structure(item, target_uid, found_target)
                 if res:
                     new_list.append(res)
@@ -84,32 +69,23 @@ def prune_structure(node: Any, target_uid: str, found_target: bool = False) -> O
     if isinstance(node, dict):
         new_dict = {}
         for key, value in node.items():
-            # Case A: Key chính là target (Branch này là cái ta cần tìm)
             if key == target_uid:
-                # Giữ lại key này và TOÀN BỘ nội dung bên trong nó (found_target=True)
-                # Lưu ý: Ta vẫn gọi đệ quy để copy structure, nhưng cờ True sẽ kích hoạt việc copy hết.
-                # Hoặc đơn giản là return cả dict này nếu cấu trúc đơn giản.
-                # Để an toàn và nhất quán, ta tái tạo lại dict.
-                new_dict[key] = value # Lấy nguyên khối
-                # (Nếu muốn filter sâu hơn trong con cháu thì phải đệ quy, nhưng yêu cầu là lấy hết con cháu)
+                new_dict[key] = value 
                 return new_dict
 
-            # Case B: Đã tìm thấy ở trên, đang copy xuống dưới
             if found_target:
                 new_dict[key] = value
                 continue
 
-            # Case C: Chưa tìm thấy, đi sâu vào tìm
             res = prune_structure(value, target_uid, found_target)
             if res:
                 new_dict[key] = res
-        
         return new_dict if new_dict else None
 
     return None
 
 def extract_flat_ids(node: Any) -> List[str]:
-    """Lấy danh sách tất cả các ID có trong structure đã cắt tỉa để lọc meta/content."""
+    """Lấy danh sách tất cả các ID có trong structure đã cắt tỉa."""
     ids = []
     if isinstance(node, str):
         ids.append(node)
@@ -127,39 +103,30 @@ def extract_flat_ids(node: Any) -> List[str]:
 def process_request(sutta_id: str, explicit_books: Optional[List[str]]) -> None:
     logger.info(f"🔎 Analyzing request for: {sutta_id}")
     
-    # 1. [FIX] Dùng rglob để quét đệ quy vào các thư mục con (sutta/, vinaya/...)
+    # 1. Quét file sách
     all_book_files = list(DATA_PROCESSED.rglob("*_book.json"))
-    
-    # Map: book_id -> file_path
     book_map = {}
     for f in all_book_files:
-        # Lấy tên file gốc: "an_book.json" -> "an"
-        # "pli-tv-bi-pm_book.json" -> "pli-tv-bi-pm"
-        # Logic cũ dùng split('_')[-1] là rủi ro nếu tên sách có dấu gạch dưới (dù hiện tại bilara dùng gạch ngang)
-        # Logic mới: Chỉ cần bỏ đuôi "_book.json" là ra ID
         b_id = f.name.replace("_book.json", "")
         book_map[b_id] = f
 
     if not book_map:
-        logger.error(f"❌ No processed books found in {DATA_PROCESSED}. Did you run the processor?")
+        logger.error(f"❌ No processed books found in {DATA_PROCESSED}.")
         return
     
     # 2. Xác định Book ID
     target_book_id = None
     target_file = None
 
-    # Cách A: Check trong explicit books
     if explicit_books:
         for b in explicit_books:
             if b in book_map:
-                # Kiểm tra sơ bộ xem sutta có vẻ thuộc book này không (optional)
                 target_book_id = b
                 target_file = book_map[b]
                 break
         if not target_file:
             logger.warning(f"   ⚠️ Could not find provided books {explicit_books} in processed data.")
 
-    # Cách B: Tự suy diễn
     if not target_file:
         inferred = infer_book_id(sutta_id, list(book_map.keys()))
         if inferred:
@@ -176,33 +143,63 @@ def process_request(sutta_id: str, explicit_books: Optional[List[str]]) -> None:
     if not book_data:
         return
 
+    # --- [NEW] XỬ LÝ SHORTCUT ---
+    # Kiểm tra xem sutta_id có phải là shortcut không trước khi tìm trong structure
+    raw_meta = book_data.get("meta", {})
+    target_meta_entry = raw_meta.get(sutta_id)
+    
+    # ID dùng để tìm kiếm trong Structure (Mặc định là sutta_id)
+    structure_search_id = sutta_id
+    is_shortcut = False
+    
+    if target_meta_entry and target_meta_entry.get("type") == "shortcut":
+        parent_uid = target_meta_entry.get("parent_uid")
+        if parent_uid:
+            logger.info(f"   ↪️  Shortcut detected: '{sutta_id}' points to parent '{parent_uid}'")
+            structure_search_id = parent_uid
+            is_shortcut = True
+        else:
+            logger.warning(f"   ⚠️ Shortcut '{sutta_id}' found but missing 'parent_uid'.")
+
     # 4. Extract Structure (Pruning)
+    # Tìm kiếm dựa trên structure_search_id (là Parent nếu là shortcut)
     raw_structure = book_data.get("structure", {})
-    pruned_structure = prune_structure(raw_structure, sutta_id)
+    pruned_structure = prune_structure(raw_structure, structure_search_id)
 
     if not pruned_structure:
-        logger.error(f"   ❌ Sutta ID '{sutta_id}' not found in structure of {target_book_id}.")
+        logger.error(f"   ❌ ID '{structure_search_id}' not found in structure of {target_book_id}.")
+        # Nếu là shortcut mà tìm parent thất bại thì báo lỗi rõ ràng
+        if is_shortcut:
+             logger.error(f"      (This implies parent '{structure_search_id}' of shortcut '{sutta_id}' is missing/broken)")
         return
 
     # 5. Extract Meta & Content
     valid_ids = set(extract_flat_ids(pruned_structure))
     
-    # Lấy luôn cả sutta_id gốc phòng trường hợp nó là lá và prune_structure trả về string
+    # [IMPORTANT] Luôn thêm sutta_id gốc vào danh sách cần lấy
+    # Vì nếu là shortcut, nó không nằm trong structure, nên extract_flat_ids sẽ không thấy nó.
     valid_ids.add(sutta_id)
+    
+    # Nếu là shortcut, thêm cả parent vào để đảm bảo lấy đủ context
+    if is_shortcut:
+        valid_ids.add(structure_search_id)
 
-    raw_meta = book_data.get("meta", {})
+    # Filter Meta
     pruned_meta = {k: v for k, v in raw_meta.items() if k in valid_ids}
 
+    # Filter Content
+    # Lưu ý: Content thường nằm ở Parent (Leaf), shortcut không có content riêng.
     raw_content = book_data.get("content", {})
     
-    # Content thường chỉ có ở level Leaf. 
-    # Nếu sutta_id là Branch, ta cần lấy content của các con cháu.
+    # Lấy content của tất cả các ID liên quan (bao gồm cả parent và các anh chị em trong nhánh đó)
     pruned_content = {k: v for k, v in raw_content.items() if k in valid_ids}
 
     # 6. Output Generation
     output_data = {
         "source_book": target_book_id,
-        "root_sutta": sutta_id,
+        "request_id": sutta_id,
+        "resolved_root": structure_search_id, # ID thực tế tìm trong cây
+        "is_shortcut": is_shortcut,
         "structure": pruned_structure,
         "meta": pruned_meta,
         "content": pruned_content
@@ -215,6 +212,8 @@ def process_request(sutta_id: str, explicit_books: Optional[List[str]]) -> None:
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(f"SAMPLE EXTRACT FOR: {sutta_id}\n")
         f.write(f"SOURCE BOOK: {target_book_id}\n")
+        if is_shortcut:
+            f.write(f"NOTE: '{sutta_id}' is a shortcut to '{structure_search_id}'\n")
         f.write("="*60 + "\n\n")
         f.write(json.dumps(output_data, indent=2, ensure_ascii=False))
     

@@ -87,11 +87,12 @@ def build_book_data(
     raw_data: Dict[str, Any], 
     names_map: Dict[str, SuttaMeta]
 ) -> Dict[str, Any]:
-    # 1. Structure
+    
+    # 1. Structure (Giữ nguyên)
     raw_tree = load_original_tree(group_name)
     structure = simplify_structure(raw_tree)
 
-    # 2. Meta Base
+    # 2. Meta Base (Giữ nguyên)
     meta_dict: Dict[str, Any] = {}
     collect_meta_from_structure(structure, names_map, meta_dict)
     
@@ -99,36 +100,34 @@ def build_book_data(
         if sid not in meta_dict:
             _add_meta_entry(sid, "leaf", names_map, meta_dict)
 
-    # 3. Process Data
+    # 3. Process Data (Giữ nguyên)
     content_dict = {}
-    
     for uid, payload in raw_data.items():
         if not payload: continue
-        
-        # A. Cập nhật Content
         content_dict[uid] = payload.get("data", {}) 
-        
-        # B. Cập nhật Meta (Inject Author)
         author = payload.get("author_uid")
         if uid in meta_dict and author:
             meta_dict[uid]["author_uid"] = author
 
-    # --- [NEW] 4. RANGE EXPANSION (Shortcut Generation) ---
-    # Tự động tạo shortcut cho các range ID (như an1.1-10, sn56.96-101)
-    
+    # --- [UPDATED] 4. RANGE EXPANSION ---
     generated_shortcuts = {}
-    # Duyệt qua tất cả các bài kinh gốc (leafs) có trong sách
     for uid, segments in content_dict.items():
-        # Gọi module range_expander
-        shortcuts = generate_range_shortcuts(uid, segments)
+        # Lấy Acronym của cha từ meta_dict
+        parent_acronym = ""
+        if uid in meta_dict:
+            parent_acronym = meta_dict[uid].get("acronym", "")
+
+        # Truyền parent_acronym vào hàm expander
+        shortcuts = generate_range_shortcuts(uid, segments, parent_acronym)
+        
         if shortcuts:
             generated_shortcuts.update(shortcuts)
             
-    # Merge shortcuts vào meta_dict chính
     if generated_shortcuts:
         meta_dict.update(generated_shortcuts)
     # -------------------------------------------------------
 
+    # 5. Ordering & Finalize (Giữ nguyên)
     ordered_leaves = flatten_tree_leaves(structure)
     final_content_ordered = {}
     for uid in ordered_leaves:
