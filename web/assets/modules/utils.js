@@ -47,26 +47,64 @@ export function initCommentPopup() {
         const link = event.target.closest("a");
         if (link) {
             const href = link.getAttribute("href");
+            // Chỉ xử lý link nội bộ (SPA)
             if (href && href.startsWith("index.html?q=")) {
                 event.preventDefault();
+                
                 const urlParts = href.split("?");
                 if (urlParts.length > 1) {
                     const params = new URLSearchParams(urlParts[1]);
                     const suttaId = params.get("q");
+                    
                     if (suttaId && window.loadSutta) {
                         hideComment();
-                        const [cleanId, hash] = suttaId.split("#");
-                        window.loadSutta(cleanId);
-                        if (hash || href.includes("#")) {
-                             const targetHash = hash || href.split("#")[1];
-                             setTimeout(() => {
-                                 const el = document.getElementById(targetHash);
-                                 if(el) {
-                                     el.scrollIntoView({behavior: "smooth", block: "center"});
-                                     el.classList.add("highlight");
-                                 }
-                             }, 100);
-                        }
+                        
+                        // --- START: STATIC FADE NAVIGATION ---
+                        const container = document.getElementById("sutta-container");
+                        
+                        // 1. Thêm class transition (để đảm bảo mượt)
+                        container.classList.add("static-fade-transition");
+                        
+                        // 2. Trigger Fade Out
+                        requestAnimationFrame(() => {
+                            container.classList.add("static-fade-out");
+                        });
+
+                        // 3. Đợi Fade Out xong (150ms) thì mới load nội dung mới
+                        setTimeout(() => {
+                            const [cleanId, hash] = suttaId.split("#");
+                            
+                            // Load dữ liệu mới (Render lại DOM)
+                            window.loadSutta(cleanId);
+
+                            // Xử lý Hash Scroll (nếu link có #)
+                            // Logic: Load xong -> Scroll đến vị trí -> Mới hiện lại (Fade In)
+                            const targetHash = hash || (href.includes("#") ? href.split("#")[1] : null);
+                            
+                            if (targetHash) {
+                                const el = document.getElementById(targetHash);
+                                if(el) {
+                                    // Scroll ngay lập tức (behavior: auto) khi đang ẩn để người dùng không thấy cảnh trượt
+                                    el.scrollIntoView({behavior: "auto", block: "center"});
+                                    el.classList.add("highlight");
+                                }
+                            } else {
+                                // Nếu không có hash, lên đầu trang
+                                window.scrollTo(0, 0);
+                            }
+
+                            // 4. Trigger Fade In
+                            requestAnimationFrame(() => {
+                                container.classList.remove("static-fade-out");
+                                
+                                // Dọn dẹp class transition sau khi xong để không ảnh hưởng tương lai
+                                setTimeout(() => {
+                                    container.classList.remove("static-fade-transition");
+                                }, 150);
+                            });
+
+                        }, 150); // Thời gian khớp với CSS
+                        // --- END: STATIC FADE NAVIGATION ---
                     }
                 }
             }
