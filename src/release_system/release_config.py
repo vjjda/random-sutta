@@ -12,5 +12,7 @@ RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
 ENTRY_POINT = "assets/app.js"
-# [UPDATED] Thay sutta_loader.js bằng file_index.js
 CRITICAL_ASSETS = ["assets/modules/file_index.js"]
+
+# [NEW] Biến chung cho tất cả (HTML, SW, v.v.)
+VERSION_PLACEHOLDER = "dev-placeholder"
