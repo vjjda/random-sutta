@@ -29,7 +29,6 @@ export const SuttaController = {
     const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
     if (bookFile) {
         const dbKey = bookFile.replace(/_book\.js$/, '').replace(/\//g, '_');
-        
         // Tránh loop vô hạn nếu file đã load mà vẫn không tìm thấy sutta
         if (!window.SUTTA_DB || !window.SUTTA_DB[dbKey]) {
              const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
@@ -57,7 +56,8 @@ export const SuttaController = {
 
         // Gọi đệ quy nhưng trỏ vào parent
         // Lưu ý: Ta không update URL thành parent mà giữ nguyên URL shortcut (logic cũ)
-        // hoặc update tùy strategy. Ở đây ta render Parent nhưng highlight con.
+        // hoặc update tùy strategy.
+        // Ở đây ta render Parent nhưng highlight con.
         
         // Cách đơn giản nhất: Render parent trực tiếp
         // Update options để render đúng target
@@ -75,7 +75,6 @@ export const SuttaController = {
     const performRender = () => {
         // Gọi Renderer (Chỉ sinh HTML, không scroll)
         const success = renderSutta(suttaId, { ...options });
-        
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
              Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
@@ -103,7 +102,6 @@ export const SuttaController = {
         // CASE B: Load trực tiếp (F5, Enter URL)
         // Render ngay lập tức
         performRender();
-        
         // Xử lý Scroll ngay lập tức (nhưng vẫn qua Scroller để tính Offset chính xác)
         if (targetScrollId) {
             // setTimeout 0 để đảm bảo DOM paint xong
@@ -130,7 +128,7 @@ export const SuttaController = {
         return /\d/.test(nextChar); 
       });
     });
-    
+
     if (filteredKeys.length === 0) {
       alert("No suttas match your selected filters!");
       return;
@@ -140,8 +138,7 @@ export const SuttaController = {
     const target = filteredKeys[randomIndex];
     
     logger.info(`Random selection: ${target}`);
-    
-    // Luôn bật hiệu ứng chuyển cảnh cho Random
-    this.loadSutta(target, shouldUpdateUrl, 0, { transition: true });
+    // [CHANGED] Tắt hiệu ứng chuyển cảnh cho Random theo yêu cầu (transition: false)
+    this.loadSutta(target, shouldUpdateUrl, 0, { transition: false });
   }
 };
