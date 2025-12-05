@@ -105,7 +105,7 @@ p {
 /* Highlight System */
 .highlight {
   border-left: 5px solid var(--primary-color);
-  background-color: var(--highlight-color);
+  background-color: var(--highlight-color-background);
   padding-left: 15px;
   padding-right: 15px;
   border-radius: 4px;
@@ -119,8 +119,8 @@ p {
 }
 
 .segment.highlight {
-  background-color: var(--highlight-color);
-  box-shadow: 0 0 0 5px var(--highlight-color);
+  background-color: var(--highlight-color-segment);
+  box-shadow: 0 0 0 5px var(--highlight-color-sengment);
   border-left: none;
   border-radius: 4px;
   padding: 0;

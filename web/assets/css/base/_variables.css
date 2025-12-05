@@ -12,7 +12,9 @@
   /* Sutta Text Colors */
   --text-pali: #777777;
   --text-eng: #222222;
-  --highlight-color: rgba(115, 61, 23, 0.05);
+  --highlight-color-background: rgba(115, 61, 23, 0.05);
+  --highlight-color-segment: #ac6240;
+
 
   /* UI Elements */
   --border-color: #ddd;
