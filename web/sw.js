@@ -1,7 +1,7 @@
 // Path: web/sw.js
 
 // [IMPORTANT] Hãy Bump version này lên mỗi khi bạn muốn update SW
-const CACHE_NAME = "sutta-cache-v20251205-070713";
+const CACHE_NAME = "sutta-cache-v20251205-085557";
 
 // [NEW] Log ngay lập tức khi trình duyệt đọc file này
 console.log(`%c [SW] Loading Version: ${CACHE_NAME}`, 'background: #333; color: #bada55; padding: 2px 5px; border-radius: 2px;');
@@ -76,14 +76,22 @@ const CORE_ASSETS = [
 const ALL_ASSETS = CORE_ASSETS.concat(SUTTA_DATA_FILES);
 
 self.addEventListener("install", (event) => {
-  // [NEW] Log quá trình cài đặt
   console.log(`[SW] Installing ${CACHE_NAME}...`);
-  
   self.skipWaiting();
+
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log("[SW] Caching ALL assets for offline use...");
-      return cache.addAll(ALL_ASSETS);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      console.log(`[SW] Caching ${ALL_ASSETS.length} assets...`);
+      
+      // Cách này sẽ log ra file nào bị lỗi thay vì chết đứng
+      for (const asset of ALL_ASSETS) {
+        try {
+          await cache.add(asset);
+        } catch (err) {
+          console.error(`[SW] ❌ FAILED to cache: ${asset}`, err);
+        }
+      }
+      return;
     })
   );
 });
