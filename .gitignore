@@ -31,3 +31,7 @@ Thumbs.db
 /dist/
 
 /tmp
+
+# Generated Data Assets
+/web/assets/books/
+/web/assets/sutta/
