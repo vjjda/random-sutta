@@ -1,13 +1,11 @@
 // Path: web/assets/modules/core/router.js
 
 export const Router = {
-  // [UPDATED] Thêm tham số thứ 5: savedScrollPosition (mặc định null)
+  // Giữ nguyên tham số enableRandomMode để tránh lỗi gọi hàm, nhưng sẽ ignore nó trong logic
   updateURL: function (suttaId, bookParam, enableRandomMode = false, explicitHash = null, savedScrollPosition = null) {
-    // 1. [SAFEGUARD] Lưu vị trí cuộn
     try {
-      // Logic: Ưu tiên lấy giá trị được truyền vào (chính xác hơn), 
-      // nếu không có mới lấy window.scrollY (fallback)
-      const currentScrollY = (savedScrollPosition !== null) ? savedScrollPosition : (window.scrollY || 0);
+      const currentScrollY = (savedScrollPosition !== null) ?
+        savedScrollPosition : (window.scrollY || 0);
       
       const currentState = window.history.state || {};
       window.history.replaceState(
@@ -19,18 +17,19 @@ export const Router = {
       console.warn("Could not save scroll position:", e);
     }
 
-    // 2. [MAIN LOGIC] Cập nhật URL
     try {
       const params = new URLSearchParams(window.location.search);
       const currentSuttaId = params.get("q");
 
-      if (enableRandomMode) {
-        params.set("r", "1");
-        params.delete("q");
-      } else if (suttaId) {
+      // [THAY ĐỔI Ở ĐÂY] ---------------------------------------------
+      // 1. Luôn xóa cờ 'r' để làm sạch URL
+      params.delete("r");
+
+      // 2. Luôn set 'q' nếu có suttaId (kể cả khi enableRandomMode = true)
+      if (suttaId) {
         params.set("q", suttaId);
-        params.delete("r");
       }
+      // --------------------------------------------------------------
 
       if (bookParam) {
         params.set("b", bookParam);
@@ -46,8 +45,9 @@ export const Router = {
       }
 
       const newUrl = `${window.location.pathname}?${params.toString()}${hash}`;
-      const stateId = enableRandomMode ? null : suttaId || params.get("q");
-      
+      // Logic pushState giữ nguyên, suttaId luôn có giá trị
+      const stateId = suttaId || params.get("q");
+
       if (newUrl !== window.location.search + window.location.hash) {
          window.history.pushState({ suttaId: stateId, scrollY: 0 }, "", newUrl);
       }
@@ -60,7 +60,7 @@ export const Router = {
     const p = new URLSearchParams(window.location.search);
     return {
       q: p.get("q"),
-      r: p.get("r"),
+      r: p.get("r"), // Vẫn lấy để check backward compatibility nếu cần
       b: p.get("b"),
     };
   },
