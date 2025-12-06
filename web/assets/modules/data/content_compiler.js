@@ -3,7 +3,9 @@
 export const ContentCompiler = {
   compile: function (contentData, rootId) {
     if (!contentData) return "";
+
     let html = "";
+    
     const sortedKeys = Object.keys(contentData).sort((a, b) => {
         return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
@@ -11,14 +13,16 @@ export const ContentCompiler = {
     sortedKeys.forEach((segmentId) => {
       const segment = contentData[segmentId];
       if (!segment) return;
+
       let text = "";
+      const pliText = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
+      const engText = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
+      const combinedText = `${pliText}${engText}`;
+
       if (segment.html) {
-        const combinedText = `${segment.pli ? `<span class='pli'>${segment.pli}</span>` : ""}${segment.eng ? `<span class='eng'>${segment.eng}</span>` : ""}`;
         text = segment.html.replace("{}", combinedText);
       } else {
-        const pliHtml = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
-        const engHtml = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
-        text = `<p class='segment' id='${segmentId}'>${pliHtml}${engHtml}`;
+        text = `<p class='segment' id='${segmentId}'>${combinedText}`;
         if (segment.comm) {
             const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
             text += `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
@@ -27,57 +31,91 @@ export const ContentCompiler = {
       }
       html += text;
     });
+
     return html;
   },
 
-  // [NEW] Hàm render Branch View (Card lists)
+  // [FIXED] Hàm render Branch View hỗ trợ cả Array và Object Structure
   compileBranch: function(structure, currentUid, metaMap) {
-      // 1. Tìm node hiện tại trong cây Structure
-      // Structure là object lồng nhau. Cần hàm đệ quy tìm children của currentUid.
-      
-      let children = null;
-      
-      // Hàm đệ quy tìm node
-      function findNode(node) {
-          if (Array.isArray(node)) return null; // Leaf array
-          if (node[currentUid]) return node[currentUid]; // Found it!
-          
-          for (let key in node) {
-              if (typeof node[key] === 'object') {
-                  const result = findNode(node[key]);
-                  if (result) return result;
+      // Hàm đệ quy tìm node con của currentUid trong cây
+      function findNode(node, targetId) {
+          if (!node) return null;
+
+          // 1. Nếu node là Array (trường hợp Super Book)
+          // Duyệt qua từng phần tử để tìm
+          if (Array.isArray(node)) {
+              for (let item of node) {
+                  // Nếu phần tử là object và có key == targetId -> Found
+                  if (item[targetId]) return item[targetId];
+                  
+                  // Nếu không, đệ quy tìm tiếp bên trong
+                  const found = findNode(item, targetId);
+                  if (found) return found;
+              }
+              return null;
+          }
+
+          // 2. Nếu node là Object
+          if (typeof node === 'object') {
+              // Check trực tiếp
+              if (node[targetId]) return node[targetId];
+
+              // Đệ quy check properties
+              for (let key in node) {
+                  // Bỏ qua meta key nếu nó lọt vào đây (thường không)
+                  if (key === 'meta' || typeof node[key] !== 'object') continue;
+                  
+                  const found = findNode(node[key], targetId);
+                  if (found) return found;
               }
           }
+          
           return null;
       }
 
-      // Root check (nếu currentUid chính là root key, ví dụ 'an')
-      if (structure[currentUid]) {
-          children = structure[currentUid];
-      } else {
-          children = findNode(structure);
+      // Tìm danh sách con
+      const children = findNode(structure, currentUid);
+
+      if (!children) {
+          return `<div class="error-message">
+              <p>No items found in this section (${currentUid}).</p>
+          </div>`;
       }
 
-      if (!children) return "<p class='placeholder'>No items found in this section.</p>";
-
-      // 2. Render Cards
       let html = `<div class="branch-container">`;
       
-      // Children có thể là Array (list of leaves) hoặc Object (list of sub-branches)
-      const keys = Array.isArray(children) ? children : Object.keys(children);
+      // Chuẩn hóa children thành mảng keys để loop
+      // Nếu children là Array (Leaf list): ["mn1", "mn2"]
+      // Nếu children là Object (Sub-branches): { "long": [...], "middle": [...] } -> keys ["long", "middle"]
+      // TH đặc biệt: Super struct trả về Array các object: [{"long":...}, {"middle":...}]
       
-      keys.forEach(key => {
-          // Nếu là Object (Branch con), key chính là UID. Nếu Array (Leaf), item là UID.
-          const childId = key;
+      let itemsToRender = [];
+
+      if (Array.isArray(children)) {
+          // Check xem mảng này chứa String (Leaf) hay Object (Sub-branch trong Super struct)
+          if (children.length > 0 && typeof children[0] === 'object') {
+               // Trường hợp: [{"long": [...]}, {"middle": [...]}]
+               children.forEach(childObj => {
+                   itemsToRender.push(...Object.keys(childObj));
+               });
+          } else {
+               // Trường hợp: ["mn1", "mn2"]
+               itemsToRender = children;
+          }
+      } else if (typeof children === 'object') {
+          // Trường hợp: {"sub-vagga-1": [...], "sub-vagga-2": [...]}
+          itemsToRender = Object.keys(children);
+      }
+      
+      // Render Cards
+      itemsToRender.forEach(childId => {
           const info = metaMap[childId];
           
           if (info) {
               const title = info.translated_title || info.original_title || childId.toUpperCase();
               const subtitle = info.translated_title ? info.original_title : "";
               const blurb = info.blurb || "";
-              
-              // CSS class tùy loại
-              const typeClass = (info.type === 'branch' || info.type === 'root') ? 'branch-card-group' : 'branch-card-leaf';
+              const typeClass = (info.type === 'branch' || info.type === 'root' || info.type === 'group') ? 'branch-card-group' : 'branch-card-leaf';
               
               html += `
               <div class="${typeClass}">
@@ -89,6 +127,14 @@ export const ContentCompiler = {
                           </div>
                           ${blurb ? `<div class="b-blurb">${blurb}</div>` : ""}
                       </div>
+                  </a>
+              </div>`;
+          } else {
+              // Fallback nếu thiếu meta (hiếm gặp)
+              html += `
+              <div class="branch-card-leaf">
+                  <a href="?q=${childId}" class="b-card-link" onclick="event.preventDefault(); window.loadSutta('${childId}', true);">
+                      <div class="b-content"><span class="b-title">${childId.toUpperCase()}</span></div>
                   </a>
               </div>`;
           }
