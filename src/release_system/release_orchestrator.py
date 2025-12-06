@@ -23,16 +23,26 @@ def run_release_process(
     publish_gh: bool = False,
     is_official: bool = False,
     deploy_web: bool = False,
-    create_zip: bool = False # [NEW] Nhận tham số
+    create_zip: bool = False 
 ) -> None:
     
-    # Logic ràng buộc: Publish thì bắt buộc phải có Git và Zip
+    # [LOGIC MỚI] Nếu là Official Release (-o), tự động kích hoạt Publish (-p)
+    if is_official:
+        logger.info("🌟 Mode: OFFICIAL RELEASE (Auto-enabling Publish, Git & Zip)")
+        publish_gh = True
+
+    # Logic ràng buộc cũ: Publish thì bắt buộc phải có Git và Zip
     if publish_gh: 
         enable_git = True
-        create_zip = True # [AUTO] Force zip if publishing
+        create_zip = True 
 
     version_tag = release_versioning.generate_version_tag()
-    logger.info(f"🚀 STARTING PROCESS: {version_tag}")
+    
+    # Log rõ ràng chế độ đang chạy để user yên tâm
+    mode_label = "OFFICIAL (Latest)" if is_official else "PRE-RELEASE"
+    if not publish_gh: mode_label = "LOCAL BUILD (No Publish)"
+
+    logger.info(f"🚀 STARTING PROCESS: {version_tag} | Mode: {mode_label}")
 
     if not asset_validator.check_critical_assets(CRITICAL_ASSETS):
         sys.exit(1)
@@ -83,7 +93,7 @@ def run_release_process(
         if not web_content_modifier.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
             raise Exception("HTML patching failed.")
 
-        # 5. Create Zip (Chỉ chạy khi có cờ -z hoặc -p)
+        # 5. Create Zip (Chạy khi publish hoặc force zip)
         if create_zip:
             if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):
                 logger.info("✨ Offline Artifacts Created.")
@@ -103,6 +113,8 @@ def run_release_process(
                 if not git_automator.push_changes():
                     raise Exception("Git Push failed.")
                 
+                # File github_publisher.py đã có sẵn logic check is_official 
+                # để quyết định --latest hay --prerelease rồi nên không cần sửa.
                 if not github_publisher.publish_release(version_tag, is_official):
                     raise Exception("GitHub Release failed.")
         
