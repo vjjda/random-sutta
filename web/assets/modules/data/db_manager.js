@@ -5,7 +5,7 @@ import { PRIMARY_BOOKS } from './constants.js';
 const logger = getLogger("DB");
 
 class DatabaseManager {
-    // ... (Các hàm constructor, init, fetch... giữ nguyên) ...
+    // ... (Giữ nguyên constructor, init, _getLocator, _resolveStructureName, fetchStructure) ...
     constructor() {
         this.index = null;
         this.structureCache = new Map();
@@ -54,23 +54,41 @@ class DatabaseManager {
     }
 
     async fetchContentChunk(chunkName) {
+        // [FIX] Thêm Promise cache để tránh race condition (gọi nhiều lần cùng 1 file)
         if (this.contentCache.has(chunkName)) return this.contentCache.get(chunkName);
-        const url = `assets/db/content/${chunkName}.json`;
-        try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            this.contentCache.set(chunkName, data);
-            return data;
-        } catch (e) {
-            logger.error("fetchChunk", `Failed to load ${chunkName}`, e);
-            return null;
+        
+        // Kiểm tra xem có đang fetch dở không (pending promise)
+        if (this._pendingFetches && this._pendingFetches[chunkName]) {
+            return this._pendingFetches[chunkName];
         }
+        if (!this._pendingFetches) this._pendingFetches = {};
+
+        const url = `assets/db/content/${chunkName}.json`;
+        
+        const fetchPromise = fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                this.contentCache.set(chunkName, data);
+                delete this._pendingFetches[chunkName];
+                return data;
+            })
+            .catch(e => {
+                logger.error("fetchChunk", `Failed to load ${chunkName}`, e);
+                delete this._pendingFetches[chunkName];
+                return null;
+            });
+            
+        this._pendingFetches[chunkName] = fetchPromise;
+        return fetchPromise;
     }
 
     async fetchMetaForUids(uids) {
         await this.init();
         const chunksToLoad = new Set();
+        
         uids.forEach(uid => {
             const locator = this._getLocator(uid);
             if (locator && !locator.includes('_struct') && !locator.startsWith('structure')) {
@@ -78,26 +96,28 @@ class DatabaseManager {
             }
         });
 
-        const promises = Array.from(chunksToLoad).map(chunk => this.fetchContentChunk(chunk));
-        await Promise.all(promises);
+        if (chunksToLoad.size > 0) {
+            logger.debug("fetchMeta", `Loading ${chunksToLoad.size} chunks for branch view...`);
+            const promises = Array.from(chunksToLoad).map(chunk => this.fetchContentChunk(chunk));
+            await Promise.all(promises);
+        }
 
         const resultMeta = {};
-        const getMetaFromCache = (uid) => {
-             const locator = this._getLocator(uid);
-             if (!locator) return null;
-             const chunkData = this.contentCache.get(locator);
-             return chunkData && chunkData[uid] ? chunkData[uid].meta : null;
-        };
-
         uids.forEach(uid => {
-            resultMeta[uid] = getMetaFromCache(uid);
+            const locator = this._getLocator(uid);
+            if (locator) {
+                const chunkData = this.contentCache.get(locator);
+                if (chunkData && chunkData[uid]) {
+                    resultMeta[uid] = chunkData[uid].meta;
+                }
+            }
         });
 
         return resultMeta;
     }
 
+    // ... (Giữ nguyên getSutta, getPool, downloadAll) ...
     async getSutta(uid) {
-        // ... (Giữ nguyên code cũ) ...
         await this.init();
         const locator = this._getLocator(uid);
         if (!locator) return null;
@@ -149,7 +169,6 @@ class DatabaseManager {
     }
 
     getPool(type = 'primary') {
-        // ... (Giữ nguyên) ...
         if (!this.index) return [];
         if (type === 'primary') {
             let pool = [];
@@ -163,26 +182,17 @@ class DatabaseManager {
         }
     }
 
-    // [NEW FEATURE] Download All for Offline
-    // Trả về Progress Callback để update UI
     async downloadAll(onProgress) {
         await this.init();
-        
-        // 1. Thu thập danh sách file duy nhất cần tải
         const contentChunks = new Set();
         const structureFiles = new Set();
         
-        // Duyệt qua tất cả Locator trong Index
         Object.values(this.index.locator).forEach(loc => {
             if (loc.includes('_struct') || loc.startsWith('structure/')) {
-                // Đây là structure file locator, nhưng nó có thể ở dạng 'structure/super_struct'
-                // hoặc 'sutta_mn_struct'. Cần chuẩn hóa.
                 const clean = loc.replace(/^structure\//, '');
                 structureFiles.add(clean);
             } else {
-                // Đây là Chunk
                 contentChunks.add(loc);
-                // Mỗi Chunk thuộc về 1 Structure, nên add structure tương ứng luôn
                 const structName = this._resolveStructureName(loc);
                 structureFiles.add(structName);
             }
@@ -190,29 +200,22 @@ class DatabaseManager {
 
         const totalFiles = contentChunks.size + structureFiles.size;
         let downloaded = 0;
-        logger.info("downloadAll", `Start pre-fetching ${totalFiles} files...`);
 
-        // Helper tải tuần tự để tránh nghẽn
         const fetchQueue = async (urls, type) => {
             for (const name of urls) {
                 try {
                     if (type === 'struct') await this.fetchStructure(name);
                     else await this.fetchContentChunk(name);
-                    
                     downloaded++;
                     if (onProgress) onProgress(downloaded, totalFiles);
-                    
                 } catch (e) {
-                    logger.warn("downloadAll", `Failed to fetch ${name}`, e);
+                    console.warn(`Download failed: ${name}`);
                 }
             }
         };
 
-        // Chạy tải
         await fetchQueue(Array.from(structureFiles), 'struct');
         await fetchQueue(Array.from(contentChunks), 'content');
-        
-        logger.info("downloadAll", "✅ Offline Download Completed.");
         return true;
     }
 }

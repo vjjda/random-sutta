@@ -1,6 +1,6 @@
 // Path: web/assets/modules/core/sutta_controller.js
 import { Router } from './router.js';
-import { DB } from '../data/db_manager.js'; // [UPDATED]
+import { DB } from '../data/db_manager.js';
 import { renderSutta } from '../ui/renderer.js';
 import { getActiveFilters } from '../ui/filters.js';
 import { initCommentPopup } from '../ui/popup_handler.js';
@@ -16,40 +16,41 @@ export const SuttaController = {
     const currentScrollBeforeRender = window.scrollY;
     hideComment();
 
-    // 1. Parse Input (an1.5#1.1 -> an1.5, #1.1)
     let [baseId, hashPart] = suttaIdInput.split('#');
     const suttaId = baseId.trim().toLowerCase();
     const explicitHash = hashPart ? hashPart : null;
 
     logger.info('loadSutta', `Request: ${suttaId}`);
 
-    // 2. Fetch Data from New DB
-    // [NEW] Không còn SuttaLoader.loadBook nữa, DB tự lo
-    const data = await DB.getSutta(suttaId);
+    // [CLEANED] Bỏ logic Lazy Loading cũ dùng SuttaLoader ở đây.
+    // DB mới đã tự động xử lý việc load chunk cần thiết.
 
-    if (!data) {
-        renderSutta(suttaId, null); // Render trang lỗi 404
-        return;
-    }
-
-    // 3. Logic Scroll Target
-    // Nếu là Shortcut (an1.5) nhưng nội dung thực tế là an1.1-10
-    // Ta cần scroll đến ID an1.5 bên trong nội dung đó.
-    let targetScrollId = explicitHash;
-    
-    // Nếu không có hash cụ thể, kiểm tra xem bản thân ID này có phải scroll target không
-    if (!targetScrollId) {
-        if (data.meta && data.meta.scroll_target) {
-            targetScrollId = data.meta.scroll_target;
-        } else if (data.meta.type === 'shortcut') {
-             // Fallback cho shortcut cũ nếu chưa có scroll_target
-             targetScrollId = suttaId; 
+    // 1. Prepare Render Action
+    const performRender = async () => {
+        // Gọi Renderer mới (Async) - DB sẽ tự tải chunk và structure
+        const result = await DB.getSutta(suttaId);
+        
+        // Nếu không có dữ liệu
+        if (!result) {
+             // Retry: Thử load lại index nếu chưa có (phòng trường hợp race condition lúc khởi động)
+             await DB.init();
+             // Thử lại lần nữa
+             const retryResult = await DB.getSutta(suttaId);
+             if (!retryResult) {
+                 // Vẫn không thấy -> 404
+                 renderSutta(suttaId, null, options);
+                 return false;
+             }
+             // Thành công lần 2
+             const success = await renderSutta(suttaId, retryResult, options);
+             if (success && shouldUpdateUrl) {
+                 const finalHash = explicitHash ? `#${explicitHash}` : '';
+                 Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
+             }
+             return success;
         }
-    }
 
-    // 4. Render
-    const performRender = async () => { // [ASYNC]
-        const success = await renderSutta(suttaId, data, options); // [AWAIT]
+        const success = await renderSutta(suttaId, result, options);
         
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
@@ -58,15 +59,16 @@ export const SuttaController = {
         return success;
     };
 
+    // 2. Execution
+    let targetScrollId = explicitHash;
+    
     if (isTransition) {
         await Scroller.transitionTo(performRender, targetScrollId);
     } else {
-        performRender();
+        await performRender();
+        
         if (targetScrollId) {
-            // Chờ DOM vẽ xong
-            requestAnimationFrame(() => {
-                setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
-            });
+            setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
         } else if (scrollY > 0) {
             window.scrollTo({ top: scrollY, behavior: 'instant' });
         } else {
@@ -77,30 +79,25 @@ export const SuttaController = {
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     hideComment();
-    // Đảm bảo Index đã load
     await DB.init();
-
-    // 1. Xác định Pool
-    const activeFilters = getActiveFilters(); // ['dn', 'mn'] hoặc []
+    
+    const activeFilters = getActiveFilters(); 
     let pool = [];
 
     if (activeFilters.length === 0) {
-        // Mặc định: Primary Pool
         pool = DB.getPool('primary');
     } else {
-        // Filtered Pool
         activeFilters.forEach(bookId => {
             const bookPool = DB.getPool(bookId);
             if (bookPool) pool = pool.concat(bookPool);
         });
     }
 
-    if (pool.length === 0) {
-      alert("No suttas found for current filters.");
+    if (!pool || pool.length === 0) {
+      alert("No suttas found. Please wait for database to load or check filters.");
       return;
     }
 
-    // 2. Pick Random
     const randomIndex = Math.floor(Math.random() * pool.length);
     const targetUid = pool[randomIndex];
     
