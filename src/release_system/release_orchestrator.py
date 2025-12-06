@@ -84,6 +84,12 @@ def run_release_process(
         # 2. Bundle JS (Offline Only)
         if not js_bundler.bundle_javascript(BUILD_OFFLINE_DIR):
             raise Exception("JS Bundling failed.")
+            
+        # [NEW STEP] Patch SW Assets List (Module -> Bundle)
+        # Vì file app.bundle.js đã được tạo ở bước trên, giờ ta bảo SW cache nó.
+        if not web_content_modifier.patch_sw_assets_for_offline(BUILD_OFFLINE_DIR):
+             # Warning only, vì có thể regex không khớp nếu sw.js thay đổi
+             logger.warning("⚠️ Could not patch SW asset list (Check regex in web_content_modifier)")
 
         # 3. Bundle CSS (Offline)
         if not css_bundler.bundle_css(BUILD_OFFLINE_DIR):
