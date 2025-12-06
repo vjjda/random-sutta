@@ -9,9 +9,11 @@ logger = logging.getLogger("Optimizer.Pools")
 class PoolManager:
     def __init__(self):
         self.sutta_books: Set[str] = set()
+        
+        # [OPTIMIZED] Loại bỏ 'primary' list để tránh duplicate data.
+        # Client sẽ tự tổng hợp Primary Pool từ 'books' dựa trên config.
         self.pools: Dict[str, Any] = {
-            "primary": [],
-            "books": {}
+            "books": {} 
         }
 
     def register_sutta_books(self, super_data: Dict[str, Any]):
@@ -30,12 +32,6 @@ class PoolManager:
 
     @staticmethod
     def filter_smart_uids(raw_content: Dict[str, Any], meta_map: Dict[str, Any]) -> List[str]:
-        """
-        Lọc UID thông minh:
-        - Lấy Leaf.
-        - Lấy Shortcut (có scroll_target).
-        - Nếu Shortcut có cha -> Loại cha khỏi pool.
-        """
         candidates = set(raw_content.keys())
         blacklist_parents = set()
 
@@ -44,17 +40,17 @@ class PoolManager:
                 parent = info.get("parent_uid")
                 target = info.get("scroll_target")
                 
-                # Rule: Chỉ lấy shortcut hợp lệ (có target)
                 if target:
                     candidates.add(uid)
-                    # Rule: Blacklist cha
                     if parent: blacklist_parents.add(parent)
 
-        # Lọc kết quả
         return sorted([u for u in candidates if u not in blacklist_parents])
 
     def merge_worker_result(self, book_id: str, valid_uids: List[str]):
-        """Gộp kết quả từ Worker vào Main Pool."""
+        """
+        [OPTIMIZED] Chỉ lưu vào pool của từng sách.
+        Không cộng dồn vào primary pool nữa.
+        """
         if not book_id: return
         
         # Add to book pool
@@ -62,9 +58,7 @@ class PoolManager:
             self.pools["books"][book_id] = []
         self.pools["books"][book_id].extend(valid_uids)
 
-        # Add to primary pool
-        if book_id in PRIMARY_BOOKS_SET:
-            self.pools["primary"].extend(valid_uids)
+        # [REMOVED] Logic add to 'primary' is gone.
 
     def generate_js_constants(self):
         secondary = sorted(list(self.sutta_books - PRIMARY_BOOKS_SET))
