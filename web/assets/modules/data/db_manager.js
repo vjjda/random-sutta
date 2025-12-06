@@ -5,6 +5,7 @@ import { PRIMARY_BOOKS } from './constants.js';
 const logger = getLogger("DB");
 
 class DatabaseManager {
+    // ... (Các hàm constructor, init, fetch... giữ nguyên) ...
     constructor() {
         this.index = null;
         this.structureCache = new Map();
@@ -67,29 +68,20 @@ class DatabaseManager {
         }
     }
 
-    // [NEW] Hàm thông minh để lấy Meta cho một danh sách UID (dùng cho Branch View)
-    // Nó sẽ tự động tải các Chunk cần thiết
     async fetchMetaForUids(uids) {
         await this.init();
-        
-        // 1. Gom nhóm UID theo Chunk để tải tối ưu
         const chunksToLoad = new Set();
         uids.forEach(uid => {
             const locator = this._getLocator(uid);
-            // Chỉ tải nếu locator là chunk (không phải structure)
             if (locator && !locator.includes('_struct') && !locator.startsWith('structure')) {
                 chunksToLoad.add(locator);
             }
         });
 
-        // 2. Tải song song các Chunk
         const promises = Array.from(chunksToLoad).map(chunk => this.fetchContentChunk(chunk));
         await Promise.all(promises);
 
-        // 3. Tổng hợp Meta từ cache
         const resultMeta = {};
-        
-        // Helper để lấy meta từ chunk cache
         const getMetaFromCache = (uid) => {
              const locator = this._getLocator(uid);
              if (!locator) return null;
@@ -105,11 +97,11 @@ class DatabaseManager {
     }
 
     async getSutta(uid) {
+        // ... (Giữ nguyên code cũ) ...
         await this.init();
         const locator = this._getLocator(uid);
         if (!locator) return null;
 
-        // CASE 1: BRANCH
         if (locator.includes('_struct') || locator.startsWith('structure/')) {
             const structData = await this.fetchStructure(locator);
             if (!structData) return null;
@@ -121,7 +113,6 @@ class DatabaseManager {
             };
         }
 
-        // CASE 2: LEAF
         const chunkName = locator;
         const structName = this._resolveStructureName(chunkName);
 
@@ -133,7 +124,6 @@ class DatabaseManager {
         if (!structData || !chunkData) return null;
 
         const combinedMeta = { ...structData.meta };
-        // Merge meta từ chunk hiện tại để support nav
         Object.keys(chunkData).forEach(key => {
             if (chunkData[key].meta) combinedMeta[key] = chunkData[key].meta;
         });
@@ -159,6 +149,7 @@ class DatabaseManager {
     }
 
     getPool(type = 'primary') {
+        // ... (Giữ nguyên) ...
         if (!this.index) return [];
         if (type === 'primary') {
             let pool = [];
@@ -170,6 +161,59 @@ class DatabaseManager {
         } else {
             return this.index.pools.books[type] || [];
         }
+    }
+
+    // [NEW FEATURE] Download All for Offline
+    // Trả về Progress Callback để update UI
+    async downloadAll(onProgress) {
+        await this.init();
+        
+        // 1. Thu thập danh sách file duy nhất cần tải
+        const contentChunks = new Set();
+        const structureFiles = new Set();
+        
+        // Duyệt qua tất cả Locator trong Index
+        Object.values(this.index.locator).forEach(loc => {
+            if (loc.includes('_struct') || loc.startsWith('structure/')) {
+                // Đây là structure file locator, nhưng nó có thể ở dạng 'structure/super_struct'
+                // hoặc 'sutta_mn_struct'. Cần chuẩn hóa.
+                const clean = loc.replace(/^structure\//, '');
+                structureFiles.add(clean);
+            } else {
+                // Đây là Chunk
+                contentChunks.add(loc);
+                // Mỗi Chunk thuộc về 1 Structure, nên add structure tương ứng luôn
+                const structName = this._resolveStructureName(loc);
+                structureFiles.add(structName);
+            }
+        });
+
+        const totalFiles = contentChunks.size + structureFiles.size;
+        let downloaded = 0;
+        logger.info("downloadAll", `Start pre-fetching ${totalFiles} files...`);
+
+        // Helper tải tuần tự để tránh nghẽn
+        const fetchQueue = async (urls, type) => {
+            for (const name of urls) {
+                try {
+                    if (type === 'struct') await this.fetchStructure(name);
+                    else await this.fetchContentChunk(name);
+                    
+                    downloaded++;
+                    if (onProgress) onProgress(downloaded, totalFiles);
+                    
+                } catch (e) {
+                    logger.warn("downloadAll", `Failed to fetch ${name}`, e);
+                }
+            }
+        };
+
+        // Chạy tải
+        await fetchQueue(Array.from(structureFiles), 'struct');
+        await fetchQueue(Array.from(contentChunks), 'content');
+        
+        logger.info("downloadAll", "✅ Offline Download Completed.");
+        return true;
     }
 }
 
