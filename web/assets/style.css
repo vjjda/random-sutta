@@ -1,26 +1,6 @@
 /* Path: web/assets/style.css */
 
-/* --- 0. FONTS (Keep in root to fix relative path issues) --- */
-@font-face {
-  font-family: "Noto Sans";
-  src: url("fonts/NotoSans-VariableFont_wdth,wght.ttf") format("truetype");
-  font-weight: 100 900;
-  font-stretch: 75% 125%;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Noto Sans";
-  src: url("fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf")
-    format("truetype");
-  font-weight: 100 900;
-  font-stretch: 75% 125%;
-  font-style: italic;
-  font-display: swap;
-}
-
-/* --- 1. IMPORTS (Modules) --- */
+/* --- 1. IMPORTS (Modules) - MUST BE FIRST --- */
 
 /* Base */
 @import "css/base/_variables.css";
@@ -40,3 +20,23 @@
 @import "css/components/_popup.css";
 @import "css/components/_toh.css";
 @import "css/components/_misc.css";
+
+/* --- 0. FONTS (Keep in root to fix relative path issues) --- */
+@font-face {
+  font-family: "Noto Sans";
+  src: url("fonts/NotoSans-VariableFont_wdth,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  src: url("fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-stretch: 75% 125%;
+  font-style: italic;
+  font-display: swap;
+}
