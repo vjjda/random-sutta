@@ -16,20 +16,27 @@ CHUNK_SIZE_LIMIT = 500 * 1024
 
 class DBOptimizer:
     def __init__(self, dry_run: bool = False):
-        self.dry_run = dry_run # [NEW] Nhận cờ dry_run
+        self.dry_run = dry_run
         self.locator: Dict[str, str] = {} 
-        self.pools: Dict[str, List[str]] = {}
+        
+        # [UPDATED] Cấu trúc Pools mới theo yêu cầu
+        self.pools: Dict[str, Any] = {
+            "primary": [],  # List[str] - Chỉ chứa UID của 4 bộ chính
+            "books": {}     # Dict[str, List[str]] - Phân loại theo từng sách (dn, mn, dhp...)
+        }
+        
         self.primary_books: Set[str] = {"dn", "mn", "sn", "an"}
         
     def _setup_directories(self):
-        # 1. Luôn Reset Mirror DB (cho cả Dry-run và Prod)
+        # ... (Giữ nguyên logic tạo thư mục như cũ) ...
+        # 1. Clean Mirror DB
         if MIRROR_DB_DIR.exists():
             shutil.rmtree(MIRROR_DB_DIR)
         MIRROR_DB_DIR.mkdir(parents=True)
         (MIRROR_DB_DIR / "structure").mkdir()
         (MIRROR_DB_DIR / "content").mkdir()
 
-        # 2. Chỉ Reset Web DB nếu KHÔNG phải Dry-run
+        # 2. Clean Web DB (Only if not dry_run)
         if not self.dry_run:
             if WEB_DB_DIR.exists():
                 shutil.rmtree(WEB_DB_DIR)
@@ -40,18 +47,14 @@ class DBOptimizer:
             logger.info("   🧪 Dry-run: Skipping Web DB write (assets/db)")
 
     def _get_safe_name(self, relative_path: Path) -> str:
+        # ... (Giữ nguyên logic cũ) ...
         name = relative_path.name.replace("_book.json", "").replace(".json", "")
         parts = list(relative_path.parent.parts)
         parts.append(name)
         return "_".join(parts)
 
     def _save_dual(self, relative_path: str, data: Any):
-        """
-        Lưu file.
-        - Luôn lưu vào Mirror.
-        - Chỉ lưu vào Web nếu not dry_run.
-        """
-        # 1. Write Mirror Version (Pretty Print) - ALWAYS
+        # ... (Giữ nguyên logic save dual như cũ) ...
         mirror_path = MIRROR_DB_DIR / relative_path
         try:
             with open(mirror_path, "w", encoding="utf-8") as f:
@@ -59,7 +62,6 @@ class DBOptimizer:
         except Exception as e:
             logger.error(f"❌ Failed to write Mirror file {relative_path}: {e}")
 
-        # 2. Write Web Version (Minified) - PROD ONLY
         if not self.dry_run:
             web_path = WEB_DB_DIR / relative_path
             try:
@@ -69,22 +71,20 @@ class DBOptimizer:
                 logger.error(f"❌ Failed to write Web file {relative_path}: {e}")
 
     def _process_content_chunks(self, safe_name: str, content: Dict[str, Any]) -> None:
+        # ... (Giữ nguyên logic chunking content như cũ) ...
         chunk_idx = 1
         current_chunk: Dict[str, Any] = {}
         current_size = 0
-        
         sorted_keys = sorted(content.keys()) 
         
         for uid in sorted_keys:
             item_data = content[uid]
-            # Tính size ước lượng
             item_str = json.dumps(item_data, ensure_ascii=False, separators=(',', ':'))
             item_size = len(item_str.encode('utf-8'))
             
             if current_size + item_size > CHUNK_SIZE_LIMIT and current_chunk:
                 chunk_filename = f"{safe_name}_chunk_{chunk_idx}.json"
                 self._save_dual(f"content/{chunk_filename}", current_chunk)
-                
                 for saved_uid in current_chunk.keys():
                     self.locator[saved_uid] = chunk_filename.replace(".json", "")
                 
@@ -102,7 +102,6 @@ class DBOptimizer:
                 self.locator[saved_uid] = chunk_filename.replace(".json", "")
 
     def _process_book_file(self, file_path: Path):
-        # ... (Giữ nguyên logic xử lý structure và content) ...
         try:
             rel_path = file_path.relative_to(PROCESSED_DIR)
             safe_name = self._get_safe_name(rel_path)
@@ -112,6 +111,7 @@ class DBOptimizer:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 
+            # 1. Structure & Meta
             struct_data = {
                 "id": data.get("id"),
                 "title": data.get("title"),
@@ -120,19 +120,26 @@ class DBOptimizer:
             }
             self._save_dual(f"structure/{safe_name}_struct.json", struct_data)
             
+            # 2. Content Chunks
             raw_content = data.get("content", {})
             if raw_content:
                 self._process_content_chunks(safe_name, raw_content)
                 
+                # [UPDATED] Logic Pools mới
                 content_uids = list(raw_content.keys())
-                if "all" not in self.pools: self.pools["all"] = []
-                self.pools["all"].extend(content_uids)
+                book_id = data.get("id", "").lower() # ví dụ: 'mn', 'dhp', 'pli-tv-bi-pm'
                 
-                book_id = data.get("id", "").lower()
+                # A. Luôn thêm vào pool riêng của sách (books)
+                if book_id:
+                    if book_id not in self.pools["books"]:
+                        self.pools["books"][book_id] = []
+                    self.pools["books"][book_id].extend(content_uids)
+                
+                # B. Nếu là sách chính, thêm vào pool primary
                 if book_id in self.primary_books:
-                    if "primary" not in self.pools: self.pools["primary"] = []
                     self.pools["primary"].extend(content_uids)
             
+            # 3. Shortcut Handling
             meta_map = data.get("meta", {})
             for uid, info in meta_map.items():
                 if info.get("type") == "shortcut":
