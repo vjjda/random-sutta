@@ -6,56 +6,54 @@ import { calculateNavigation } from "./navigator.js";
 
 let tohInstance = null;
 
-/**
- * Helper: Xác định tiêu đề hiển thị
- */
 function getDisplayInfo(uid, metaMap) {
-    // Default nếu không có meta
-    if (!metaMap || !metaMap[uid]) {
-        return { 
-            main: uid.toUpperCase(), 
-            sub: "" 
-        };
+    // Fallback mặc định
+    let mainTitle = uid.toUpperCase();
+    let subTitle = "";
+
+    if (metaMap && metaMap[uid]) {
+        const info = metaMap[uid];
+        // Ưu tiên Acronym (có dấu cách, VD: "AN 5.112")
+        if (info.acronym) mainTitle = info.acronym;
+        
+        // Subtitle ưu tiên bản dịch -> bản gốc
+        subTitle = info.translated_title || info.original_title || "";
     }
     
-    const info = metaMap[uid];
-    
-    // 1. Main Title: Ưu tiên Acronym, nếu không có thì dùng UID viết hoa
-    let mainTitle = info.acronym || uid.toUpperCase();
-    
-    // 2. Sub Title: Ưu tiên Translated Title, fallback sang Original
-    let subTitle = info.translated_title || info.original_title || "";
-
     return { main: mainTitle, sub: subTitle };
 }
 
 function updateTopNavDOM(data, prevId, nextId) {
   const navHeader = document.getElementById("nav-header");
-  const navPrevBtn = document.getElementById("nav-prev");
-  const navNextBtn = document.getElementById("nav-next");
   const navMainTitle = document.getElementById("nav-main-title");
   const navSubTitle = document.getElementById("nav-sub-title");
   const statusDiv = document.getElementById("status");
 
-  // Lấy thông tin hiển thị từ meta
+  // Hiển thị thông tin bài hiện tại
   const currentInfo = getDisplayInfo(data.uid, data.meta);
-  
   if (navMainTitle) navMainTitle.textContent = currentInfo.main;
   if (navSubTitle) navSubTitle.textContent = currentInfo.sub;
 
   document.getElementById("nav-title-text")?.classList.remove("hidden");
   document.getElementById("nav-search-container")?.classList.add("hidden");
 
-  // Setup Buttons
-  const setupBtn = (btn, targetId, type) => {
+  // Setup Nút Previous / Next
+  const setupBtn = (btnId, targetId, type) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+
     if (targetId) {
       btn.disabled = false;
       btn.onclick = () => window.loadSutta(targetId);
       
-      // Tooltip cho nút Previous/Next
+      // Tra cứu info của bài hàng xóm
       const neighborInfo = getDisplayInfo(targetId, data.meta);
-      btn.title = `${type}: ${neighborInfo.main}`;
-      if (neighborInfo.sub) btn.title += ` - ${neighborInfo.sub}`;
+      
+      // Tooltip hiển thị: "Next: AN 5.113 - Title"
+      let tooltip = `${type}: ${neighborInfo.main}`;
+      if (neighborInfo.sub) tooltip += ` - ${neighborInfo.sub}`;
+      btn.title = tooltip;
+      
     } else {
       btn.disabled = true;
       btn.onclick = null;
@@ -63,8 +61,8 @@ function updateTopNavDOM(data, prevId, nextId) {
     }
   };
 
-  setupBtn(navPrevBtn, prevId, "Previous");
-  setupBtn(navNextBtn, nextId, "Next");
+  setupBtn("nav-prev", prevId, "Previous");
+  setupBtn("nav-next", nextId, "Next");
 
   navHeader.classList.remove("hidden");
   statusDiv.classList.add("hidden");
@@ -73,9 +71,7 @@ function updateTopNavDOM(data, prevId, nextId) {
 function handleNotFound(suttaId) {
   const container = document.getElementById("sutta-container");
   const statusDiv = document.getElementById("status");
-  
   container.innerHTML = UIFactory.createErrorHtml(suttaId);
-  
   statusDiv.textContent = "Sutta not found.";
   statusDiv.classList.remove("hidden");
 }
@@ -95,16 +91,14 @@ export function renderSutta(suttaId, data, options = {}) {
   // 2. Navigation Logic
   const nav = calculateNavigation(data.bookStructure, data.uid);
   
-  // 3. Update Header
+  // 3. Update UI
   updateTopNavDOM(data, nav.prev, nav.next);
   
-  // 4. Update Bottom Nav
-  // Truyền meta vào để UIFactory biết đường lấy tiêu đề cho nút bấm
+  // Truyền toàn bộ meta map xuống UIFactory để nó render nút dưới cùng
   const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.meta);
   
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  // 5. Setup Table of Headings
   if (!tohInstance) tohInstance = setupTableOfHeadings();
   tohInstance.generate();
 
