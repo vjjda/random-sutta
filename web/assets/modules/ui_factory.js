@@ -1,6 +1,22 @@
 // Path: web/assets/modules/ui_factory.js
 import { getSuttaDisplayInfo } from './utils.js';
 
+// [CONSTANT] Chevron hướng lên (Up) làm gốc
+// Path: Đi từ trái dưới (6,15) lên đỉnh (12,9) rồi xuống phải dưới (18,15)
+const CHEVRON_PATH = "M6 15l6-6 6 6";
+
+/**
+ * Helper tạo SVG Chevron xoay theo góc chỉ định.
+ * Base: UP (0deg)
+ */
+function getChevronSvg(rotateDeg, className = "") {
+    const style = `transform: rotate(${rotateDeg}deg); transform-origin: center;`;
+    
+    return `<svg class="${className}" style="${style}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="${CHEVRON_PATH}"></path>
+    </svg>`;
+}
+
 export const UIFactory = {
   createErrorHtml: function (suttaId) {
     const scLink = `https://suttacentral.net/${suttaId}/en/sujato`;
@@ -19,21 +35,21 @@ export const UIFactory = {
     const align = direction === 'left' ? 'left' : 'right';
     const alignItems = direction === 'left' ? 'flex-start' : 'flex-end';
     
-    // [CHANGED] Chevron Left
-    const arrowLeft = direction === 'left'
-        ? `<svg class="nav-icon-inline left" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`
-        : "";
-    
-    // [CHANGED] Chevron Right
-    const arrowRight = direction === 'right'
-        ? `<svg class="nav-icon-inline right" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`
-        : "";
+    // [LOGIC] Xoay icon dựa trên hướng Up
+    // Left (<): Xoay -90 độ
+    // Right (>): Xoay 90 độ
+    const arrowIcon = direction === 'left'
+        ? getChevronSvg(-90, "nav-icon-inline left")
+        : getChevronSvg(90, "nav-icon-inline right");
+
+    // Đặt icon vào đúng vị trí (trước hoặc sau text)
+    const content = direction === 'left' 
+        ? `${arrowIcon}<span>${info.title}</span>`
+        : `<span>${info.title}</span>${arrowIcon}`;
 
     return `<button onclick="window.loadSutta('${suttaId}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
             <span class="nav-main-text">
-                ${arrowLeft}
-                <span>${info.title}</span>
-                ${arrowRight}
+                ${content}
             </span>
             <span class="nav-title">${info.subtitle}</span>
           </button>`;
@@ -43,6 +59,7 @@ export const UIFactory = {
     let html = '<div class="sutta-nav">';
     // Previous Button
     html += this.createNavButton(prevId, 'left');
+    
     // Random Dot (Middle)
     html += `
       <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
@@ -51,10 +68,15 @@ export const UIFactory = {
         </svg>
       </button>
     `;
+    
     // Next Button
     html += this.createNavButton(nextId, 'right');
     
     html += "</div>";
     return html;
   }
+};
+
+export const ICONS = {
+    CHEVRON_UP: CHEVRON_PATH
 };
