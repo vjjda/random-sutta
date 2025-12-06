@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 
 from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
-from .chunker import chunk_content_with_meta # [UPDATED]
+from .chunker import chunk_content_with_meta
 from .pool_manager import PoolManager
 
 logger = logging.getLogger("Optimizer.Worker")
@@ -29,46 +29,58 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         book_id = data.get("id", "").lower()
         result["book_id"] = book_id
 
-        # --- 1. Tách Metadata ---
+        # --- 1. Tách Metadata (Hybrid Approach) ---
         full_meta = data.get("meta", {})
-        branch_meta = {}
-        leaf_meta = {} # Bao gồm cả Leaf và Shortcut
+        branch_meta = {} # Dành cho Structure File (Lightweight)
+        leaf_meta = {}   # Dành cho Chunk File (Full detail)
 
         for uid, info in full_meta.items():
             m_type = info.get("type")
-            # Branch giữ lại ở Structure
-            if m_type == "branch" or m_type == "root": 
-                branch_meta[uid] = info
-                # [Locator] Branch nằm trong structure
-                result["locators"][uid] = "structure" 
-            else:
-                # Leaf/Shortcut đẩy sang Chunk
+            
+            # A. Build Leaf Meta (Full) cho Chunk
+            # Chỉ Leaf và Shortcut mới cần đi theo content
+            if m_type != "branch" and m_type != "root":
                 leaf_meta[uid] = info
 
-        # --- 2. Save Structure (Slim version) ---
+            # B. Build Branch Meta (Structure)
+            if m_type == "branch" or m_type == "root":
+                # Branch giữ nguyên (vì nó định nghĩa cấu trúc)
+                branch_meta[uid] = info
+            else:
+                # [FIX] Leaf/Shortcut: Tạo bản sao RÚT GỌN cho Structure
+                # Giữ lại Title/Acronym để hiển thị Nav
+                # Loại bỏ 'blurb' (nặng nhất) và các trường kỹ thuật không cần cho Nav
+                slim_info = info.copy()
+                if "blurb" in slim_info:
+                    del slim_info["blurb"]
+                # Có thể bỏ thêm author_uid nếu muốn tiết kiệm thêm
+                
+                branch_meta[uid] = slim_info
+                
+            # Locator cho Branch vẫn trỏ về structure
+            if m_type == "branch" or m_type == "root":
+                result["locators"][uid] = "structure"
+
+        # --- 2. Save Structure (Bây giờ đã chứa Slim Leaf Meta) ---
         struct_data = {
             "id": data.get("id"),
             "title": data.get("title"),
             "structure": data.get("structure", {}),
-            "meta": branch_meta # Chỉ chứa Branch Meta
+            "meta": branch_meta 
         }
         io.save_dual(f"structure/{safe_name}_struct.json", struct_data)
 
-        # --- 3. Process Content & Leaf Meta ---
+        # --- 3. Process Content & Full Leaf Meta ---
         raw_content = data.get("content", {})
         
         if raw_content:
-            # A. Chunking (Content + Leaf Meta)
             chunks = chunk_content_with_meta(safe_name, raw_content, leaf_meta)
             
             for fname, chunk_data in chunks:
                 io.save_dual(f"content/{fname}.json", chunk_data)
-                
-                # Map Locator cho tất cả item trong chunk
                 for uid in chunk_data.keys():
                     result["locators"][uid] = fname
 
-            # C. Smart Pool Filtering
             result["valid_uids"] = PoolManager.filter_smart_uids(raw_content, full_meta)
 
         result["status"] = "success"
