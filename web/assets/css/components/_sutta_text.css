@@ -115,16 +115,27 @@ p {
 }
 
 .segment:target {
-    /* Đảm bảo tắt target mặc định của browser nếu chưa xóa */
     animation: none;
 }
 
+/* 1. Highlight cho đoạn văn thường (P tag) */
 .segment.highlight {
   background-color: var(--highlight-color-segment);
   box-shadow: 0px 0px 0px 5px var(--highlight-color-segment);
   border-left: none;
-  /* border-radius: 4px; */
-  /* padding: 0; */
   position: relative;
   z-index: 1;
+  border-radius: 4px; /* Thêm bo góc nhẹ cho đẹp */
+}
+
+/* [NEW] 2. Highlight cho đoạn Text nội bộ (dùng trong Verse/Heading) */
+.segment-text.highlight {
+  background-color: var(--highlight-color-segment);
+  box-shadow: 0px 0px 0px 3px var(--highlight-color-segment); /* Shadow nhỏ hơn chút */
+  border-radius: 3px;
+  /* Reset các thuộc tính highlight mặc định nếu bị dính */
+  border-left: none; 
+  padding-left: 0;
+  margin-left: 0;
+  margin-right: 0;
 }

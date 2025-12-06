@@ -14,30 +14,30 @@ export const ContentCompiler = {
       const segment = contentData[segmentId];
       if (!segment) return;
 
-      // 1. Chuẩn bị các thành phần nội dung
-      const pliText = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
-      const engText = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
-      
-      let commentHtml = "";
-      if (segment.comm) {
-          const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
-          commentHtml = `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
-      }
-
-      // [NEW STRATEGY] 2. Đóng gói toàn bộ vào một thẻ Span định danh
-      // Thẻ này đóng vai trò là "Anchor" để trình duyệt cuộn tới.
-      // Class 'segment-anchor' có thể dùng để CSS highlight sau này nếu cần.
-      const contentPackage = `<span class="segment-anchor" id="${segmentId}">${pliText}${engText}${commentHtml}</span>`;
-
       let text = "";
 
-      // 3. Inject vào Template
+      // 1. Chuẩn bị nội dung
+      const pliText = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
+      const engText = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
+      let combinedText = `${pliText}${engText}`;
+
+      if (segment.comm) {
+          const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
+          combinedText += `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
+      }
+
+      // 2. Render
       if (segment.html) {
-        // An toàn tuyệt đối: Chỉ thay thế placeholder bằng gói nội dung đã có ID
+        // CASE A: Template (Verse, Heading...)
+        // Bắt buộc dùng Span để không phá vỡ layout của thẻ cha (như h1, blockquote)
+        // Dùng class 'segment-text' để CSS có thể target highlight riêng
+        const contentPackage = `<span class="segment-text" id="${segmentId}">${combinedText}</span>`;
         text = segment.html.replace("{}", contentPackage);
       } else {
-        // Mặc định: Bọc trong thẻ P
-        text = `<p class='segment'>${contentPackage}</p>`;
+        // CASE B: Đoạn văn thường (90% trường hợp)
+        // Gán ID trực tiếp vào thẻ P có class 'segment'. 
+        // Đây là cách "database cũ" làm và tương thích tốt nhất với CSS hiện tại.
+        text = `<p class='segment' id='${segmentId}'>${combinedText}</p>`;
       }
       
       html += text;
@@ -46,7 +46,7 @@ export const ContentCompiler = {
     return html;
   },
 
-  // (Giữ nguyên hàm compileBranch cũ)
+  // (Giữ nguyên compileBranch cũ)
   compileBranch: function(structure, currentUid, metaMap) {
       function findNode(node, targetId) {
           if (!node) return null;
