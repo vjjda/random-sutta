@@ -34,7 +34,7 @@ export const SuttaController = {
                  logger.debug('loadSutta', `Lazy loading book: ${bookId}`);
                  await SuttaLoader.loadBook(bookId);
                  return this.loadSutta(suttaIdInput, shouldUpdateUrl, scrollY, options);
-             } catch (err) => {
+             } catch (err) {
                  logger.error('loadSutta', `Lazy load failed for ${bookId}`, err);
              }
         }

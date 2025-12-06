@@ -9,10 +9,11 @@ console.log(`%c [SW] Loading Version: ${CACHE_NAME}`, 'background: #333; color: 
 const SUTTA_DATA_FILES = [];
 
 // These are the core files for the application's "shell".
-// Note: JS and CSS files are not listed here. They are cached automatically
-// by the browser when the versioned index.html is loaded.
+// They are always cached first.
+// Note: JS and CSS files are NOT listed here. They are cached by the browser
+// when the versioned index.html is loaded. The SW only needs to cache index.html.
 const SHELL_ASSETS = [
-  "./", // Serves index.html for root navigation
+  "./",
   "./index.html",
   "./assets/icons/favicon-96x96.png",
   "./assets/icons/favicon.svg",
@@ -25,21 +26,21 @@ const SHELL_ASSETS = [
   "./assets/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf"
 ];
 
-// Combine all assets to be cached during installation.
-const ALL_ASSETS_TO_CACHE = [...SHELL_ASSETS, ...SUTTA_DATA_FILES];
-
 self.addEventListener("install", (event) => {
   console.log(`[SW] Event: install (${CACHE_NAME})`);
+  // Force the waiting service worker to become the active service worker.
   self.skipWaiting();
 
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      console.log(`[SW] Caching ${ALL_ASSETS_TO_CACHE.length} assets...`);
-      // Use addAll for atomic caching. If one file fails, the whole cache operation fails.
-      // We wrap it in a loop with individual `add` for better error logging.
-      for (const asset of ALL_ASSETS_TO_CACHE) {
+      // SUTTA_DATA_FILES is empty during development but populated during build.
+      const allAssets = [...SHELL_ASSETS, ...SUTTA_DATA_FILES];
+      console.log(`[SW] Caching ${allAssets.length} assets...`);
+      
+      // We use a loop with individual `add` for better error logging,
+      // instead of `addAll` which fails silently on the first error.
+      for (const asset of allAssets) {
         try {
-          // Use a Request object to ignore query parameters for caching
           await cache.add(new Request(asset, { cache: 'reload' }));
         } catch (err) {
           console.error(`[SW] ❌ FAILED to cache: ${asset}`, err);
@@ -51,6 +52,8 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   console.log(`[SW] Event: activate (${CACHE_NAME})`);
+  // Take control of all clients immediately.
+  self.clients.claim();
   // Clean up old caches.
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -64,23 +67,18 @@ self.addEventListener("activate", (event) => {
       );
     })
   );
-  return self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   // Only handle GET requests.
-  if (request.method !== "GET") {
-    return;
-  }
+  if (request.method !== "GET") return;
 
-  // Caching strategy:
-  // 1. Try to find the request in the cache.
-  // 2. If not found, go to the network.
-  // 3. If network fails and it's a navigation request, serve index.html as a fallback.
   event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+
       // 1. Try cache first
       const cachedResponse = await cache.match(request);
       if (cachedResponse) {
@@ -90,26 +88,24 @@ self.addEventListener("fetch", (event) => {
       // 2. Fallback to network
       try {
         const networkResponse = await fetch(request);
-        // If the request is successful, clone it and cache it.
-        if (networkResponse && networkResponse.status === 200) {
-            // Cache only basic, same-origin requests.
-            if (networkResponse.type === 'basic') {
-                 cache.put(request, networkResponse.clone());
-            }
+        // If the request is successful and for a same-origin resource,
+        // clone it and put it in the cache for future requests.
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          cache.put(request, networkResponse.clone());
         }
         return networkResponse;
       } catch (error) {
-        // 3. Handle offline for navigation requests
+        // 3. Handle offline for navigation requests by serving the main page.
         if (request.mode === "navigate") {
           console.log("[SW] Fetch failed, serving index.html as fallback for navigation.");
-          return caches.match("./index.html");
+          return await cache.match("./index.html");
         }
-        // For other failed requests, just return an error.
-        return new Response("Offline", {
-          status: 503,
-          statusText: "Service Unavailable"
+        // For other failed requests (e.g., images), just fail.
+        return new Response("Network error", {
+          status: 408,
+          headers: { "Content-Type": "text/plain" },
         });
       }
-    })
+    })()
   );
 });
