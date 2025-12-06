@@ -41,12 +41,6 @@ def inject_version_into_sw(target_dir: Path, version_tag: str) -> bool:
     
     return _update_file(sw_path, pattern, replacement)
 
-def patch_sw_assets(target_dir: Path) -> bool:
-    """Style.css -> Style.bundle.css trong SW"""
-    logger.info(f"🔧 Patching Service Worker assets in {target_dir.name}...")
-    sw_path = target_dir / "sw.js"
-    return _update_file(sw_path, r'\./assets/style\.css', './assets/style.bundle.css')
-
 def _patch_html_assets(index_path: Path, version_tag: str, is_offline: bool) -> bool:
     """
     Thay thế placeholder trong HTML.
@@ -80,13 +74,11 @@ def patch_online_html(build_dir: Path, version_tag: str) -> bool:
     index_path = build_dir / "index.html"
     
     html_ok = _patch_html_assets(index_path, version_tag, is_offline=False)
-    sw_ok = patch_sw_assets(build_dir)
-    return html_ok and sw_ok
+    return html_ok
 
 def patch_offline_html(build_dir: Path, version_tag: str) -> bool:
     logger.info("📝 Patching index.html (Offline Mode)...")
     index_path = build_dir / "index.html"
     
     html_ok = _patch_html_assets(index_path, version_tag, is_offline=True)
-    sw_ok = patch_sw_assets(build_dir)
-    return html_ok and sw_ok
+    return html_ok
