@@ -7,6 +7,7 @@ import { DB } from "../data/db_manager.js";
 
 let tohInstance = null;
 
+// ... (Giữ nguyên getDisplayInfo, updateTopNavDOM, handleNotFound) ...
 function getDisplayInfo(uid, metaMap) {
     let main = uid.toUpperCase();
     const match = uid.match(/^([a-z]+)(\d.*)$/i);
@@ -77,12 +78,41 @@ export async function renderSutta(suttaId, data, options = {}) {
   container.innerHTML = "";
   let htmlContent = "";
 
-  // [CALCULATE NAVIGATION] - Dùng chung cho cả Leaf và Branch
-  // navigator.js đã có logic tìm sibling cùng level (depth)
-  const nav = calculateNavigation(data.bookStructure, data.uid);
+  // 1. Tính toán Navigation Cục bộ (Local)
+  let nav = calculateNavigation(data.bookStructure, data.uid);
 
-  // --- CASE 1: BRANCH VIEW (Mục lục) ---
+  // [NEW] 2. Logic Leo thang (Escalation) cho Branch
+  // Nếu là Branch mà không tìm thấy đường đi (ví dụ đang ở Root Book 'mn'), 
+  // hãy thử tìm trong Super Structure.
+  if (data.isBranch && !nav.prev && !nav.next) {
+      // Kiểm tra xem ID này có phải là Root của file structure hiện tại không?
+      // Thường structure file dạng { "mn": {...} } -> mn là root
+      if (data.bookStructure[data.uid]) {
+          try {
+              // Tải Super Struct (được cache nên rất nhanh)
+              const superData = await DB.fetchStructure('super_struct');
+              if (superData) {
+                  // Tìm đường đi ở cấp độ thế giới (Global Map)
+                  const superNav = calculateNavigation(superData.structure, data.uid);
+                  
+                  // Nếu tìm thấy hàng xóm ở cấp độ này (ví dụ dn -> mn)
+                  if (superNav.prev || superNav.next) {
+                      nav = superNav;
+                      // Quan trọng: Merge meta của Super Book vào data hiện tại
+                      // Để UI hiển thị được Title của sách hàng xóm
+                      Object.assign(data.meta, superData.meta);
+                  }
+              }
+          } catch (e) {
+              console.warn("Auto-escalation to super_struct failed", e);
+          }
+      }
+  }
+
+  // --- RENDERING ---
+
   if (data.isBranch) {
+      // Helper traverse để lấy children ID (phục vụ lazy load meta)
       function getChildrenIds(structure, currentUid) {
           function findNode(node, targetId) {
               if (!node) return null;
@@ -134,17 +164,15 @@ export async function renderSutta(suttaId, data, options = {}) {
       
       document.getElementById("toh-wrapper")?.classList.add("hidden");
       
-      // [FIXED] Kích hoạt Navigation cho Branch
+      // Hiển thị Nav (đã được cập nhật từ super_struct nếu cần)
       updateTopNavDOM(data, nav.prev, nav.next); 
       
-      // Thêm Bottom Nav
       const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.meta);
       container.innerHTML = htmlContent + bottomNavHtml;
       
       return true;
   }
 
-  // --- CASE 2: LEAF VIEW (Bài kinh) ---
   if (!data.content) {
       handleNotFound(suttaId);
       return false;
