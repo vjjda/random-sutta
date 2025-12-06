@@ -5,7 +5,7 @@ import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from ..shared.app_config import PROCESSED_DIR
+from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .pool_manager import PoolManager
 from .worker import process_book_task
@@ -24,10 +24,10 @@ class DBOrchestrator:
         logger.info(f"🚀 Starting Parallel Optimization: {mode_str}")
         self.io.setup_directories()
 
-        all_files = sorted(list(PROCESSED_DIR.rglob("*.json")))
+        all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
         book_files = []
         
-        # 1. Xử lý Super Book (Main Thread - nhanh nên ko cần parallel)
+        # 1. Xử lý Super Book (Main Thread)
         for f in all_files:
             if f.name == "super_book.json":
                 self._process_super(f)
@@ -35,12 +35,10 @@ class DBOrchestrator:
                 book_files.append(f)
 
         # 2. Xử lý Sách (Multi-Process)
-        # Sử dụng tối đa CPU core
-        max_workers = os.cpu_count() or 4
+        max_workers = min(os.cpu_count() or 4, 8)
         logger.info(f"   🔥 Spawning {max_workers} workers for {len(book_files)} books...")
 
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            # Submit tasks
             futures = {
                 executor.submit(process_book_task, f, self.dry_run): f.name 
                 for f in book_files
@@ -51,7 +49,6 @@ class DBOrchestrator:
                 try:
                     res = future.result()
                     if res["status"] == "success":
-                        # Aggregate Results
                         self.global_locator.update(res["locators"])
                         self.pool_manager.merge_worker_result(
                             res["book_id"], 
@@ -63,7 +60,7 @@ class DBOrchestrator:
                 except Exception as e:
                     logger.error(f"   ❌ Exception in worker for {fname}: {e}")
 
-        # 3. Finalize
+        # 3. Finalize Index
         self._save_master_index()
         
         if not self.dry_run:

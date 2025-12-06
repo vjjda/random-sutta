@@ -4,13 +4,13 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from ..shared.app_config import DATA_API_DIR, AUTHOR_PRIORITY
+# [UPDATED]
+from ..shared.app_config import RAW_API_JSON_DIR, CONFIG_AUTHOR_PRIORITY
 from ..shared.domain_types import SuttaMeta
 
 logger = logging.getLogger("SuttaProcessor.Ingestion.Meta")
 
 def _find_best_author(translations: List[Dict[str, Any]]) -> Optional[str]:
-    """Tìm tác giả phù hợp nhất từ danh sách translations."""
     if not translations:
         return None
         
@@ -20,22 +20,23 @@ def _find_best_author(translations: List[Dict[str, Any]]) -> Optional[str]:
         if t.get("lang") == "en" and t.get("segmented") is True
     }
     
-    for author in AUTHOR_PRIORITY:
+    # [UPDATED]
+    for author in CONFIG_AUTHOR_PRIORITY:
         if author in valid_trans:
             return author
             
     return None
 
 def load_names_map() -> Dict[str, SuttaMeta]:
-    """Quét toàn bộ metadata, trích xuất thông tin cơ bản."""
-    if not DATA_API_DIR.exists():
-        logger.warning(f"⚠️ API Data directory not found: {DATA_API_DIR}")
+    # [UPDATED]
+    if not RAW_API_JSON_DIR.exists():
+        logger.warning(f"⚠️ API Data directory not found: {RAW_API_JSON_DIR}")
         return {}
 
     logger.info("📚 Parsing metadata & resolving authors...")
     
     meta_map: Dict[str, SuttaMeta] = {}
-    json_files = sorted(list(DATA_API_DIR.rglob("*.json")))
+    json_files = sorted(list(RAW_API_JSON_DIR.rglob("*.json")))
 
     for file_path in json_files:
         try:
@@ -51,15 +52,12 @@ def load_names_map() -> Dict[str, SuttaMeta]:
                 translations = item.get("translations", [])
                 best_author = _find_best_author(translations)
                 
-                # --- [LOGIC QUAN TRỌNG: Lọc Scroll Target] ---
                 raw_scroll_target = item.get("scroll_target")
                 parent_uid = item.get("parent_uid")
                 final_scroll_target = raw_scroll_target
                 
-                # Nếu target trùng với container (parent), thì KHÔNG scroll
                 if raw_scroll_target == parent_uid:
                     final_scroll_target = None
-                # ---------------------------------------------
                 
                 entry: SuttaMeta = {
                     "uid": uid,
@@ -69,9 +67,7 @@ def load_names_map() -> Dict[str, SuttaMeta]:
                     "original_title": (item.get("original_title") or "").strip(),
                     "blurb": item.get("blurb"),
                     "best_author_uid": best_author,
-                    "author_uid": None, # Sẽ được update khi merge content
-                    
-                    # Lưu giá trị đã xử lý vào đây
+                    "author_uid": None, 
                     "scroll_target": final_scroll_target 
                 }
                 

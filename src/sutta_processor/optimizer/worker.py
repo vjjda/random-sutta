@@ -2,26 +2,18 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 
-from ..shared.app_config import PROCESSED_DIR
+from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .chunker import chunk_content
 from .pool_manager import PoolManager
 
-# Logger trong worker process cần setup lại nếu muốn hiện ra console, 
-# nhưng thường logger gốc vẫn capture được stderr.
 logger = logging.getLogger("Optimizer.Worker")
 
 def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
     """
-    Hàm chạy trong Process riêng.
-    Trả về: {
-        "status": "success",
-        "book_id": str,
-        "valid_uids": List[str],
-        "locators": Dict[str, str]  # mapping uid -> chunk_file
-    }
+    Hàm chạy trong Process riêng (Stateless).
     """
     io = IOManager(dry_run)
     result = {
@@ -36,7 +28,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             
-        rel_path = file_path.relative_to(PROCESSED_DIR)
+        rel_path = file_path.relative_to(STAGE_PROCESSED_DIR)
         safe_name = io.get_safe_name(rel_path)
         book_id = data.get("id", "").lower()
         result["book_id"] = book_id
@@ -58,16 +50,16 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             # A. Chunking
             chunks = chunk_content(safe_name, raw_content)
             for fname, content in chunks:
-                # Save chunk file
                 io.save_dual(f"content/{fname}.json", content)
-                # Map Locator
+                # Map Locator (bỏ đuôi json để index nhẹ)
                 for uid in content.keys():
                     result["locators"][uid] = fname
 
-            # B. Map Shortcuts (Locators)
+            # B. Map Shortcuts Locators
             for uid, info in meta_map.items():
                 if info.get("type") == "shortcut":
                     parent = info.get("parent_uid")
+                    # Chỉ map nếu cha tồn tại trong locator (tức là cha có content)
                     if parent and parent in result["locators"]:
                         result["locators"][uid] = result["locators"][parent]
 

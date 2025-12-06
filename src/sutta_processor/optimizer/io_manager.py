@@ -14,12 +14,14 @@ class IOManager:
 
     def setup_directories(self):
         """Reset directories."""
+        # 1. Mirror (Always Reset)
         if MIRROR_DB_DIR.exists():
             shutil.rmtree(MIRROR_DB_DIR)
         MIRROR_DB_DIR.mkdir(parents=True)
         (MIRROR_DB_DIR / "structure").mkdir()
         (MIRROR_DB_DIR / "content").mkdir()
 
+        # 2. Web (Prod Only)
         if not self.dry_run:
             if WEB_DB_DIR.exists():
                 shutil.rmtree(WEB_DB_DIR)

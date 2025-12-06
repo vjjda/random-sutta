@@ -3,18 +3,20 @@ import json
 import logging
 from typing import Dict, Any, List
 
-from ..shared.app_config import DATA_ROOT
+# [UPDATED]
+from ..shared.app_config import RAW_BILARA_DIR
 from ..shared.domain_types import SuttaMeta
-from .range_expander import generate_range_shortcuts # [NEW] Import
+from .range_expander import generate_range_shortcuts
 
 logger = logging.getLogger("SuttaProcessor.Logic.Structure")
 
 def load_original_tree(group_name: str) -> Dict[str, Any]:
     book_id = group_name.split("/")[-1]
-    tree_path = DATA_ROOT / "tree" / group_name / f"{book_id}-tree.json"
+    # [UPDATED]
+    tree_path = RAW_BILARA_DIR / "tree" / group_name / f"{book_id}-tree.json"
     
     if not tree_path.exists():
-        found = list((DATA_ROOT / "tree").rglob(f"{book_id}-tree.json"))
+        found = list((RAW_BILARA_DIR / "tree").rglob(f"{book_id}-tree.json"))
         if found:
             tree_path = found[0]
         else:
@@ -31,20 +33,16 @@ def simplify_structure(node: Any) -> Any:
     if isinstance(node, list):
         if all(isinstance(x, str) for x in node):
             return node
-        
         if any(isinstance(x, str) for x in node):
             return [simplify_structure(item) for item in node]
-
         new_dict = {}
         for item in node:
             if isinstance(item, dict):
                 for key, val in item.items():
                     new_dict[key] = simplify_structure(val)
         return new_dict
-
     elif isinstance(node, dict):
         return {k: simplify_structure(v) for k, v in node.items()}
-    
     return node
 
 def flatten_tree_leaves(node: Any) -> List[str]:
@@ -88,30 +86,23 @@ def build_book_data(
     raw_data: Dict[str, Any], 
     names_map: Dict[str, SuttaMeta]
 ) -> Dict[str, Any]:
-    # ... (Giữ nguyên phần 1. Structure và 2. Meta Base) ...
-    # 1. Structure
     raw_tree = load_original_tree(group_name)
     structure = simplify_structure(raw_tree)
 
-    # 2. Meta Base
     meta_dict: Dict[str, Any] = {}
     collect_meta_from_structure(structure, names_map, meta_dict)
     
-    # 3. Process Content & INJECT SHORTCUTS
     content_dict = {}
     
     for uid, payload in raw_data.items():
         if not payload: continue
         
-        # A. Content
         content_dict[uid] = payload.get("data", {}) 
         
-        # B. Author
         author = payload.get("author_uid")
         if uid in meta_dict and author:
             meta_dict[uid]["author_uid"] = author
 
-        # C. Range Expansion (Tạo shortcuts)
         parent_meta = names_map.get(uid, {})
         parent_acronym = parent_meta.get("acronym", "")
 
@@ -124,24 +115,20 @@ def build_book_data(
         for sc_id, sc_data in shortcuts.items():
             if sc_id not in meta_dict:
                 api_info = names_map.get(sc_id, {})
-                
                 final_target = sc_data["scroll_target"]
                 if final_target == sc_data["parent_uid"]:
                     final_target = None
 
-                # [TỐI ƯU] Chỉ tạo những trường thực sự cần thiết
                 shortcut_entry = {
                     "type": "shortcut",
                     "acronym": sc_data["acronym"],
-                    "parent_uid": sc_data["parent_uid"], # BẮT BUỘC CHO JS
-                    "is_implicit": sc_data["is_implicit"] # BẮT BUỘC CHO JS
+                    "parent_uid": sc_data["parent_uid"], 
+                    "is_implicit": sc_data["is_implicit"]
                 }
 
-                # Chỉ thêm các trường Optional nếu có giá trị thực
                 if final_target:
                     shortcut_entry["scroll_target"] = final_target
                 
-                # Title: Chỉ thêm nếu API có dữ liệu, nếu không thì thôi (tiết kiệm)
                 if api_info.get("translated_title"):
                     shortcut_entry["translated_title"] = api_info["translated_title"]
                 
@@ -150,13 +137,10 @@ def build_book_data(
 
                 meta_dict[sc_id] = shortcut_entry
 
-    # ... (Giữ nguyên phần 4 và 5) ...
-    # 4. Bổ sung meta sót
     for sid in raw_data.keys():
         if sid not in meta_dict:
             _add_meta_entry(sid, "leaf", names_map, meta_dict)
 
-    # 5. Reorder Content
     ordered_leaves = flatten_tree_leaves(structure)
     final_content_ordered = {}
     

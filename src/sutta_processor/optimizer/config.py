@@ -1,12 +1,19 @@
 # Path: src/sutta_processor/optimizer/config.py
 from pathlib import Path
-from ..shared.app_config import ASSETS_ROOT, PROJECT_ROOT, PRIMARY_BOOKS
+from ..shared.app_config import (
+    DIST_DB_DIR, 
+    DEV_MIRROR_DB_DIR, 
+    DIST_JS_MODULES_DIR,
+    DB_CHUNK_SIZE_BYTES,
+    CONFIG_PRIMARY_BOOKS
+)
 
 # Output Directories
-WEB_DB_DIR = ASSETS_ROOT / "db"
-MIRROR_DB_DIR = PROJECT_ROOT / "data" / "db_mirror"
-JS_OUTPUT_DIR = ASSETS_ROOT / "modules"
+WEB_DB_DIR = DIST_DB_DIR
+MIRROR_DB_DIR = DEV_MIRROR_DB_DIR
+JS_OUTPUT_DIR = DIST_JS_MODULES_DIR
 
 # Settings
-CHUNK_SIZE_LIMIT = 500 * 1024 
-PRIMARY_BOOKS_SET = set(PRIMARY_BOOKS)
+CHUNK_SIZE_LIMIT = DB_CHUNK_SIZE_BYTES
+PRIMARY_BOOKS_SET = set(CONFIG_PRIMARY_BOOKS)
+PRIMARY_BOOKS_LIST = CONFIG_PRIMARY_BOOKS

@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
 
-from ..shared.app_config import DATA_ROOT
+# [UPDATED]
+from ..shared.app_config import RAW_BILARA_DIR, RAW_BILARA_TEXT_DIR
 
 logger = logging.getLogger("SuttaProcessor.Ingestion.Crawler")
 
@@ -14,9 +15,9 @@ EXTRA_BOOKS = {
 }
 
 def _build_root_file_index() -> Dict[str, Path]:
-    # ... (Giữ nguyên code cũ)
     logger.info("⚡ Indexing root files...")
-    root_dir = DATA_ROOT / "root"
+    # [UPDATED]
+    root_dir = RAW_BILARA_TEXT_DIR
     index = {}
     if not root_dir.exists(): return index
     for file_path in root_dir.rglob("*_root-*.json"):
@@ -26,9 +27,9 @@ def _build_root_file_index() -> Dict[str, Path]:
     return index
 
 def _identify_book_group_from_tree(tree_file: Path) -> str:
-    # ... (Giữ nguyên code cũ)
     try:
-        base_tree = DATA_ROOT / "tree"
+        # [UPDATED]
+        base_tree = RAW_BILARA_DIR / "tree"
         rel_path = tree_file.relative_to(base_tree)
         parent = rel_path.parent
         book_id = tree_file.name.replace("-tree.json", "")
@@ -37,7 +38,6 @@ def _identify_book_group_from_tree(tree_file: Path) -> str:
         return "uncategorized"
 
 def _extract_leaves_from_tree(node: Any) -> List[str]:
-    # ... (Giữ nguyên code cũ)
     leaves = []
     if isinstance(node, str): return [node]
     elif isinstance(node, list):
@@ -46,22 +46,15 @@ def _extract_leaves_from_tree(node: Any) -> List[str]:
         for key, children in node.items(): leaves.extend(_extract_leaves_from_tree(children))
     return leaves
 
-# [NEW] Hàm tính điểm ưu tiên
 def _get_priority_score(group_name: str) -> int:
-    """
-    Sắp xếp thứ tự xử lý:
-    1. Sutta (Nặng nhất) -> Score 0
-    2. Vinaya (Nặng nhì) -> Score 1
-    3. Abhidhamma (Nhẹ/Ít file) -> Score 2
-    4. Khác -> Score 3
-    """
     if group_name.startswith("sutta"): return 0
     if group_name.startswith("vinaya"): return 1
     if group_name.startswith("abhidhamma"): return 2
     return 3
 
 def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, Path, Optional[str]]]]:
-    tree_dir = DATA_ROOT / "tree"
+    # [UPDATED]
+    tree_dir = RAW_BILARA_DIR / "tree"
     if not tree_dir.exists():
         logger.warning(f"Tree directory missing: {tree_dir}")
         return {}
@@ -69,13 +62,11 @@ def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, P
     file_index = _build_root_file_index()
     logger.info(f"🌲 Scanning Tree files...")
     
-    # [CHANGED] Dùng list tạm để lưu trữ task chưa sắp xếp
     raw_tasks_list: List[Tuple[str, List[Tuple[str, Path, Optional[str]]]]] = []
     total_suttas = 0
     
     tree_files = sorted(list(tree_dir.rglob("*-tree.json")))
     
-    # 1. Thu thập task từ Tree
     for tree_file in tree_files:
         if tree_file.name == "super-tree.json": continue
         group_id = _identify_book_group_from_tree(tree_file)
@@ -100,11 +91,8 @@ def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, P
         except Exception as e:
             logger.error(f"Error parsing tree {tree_file.name}: {e}")
 
-    # 2. Inject Extra Books
     for book_id, group_name in EXTRA_BOOKS.items():
         if book_id in file_index:
-            # Check if duplicate logic can be simplified, but for list append is safe
-            # We'll dedup later or assume explicit extra books are unique enough
             logger.info(f"   ➕ Injecting extra book: {group_name}")
             root_path = file_index[book_id]
             author_uid = meta_map.get(book_id, {}).get("best_author_uid")
@@ -113,10 +101,7 @@ def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, P
             raw_tasks_list.append((group_name, tasks))
             total_suttas += 1
 
-    # [NEW] 3. Sắp xếp danh sách task theo Priority (Sutta -> Vinaya -> Abhidhamma)
     raw_tasks_list.sort(key=lambda x: _get_priority_score(x[0]))
-
-    # 4. Convert về Dict (Python 3.7+ giữ insertion order)
     book_tasks = {k: v for k, v in raw_tasks_list}
 
     logger.info(f"✅ Generated tasks for {total_suttas} suttas (Sorted by Priority).")

@@ -1,11 +1,12 @@
 # Path: src/sutta_processor/logic/content_merger.py
 import json
 import logging
-import re  # [NEW] Import Regex
+import re
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Any, Set
+from typing import Dict, Optional, Tuple, Any
 
-from ..shared.app_config import DATA_ROOT
+# [UPDATED]
+from ..shared.app_config import RAW_BILARA_DIR
 
 logger = logging.getLogger("SuttaProcessor.Logic.Merger")
 
@@ -19,15 +20,16 @@ def load_json(path: Path) -> Dict[str, str]:
         return {}
 
 def get_file_path(sutta_id: str, category: str, author_uid: str = None) -> Optional[Path]:
+    # [UPDATED] RAW_BILARA_DIR
     if category == "translation":
         if not author_uid: return None
-        base = DATA_ROOT / "translation" / "en" / author_uid
+        base = RAW_BILARA_DIR / "translation" / "en" / author_uid
         pattern = f"{sutta_id}_translation-en-{author_uid}.json"
     elif category == "html":
-        base = DATA_ROOT / "html"
+        base = RAW_BILARA_DIR / "html"
         pattern = f"{sutta_id}_html.json"
     elif category == "comment":
-        base = DATA_ROOT / "comment" / "en"
+        base = RAW_BILARA_DIR / "comment" / "en"
         pattern = f"{sutta_id}_comment-en-*.json"
     else:
         return None
@@ -40,33 +42,14 @@ def natural_keys(text: str):
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 def _sanitize_links(text: str) -> str:
-    """
-    Chuyển đổi link SuttaCentral sang link Local.
-    Input:  https://suttacentral.net/mn1/en/sujato#2.3
-    Output: index.html?q=mn1#2.3
-    
-    Pattern bắt:
-    1. Base: https://suttacentral.net/
-    2. Group 1 (ID): mn1
-    3. Phần giữa: /en/sujato (hoặc bất kỳ lang/author nào)
-    4. Group 2 (Hash): #2.3 (Optional)
-    """
     if not text or "suttacentral.net" not in text:
         return text
 
-    # Regex giải thích:
-    # https://suttacentral\.net/  -> Prefix
-    # ([a-zA-Z0-9\.-]+)           -> Group 1: UID (ví dụ: mn1, an1.1)
-    # /                           -> Slash
-    # [^/]+/[^/#"']+              -> Bỏ qua phần Lang và Author (ví dụ: en/sujato)
-    # (?:#([a-zA-Z0-9\.\:-]+))?   -> Group 2: Hash (Optional), non-capturing group cho dấu #
     pattern = r"https://suttacentral\.net/([a-zA-Z0-9\.-]+)/[^/]+/[^/#\"']+(?:#([a-zA-Z0-9\.\:-]+))?"
     
     def repl(match):
         uid = match.group(1)
         fragment = match.group(2)
-        
-        # Tạo link local
         new_link = f"index.html?q={uid}"
         if fragment:
             new_link += f"#{fragment}"
@@ -114,10 +97,7 @@ def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Opt
             if pali: entry["pli"] = pali
             if eng: entry["eng"] = eng
             if html: entry["html"] = html
-            
-            # [UPDATED] Xử lý link trong comment trước khi lưu
-            if comm: 
-                entry["comm"] = _sanitize_links(comm)
+            if comm: entry["comm"] = _sanitize_links(comm)
             
             segments_dict[key] = entry
 
