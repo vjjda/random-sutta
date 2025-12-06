@@ -12,7 +12,14 @@ RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
 ENTRY_POINT = "assets/modules/core/app.js"
-CRITICAL_ASSETS = ["assets/modules/data/file_index.js"]
 
-# [NEW] Biến chung cho tất cả (HTML, SW, v.v.)
+# [UPDATED] Danh sách các file bắt buộc phải có trước khi Build
+# Hệ thống sẽ báo lỗi nếu thiếu các file này (đảm bảo processor đã chạy thành công)
+CRITICAL_ASSETS = [
+    "assets/db/uid_index.json",          # Master Index mới
+    "assets/modules/data/constants.js",  # Config sách generated
+    "sw.js"
+]
+
+# Biến chung cho tất cả (HTML, SW, v.v.)
 VERSION_PLACEHOLDER = "dev-placeholder"

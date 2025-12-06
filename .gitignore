@@ -35,4 +35,6 @@ Thumbs.db
 # Generated Data Assets
 /web/assets/books/*
 /web/assets/sutta/
+/web/assets/db/
+
 .env_aliases

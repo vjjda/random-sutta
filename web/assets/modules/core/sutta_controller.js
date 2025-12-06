@@ -1,7 +1,6 @@
 // Path: web/assets/modules/core/sutta_controller.js
-import { SuttaLoader } from './loader.js';
 import { Router } from './router.js';
-import { DB } from '../data/db_manager.js';
+import { DB } from '../data/db_manager.js'; // [UPDATED]
 import { renderSutta } from '../ui/renderer.js';
 import { getActiveFilters } from '../ui/filters.js';
 import { initCommentPopup } from '../ui/popup_handler.js';
@@ -13,109 +12,102 @@ const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
   loadSutta: async function (suttaIdInput, shouldUpdateUrl = true, scrollY = 0, options = {}) {
-    // 1. Setup & Parsing
     const isTransition = options.transition === true;
     const currentScrollBeforeRender = window.scrollY;
     hideComment();
 
+    // 1. Parse Input (an1.5#1.1 -> an1.5, #1.1)
     let [baseId, hashPart] = suttaIdInput.split('#');
     const suttaId = baseId.trim().toLowerCase();
     const explicitHash = hashPart ? hashPart : null;
 
-    logger.info('loadSutta', `Request to load: ${suttaId} ${explicitHash ? `(Hash: ${explicitHash})` : ''} ${isTransition ? '[Transition]' : ''}`);
+    logger.info('loadSutta', `Request: ${suttaId}`);
 
-    // 2. Lazy Loading Check
-    const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
-    if (bookFile) {
-        const dbKey = bookFile.replace(/_book\.js$/, '').replace(/\//g, '_');
-        if (!window.SUTTA_DB || !window.SUTTA_DB[dbKey]) {
-             const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
-             try {
-                 logger.debug('loadSutta', `Lazy loading book: ${bookId}`);
-                 await SuttaLoader.loadBook(bookId);
-                 return this.loadSutta(suttaIdInput, shouldUpdateUrl, scrollY, options);
-             } catch (err) {
-                 logger.error('loadSutta', `Lazy load failed for ${bookId}`, err);
-             }
+    // 2. Fetch Data from New DB
+    // [NEW] Không còn SuttaLoader.loadBook nữa, DB tự lo
+    const data = await DB.getSutta(suttaId);
+
+    if (!data) {
+        renderSutta(suttaId, null); // Render trang lỗi 404
+        return;
+    }
+
+    // 3. Logic Scroll Target
+    // Nếu là Shortcut (an1.5) nhưng nội dung thực tế là an1.1-10
+    // Ta cần scroll đến ID an1.5 bên trong nội dung đó.
+    let targetScrollId = explicitHash;
+    
+    // Nếu không có hash cụ thể, kiểm tra xem bản thân ID này có phải scroll target không
+    if (!targetScrollId) {
+        if (data.meta && data.meta.scroll_target) {
+            targetScrollId = data.meta.scroll_target;
+        } else if (data.meta.type === 'shortcut') {
+             // Fallback cho shortcut cũ nếu chưa có scroll_target
+             targetScrollId = suttaId; 
         }
     }
 
-    // 3. Shortcut Logic
-    const meta = DB.getMeta(suttaId);
-    if (meta && meta.type === 'shortcut') {
-        const parentId = meta.parent_uid;
-        logger.debug('loadSutta', `Shortcut detected: ${suttaId} -> ${parentId}`);
-        
-        const targetScrollId = meta.scroll_target;
-        const shouldDisableHighlight = meta.is_implicit === true;
-
-        options.highlightId = targetScrollId;
-        options.noHighlight = shouldDisableHighlight;
-        
-        return this.loadSutta(`${parentId}#${targetScrollId || ''}`, shouldUpdateUrl, scrollY, options);
-    }
-
-    // 4. Prepare Render Action
+    // 4. Render
     const performRender = () => {
-        const success = renderSutta(suttaId, { ...options });
+        // [IMPORTANT] Truyền data trực tiếp vào renderer
+        // Renderer không cần gọi DB.get... nữa vì ta đã lấy rồi
+        const success = renderSutta(suttaId, data, options); 
+        
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
+             // Nếu là shortcut, ta vẫn giữ URL là shortcut (an1.5) chứ không đổi thành parent
              Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
         }
         return success;
     };
 
-    // 5. Execution Strategy
-    let targetScrollId = explicitHash;
-    if (!targetScrollId && options.highlightId) {
-        targetScrollId = options.highlightId.replace('#', '');
-    }
-    if (!targetScrollId) {
-        const m = DB.getMeta(suttaId);
-        if (m && m.scroll_target) targetScrollId = m.scroll_target;
-    }
-
     if (isTransition) {
         await Scroller.transitionTo(performRender, targetScrollId);
     } else {
         performRender();
-        // Xử lý Scroll ngay lập tức
         if (targetScrollId) {
-            setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
+            // Chờ DOM vẽ xong
+            requestAnimationFrame(() => {
+                setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
+            });
         } else if (scrollY > 0) {
-            // [FIX] Thêm behavior instant
             window.scrollTo({ top: scrollY, behavior: 'instant' });
         } else {
-            // [FIX] Thêm behavior instant
             window.scrollTo({ top: 0, behavior: 'instant' });
         }
     }
   },
 
-  loadRandomSutta: function (shouldUpdateUrl = true) {
+  loadRandomSutta: async function (shouldUpdateUrl = true) {
     hideComment();
-    if (!window.SUTTA_DB) return;
-    const allSuttas = DB.getAllAvailableSuttas();
-    if (allSuttas.length === 0) return;
+    // Đảm bảo Index đã load
+    await DB.init();
 
-    const activePrefixes = getActiveFilters();
-    const filteredKeys = allSuttas.filter((key) => {
-      return activePrefixes.some((prefix) => {
-        if (!key.startsWith(prefix)) return false;
-        const nextChar = key.charAt(prefix.length);
-        return /\d/.test(nextChar); 
-      });
-    });
+    // 1. Xác định Pool
+    const activeFilters = getActiveFilters(); // ['dn', 'mn'] hoặc []
+    let pool = [];
 
-    if (filteredKeys.length === 0) {
-      alert("No suttas match your selected filters!");
+    if (activeFilters.length === 0) {
+        // Mặc định: Primary Pool
+        pool = DB.getPool('primary');
+    } else {
+        // Filtered Pool
+        activeFilters.forEach(bookId => {
+            const bookPool = DB.getPool(bookId);
+            if (bookPool) pool = pool.concat(bookPool);
+        });
+    }
+
+    if (pool.length === 0) {
+      alert("No suttas found for current filters.");
       return;
     }
 
-    const randomIndex = Math.floor(Math.random() * filteredKeys.length);
-    const target = filteredKeys[randomIndex];
+    // 2. Pick Random
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    const targetUid = pool[randomIndex];
     
-    logger.info('loadRandomSutta', `Random selection: ${target}`);
-    this.loadSutta(target, shouldUpdateUrl, 0, { transition: false });
+    logger.info('loadRandomSutta', `Random selection: ${targetUid}`);
+    this.loadSutta(targetUid, shouldUpdateUrl, 0, { transition: false });
   }
-}
+};
