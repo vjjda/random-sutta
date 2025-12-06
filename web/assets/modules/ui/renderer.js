@@ -6,19 +6,25 @@ import { calculateNavigation } from "./navigator.js";
 
 let tohInstance = null;
 
-// ... (getDisplayInfo giữ nguyên) ...
 function getDisplayInfo(uid, metaMap) {
+    // Fallback thông minh
+    let main = uid.toUpperCase();
+    
+    // Thử tách số: an1.1 -> AN 1.1
+    const match = uid.match(/^([a-z]+)(\d.*)$/i);
+    if (match) main = `${match[1].toUpperCase()} ${match[2]}`;
+
     if (metaMap && metaMap[uid]) {
         const info = metaMap[uid];
         return { 
-            main: info.acronym || uid.toUpperCase(), 
+            main: info.acronym || main, 
             sub: info.translated_title || info.original_title || "" 
         };
     }
-    return { main: uid.toUpperCase(), sub: "" };
+    return { main: main, sub: "" };
 }
 
-// ... (updateTopNavDOM giữ nguyên) ...
+// ... (Giữ nguyên updateTopNavDOM và handleNotFound) ...
 function updateTopNavDOM(data, prevId, nextId) {
   const navHeader = document.getElementById("nav-header");
   const navMainTitle = document.getElementById("nav-main-title");
@@ -57,12 +63,11 @@ function updateTopNavDOM(data, prevId, nextId) {
 }
 
 function handleNotFound(suttaId) {
-    // ... (Giữ nguyên) ...
-    const container = document.getElementById("sutta-container");
-    const statusDiv = document.getElementById("status");
-    container.innerHTML = UIFactory.createErrorHtml(suttaId);
-    statusDiv.textContent = "Sutta not found.";
-    statusDiv.classList.remove("hidden");
+  const container = document.getElementById("sutta-container");
+  const statusDiv = document.getElementById("status");
+  container.innerHTML = UIFactory.createErrorHtml(suttaId);
+  statusDiv.textContent = "Sutta not found.";
+  statusDiv.classList.remove("hidden");
 }
 
 export function renderSutta(suttaId, data, options = {}) {
@@ -73,24 +78,34 @@ export function renderSutta(suttaId, data, options = {}) {
     return false;
   }
 
+  // Clear container
+  container.innerHTML = "";
+
   let htmlContent = "";
 
-  // [NEW] Logic phân nhánh: Branch vs Leaf
+  // CASE 1: BRANCH VIEW (Mục lục)
   if (data.isBranch) {
-      // Render Mục lục
+      // Compile danh sách
       htmlContent = ContentCompiler.compileBranch(data.bookStructure, data.uid, data.meta);
       
-      // Ẩn Table of Headings khi ở chế độ Branch View
+      // Ẩn TOH
       document.getElementById("toh-wrapper")?.classList.add("hidden");
-  } else {
-      // Render Bài kinh (Leaf)
-      if (!data.content) { handleNotFound(suttaId); return false; }
-      htmlContent = ContentCompiler.compile(data.content, data.uid);
+      
+      // Với Branch, Nav Prev/Next thường không cần thiết hoặc phức tạp
+      // Tạm thời ẩn Bottom Nav khi xem Branch
+      // Hoặc ta có thể implement logic "Next Chapter" sau này
+      updateTopNavDOM(data, null, null); 
+      container.innerHTML = htmlContent;
+      return true;
   }
 
-  if (!htmlContent) return false;
+  // CASE 2: LEAF VIEW (Bài kinh)
+  if (!data.content) {
+      handleNotFound(suttaId);
+      return false;
+  }
 
-  // Navigation Logic
+  htmlContent = ContentCompiler.compile(data.content, data.uid);
   const nav = calculateNavigation(data.bookStructure, data.uid);
   
   updateTopNavDOM(data, nav.prev, nav.next);
@@ -98,11 +113,8 @@ export function renderSutta(suttaId, data, options = {}) {
   const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.meta);
   container.innerHTML = htmlContent + bottomNavHtml;
 
-  // Chỉ setup TOH nếu là Leaf
-  if (!data.isBranch) {
-      if (!tohInstance) tohInstance = setupTableOfHeadings();
-      tohInstance.generate();
-  }
+  if (!tohInstance) tohInstance = setupTableOfHeadings();
+  tohInstance.generate();
 
   return true;
 }
