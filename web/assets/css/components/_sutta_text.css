@@ -102,7 +102,7 @@ p {
   color: var(--text-main);
 }
 
-/* Highlight System */
+/* Highlight System (Mặc định cho Block - thẻ P/DIV) */
 .highlight {
   border-left: 5px solid var(--primary-color);
   background-color: var(--highlight-color-background);
@@ -112,30 +112,39 @@ p {
   margin-right: -5px;
   transition: background-color 0.5s ease, box-shadow 0.5s ease;
   box-shadow: none;
+  border-radius: 0; /* Reset */
+}
+
+/* [NEW] Highlight cho Inline Element (thẻ SPAN) */
+/* Áp dụng cho các đoạn Verse hoặc đoạn văn nằm trong template */
+span.highlight,
+.segment-text.highlight {
+  /* Reset các thuộc tính của Block highlight để không vỡ layout */
+  border-left: none;
+  margin-left: 0;
+  padding-left: 4px; /* Thêm chút padding cho thoáng */
+  padding-right: 4px;
+  margin-right: 0;
+  
+  /* Style mới dạng "Highlighter Pen" */
+  background-color: var(--highlight-color-segment); /* Màu vàng đậm hơn chút */
+  box-shadow: 0 0 0 2px var(--highlight-color-segment); /* Tạo viền mờ xung quanh */
+  border-radius: 4px;
+  
+  /* Đảm bảo hiển thị đúng dòng */
+  display: inline; 
+  text-decoration: none;
 }
 
 .segment:target {
     animation: none;
 }
 
-/* 1. Highlight cho đoạn văn thường (P tag) */
 .segment.highlight {
   background-color: var(--highlight-color-segment);
   box-shadow: 0px 0px 0px 5px var(--highlight-color-segment);
   border-left: none;
   position: relative;
   z-index: 1;
-  border-radius: 4px; /* Thêm bo góc nhẹ cho đẹp */
-}
-
-/* [NEW] 2. Highlight cho đoạn Text nội bộ (dùng trong Verse/Heading) */
-.segment-text.highlight {
-  background-color: var(--highlight-color-segment);
-  box-shadow: 0px 0px 0px 3px var(--highlight-color-segment); /* Shadow nhỏ hơn chút */
-  border-radius: 3px;
-  /* Reset các thuộc tính highlight mặc định nếu bị dính */
-  border-left: none; 
-  padding-left: 0;
-  margin-left: 0;
-  margin-right: 0;
+  border-radius: 4px;
 }
