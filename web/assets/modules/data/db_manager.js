@@ -30,6 +30,8 @@ class DatabaseManager {
     }
 
     _resolveStructureName(chunkName) {
+        // Nếu locator là 'structure' (branch), ta cần logic map ngược lại sách
+        // Nhưng tạm thời xử lý leaf trước
         return chunkName.replace(/_chunk_\d+$/, '_struct');
     }
 
@@ -67,10 +69,14 @@ class DatabaseManager {
         await this.init();
         
         const chunkName = this._getLocator(uid);
-        if (!chunkName) return null;
+        if (!chunkName || chunkName === 'structure') {
+            logger.warn("getSutta", `Invalid locator for ${uid}: ${chunkName}`);
+            return null;
+        }
 
         const structName = this._resolveStructureName(chunkName);
 
+        // [DECISION] Await song song vì file structure rất nhỏ -> Không block UI đáng kể
         const [structData, chunkData] = await Promise.all([
             this.fetchStructure(structName),
             this.fetchContentChunk(chunkName)
@@ -78,19 +84,31 @@ class DatabaseManager {
 
         if (!structData || !chunkData) return null;
 
-        let targetContent = chunkData[uid];
-        // Lấy meta của CHÍNH bài này để check shortcut
-        let myMeta = structData.meta[uid]; 
+        let itemData = chunkData[uid]; 
+        
+        // Fallback: Tìm trong meta của structure (hiếm khi xảy ra với leaf)
+        let myMeta = itemData ? itemData.meta : structData.meta[uid];
 
-        if (!targetContent && myMeta && myMeta.type === 'shortcut') {
-            targetContent = chunkData[myMeta.parent_uid];
+        // Xử lý Shortcut: Nếu không có content ở key này, tìm ở cha
+        let targetContent = itemData ? itemData.content : null;
+        if (myMeta && myMeta.type === 'shortcut') {
+            const parentUid = myMeta.parent_uid;
+            if (chunkData[parentUid]) {
+                targetContent = chunkData[parentUid].content;
+            }
+        }
+
+        // [CRITICAL FIX] Merge Leaf Meta vào danh sách Meta chung
+        // structData.meta chỉ chứa Branch. Ta phải trộn Leaf Meta vào để UI hiển thị được Title.
+        const combinedMeta = { ...structData.meta };
+        if (myMeta) {
+            combinedMeta[uid] = myMeta;
         }
 
         return {
             uid: uid,
             content: targetContent,
-            // [QUAN TRỌNG] Trả về TOÀN BỘ meta của sách để UI tra cứu title của prev/next
-            meta: structData.meta, 
+            meta: combinedMeta, // Đã gộp
             bookStructure: structData.structure
         };
     }

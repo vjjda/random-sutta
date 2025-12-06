@@ -7,20 +7,15 @@ import { calculateNavigation } from "./navigator.js";
 let tohInstance = null;
 
 function getDisplayInfo(uid, metaMap) {
-    // Fallback mặc định
-    let mainTitle = uid.toUpperCase();
-    let subTitle = "";
-
     if (metaMap && metaMap[uid]) {
         const info = metaMap[uid];
-        // Ưu tiên Acronym (có dấu cách, VD: "AN 5.112")
-        if (info.acronym) mainTitle = info.acronym;
-        
-        // Subtitle ưu tiên bản dịch -> bản gốc
-        subTitle = info.translated_title || info.original_title || "";
+        return { 
+            main: info.acronym || uid.toUpperCase(), 
+            sub: info.translated_title || info.original_title || "" 
+        };
     }
-    
-    return { main: mainTitle, sub: subTitle };
+    // Fallback nếu không có meta (do nằm ở chunk khác chưa load)
+    return { main: uid.toUpperCase(), sub: "" };
 }
 
 function updateTopNavDOM(data, prevId, nextId) {
@@ -29,7 +24,7 @@ function updateTopNavDOM(data, prevId, nextId) {
   const navSubTitle = document.getElementById("nav-sub-title");
   const statusDiv = document.getElementById("status");
 
-  // Hiển thị thông tin bài hiện tại
+  // Title hiện tại (đã được merge meta nên chắc chắn có)
   const currentInfo = getDisplayInfo(data.uid, data.meta);
   if (navMainTitle) navMainTitle.textContent = currentInfo.main;
   if (navSubTitle) navSubTitle.textContent = currentInfo.sub;
@@ -37,7 +32,7 @@ function updateTopNavDOM(data, prevId, nextId) {
   document.getElementById("nav-title-text")?.classList.remove("hidden");
   document.getElementById("nav-search-container")?.classList.add("hidden");
 
-  // Setup Nút Previous / Next
+  // Setup Buttons
   const setupBtn = (btnId, targetId, type) => {
     const btn = document.getElementById(btnId);
     if (!btn) return;
@@ -46,14 +41,10 @@ function updateTopNavDOM(data, prevId, nextId) {
       btn.disabled = false;
       btn.onclick = () => window.loadSutta(targetId);
       
-      // Tra cứu info của bài hàng xóm
       const neighborInfo = getDisplayInfo(targetId, data.meta);
-      
-      // Tooltip hiển thị: "Next: AN 5.113 - Title"
       let tooltip = `${type}: ${neighborInfo.main}`;
       if (neighborInfo.sub) tooltip += ` - ${neighborInfo.sub}`;
       btn.title = tooltip;
-      
     } else {
       btn.disabled = true;
       btn.onclick = null;
@@ -84,17 +75,13 @@ export function renderSutta(suttaId, data, options = {}) {
     return false;
   }
 
-  // 1. Compile HTML
   const htmlContent = ContentCompiler.compile(data.content, data.uid);
   if (!htmlContent) return false;
 
-  // 2. Navigation Logic
   const nav = calculateNavigation(data.bookStructure, data.uid);
   
-  // 3. Update UI
   updateTopNavDOM(data, nav.prev, nav.next);
   
-  // Truyền toàn bộ meta map xuống UIFactory để nó render nút dưới cùng
   const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.meta);
   
   container.innerHTML = htmlContent + bottomNavHtml;
