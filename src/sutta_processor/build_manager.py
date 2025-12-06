@@ -12,8 +12,7 @@ from .logic.content_merger import process_worker
 from .logic.structure_handler import build_book_data
 from .logic.super_generator import generate_super_book_data
 from .output.asset_generator import write_book_file
-from .logic.rearchitect_db import run_optimizer
-
+from .optimizer import run_optimizer
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
 
