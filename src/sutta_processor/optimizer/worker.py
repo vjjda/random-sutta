@@ -29,46 +29,42 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         book_id = data.get("id", "").lower()
         result["book_id"] = book_id
 
-        # --- 1. Tách Metadata (Ultra Slim Approach) ---
+        # --- 1. Tách Metadata ---
         full_meta = data.get("meta", {})
-        branch_meta = {} # Dành cho Structure File (Siêu nhẹ)
-        leaf_meta = {}   # Dành cho Chunk File (Full detail)
+        branch_meta = {} # Dành cho Structure File
+        leaf_meta = {}   # Dành cho Chunk File
 
         for uid, info in full_meta.items():
             m_type = info.get("type")
             
-            # A. Build Leaf Meta (Full) cho Chunk
+            # A. Build Leaf Meta (Full Detail) cho Chunk
             if m_type != "branch" and m_type != "root":
                 leaf_meta[uid] = info
 
-            # B. Build Branch Meta (Structure)
-            if m_type == "branch" or m_type == "root":
-                # Branch: Giữ nguyên để hiển thị tiêu đề chương/phẩm
-                # Có thể cân nhắc bỏ blurb của Branch nếu muốn nhẹ hơn nữa
-                branch_meta[uid] = info
-            else:
-                # [FIX - ULTRA SLIM] Leaf/Shortcut
-                # Chỉ giữ lại NHỮNG GÌ TỐI THIỂU để hiển thị Navigation Bar
-                # Bỏ original_title (Pali), Bỏ blurb, Bỏ author...
-                slim_info = {
-                    "acronym": info.get("acronym", ""),
-                    "translated_title": info.get("translated_title", ""),
-                    "type": m_type 
-                    # type cần thiết để FE phân biệt shortcut/leaf
-                }
-                
-                # Nếu là Shortcut, cần giữ parent_uid để FE map logic
-                if m_type == "shortcut":
-                    slim_info["parent_uid"] = info.get("parent_uid")
-
-                branch_meta[uid] = slim_info
+            # B. Build Branch Meta (Structure) - Dùng cho Navigation
+            # Logic: Giữ lại thông tin định danh, bỏ thông tin mô tả dài dòng
+            
+            # Copy để không ảnh hưởng data gốc
+            slim_info = info.copy()
+            
+            # 1. Loại bỏ các trường nặng không cần thiết cho Menu/Nav
+            keys_to_remove = ["blurb", "author_uid", "scroll_target"]
+            for k in keys_to_remove:
+                if k in slim_info:
+                    del slim_info[k]
+            
+            # 2. Tối ưu: Loại bỏ các key có giá trị Null hoặc Rỗng
+            clean_info = {
+                k: v for k, v in slim_info.items() 
+                if v is not None and v != ""
+            }
+            
+            branch_meta[uid] = clean_info
                 
             if m_type == "branch" or m_type == "root":
                 result["locators"][uid] = "structure"
 
         # --- 2. Save Structure ---
-        # Structure Tree thường rất gọn (chỉ là nested keys), 
-        # vấn đề chính nằm ở Meta Object khổng lồ.
         struct_data = {
             "id": data.get("id"),
             "title": data.get("title"),
