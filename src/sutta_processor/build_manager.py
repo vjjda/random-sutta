@@ -12,7 +12,7 @@ from .logic.content_merger import process_worker
 from .logic.structure_handler import build_book_data
 from .logic.super_generator import generate_super_book_data
 from .output.asset_generator import write_book_file
-from .logic.rearchitect_db import run_optimizer # [NEW]
+from .logic.rearchitect_db import run_optimizer
 
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
@@ -128,12 +128,10 @@ class BuildManager:
                 # Không cần nó ghi JS ra assets/books cũ nữa (trừ khi dry_run)
                 write_book_file("super", super_book_data, self.dry_run) 
 
-        # [NEW PHASE] 4. Run Optimizer (Re-architect DB)
-        if not self.dry_run:
-            logger.info("⚡ Transforming processed data to Optimized DB...")
-            run_optimizer()
-            
-            # [NOTE] Không cần gọi write_loader_script cũ nữa 
-            # vì loader mới sẽ đọc uid_index.json
+        # [UPDATED PHASE] 4. Run Optimizer (Always runs now)
+        logger.info("⚡ Transforming processed data to Optimized DB...")
+        
+        # Truyền cờ self.dry_run vào để Optimizer biết đường xử lý
+        run_optimizer(dry_run=self.dry_run)
             
         logger.info("✅ All processing tasks completed.")
