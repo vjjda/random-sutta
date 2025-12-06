@@ -29,10 +29,6 @@ class DatabaseManager {
         return this.index.locator[uid];
     }
 
-    _resolveStructureName(chunkName) {
-        return chunkName.replace(/_chunk_\d+$/, '_struct');
-    }
-
     async fetchStructure(structName) {
         if (this.structureCache.has(structName)) return this.structureCache.get(structName);
         const url = `assets/db/structure/${structName}.json`;
@@ -66,12 +62,25 @@ class DatabaseManager {
     async getSutta(uid) {
         await this.init();
         
-        const chunkName = this._getLocator(uid);
-        if (!chunkName || chunkName === 'structure') {
-            return null;
+        const locator = this._getLocator(uid);
+        if (!locator) return null;
+
+        // --- CASE 1: BRANCH (Locator có đuôi _struct) ---
+        if (locator.endsWith('_struct')) {
+            const structData = await this.fetchStructure(locator);
+            if (!structData) return null;
+            
+            return {
+                uid: uid,
+                isBranch: true, // Cờ báo hiệu để Renderer biết
+                meta: structData.meta,
+                bookStructure: structData.structure
+            };
         }
 
-        const structName = this._resolveStructureName(chunkName);
+        // --- CASE 2: LEAF (Locator là chunk) ---
+        const chunkName = locator;
+        const structName = chunkName.replace(/_chunk_\d+$/, '_struct');
 
         const [structData, chunkData] = await Promise.all([
             this.fetchStructure(structName),
@@ -80,29 +89,19 @@ class DatabaseManager {
 
         if (!structData || !chunkData) return null;
 
-        // --- [CRITICAL FIX] ---
-        // 1. Khởi tạo Meta Map với dữ liệu Branch từ Structure
         const combinedMeta = { ...structData.meta };
-
-        // 2. Gộp TOÀN BỘ Meta từ Chunk hiện tại vào Meta Map
-        // Điều này giúp UI tìm thấy Title của các bài kinh lân cận (Next/Prev)
         if (chunkData) {
             Object.keys(chunkData).forEach(key => {
-                const item = chunkData[key];
-                if (item.meta) {
-                    combinedMeta[key] = item.meta;
-                }
+                if (chunkData[key].meta) combinedMeta[key] = chunkData[key].meta;
             });
         }
-        // ----------------------
 
         let itemData = chunkData[uid]; 
         let myMeta = itemData ? itemData.meta : combinedMeta[uid];
-
         let targetContent = itemData ? itemData.content : null;
+
         if (myMeta && myMeta.type === 'shortcut') {
             const parentUid = myMeta.parent_uid;
-            // Tìm content cha (thường cũng nằm trong chunk này)
             if (chunkData[parentUid]) {
                 targetContent = chunkData[parentUid].content;
             }
@@ -110,8 +109,9 @@ class DatabaseManager {
 
         return {
             uid: uid,
+            isBranch: false,
             content: targetContent,
-            meta: combinedMeta, // Đã chứa đầy đủ meta của hàng xóm
+            meta: combinedMeta,
             bookStructure: structData.structure
         };
     }

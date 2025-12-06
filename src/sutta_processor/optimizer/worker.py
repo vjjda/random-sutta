@@ -29,43 +29,48 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         book_id = data.get("id", "").lower()
         result["book_id"] = book_id
 
-        # --- 1. Tách Metadata (Bare Bones Strategy) ---
+        # --- 1. Tách Metadata ---
         full_meta = data.get("meta", {})
-        branch_meta = {} # Chỉ chứa Branch (Vagga/Book)
-        leaf_meta = {}   # Chứa TOÀN BỘ thông tin của Leaf/Shortcut
+        branch_meta = {} 
+        leaf_meta = {}   
 
         for uid, info in full_meta.items():
             m_type = info.get("type")
             
-            # A. Branch/Root -> Vào Structure File
-            if m_type == "branch" or m_type == "root":
-                # Giữ lại thông tin để hiển thị Breadcrumb/Mục lục
-                # Có thể tối ưu thêm bằng cách bỏ blurb của branch nếu muốn
-                branch_meta[uid] = info
-                result["locators"][uid] = "structure"
-            
-            # B. Leaf/Shortcut -> Vào Content Chunk
-            else:
-                # Chuyển TOÀN BỘ sang Chunk. 
-                # Structure file sẽ hoàn toàn không biết gì về Leaf ngoài cái ID trong Tree.
+            # A. Leaf/Shortcut -> Chunk
+            if m_type != "branch" and m_type != "root":
                 leaf_meta[uid] = info
+                # [FIX PREV/NEXT TITLE]
+                # Tạo bản sao rút gọn cho Structure để hiển thị Nav
+                slim_info = info.copy()
+                keys_to_remove = ["blurb", "author_uid", "scroll_target"]
+                for k in keys_to_remove:
+                    if k in slim_info: del slim_info[k]
+                
+                clean_info = {k: v for k, v in slim_info.items() if v is not None and v != ""}
+                branch_meta[uid] = clean_info
 
-        # --- 2. Save Structure (Siêu nhẹ) ---
+            # B. Branch/Root -> Structure
+            else:
+                branch_meta[uid] = info
+                # [CRITICAL FIX FOR BRANCH VIEW]
+                # Thay vì lưu "structure", ta lưu tên file cụ thể để Client biết tải file nào
+                result["locators"][uid] = f"{safe_name}_struct"
+
+        # --- 2. Save Structure ---
         struct_data = {
             "id": data.get("id"),
             "title": data.get("title"),
             "structure": data.get("structure", {}),
-            "meta": branch_meta # Chỉ có Branch Meta
+            "meta": branch_meta 
         }
         io.save_dual(f"structure/{safe_name}_struct.json", struct_data)
 
-        # --- 3. Process Content & Leaf Meta ---
+        # --- 3. Process Content ---
         raw_content = data.get("content", {})
         
         if raw_content:
-            # Chunking bây giờ sẽ mang theo cả Meta của Leaf
             chunks = chunk_content_with_meta(safe_name, raw_content, leaf_meta)
-            
             for fname, chunk_data in chunks:
                 io.save_dual(f"content/{fname}.json", chunk_data)
                 for uid in chunk_data.keys():
