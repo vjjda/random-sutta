@@ -1,16 +1,13 @@
 // Path: web/assets/modules/data/content_compiler.js
 
 export const ContentCompiler = {
-  // [UPDATED] Nhận content object (chunk) trực tiếp
   compile: function (contentData, rootId) {
     if (!contentData) return "";
 
     let html = "";
     
-    // Sort keys (vì JSON object không đảm bảo thứ tự, dù Python đã sort)
-    // Keys dạng: mn1:0.1, mn1:1.1 ...
+    // Sắp xếp keys để đảm bảo thứ tự đoạn văn
     const sortedKeys = Object.keys(contentData).sort((a, b) => {
-        // Logic sort tự nhiên (alphanumeric)
         return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
 
@@ -18,21 +15,30 @@ export const ContentCompiler = {
       const segment = contentData[segmentId];
       if (!segment) return;
 
+      // 1. Chuẩn bị nội dung song ngữ
+      // Chỉ tạo thẻ span nếu có nội dung
+      const pliText = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
+      const engText = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
+      
+      // Nội dung hỗn hợp (Pali trước, Anh sau - CSS sẽ lo việc xuống dòng nhờ display: block)
+      const combinedText = `${pliText}${engText}`;
+
       let text = "";
-      // Ưu tiên HTML có sẵn (headings, evams)
+
+      // 2. Render
+      // CASE A: Segment là Heading/Structure (có field html chứa placeholder {})
       if (segment.html) {
-        text = segment.html.replace("{}", segment.eng || "");
-      } else {
-        // Segment thường
-        const pali = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
-        const eng = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
-        text = `<p class='segment' id='${segmentId}'>${pali}${eng}`;
+        // [FIX] Thay thế {} bằng cả Pali lẫn Anh
+        text = segment.html.replace("{}", combinedText);
+      } 
+      // CASE B: Segment nội dung thông thường (tự bọc thẻ p)
+      else {
+        text = `<p class='segment' id='${segmentId}'>${combinedText}`;
         
-        // Thêm comment marker nếu có
+        // Xử lý Comment
         if (segment.comm) {
-            // Escape single quotes for HTML attribute
-            const safeComm = segment.comm.replace(/'/g, "&apos;");
-            text += `<span class='comment-marker' data-comment='${safeComm}'>*</span>`;
+            const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
+            text += `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
         }
         text += "</p>";
       }
@@ -40,8 +46,5 @@ export const ContentCompiler = {
     });
 
     return html;
-  },
-  
-  // Có thể bỏ compileBranchHtml nếu Branch giờ đây cũng dùng chunk
-  // Hoặc giữ lại nếu muốn render thông tin từ Meta của Branch
+  }
 };
