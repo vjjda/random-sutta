@@ -22,7 +22,6 @@ function getDisplayInfo(uid, metaMap) {
     return { main: main, sub: "" };
 }
 
-// ... (Giữ nguyên updateTopNavDOM và handleNotFound) ...
 function updateTopNavDOM(data, prevId, nextId) {
     const navHeader = document.getElementById("nav-header");
     const navMainTitle = document.getElementById("nav-main-title");
@@ -78,14 +77,18 @@ export async function renderSutta(suttaId, data, options = {}) {
   container.innerHTML = "";
   let htmlContent = "";
 
+  // [CALCULATE NAVIGATION] - Dùng chung cho cả Leaf và Branch
+  // navigator.js đã có logic tìm sibling cùng level (depth)
+  const nav = calculateNavigation(data.bookStructure, data.uid);
+
+  // --- CASE 1: BRANCH VIEW (Mục lục) ---
   if (data.isBranch) {
-      // 1. Tìm IDs của các con
       function getChildrenIds(structure, currentUid) {
           function findNode(node, targetId) {
               if (!node) return null;
               if (Array.isArray(node)) {
                   for (let item of node) {
-                      if (item[targetId]) return item[targetId]; // Found object key
+                      if (item[targetId]) return item[targetId];
                       const found = findNode(item, targetId);
                       if (found) return found;
                   }
@@ -102,14 +105,11 @@ export async function renderSutta(suttaId, data, options = {}) {
               return null;
           }
           
-          // Thử truy cập trực tiếp trước
           const node = structure[currentUid] ? structure[currentUid] : findNode(structure, currentUid);
           if (!node) return [];
           
           let ids = [];
           if (Array.isArray(node)) {
-              // Nếu mảng chứa string -> Leaf IDs
-              // Nếu mảng chứa Object -> Branch con -> lấy keys
               node.forEach(item => {
                   if (typeof item === 'string') ids.push(item);
                   else if (typeof item === 'object') ids.push(...Object.keys(item));
@@ -122,7 +122,6 @@ export async function renderSutta(suttaId, data, options = {}) {
 
       const childrenIds = getChildrenIds(data.bookStructure, data.uid);
       
-      // 2. Load metadata cho các con (Leaf) nếu thiếu
       if (childrenIds.length > 0) {
           const leavesToFetch = childrenIds.filter(id => !data.meta[id]);
           if (leavesToFetch.length > 0) {
@@ -134,18 +133,24 @@ export async function renderSutta(suttaId, data, options = {}) {
       htmlContent = ContentCompiler.compileBranch(data.bookStructure, data.uid, data.meta);
       
       document.getElementById("toh-wrapper")?.classList.add("hidden");
-      updateTopNavDOM(data, null, null); 
-      container.innerHTML = htmlContent;
+      
+      // [FIXED] Kích hoạt Navigation cho Branch
+      updateTopNavDOM(data, nav.prev, nav.next); 
+      
+      // Thêm Bottom Nav
+      const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.meta);
+      container.innerHTML = htmlContent + bottomNavHtml;
+      
       return true;
   }
 
+  // --- CASE 2: LEAF VIEW (Bài kinh) ---
   if (!data.content) {
       handleNotFound(suttaId);
       return false;
   }
 
   htmlContent = ContentCompiler.compile(data.content, data.uid);
-  const nav = calculateNavigation(data.bookStructure, data.uid);
   
   updateTopNavDOM(data, nav.prev, nav.next);
   
