@@ -27,12 +27,14 @@ class DBOrchestrator:
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
         book_files = []
         
+        # 1. Xử lý Super Book (Main Thread)
         for f in all_files:
             if f.name == "super_book.json":
                 self._process_super(f)
             else:
                 book_files.append(f)
 
+        # 2. Xử lý Sách (Multi-Process)
         max_workers = min(os.cpu_count() or 4, 8)
         
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
@@ -46,6 +48,7 @@ class DBOrchestrator:
                 try:
                     res = future.result()
                     if res["status"] == "success":
+                        # Merge Locator từ sách con (sẽ ghi đè Super Book nếu trùng key)
                         self.global_locator.update(res["locators"])
                         self.pool_manager.merge_worker_result(
                             res["book_id"], 
@@ -73,13 +76,14 @@ class DBOrchestrator:
             self.io.save_dual("structure/super_struct.json", data)
             self.pool_manager.register_sutta_books(data)
             
-            # [UPDATED] Add Root Branches to Locator
-            # Giúp tìm kiếm các key như 'mn', 'dn', 'sutta' trỏ về 'structure'
+            # [FIXED] Populate Global Locator cho Super Items
+            # Gán cứng locator trỏ về file super_struct
             meta = data.get("meta", {})
             for uid in meta.keys():
-                self.global_locator[uid] = "structure"
+                # Format đặc biệt để FE nhận biết: "structure/<tên_file_không_đuôi>"
+                self.global_locator[uid] = "structure/super_struct"
                 
-            logger.info("   🌟 Super Book Processed")
+            logger.info(f"   🌟 Super Book Processed ({len(meta)} keys indexed)")
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
 

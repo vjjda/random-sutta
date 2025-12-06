@@ -29,6 +29,15 @@ class DatabaseManager {
         return this.index.locator[uid];
     }
 
+    _resolveStructureName(locator) {
+        // [FIXED] Nếu locator bắt đầu bằng "structure/", đó chính là tên file struct
+        if (locator.startsWith('structure/')) {
+            return locator.split('/')[1]; // Lấy phần sau dấu gạch chéo (ví dụ: super_struct)
+        }
+        // Logic cũ cho chunk
+        return locator.replace(/_chunk_\d+$/, '_struct');
+    }
+
     async fetchStructure(structName) {
         if (this.structureCache.has(structName)) return this.structureCache.get(structName);
         const url = `assets/db/structure/${structName}.json`;
@@ -65,22 +74,25 @@ class DatabaseManager {
         const locator = this._getLocator(uid);
         if (!locator) return null;
 
-        // --- CASE 1: BRANCH (Locator có đuôi _struct) ---
-        if (locator.endsWith('_struct')) {
-            const structData = await this.fetchStructure(locator);
+        // --- CASE 1: BRANCH (Super hoặc Book Root) ---
+        // Locator dạng "structure/..." hoặc "structure" (legacy)
+        if (locator.startsWith('structure')) {
+            const structName = this._resolveStructureName(locator);
+            const structData = await this.fetchStructure(structName);
+            
             if (!structData) return null;
             
             return {
                 uid: uid,
-                isBranch: true, // Cờ báo hiệu để Renderer biết
+                isBranch: true,
                 meta: structData.meta,
                 bookStructure: structData.structure
             };
         }
 
-        // --- CASE 2: LEAF (Locator là chunk) ---
+        // --- CASE 2: LEAF / SHORTCUT ---
         const chunkName = locator;
-        const structName = chunkName.replace(/_chunk_\d+$/, '_struct');
+        const structName = this._resolveStructureName(chunkName);
 
         const [structData, chunkData] = await Promise.all([
             this.fetchStructure(structName),
