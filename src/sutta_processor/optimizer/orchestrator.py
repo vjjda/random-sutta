@@ -21,23 +21,20 @@ class DBOrchestrator:
 
     def run(self):
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization: {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v2 - Slim Struct): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
         book_files = []
         
-        # 1. Xử lý Super Book (Main Thread)
         for f in all_files:
             if f.name == "super_book.json":
                 self._process_super(f)
             else:
                 book_files.append(f)
 
-        # 2. Xử lý Sách (Multi-Process)
         max_workers = min(os.cpu_count() or 4, 8)
-        logger.info(f"   🔥 Spawning {max_workers} workers for {len(book_files)} books...")
-
+        
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             futures = {
                 executor.submit(process_book_task, f, self.dry_run): f.name 
@@ -56,27 +53,35 @@ class DBOrchestrator:
                         )
                         logger.info(f"   ✅ Processed: {fname}")
                     else:
-                        logger.warning(f"   ⚠️ Worker reported failure for {fname}")
+                        logger.warning(f"   ⚠️ Worker failure: {fname}")
                 except Exception as e:
-                    logger.error(f"   ❌ Exception in worker for {fname}: {e}")
+                    logger.error(f"   ❌ Exception: {e}")
 
-        # 3. Finalize Index
         self._save_master_index()
         
         if not self.dry_run:
             self.pool_manager.generate_js_constants()
 
-        logger.info("✨ Optimization Completed Successfully.")
+        logger.info("✨ Optimization Completed.")
 
     def _process_super(self, file_path: Path):
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            
+            # Save Super Struct
             self.io.save_dual("structure/super_struct.json", data)
             self.pool_manager.register_sutta_books(data)
+            
+            # [UPDATED] Add Root Branches to Locator
+            # Giúp tìm kiếm các key như 'mn', 'dn', 'sutta' trỏ về 'structure'
+            meta = data.get("meta", {})
+            for uid in meta.keys():
+                self.global_locator[uid] = "structure"
+                
             logger.info("   🌟 Super Book Processed")
         except Exception as e:
-            logger.error(f"❌ Error processing super_book: {e}")
+            logger.error(f"❌ Error super_book: {e}")
 
     def _save_master_index(self):
         index_data = {

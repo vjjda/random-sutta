@@ -6,15 +6,12 @@ from typing import Dict, Any, List
 
 from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
-from .chunker import chunk_content
+from .chunker import chunk_content_with_meta # [UPDATED]
 from .pool_manager import PoolManager
 
 logger = logging.getLogger("Optimizer.Worker")
 
 def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
-    """
-    Hàm chạy trong Process riêng (Stateless).
-    """
     io = IOManager(dry_run)
     result = {
         "status": "error", 
@@ -24,7 +21,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
     }
 
     try:
-        # 1. Load Data
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             
@@ -33,38 +29,47 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         book_id = data.get("id", "").lower()
         result["book_id"] = book_id
 
-        # 2. Save Structure
+        # --- 1. Tách Metadata ---
+        full_meta = data.get("meta", {})
+        branch_meta = {}
+        leaf_meta = {} # Bao gồm cả Leaf và Shortcut
+
+        for uid, info in full_meta.items():
+            m_type = info.get("type")
+            # Branch giữ lại ở Structure
+            if m_type == "branch" or m_type == "root": 
+                branch_meta[uid] = info
+                # [Locator] Branch nằm trong structure
+                result["locators"][uid] = "structure" 
+            else:
+                # Leaf/Shortcut đẩy sang Chunk
+                leaf_meta[uid] = info
+
+        # --- 2. Save Structure (Slim version) ---
         struct_data = {
             "id": data.get("id"),
             "title": data.get("title"),
             "structure": data.get("structure", {}),
-            "meta": data.get("meta", {})
+            "meta": branch_meta # Chỉ chứa Branch Meta
         }
         io.save_dual(f"structure/{safe_name}_struct.json", struct_data)
 
-        # 3. Process Content
+        # --- 3. Process Content & Leaf Meta ---
         raw_content = data.get("content", {})
-        meta_map = data.get("meta", {})
         
         if raw_content:
-            # A. Chunking
-            chunks = chunk_content(safe_name, raw_content)
-            for fname, content in chunks:
-                io.save_dual(f"content/{fname}.json", content)
-                # Map Locator (bỏ đuôi json để index nhẹ)
-                for uid in content.keys():
+            # A. Chunking (Content + Leaf Meta)
+            chunks = chunk_content_with_meta(safe_name, raw_content, leaf_meta)
+            
+            for fname, chunk_data in chunks:
+                io.save_dual(f"content/{fname}.json", chunk_data)
+                
+                # Map Locator cho tất cả item trong chunk
+                for uid in chunk_data.keys():
                     result["locators"][uid] = fname
 
-            # B. Map Shortcuts Locators
-            for uid, info in meta_map.items():
-                if info.get("type") == "shortcut":
-                    parent = info.get("parent_uid")
-                    # Chỉ map nếu cha tồn tại trong locator (tức là cha có content)
-                    if parent and parent in result["locators"]:
-                        result["locators"][uid] = result["locators"][parent]
-
             # C. Smart Pool Filtering
-            result["valid_uids"] = PoolManager.filter_smart_uids(raw_content, meta_map)
+            result["valid_uids"] = PoolManager.filter_smart_uids(raw_content, full_meta)
 
         result["status"] = "success"
         return result
