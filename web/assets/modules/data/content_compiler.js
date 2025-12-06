@@ -6,6 +6,7 @@ export const ContentCompiler = {
 
     let html = "";
     
+    // Sort keys
     const sortedKeys = Object.keys(contentData).sort((a, b) => {
         return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
@@ -19,23 +20,45 @@ export const ContentCompiler = {
       // 1. Chuẩn bị nội dung song ngữ
       const pliText = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
       const engText = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
-      
-      // Khởi tạo nội dung gộp
       let combinedText = `${pliText}${engText}`;
 
-      // [FIX] 2. Xử lý Comment (Gộp luôn vào combinedText)
-      // Việc này đảm bảo comment luôn xuất hiện bất kể segment có html riêng hay không
+      // Xử lý Comment
       if (segment.comm) {
           const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
           combinedText += `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
       }
 
-      // 3. Render ra HTML cuối cùng
+      // 2. Render HTML & Inject ID
       if (segment.html) {
-        // Nếu có khung HTML sẵn (ví dụ blockquote, header...), nhét nội dung (đã có dấu *) vào
-        text = segment.html.replace("{}", combinedText);
+        // Thay thế nội dung vào placeholder
+        let rendered = segment.html.replace("{}", combinedText);
+
+        // [LOGIC MỚI] Inject ID để scroll
+        // Regex tìm thẻ mở đầu tiên: <tagname attributes...>
+        const tagMatch = rendered.match(/^<([a-z][a-z0-9-]*)([^>]*)>/i);
+
+        if (tagMatch) {
+            // Trường hợp A: Có thẻ mở ở đầu (ví dụ <p>, <article>)
+            const tagName = tagMatch[1];
+            const attrs = tagMatch[2];
+
+            // Chỉ tiêm ID nếu chưa có (tránh ghi đè ID của cấu trúc lớn như article)
+            if (!attrs.includes('id=')) {
+                const newOpenTag = `<${tagName} id="${segmentId}"${attrs}>`;
+                rendered = newOpenTag + rendered.substring(tagMatch[0].length);
+            }
+        } else {
+            // Trường hợp B: Không có thẻ mở (ví dụ "{}</p>" hoặc chỉ là text thuần)
+            // Bọc trong thẻ <span> để tạo điểm neo scroll mà không phá vỡ layout
+            // Lưu ý: Nếu rendered rỗng thì thôi
+            if (rendered.trim()) {
+                rendered = `<span id="${segmentId}">${rendered}</span>`;
+            }
+        }
+        text = rendered;
+
       } else {
-        // Nếu không, bọc trong thẻ <p> chuẩn
+        // Trường hợp C: Không có template HTML -> Dùng thẻ <p> mặc định
         text = `<p class='segment' id='${segmentId}'>${combinedText}</p>`;
       }
       
@@ -46,7 +69,7 @@ export const ContentCompiler = {
   },
 
   compileBranch: function(structure, currentUid, metaMap) {
-      // (Giữ nguyên logic compileBranch đã fix ở bước trước)
+      // (Giữ nguyên code compileBranch đã fix ở bước trước)
       function findNode(node, targetId) {
           if (!node) return null;
           if (Array.isArray(node)) {
