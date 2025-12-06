@@ -15,61 +15,67 @@ const APP_VERSION = "dev-placeholder";
 async function runSmartBackgroundDownload() {
     const storedVersion = localStorage.getItem('sutta_offline_version');
     const btnOffline = document.getElementById("btn-download-offline");
-    const progressDiv = document.getElementById("offline-progress");
+    const progressBar = document.getElementById("offline-progress-bar"); // [NEW]
+    const wrapper = document.getElementById("offline-wrapper"); // [NEW]
+
+    // Helper update UI
+    const updateUI = (text, icon, progressPercent = 0) => {
+        if (btnOffline) {
+            const iconSpan = btnOffline.querySelector(".icon");
+            const labelSpan = btnOffline.querySelector(".label");
+            if (iconSpan) iconSpan.textContent = icon;
+            if (labelSpan) labelSpan.textContent = text;
+        }
+        if (progressBar) {
+            progressBar.style.width = `${progressPercent}%`;
+        }
+    };
 
     // 1. Kiểm tra điều kiện
     if (storedVersion === APP_VERSION) {
-        logger.info("BackgroundDL", `Cache is up-to-date (${APP_VERSION}). Skipping.`);
-        if (btnOffline) {
-            btnOffline.textContent = "✅ Offline Ready";
-            btnOffline.disabled = true;
-        }
+        logger.info("BackgroundDL", `Cache is up-to-date (${APP_VERSION}).`);
+        if (wrapper) wrapper.classList.add("ready");
+        updateUI("Offline Ready", "✓");
+        if (btnOffline) btnOffline.disabled = true;
         return;
     }
 
-    // 2. Kiểm tra mạng (Tiết kiệm dữ liệu)
+    // 2. Kiểm tra mạng
     if (navigator.connection && navigator.connection.saveData) {
-        logger.warn("BackgroundDL", "Data Saver is on. Skipping auto-download.");
-        return;
+        return; // Skip âm thầm
     }
 
-    logger.info("BackgroundDL", `New version detected (${APP_VERSION}). Starting silent download...`);
-
-    // 3. Cập nhật UI (nếu user mở menu ra xem)
-    if (btnOffline) {
-        btnOffline.disabled = true;
-        btnOffline.textContent = "Auto-downloading...";
-    }
-
-    // 4. Thực thi tải ngầm
+    // 3. Bắt đầu tải
+    logger.info("BackgroundDL", "Starting silent download...");
+    if (btnOffline) btnOffline.disabled = true;
+    
     try {
         await DB.downloadAll((current, total) => {
-            // Update UI nhẹ nhàng (không block main thread)
-            if (progressDiv && current % 10 === 0) { // Update mỗi 10 file để đỡ giật
-                const percent = Math.round((current / total) * 100);
-                progressDiv.textContent = `Syncing: ${percent}%`;
+            // Update Progress Bar (width %)
+            const percent = Math.round((current / total) * 100);
+            // Chỉ update text mỗi 10% để đỡ rối mắt
+            if (current % 20 === 0 || percent === 100) {
+                updateUI(`Syncing... ${percent}%`, "⏳", percent);
+            } else {
+                // Vẫn update bar mượt mà
+                if (progressBar) progressBar.style.width = `${percent}%`;
             }
         });
 
-        // 5. Hoàn tất
         localStorage.setItem('sutta_offline_version', APP_VERSION);
-        logger.info("BackgroundDL", "✅ Offline sync completed.");
         
-        if (btnOffline) {
-            btnOffline.textContent = "✅ Offline Ready";
-            progressDiv.textContent = "Up to date.";
-        }
+        // 4. Hoàn tất
+        if (wrapper) wrapper.classList.add("ready");
+        updateUI("Offline Ready", "✓", 0); // Reset bar về 0 hoặc 100 tùy ý, ở đây ẩn đi rồi
+
     } catch (e) {
         logger.error("BackgroundDL", "Sync failed", e);
-        if (btnOffline) {
-            btnOffline.textContent = "⚠️ Sync Paused";
-            btnOffline.disabled = false; // Cho phép user bấm thử lại
-        }
+        updateUI("Retry Download", "⚠️", 0);
+        if (btnOffline) btnOffline.disabled = false;
     }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // ... (Giữ nguyên phần Init Config, Logging, DOM Elements cũ) ...
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
     const params = new URLSearchParams(window.location.search);
@@ -138,7 +144,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btnOffline = document.getElementById("btn-download-offline");
     if (btnOffline) {
         btnOffline.addEventListener("click", () => {
-            // Xóa version để ép tải lại
+            const wrapper = document.getElementById("offline-wrapper");
+            if (wrapper) wrapper.classList.remove("ready");
+            
+            // Force re-download
             localStorage.removeItem('sutta_offline_version');
             runSmartBackgroundDownload();
         });
