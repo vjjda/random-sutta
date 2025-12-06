@@ -3,7 +3,7 @@
   background: var(--bg-card);
   padding: 40px;
   border-radius: 8px;
-  box-shadow: var(--shadow-soft);
+  /* box-shadow: var(--shadow-soft); */
   min-height: 300px;
   overflow-wrap: break-word;
   word-wrap: break-word;

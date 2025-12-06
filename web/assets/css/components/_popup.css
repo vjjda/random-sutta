@@ -16,11 +16,11 @@
 
 #comment-popup {
   position: fixed;
-  bottom: 20px;
+  bottom: 0px;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  max-width: 600px;
+  width: 95%;
+  max-width: 620px;
   max-height: 50vh;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -28,7 +28,7 @@
   border-left: 5px solid #d35400;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 -5px 15px rgba(0, 0, 0, 0.05);
   padding: 20px 40px 20px 25px;
-  border-radius: 4px;
+  border-radius: 10px 10px 0 0;
   z-index: 1000;
   font-size: 1rem;
   line-height: 1.6;

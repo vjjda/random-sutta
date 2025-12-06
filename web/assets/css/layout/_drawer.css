@@ -30,11 +30,11 @@
 }
 
 #filter-drawer {
-  margin-top: 10px;
+  /* margin-top: 5px; */
   padding: 15px;
-  background: rgba(255, 255, 255, 0.5);
+  /* background: rgba(255, 255, 255, 0.5); */
   border-radius: var(--radius-md);
-  border: 1px dashed var(--border-color);
+  /* border: 1px dashed var(--border-color); */
   animation: slideDown 0.3s ease-out;
 }
 

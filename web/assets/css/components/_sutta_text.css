@@ -107,8 +107,9 @@ p {
   border-left: 5px solid var(--primary-color);
   background-color: var(--highlight-color-background);
   padding-left: 15px;
-  padding-right: 15px;
-  border-radius: 4px;
+  margin-left: -15px;
+  padding-right: 5px;
+  margin-right: -5px;
   transition: background-color 0.5s ease, box-shadow 0.5s ease;
   box-shadow: none;
 }
@@ -122,8 +123,8 @@ p {
   background-color: var(--highlight-color-segment);
   box-shadow: 0px 0px 0px 5px var(--highlight-color-segment);
   border-left: none;
-  border-radius: 4px;
-  padding: 0;
+  /* border-radius: 4px; */
+  /* padding: 0; */
   position: relative;
   z-index: 1;
 }
