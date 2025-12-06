@@ -29,7 +29,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         book_id = data.get("id", "").lower()
         result["book_id"] = book_id
 
-        # --- 1. Tách Metadata ---
         full_meta = data.get("meta", {})
         branch_meta = {} 
         leaf_meta = {}   
@@ -37,27 +36,17 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         for uid, info in full_meta.items():
             m_type = info.get("type")
             
-            # A. Leaf/Shortcut -> Chunk
+            # A. LEAF / SHORTCUT -> Đẩy HẾT sang Chunk
+            # Structure file sẽ không biết gì về Leaf ngoài ID trong Tree
             if m_type != "branch" and m_type != "root":
                 leaf_meta[uid] = info
-                # [FIX PREV/NEXT TITLE]
-                # Tạo bản sao rút gọn cho Structure để hiển thị Nav
-                slim_info = info.copy()
-                keys_to_remove = ["blurb", "author_uid", "scroll_target"]
-                for k in keys_to_remove:
-                    if k in slim_info: del slim_info[k]
-                
-                clean_info = {k: v for k, v in slim_info.items() if v is not None and v != ""}
-                branch_meta[uid] = clean_info
 
-            # B. Branch/Root -> Structure
+            # B. BRANCH / ROOT -> Giữ lại ở Structure
             else:
                 branch_meta[uid] = info
-                # [CRITICAL FIX FOR BRANCH VIEW]
-                # Thay vì lưu "structure", ta lưu tên file cụ thể để Client biết tải file nào
                 result["locators"][uid] = f"{safe_name}_struct"
 
-        # --- 2. Save Structure ---
+        # --- Save Structure (Siêu nhẹ - Chỉ có Tree + Branch Meta) ---
         struct_data = {
             "id": data.get("id"),
             "title": data.get("title"),
@@ -66,7 +55,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         }
         io.save_dual(f"structure/{safe_name}_struct.json", struct_data)
 
-        # --- 3. Process Content ---
+        # --- Process Content & Leaf Meta ---
         raw_content = data.get("content", {})
         
         if raw_content:

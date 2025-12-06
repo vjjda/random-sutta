@@ -3,14 +3,12 @@ import { ContentCompiler } from "../data/content_compiler.js";
 import { setupTableOfHeadings } from "./toh_component.js";
 import { UIFactory } from "./ui_factory.js";
 import { calculateNavigation } from "./navigator.js";
+import { DB } from "../data/db_manager.js"; // [NEW] Import DB
 
 let tohInstance = null;
 
 function getDisplayInfo(uid, metaMap) {
-    // Fallback thông minh
     let main = uid.toUpperCase();
-    
-    // Thử tách số: an1.1 -> AN 1.1
     const match = uid.match(/^([a-z]+)(\d.*)$/i);
     if (match) main = `${match[1].toUpperCase()} ${match[2]}`;
 
@@ -24,8 +22,8 @@ function getDisplayInfo(uid, metaMap) {
     return { main: main, sub: "" };
 }
 
-// ... (Giữ nguyên updateTopNavDOM và handleNotFound) ...
 function updateTopNavDOM(data, prevId, nextId) {
+    // ... (Giữ nguyên logic cũ) ...
   const navHeader = document.getElementById("nav-header");
   const navMainTitle = document.getElementById("nav-main-title");
   const navSubTitle = document.getElementById("nav-sub-title");
@@ -54,10 +52,8 @@ function updateTopNavDOM(data, prevId, nextId) {
       btn.title = "";
     }
   };
-
   setupBtn("nav-prev", prevId, "Previous");
   setupBtn("nav-next", nextId, "Next");
-
   navHeader.classList.remove("hidden");
   statusDiv.classList.add("hidden");
 }
@@ -70,7 +66,8 @@ function handleNotFound(suttaId) {
   statusDiv.classList.remove("hidden");
 }
 
-export function renderSutta(suttaId, data, options = {}) {
+// [UPDATED] chuyển thành async để await DB.fetchMetaForUids
+export async function renderSutta(suttaId, data, options = {}) {
   const container = document.getElementById("sutta-container");
   
   if (!data) {
@@ -78,28 +75,88 @@ export function renderSutta(suttaId, data, options = {}) {
     return false;
   }
 
-  // Clear container
   container.innerHTML = "";
-
   let htmlContent = "";
 
-  // CASE 1: BRANCH VIEW (Mục lục)
+  // --- CASE 1: BRANCH VIEW ---
   if (data.isBranch) {
-      // Compile danh sách
+      // 1. Lấy danh sách con (IDs)
+      // Ta cần một helper để extract ID list từ data.bookStructure tương ứng với data.uid
+      // Tái sử dụng logic tìm node trong ContentCompiler (nhưng ở đây ta cần IDs trước)
+      
+      // Để đơn giản, ta gọi ContentCompiler.compileBranch 2 lần? 
+      // Không, ta sửa ContentCompiler.compileBranch trả về list ID cần fetch, 
+      // hoặc ta tự traverse ở đây.
+      
+      // Tạm thời ta gọi compileBranch, bên trong đó sẽ detect thiếu meta và fallback ID.
+      // Nhưng để "Rich View", ta cần fetch meta trước.
+      
+      // -- Helper Traverse --
+      function getChildrenIds(structure, currentUid) {
+          // (Logic traverse giống ContentCompiler.compileBranch nhưng chỉ return array ID)
+           function findNode(node, targetId) {
+              if (!node) return null;
+              if (Array.isArray(node)) {
+                  for (let item of node) {
+                      if (item[targetId]) return item[targetId];
+                      const found = findNode(item, targetId);
+                      if (found) return found;
+                  }
+                  return null;
+              }
+              if (typeof node === 'object') {
+                  if (node[targetId]) return node[targetId];
+                  for (let key in node) {
+                      if (key === 'meta' || typeof node[key] !== 'object') continue;
+                      const found = findNode(node[key], targetId);
+                      if (found) return found;
+                  }
+              }
+              return null;
+          }
+          
+          const node = structure[currentUid] ? structure[currentUid] : findNode(structure, currentUid);
+          if (!node) return [];
+          
+          let ids = [];
+          if (Array.isArray(node)) {
+              if (node.length > 0 && typeof node[0] === 'object') {
+                  node.forEach(obj => ids.push(...Object.keys(obj)));
+              } else {
+                  ids = node;
+              }
+          } else {
+              ids = Object.keys(node);
+          }
+          return ids;
+      }
+      // ---------------------
+
+      const childrenIds = getChildrenIds(data.bookStructure, data.uid);
+      
+      // 2. Fetch Meta cho Children (Lazy Load Chunks)
+      if (childrenIds.length > 0) {
+          // Nếu children là Leaf (không có trong data.meta), thì tải chunk
+          // Nếu children là Branch (có trong data.meta), không cần tải
+          const leavesToFetch = childrenIds.filter(id => !data.meta[id]);
+          
+          if (leavesToFetch.length > 0) {
+              // Hiển thị loading nhẹ nếu cần
+              const leafMetas = await DB.fetchMetaForUids(leavesToFetch);
+              // Merge vào data.meta để Compiler dùng
+              Object.assign(data.meta, leafMetas);
+          }
+      }
+
       htmlContent = ContentCompiler.compileBranch(data.bookStructure, data.uid, data.meta);
       
-      // Ẩn TOH
       document.getElementById("toh-wrapper")?.classList.add("hidden");
-      
-      // Với Branch, Nav Prev/Next thường không cần thiết hoặc phức tạp
-      // Tạm thời ẩn Bottom Nav khi xem Branch
-      // Hoặc ta có thể implement logic "Next Chapter" sau này
       updateTopNavDOM(data, null, null); 
       container.innerHTML = htmlContent;
       return true;
   }
 
-  // CASE 2: LEAF VIEW (Bài kinh)
+  // --- CASE 2: LEAF VIEW ---
   if (!data.content) {
       handleNotFound(suttaId);
       return false;

@@ -30,27 +30,16 @@ class DatabaseManager {
     }
 
     _resolveStructureName(chunkName) {
-        // Từ chunk "sutta_mn_chunk_1" -> "sutta_mn_struct"
+        if (chunkName.startsWith('structure/')) {
+            return chunkName.split('/')[1];
+        }
         return chunkName.replace(/_chunk_\d+$/, '_struct');
     }
 
     async fetchStructure(structName) {
-        // [FIX] Xử lý trường hợp structName có prefix "structure/" (từ super book)
-        // Ví dụ: "structure/super_struct" -> Clean thành "super_struct" để cache key đẹp hơn
-        // Nhưng đường dẫn fetch phải đúng.
-        
         const cleanName = structName.replace(/^structure\//, '');
         if (this.structureCache.has(cleanName)) return this.structureCache.get(cleanName);
-
-        // Nếu structName đã chứa "structure/", dùng nguyên. Nếu chưa, thêm vào.
-        // Tuy nhiên, logic backend hiện tại:
-        // - Leaf locator: "sutta_mn_chunk_1"
-        // - Branch locator: "sutta_mn_struct"
-        // - Super locator: "structure/super_struct"
-        
-        // Để an toàn, ta luôn fetch từ thư mục structure/
         const url = `assets/db/structure/${cleanName}.json`;
-        
         try {
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -78,38 +67,64 @@ class DatabaseManager {
         }
     }
 
-    async getSutta(uid) {
+    // [NEW] Hàm thông minh để lấy Meta cho một danh sách UID (dùng cho Branch View)
+    // Nó sẽ tự động tải các Chunk cần thiết
+    async fetchMetaForUids(uids) {
         await this.init();
         
-        const locator = this._getLocator(uid);
-        if (!locator) {
-            logger.warn("getSutta", `UID not found in index: ${uid}`);
-            return null;
-        }
+        // 1. Gom nhóm UID theo Chunk để tải tối ưu
+        const chunksToLoad = new Set();
+        uids.forEach(uid => {
+            const locator = this._getLocator(uid);
+            // Chỉ tải nếu locator là chunk (không phải structure)
+            if (locator && !locator.includes('_struct') && !locator.startsWith('structure')) {
+                chunksToLoad.add(locator);
+            }
+        });
 
-        // --- CASE 1: BRANCH / ROOT ---
-        // Dấu hiệu: Locator chứa "_struct" hoặc bắt đầu bằng "structure/"
+        // 2. Tải song song các Chunk
+        const promises = Array.from(chunksToLoad).map(chunk => this.fetchContentChunk(chunk));
+        await Promise.all(promises);
+
+        // 3. Tổng hợp Meta từ cache
+        const resultMeta = {};
+        
+        // Helper để lấy meta từ chunk cache
+        const getMetaFromCache = (uid) => {
+             const locator = this._getLocator(uid);
+             if (!locator) return null;
+             const chunkData = this.contentCache.get(locator);
+             return chunkData && chunkData[uid] ? chunkData[uid].meta : null;
+        };
+
+        uids.forEach(uid => {
+            resultMeta[uid] = getMetaFromCache(uid);
+        });
+
+        return resultMeta;
+    }
+
+    async getSutta(uid) {
+        await this.init();
+        const locator = this._getLocator(uid);
+        if (!locator) return null;
+
+        // CASE 1: BRANCH
         if (locator.includes('_struct') || locator.startsWith('structure/')) {
-            logger.info("getSutta", `Loading Branch: ${uid} -> ${locator}`);
-            
-            // Chỉ tải file Structure, KHÔNG tải Content
             const structData = await this.fetchStructure(locator);
             if (!structData) return null;
-
             return {
                 uid: uid,
                 isBranch: true,
-                meta: structData.meta,        // Chứa info của Branch (Vagga/Book)
-                bookStructure: structData.structure // Tree mục lục
+                meta: structData.meta,
+                bookStructure: structData.structure
             };
         }
 
-        // --- CASE 2: LEAF / SHORTCUT ---
-        // Dấu hiệu: Locator là tên chunk (VD: sutta_mn_chunk_1)
+        // CASE 2: LEAF
         const chunkName = locator;
         const structName = this._resolveStructureName(chunkName);
 
-        // Tải cả 2
         const [structData, chunkData] = await Promise.all([
             this.fetchStructure(structName),
             this.fetchContentChunk(chunkName)
@@ -117,25 +132,15 @@ class DatabaseManager {
 
         if (!structData || !chunkData) return null;
 
-        // [LOGIC MERGE META]
-        // 1. Lấy Meta từ Structure (Slim - dùng cho Nav)
         const combinedMeta = { ...structData.meta };
-        
-        // 2. Gộp Meta từ Chunk (Full - dùng cho Title chính)
-        if (chunkData) {
-            Object.keys(chunkData).forEach(key => {
-                if (chunkData[key].meta) {
-                    combinedMeta[key] = chunkData[key].meta;
-                }
-            });
-        }
+        // Merge meta từ chunk hiện tại để support nav
+        Object.keys(chunkData).forEach(key => {
+            if (chunkData[key].meta) combinedMeta[key] = chunkData[key].meta;
+        });
 
         let itemData = chunkData[uid]; 
-        
-        // Fallback Shortcut
-        let targetContent = itemData ? itemData.content : null;
-        // Lấy meta từ itemData (ưu tiên) hoặc từ combined (nếu là shortcut ảo)
         let myMeta = itemData ? itemData.meta : combinedMeta[uid];
+        let targetContent = itemData ? itemData.content : null;
 
         if (myMeta && myMeta.type === 'shortcut') {
             const parentUid = myMeta.parent_uid;

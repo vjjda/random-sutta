@@ -48,14 +48,11 @@ export const SuttaController = {
     }
 
     // 4. Render
-    const performRender = () => {
-        // [IMPORTANT] Truyền data trực tiếp vào renderer
-        // Renderer không cần gọi DB.get... nữa vì ta đã lấy rồi
-        const success = renderSutta(suttaId, data, options); 
+    const performRender = async () => { // [ASYNC]
+        const success = await renderSutta(suttaId, data, options); // [AWAIT]
         
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
-             // Nếu là shortcut, ta vẫn giữ URL là shortcut (an1.5) chứ không đổi thành parent
              Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
         }
         return success;
