@@ -29,39 +29,46 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         book_id = data.get("id", "").lower()
         result["book_id"] = book_id
 
-        # --- 1. Tách Metadata (Hybrid Approach) ---
+        # --- 1. Tách Metadata (Ultra Slim Approach) ---
         full_meta = data.get("meta", {})
-        branch_meta = {} # Dành cho Structure File (Lightweight)
+        branch_meta = {} # Dành cho Structure File (Siêu nhẹ)
         leaf_meta = {}   # Dành cho Chunk File (Full detail)
 
         for uid, info in full_meta.items():
             m_type = info.get("type")
             
             # A. Build Leaf Meta (Full) cho Chunk
-            # Chỉ Leaf và Shortcut mới cần đi theo content
             if m_type != "branch" and m_type != "root":
                 leaf_meta[uid] = info
 
             # B. Build Branch Meta (Structure)
             if m_type == "branch" or m_type == "root":
-                # Branch giữ nguyên (vì nó định nghĩa cấu trúc)
+                # Branch: Giữ nguyên để hiển thị tiêu đề chương/phẩm
+                # Có thể cân nhắc bỏ blurb của Branch nếu muốn nhẹ hơn nữa
                 branch_meta[uid] = info
             else:
-                # [FIX] Leaf/Shortcut: Tạo bản sao RÚT GỌN cho Structure
-                # Giữ lại Title/Acronym để hiển thị Nav
-                # Loại bỏ 'blurb' (nặng nhất) và các trường kỹ thuật không cần cho Nav
-                slim_info = info.copy()
-                if "blurb" in slim_info:
-                    del slim_info["blurb"]
-                # Có thể bỏ thêm author_uid nếu muốn tiết kiệm thêm
+                # [FIX - ULTRA SLIM] Leaf/Shortcut
+                # Chỉ giữ lại NHỮNG GÌ TỐI THIỂU để hiển thị Navigation Bar
+                # Bỏ original_title (Pali), Bỏ blurb, Bỏ author...
+                slim_info = {
+                    "acronym": info.get("acronym", ""),
+                    "translated_title": info.get("translated_title", ""),
+                    "type": m_type 
+                    # type cần thiết để FE phân biệt shortcut/leaf
+                }
                 
+                # Nếu là Shortcut, cần giữ parent_uid để FE map logic
+                if m_type == "shortcut":
+                    slim_info["parent_uid"] = info.get("parent_uid")
+
                 branch_meta[uid] = slim_info
                 
-            # Locator cho Branch vẫn trỏ về structure
             if m_type == "branch" or m_type == "root":
                 result["locators"][uid] = "structure"
 
-        # --- 2. Save Structure (Bây giờ đã chứa Slim Leaf Meta) ---
+        # --- 2. Save Structure ---
+        # Structure Tree thường rất gọn (chỉ là nested keys), 
+        # vấn đề chính nằm ở Meta Object khổng lồ.
         struct_data = {
             "id": data.get("id"),
             "title": data.get("title"),
