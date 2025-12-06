@@ -6,7 +6,45 @@ console.log(`%c [SW] Loading Version: ${CACHE_NAME}`, 'background: #333; color: 
 
 // This list is populated by the build script (src/sutta_processor/output/asset_generator.py)
 // It contains all the JSON-like data files for suttas.
-const SUTTA_DATA_FILES = [];
+const SUTTA_DATA_FILES = [
+  "./assets/books/abhidhamma/ds_book.js",
+  "./assets/books/abhidhamma/dt_book.js",
+  "./assets/books/abhidhamma/kv_book.js",
+  "./assets/books/abhidhamma/patthana_book.js",
+  "./assets/books/abhidhamma/pp_book.js",
+  "./assets/books/abhidhamma/vb_book.js",
+  "./assets/books/abhidhamma/ya_book.js",
+  "./assets/books/sutta/an_book.js",
+  "./assets/books/sutta/dn_book.js",
+  "./assets/books/sutta/kn/bv_book.js",
+  "./assets/books/sutta/kn/cnd_book.js",
+  "./assets/books/sutta/kn/cp_book.js",
+  "./assets/books/sutta/kn/dhp_book.js",
+  "./assets/books/sutta/kn/iti_book.js",
+  "./assets/books/sutta/kn/ja_book.js",
+  "./assets/books/sutta/kn/kp_book.js",
+  "./assets/books/sutta/kn/mil_book.js",
+  "./assets/books/sutta/kn/mnd_book.js",
+  "./assets/books/sutta/kn/ne_book.js",
+  "./assets/books/sutta/kn/pe_book.js",
+  "./assets/books/sutta/kn/ps_book.js",
+  "./assets/books/sutta/kn/pv_book.js",
+  "./assets/books/sutta/kn/snp_book.js",
+  "./assets/books/sutta/kn/tha-ap_book.js",
+  "./assets/books/sutta/kn/thag_book.js",
+  "./assets/books/sutta/kn/thi-ap_book.js",
+  "./assets/books/sutta/kn/thig_book.js",
+  "./assets/books/sutta/kn/ud_book.js",
+  "./assets/books/sutta/kn/vv_book.js",
+  "./assets/books/sutta/mn_book.js",
+  "./assets/books/sutta/sn_book.js",
+  "./assets/books/vinaya/pli-tv-bi-pm_book.js",
+  "./assets/books/vinaya/pli-tv-bi-vb_book.js",
+  "./assets/books/vinaya/pli-tv-bu-pm_book.js",
+  "./assets/books/vinaya/pli-tv-bu-vb_book.js",
+  "./assets/books/vinaya/pli-tv-kd_book.js",
+  "./assets/books/vinaya/pli-tv-pvr_book.js"
+];
 
 // These are the core files for the application's "shell".
 // They are always cached first.
