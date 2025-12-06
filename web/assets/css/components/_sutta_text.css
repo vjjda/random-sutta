@@ -112,28 +112,7 @@ p {
   margin-right: -5px;
   transition: background-color 0.5s ease, box-shadow 0.5s ease;
   box-shadow: none;
-  border-radius: 0; /* Reset */
-}
-
-/* [NEW] Highlight cho Inline Element (thẻ SPAN) */
-/* Áp dụng cho các đoạn Verse hoặc đoạn văn nằm trong template */
-span.highlight,
-.segment-text.highlight {
-  /* Reset các thuộc tính của Block highlight để không vỡ layout */
-  border-left: none;
-  margin-left: 0;
-  padding-left: 4px; /* Thêm chút padding cho thoáng */
-  padding-right: 4px;
-  margin-right: 0;
-  
-  /* Style mới dạng "Highlighter Pen" */
-  background-color: var(--highlight-color-segment); /* Màu vàng đậm hơn chút */
-  box-shadow: 0 0 0 2px var(--highlight-color-segment); /* Tạo viền mờ xung quanh */
-  border-radius: 4px;
-  
-  /* Đảm bảo hiển thị đúng dòng */
-  display: inline; 
-  text-decoration: none;
+  border-radius: 0;
 }
 
 .segment:target {
@@ -147,4 +126,32 @@ span.highlight,
   position: relative;
   z-index: 1;
   border-radius: 4px;
+}
+
+/* [UPDATED] Fix lỗi không highlight Pali */
+/* Áp dụng cho các thẻ span bao ngoài (thường dùng trong Verse/Template) */
+span.highlight,
+.segment-text.highlight {
+  /* Reset border của block highlight */
+  border-left: none;
+  margin-left: 0;
+  
+  padding: 4px 15px;
+  margin: 2px -15px 2px -15px;
+  
+  /* Style Highlight */
+  background-color: var(--highlight-color-segment);
+  box-shadow: 0 0 0 1px var(--highlight-color-segment); /* Viền nhẹ thay vì shadow loè */
+  /* border-radius: 6px; */
+  
+  display: inline-block; 
+  width: 100%; /* Chiếm hết chiều ngang cho đẹp đội hình */
+  box-sizing: border-box; /* Để padding không làm vỡ width */
+  
+  text-decoration: none;
+}
+
+/* Tinh chỉnh nhỏ cho Pali bên trong đoạn highlight để không bị vỡ lề */
+.segment-text.highlight .pli {
+    margin-bottom: 2px; /* Giảm khoảng cách giữa Pali/Eng khi đang highlight */
 }
