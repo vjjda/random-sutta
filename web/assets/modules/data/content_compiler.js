@@ -3,35 +3,50 @@
 export const ContentCompiler = {
   compile: function (contentData, rootId) {
     if (!contentData) return "";
+
     let html = "";
+    
     const sortedKeys = Object.keys(contentData).sort((a, b) => {
         return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
+
     sortedKeys.forEach((segmentId) => {
       const segment = contentData[segmentId];
       if (!segment) return;
+
       let text = "";
+
+      // 1. Chuẩn bị nội dung song ngữ
       const pliText = segment.pli ? `<span class='pli'>${segment.pli}</span>` : "";
       const engText = segment.eng ? `<span class='eng'>${segment.eng}</span>` : "";
-      const combinedText = `${pliText}${engText}`;
+      
+      // Khởi tạo nội dung gộp
+      let combinedText = `${pliText}${engText}`;
 
+      // [FIX] 2. Xử lý Comment (Gộp luôn vào combinedText)
+      // Việc này đảm bảo comment luôn xuất hiện bất kể segment có html riêng hay không
+      if (segment.comm) {
+          const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
+          combinedText += `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
+      }
+
+      // 3. Render ra HTML cuối cùng
       if (segment.html) {
+        // Nếu có khung HTML sẵn (ví dụ blockquote, header...), nhét nội dung (đã có dấu *) vào
         text = segment.html.replace("{}", combinedText);
       } else {
-        text = `<p class='segment' id='${segmentId}'>${combinedText}`;
-        if (segment.comm) {
-            const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
-            text += `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
-        }
-        text += "</p>";
+        // Nếu không, bọc trong thẻ <p> chuẩn
+        text = `<p class='segment' id='${segmentId}'>${combinedText}</p>`;
       }
+      
       html += text;
     });
+
     return html;
   },
 
-  // [FIXED] Hàm render Branch View hỗ trợ Mixed Array
   compileBranch: function(structure, currentUid, metaMap) {
+      // (Giữ nguyên logic compileBranch đã fix ở bước trước)
       function findNode(node, targetId) {
           if (!node) return null;
           if (Array.isArray(node)) {
@@ -64,28 +79,20 @@ export const ContentCompiler = {
       let html = `<div class="branch-container">`;
       let itemsToRender = [];
 
-      // [LOGIC MỚI] Duyệt an toàn từng phần tử
       if (Array.isArray(children)) {
           children.forEach(child => {
               if (typeof child === 'string') {
-                  // Trường hợp 1: Là UID Leaf (Ví dụ "mn1")
                   itemsToRender.push(child);
               } else if (typeof child === 'object' && child !== null) {
-                  // Trường hợp 2: Là Branch con (Ví dụ {"vagga1": [...]})
-                  // Lấy tên Branch (Key) để hiển thị
                   itemsToRender.push(...Object.keys(child));
               }
           });
       } else if (typeof children === 'object' && children !== null) {
-          // Trường hợp 3: Là Object map (Ví dụ {"vagga1": ..., "vagga2": ...})
           itemsToRender.push(...Object.keys(children));
       }
       
-      // Render Cards
       itemsToRender.forEach(childId => {
-          // [SAFETY CHECK] Chỉ render nếu childId là chuỗi hợp lệ
           if (typeof childId !== 'string') return;
-
           const info = metaMap[childId];
           
           if (info) {
@@ -107,7 +114,6 @@ export const ContentCompiler = {
                   </a>
               </div>`;
           } else {
-              // Fallback
               html += `
               <div class="branch-card-leaf">
                   <a href="?q=${childId}" class="b-card-link" onclick="event.preventDefault(); window.loadSutta('${childId}', true);">
