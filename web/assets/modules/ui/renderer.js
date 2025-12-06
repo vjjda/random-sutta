@@ -7,6 +7,7 @@ import { calculateNavigation } from "./navigator.js";
 let tohInstance = null;
 
 function getDisplayInfo(uid, metaMap) {
+    // 1. Nếu có Meta (Cùng chunk hoặc là Branch) -> Hiển thị đẹp
     if (metaMap && metaMap[uid]) {
         const info = metaMap[uid];
         return { 
@@ -14,8 +15,18 @@ function getDisplayInfo(uid, metaMap) {
             sub: info.translated_title || info.original_title || "" 
         };
     }
-    // Fallback nếu không có meta (do nằm ở chunk khác chưa load)
-    return { main: uid.toUpperCase(), sub: "" };
+    
+    // 2. Fallback (Khác chunk) -> Hiển thị UID được format đẹp
+    // Ví dụ: an1.10 -> AN 1.10 (Thử tách chữ và số để viết hoa)
+    let formattedId = uid.toUpperCase();
+    
+    // Thử regex để tách: mn1 -> MN 1
+    const match = uid.match(/^([a-z]+)(\d.*)$/i);
+    if (match) {
+        formattedId = `${match[1].toUpperCase()} ${match[2]}`;
+    }
+
+    return { main: formattedId, sub: "" };
 }
 
 function updateTopNavDOM(data, prevId, nextId) {
@@ -24,7 +35,7 @@ function updateTopNavDOM(data, prevId, nextId) {
   const navSubTitle = document.getElementById("nav-sub-title");
   const statusDiv = document.getElementById("status");
 
-  // Title hiện tại (đã được merge meta nên chắc chắn có)
+  // Title chính (Luôn có vì đã load chunk hiện tại)
   const currentInfo = getDisplayInfo(data.uid, data.meta);
   if (navMainTitle) navMainTitle.textContent = currentInfo.main;
   if (navSubTitle) navSubTitle.textContent = currentInfo.sub;
@@ -42,8 +53,11 @@ function updateTopNavDOM(data, prevId, nextId) {
       btn.onclick = () => window.loadSutta(targetId);
       
       const neighborInfo = getDisplayInfo(targetId, data.meta);
+      
+      // Nếu có sub (Title) thì hiện, không thì chỉ hiện Main (ID)
       let tooltip = `${type}: ${neighborInfo.main}`;
       if (neighborInfo.sub) tooltip += ` - ${neighborInfo.sub}`;
+      
       btn.title = tooltip;
     } else {
       btn.disabled = true;
