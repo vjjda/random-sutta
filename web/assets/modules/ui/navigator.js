@@ -1,4 +1,4 @@
-// Path: web/assets/modules/navigator.js
+// Path: web/assets/modules/ui/navigator.js
 
 /**
  * Thu thập tất cả Leaf (bài kinh) theo thứ tự tuyến tính.

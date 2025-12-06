@@ -1,4 +1,4 @@
-// Path: web/assets/modules/toh_component.js
+// Path: web/assets/modules/ui/toh_component.js
 import { Scroller } from './scroller.js';
 
 export function setupTableOfHeadings() {

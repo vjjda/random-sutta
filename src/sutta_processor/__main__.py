@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Path: src/sutta_processor/__main__.py
 import sys
 import argparse

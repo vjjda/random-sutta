@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Path: src/sutta_fetcher/__main__.py
 import sys
 from .sync_manager import run_sync

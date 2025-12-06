@@ -68,7 +68,7 @@ def _patch_html_assets(index_path: Path, version_tag: str, is_offline: bool) -> 
     if is_offline:
         # Chuyển app.js (module) thành app.bundle.js (defer)
         # Regex tìm thẻ script module
-        js_pattern = r'<script type="module" src="assets/app\.js(.*?)"(.*?)</script>'
+        js_pattern = r'<script type="module" src="assets/modules/core/app\.js(.*?)"(.*?)</script>'
         # Giữ lại phần query params (group 1) đã được replace version ở bước 1
         js_replace = r'<script defer src="assets/app.bundle.js\1"></script>'
         js_ok = _update_file(index_path, js_pattern, js_replace)

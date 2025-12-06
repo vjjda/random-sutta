@@ -1,7 +1,6 @@
-// Path: web/assets/modules/loader.js
-import { PRIMARY_BOOKS } from './constants.js';
-// [NEW] Import danh sách file từ module auto-generated
-import { FILE_INDEX } from './file_index.js';
+// Path: web/assets/modules/core/loader.js
+import { PRIMARY_BOOKS } from '../data/constants.js';
+import { FILE_INDEX } from '../data/file_index.js';
 
 export const SuttaLoader = (function () {
   const loadedFiles = new Set();

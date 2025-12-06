@@ -1,10 +1,10 @@
-// Path: web/assets/app.js
-import { SuttaLoader } from './modules/loader.js';
-import { Router } from './modules/router.js';
-import { initFilters, generateBookParam } from './modules/filters.js';
-import { setupQuickNav } from './modules/search_component.js';
-import { SuttaController } from './modules/sutta_controller.js';
-import { setupLogging, LogLevel, getLogger } from './modules/logger.js';
+// Path: web/assets/modules/core/app.js
+import { SuttaLoader } from './loader.js';
+import { Router } from './router.js';
+import { initFilters, generateBookParam } from '../ui/filters.js';
+import { setupQuickNav } from '../ui/search_component.js';
+import { SuttaController } from './sutta_controller.js';
+import { setupLogging, LogLevel, getLogger } from '../shared/logger.js';
 
 const logger = getLogger("App");
 
@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupLogging({
       level: isDebug ? LogLevel.DEBUG : LogLevel.INFO
   });
+  logger.info('DOMContentLoaded', `Logging level set to ${isDebug ? 'DEBUG' : 'INFO'}.`);
   
   // 2. DOM Elements & UI Setup
   // ... (Giữ nguyên phần này) ...
@@ -45,18 +46,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 3. Setup QuickNav
   setupQuickNav((query) => {
-      logger.info(`🔍 Search triggered via QuickNav: ${query}`);
+      logger.info('QuickNav.onSearch', `Search triggered: ${query}`);
       SuttaController.loadSutta(query);
   });
 
   // 4. App Bootstrap
   statusDiv.textContent = "Loading core library...";
   try {
-    logger.debug("Starting SuttaLoader initialization...");
+    logger.debug('DOMContentLoaded', "Starting SuttaLoader initialization...");
     await SuttaLoader.initSmartLoading();
     
     // App Ready State
-    logger.info("✅ Core library loaded. App ready.");
+    logger.info('DOMContentLoaded', "✅ Core library loaded. App ready.");
     statusDiv.classList.add("hidden");
     navHeader.classList.remove("hidden");
     randomBtn.disabled = false;
@@ -66,7 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 6. Initial Routing
     const initialParams = Router.getParams();
     if (initialParams.q) {
-      logger.info(`Routing to initial sutta: ${initialParams.q}`);
+      logger.info('InitialRouting', `Routing to initial sutta: ${initialParams.q}`);
       
       // [FIX] Ghép thêm Hash từ URL (nếu có) để Controller biết cần scroll đến đâu
       // Ví dụ: q=an1.1-10 và hash=#an1.3 -> loadId = an1.1-10#an1.3
@@ -77,7 +78,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       
       SuttaController.loadSutta(loadId, true);
     } else {
-      logger.info("No initial sutta, loading random/default logic.");
+      logger.info('InitialRouting', "No initial sutta, triggering random/default logic.");
       SuttaController.loadRandomSutta(false);
       if (!initialParams.q && !initialParams.r) {
            Router.updateURL(null, generateBookParam(), true);
@@ -85,19 +86,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
   } catch (err) {
-    logger.error("Critical Init Error", err);
+    logger.error('DOMContentLoaded', "Critical Init Error", err);
     statusDiv.textContent = "Error loading library.";
   }
 
   // 7. Event Listeners
   randomBtn.addEventListener("click", () => {
-      logger.debug("Random button clicked");
+      logger.debug('randomBtn.click', "Random button clicked");
       SuttaController.loadRandomSutta(true);
   });
 
   window.addEventListener("popstate", (event) => {
     if (event.state && event.state.suttaId) {
-      logger.debug(`Popstate event: ${event.state.suttaId} (Scroll: ${event.state.scrollY})`);
+      logger.debug('popstate', `History event: ${event.state.suttaId} (Scroll: ${event.state.scrollY})`);
       const savedScroll = event.state.scrollY || 0;
       SuttaController.loadSutta(event.state.suttaId, false, savedScroll);
     } else {

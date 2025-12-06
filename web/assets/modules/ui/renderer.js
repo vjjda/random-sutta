@@ -1,6 +1,7 @@
-// Path: web/assets/modules/renderer.js
-import { DB } from "./db_manager.js";
-import { getSuttaDisplayInfo } from "./utils.js";
+// Path: web/assets/modules/ui/renderer.js
+import { DB } from "../data/db_manager.js";
+import { getSuttaDisplayInfo } from "../data/sutta_info_provider.js";
+import { ContentCompiler } from "../data/content_compiler.js";
 import { setupTableOfHeadings } from "./toh_component.js";
 import { UIFactory } from "./ui_factory.js";
 
@@ -70,10 +71,10 @@ export function renderSutta(suttaId, options = {}) {
   }
 
   // Compile HTML
-  let htmlContent = DB.compileHtml(id);
+  let htmlContent = ContentCompiler.compileHtml(id);
   let isBranch = false;
   if (!htmlContent) {
-    htmlContent = DB.compileBranchHtml(id);
+    htmlContent = ContentCompiler.compileBranchHtml(id);
     isBranch = true;
   }
   if (!htmlContent) return false;

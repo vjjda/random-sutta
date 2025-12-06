@@ -1,4 +1,4 @@
-// Path: web/assets/modules/router.js
+// Path: web/assets/modules/core/router.js
 
 export const Router = {
   // [UPDATED] Thêm tham số thứ 5: savedScrollPosition (mặc định null)

@@ -96,8 +96,8 @@ def write_loader_script(file_list: List[str]) -> None:
     file_list.sort()
     valid_files = [f for f in file_list if f]
     
-    # Đổi tên file output thành file_index.js nằm trong modules
-    loader_path = OUTPUT_LOADER_DIR / "file_index.js"
+    # Đổi tên file output thành file_index.js nằm trong modules/data
+    loader_path = OUTPUT_LOADER_DIR / "data" / "file_index.js"
     _ensure_dir(loader_path)
     
     try:

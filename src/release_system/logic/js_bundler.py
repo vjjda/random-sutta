@@ -12,23 +12,15 @@ logger = logging.getLogger("Release.JSBundler")
 
 def _cleanup_modules(base_dir: Path) -> None:
     """
-    Dọn dẹp các file nguồn JS thừa sau khi đã bundle xong.
-    1. Xóa thư mục assets/modules
-    2. Xóa file assets/app.js (vì đã có app.bundle.js)
+    Dọn dẹp thư mục modules nguồn sau khi đã bundle xong.
     """
     assets_dir = base_dir / "assets"
     
-    # 1. Xóa folder modules
+    # Xóa toàn bộ folder modules vì mọi thứ đã được bundle
     modules_dir = assets_dir / "modules"
     if modules_dir.exists():
         shutil.rmtree(modules_dir)
-        logger.info("   🧹 Removed source: assets/modules/")
-
-    # 2. [NEW] Xóa file app.js gốc
-    app_js = assets_dir / "app.js"
-    if app_js.exists():
-        os.remove(app_js)
-        logger.info("   🧹 Removed source: assets/app.js")
+        logger.info("   🧹 Removed source modules directory: assets/modules/")
 
 def _wrap_in_iife(content: str, file_name: str) -> str:
     """

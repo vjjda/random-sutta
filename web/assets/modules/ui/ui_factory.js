@@ -1,5 +1,5 @@
-// Path: web/assets/modules/ui_factory.js
-import { getSuttaDisplayInfo } from './utils.js';
+// Path: web/assets/modules/ui/ui_factory.js
+import { getSuttaDisplayInfo } from '../data/sutta_info_provider.js';
 
 // [CONSTANT] Chevron hướng lên (Up) làm gốc
 // Path: Đi từ trái dưới (6,15) lên đỉnh (12,9) rồi xuống phải dưới (18,15)

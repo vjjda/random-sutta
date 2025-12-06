@@ -1,4 +1,4 @@
-// Path: web/assets/modules/constants.js
+// Path: web/assets/modules/data/constants.js
 
 export const PRIMARY_BOOKS = [
   "dn", "mn", "sn", "an", "kp", "dhp", "ud", "iti", "snp", "thag", "thig",

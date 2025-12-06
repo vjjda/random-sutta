@@ -1,6 +1,13 @@
 
 
 
+
+[tool.cpath]
+
+extensions = ["css", "js", "py", "pyi", "scss", "sh", "template.toml", "ts", "zsh"]
+
+ignore = [".git", ".ruff_cache", ".venv", "__pycache__", "build", "dist", "node_modules", "out", "venv"]
+
 [tool.ndoc]
 
 extensions = ["py"]

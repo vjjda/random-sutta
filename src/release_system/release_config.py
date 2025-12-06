@@ -11,8 +11,8 @@ BUILD_ONLINE_DIR = BUILD_ROOT / "dev-online"
 RELEASE_DIR = PROJECT_ROOT / "release"
 APP_NAME = "random-sutta"
 
-ENTRY_POINT = "assets/app.js"
-CRITICAL_ASSETS = ["assets/modules/file_index.js"]
+ENTRY_POINT = "assets/modules/core/app.js"
+CRITICAL_ASSETS = ["assets/modules/data/file_index.js"]
 
 # [NEW] Biến chung cho tất cả (HTML, SW, v.v.)
 VERSION_PLACEHOLDER = "dev-placeholder"

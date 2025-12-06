@@ -1,4 +1,4 @@
-// Path: web/assets/modules/search_component.js
+// Path: web/assets/modules/ui/search_component.js
 
 export function setupQuickNav(onSearchCallback) {
   const displayContainer = document.getElementById("nav-title-display");

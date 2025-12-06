@@ -1,5 +1,5 @@
-// Path: web/assets/modules/scroller.js
-import { getLogger } from './logger.js';
+// Path: web/assets/modules/ui/scroller.js
+import { getLogger } from '../shared/logger.js';
 
 const logger = getLogger("Scroller");
 
@@ -59,7 +59,7 @@ export const Scroller = {
                 if (retries < maxRetries) {
                     requestAnimationFrame(attemptFind);
                 } else {
-                    logger.warn(`Could not scroll. Element not found: ${targetId}`);
+                    logger.warn('scrollToId', `Could not scroll. Element not found: ${targetId}`);
                 }
             }
         };

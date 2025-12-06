@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Path: src/sample_processed.py
 import json
 import argparse

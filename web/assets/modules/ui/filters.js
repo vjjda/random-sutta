@@ -1,6 +1,6 @@
-// Path: web/assets/modules/filters.js
-import { PRIMARY_BOOKS, SECONDARY_BOOKS } from './constants.js';
-import { Router } from './router.js';
+// Path: web/assets/modules/ui/filters.js
+import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../data/constants.js';
+import { Router } from '../core/router.js';
 
 const filterSet = new Set();
 

@@ -1,12 +1,12 @@
-// Path: web/assets/modules/sutta_controller.js
+// Path: web/assets/modules/core/sutta_controller.js
 import { SuttaLoader } from './loader.js';
 import { Router } from './router.js';
-import { DB } from './db_manager.js';
-import { renderSutta } from './renderer.js';
-import { getActiveFilters } from './filters.js';
-import { initCommentPopup } from './utils.js';
-import { getLogger } from './logger.js';
-import { Scroller } from './scroller.js';
+import { DB } from '../data/db_manager.js';
+import { renderSutta } from '../ui/renderer.js';
+import { getActiveFilters } from '../ui/filters.js';
+import { initCommentPopup } from '../ui/popup_handler.js';
+import { getLogger } from '../shared/logger.js';
+import { Scroller } from '../ui/scroller.js';
 
 const logger = getLogger("SuttaController");
 const { hideComment } = initCommentPopup();
@@ -22,7 +22,7 @@ export const SuttaController = {
     const suttaId = baseId.trim().toLowerCase();
     const explicitHash = hashPart ? hashPart : null;
 
-    logger.info(`Request to load: ${suttaId} ${explicitHash ? `(Hash: ${explicitHash})` : ''} ${isTransition ? '[Transition]' : ''}`);
+    logger.info('loadSutta', `Request to load: ${suttaId} ${explicitHash ? `(Hash: ${explicitHash})` : ''} ${isTransition ? '[Transition]' : ''}`);
 
     // 2. Lazy Loading Check
     const bookFile = SuttaLoader.findBookFileFromSuttaId(suttaId);
@@ -31,11 +31,11 @@ export const SuttaController = {
         if (!window.SUTTA_DB || !window.SUTTA_DB[dbKey]) {
              const bookId = bookFile.split('/').pop().replace('_book.js', '').replace('.js', '');
              try {
-                 logger.debug(`Lazy loading book: ${bookId}`);
+                 logger.debug('loadSutta', `Lazy loading book: ${bookId}`);
                  await SuttaLoader.loadBook(bookId);
                  return this.loadSutta(suttaIdInput, shouldUpdateUrl, scrollY, options);
-             } catch (err) {
-                 logger.error(`Lazy load failed for ${bookId}`, err);
+             } catch (err) => {
+                 logger.error('loadSutta', `Lazy load failed for ${bookId}`, err);
              }
         }
     }
@@ -44,7 +44,7 @@ export const SuttaController = {
     const meta = DB.getMeta(suttaId);
     if (meta && meta.type === 'shortcut') {
         const parentId = meta.parent_uid;
-        logger.debug(`Shortcut detected: ${suttaId} -> ${parentId}`);
+        logger.debug('loadSutta', `Shortcut detected: ${suttaId} -> ${parentId}`);
         
         const targetScrollId = meta.scroll_target;
         const shouldDisableHighlight = meta.is_implicit === true;
@@ -115,7 +115,7 @@ export const SuttaController = {
     const randomIndex = Math.floor(Math.random() * filteredKeys.length);
     const target = filteredKeys[randomIndex];
     
-    logger.info(`Random selection: ${target}`);
+    logger.info('loadRandomSutta', `Random selection: ${target}`);
     this.loadSutta(target, shouldUpdateUrl, 0, { transition: false });
   }
-};
+}
