@@ -20,28 +20,18 @@ export const SuttaController = {
     const suttaId = baseId.trim().toLowerCase();
     const explicitHash = hashPart ? hashPart : null;
 
-    logger.info('loadSutta', `Request: ${suttaId}`);
+    logger.info('loadSutta', `Request: ${suttaId} ${explicitHash ? '#' + explicitHash : ''}`);
 
-    // [CLEANED] Bỏ logic Lazy Loading cũ dùng SuttaLoader ở đây.
-    // DB mới đã tự động xử lý việc load chunk cần thiết.
-
-    // 1. Prepare Render Action
     const performRender = async () => {
-        // Gọi Renderer mới (Async) - DB sẽ tự tải chunk và structure
         const result = await DB.getSutta(suttaId);
         
-        // Nếu không có dữ liệu
         if (!result) {
-             // Retry: Thử load lại index nếu chưa có (phòng trường hợp race condition lúc khởi động)
              await DB.init();
-             // Thử lại lần nữa
              const retryResult = await DB.getSutta(suttaId);
              if (!retryResult) {
-                 // Vẫn không thấy -> 404
                  renderSutta(suttaId, null, options);
                  return false;
              }
-             // Thành công lần 2
              const success = await renderSutta(suttaId, retryResult, options);
              if (success && shouldUpdateUrl) {
                  const finalHash = explicitHash ? `#${explicitHash}` : '';
@@ -59,14 +49,47 @@ export const SuttaController = {
         return success;
     };
 
-    // 2. Execution
-    let targetScrollId = explicitHash;
-    
+    // [FIX] Logic thông minh để xác định ID cần scroll
+    let targetScrollId = null;
+
+    if (explicitHash) {
+        // Trường hợp 1: Hash đã đầy đủ (ví dụ: #mn1:2.3)
+        if (explicitHash.includes(':')) {
+            targetScrollId = explicitHash;
+        } 
+        // Trường hợp 2: Hash chỉ là số (ví dụ: #2.3) -> Ghép thêm ID bài kinh (mn1:2.3)
+        else {
+            // Lưu ý: suttaId ở đây có thể là shortcut (an1.5) hoặc id gốc
+            targetScrollId = `${suttaId}:${explicitHash}`;
+        }
+    } else {
+        // Nếu không có hash, kiểm tra xem bài này có scroll_target mặc định không (dùng cho shortcut)
+        // Lưu ý: Dữ liệu này phải lấy sau khi load DB, nhưng để nhanh ta check logic "best guess"
+        // Hoặc đợi render xong mới scroll chính xác (ở logic dưới).
+    }
+
+    // Logic scroll
     if (isTransition) {
         await Scroller.transitionTo(performRender, targetScrollId);
     } else {
         await performRender();
         
+        // Sau khi render xong, kiểm tra lại targetScrollId lần cuối
+        // Nếu targetScrollId dự đoán bên trên không tìm thấy trong DOM, thử fallback
+        if (targetScrollId && !document.getElementById(targetScrollId)) {
+             // Fallback: Nếu ghép ID thất bại, thử dùng hash nguyên thủy (ví dụ hash là ID của heading)
+             if (document.getElementById(explicitHash)) {
+                 targetScrollId = explicitHash;
+             }
+        }
+        
+        // Nếu vẫn chưa có target từ hash, thử tìm từ Metadata (Shortcut scroll target)
+        if (!targetScrollId && !explicitHash) {
+             // Lúc này render đã xong, ta có thể truy cập dữ liệu meta đã load trong DB (nếu cần)
+             // Nhưng đơn giản hơn: check params shortcut từ DB (nếu có cached)
+             // Hoặc Scroller.scrollToId sẽ tự fail nhẹ nhàng nếu null.
+        }
+
         if (targetScrollId) {
             setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
         } else if (scrollY > 0) {
@@ -77,6 +100,7 @@ export const SuttaController = {
     }
   },
 
+  // ... (Hàm loadRandomSutta giữ nguyên) ...
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     hideComment();
     await DB.init();
