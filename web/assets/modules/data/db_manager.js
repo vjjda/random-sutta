@@ -1,269 +1,264 @@
 // Path: web/assets/modules/data/db_manager.js
-import { getLogger } from '../shared/logger.js';
+import { getLogger } from '../utils/logger.js'; // [FIXED] Trỏ đúng về utils
 import { PRIMARY_BOOKS } from './constants.js';
 
-const logger = getLogger("DB");
+const logger = getLogger("DBManager");
 
-class DatabaseManager {
-    // ... (Giữ nguyên constructor, init, _getLocator, _resolveStructureName, fetchStructure) ...
-    constructor() {
-        this.index = null;
-        this.structureCache = new Map();
-        this.contentCache = new Map();
-        this.isInitialized = false;
-        
-        // [OFFLINE] JSONP Loader Setup
-        this.jsonpResolvers = {};
-        this.preloadedData = {};
-        
-        if (typeof window !== 'undefined') {
-            window.__DB_LOADER__ = {
-                receive: (key, data) => {
-                    if (this.jsonpResolvers[key]) {
-                        this.jsonpResolvers[key](data);
-                        delete this.jsonpResolvers[key];
-                    } else {
-                        // Cache if loaded before request
-                        this.preloadedData[key] = data;
-                    }
-                }
-            };
-        }
+// [OFFLINE SUPPORT]
+// Cơ chế JSONP-like để load file JS offline mà không bị chặn bởi CORS (file://)
+// Các file trong assets/db/*.js sẽ gọi window.__DB_LOADER__.receive('key', data)
+window.__DB_LOADER__ = {
+    cache: {},
+    receive: function(key, data) {
+        this.cache[key] = data;
     }
+};
 
-    async _loadData(key, url) {
-        // Check Preloaded (JSONP push before request)
-        if (this.preloadedData && this.preloadedData[key]) {
-            const data = this.preloadedData[key];
-            delete this.preloadedData[key];
-            return data;
-        }
-
-        const isFileProtocol = window.location.protocol === 'file:';
-        
-        if (isFileProtocol) {
-             return new Promise((resolve, reject) => {
-                 this.jsonpResolvers[key] = resolve;
-                 
-                 const script = document.createElement('script');
-                 script.src = url.replace('.json', '.js');
-                 script.onerror = () => {
-                     delete this.jsonpResolvers[key];
-                     reject(new Error(`Failed to load script ${script.src}`));
-                 };
-                 document.head.appendChild(script);
-             });
-        } else {
-             const res = await fetch(url);
-             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-             return await res.json();
-        }
-    }
+export const DB = {
+    uidIndex: null,
+    suttaCache: new Map(),
+    structureCache: new Map(),
 
     async init() {
-        if (this.isInitialized) return;
+        if (this.uidIndex) return;
+
+        // 1. Kiểm tra Offline Index (được inject vào window bởi build system)
+        if (window.__DB_INDEX__) {
+            logger.info("Init", "Using Preloaded Index (Offline Mode)");
+            this.uidIndex = window.__DB_INDEX__;
+            return;
+        }
+
+        // 2. Fetch Online Index
         try {
-            // [OFFLINE-SUPPORT] Check global variable first
-            if (window.__DB_INDEX__) {
-                this.index = window.__DB_INDEX__;
-            } else {
-                const response = await fetch('assets/db/uid_index.json');
-                if (!response.ok) throw new Error("Could not load uid_index.json");
-                this.index = await response.json();
-            }
-            this.isInitialized = true;
+            const resp = await fetch('assets/db/uid_index.json');
+            if (!resp.ok) throw new Error(`Index fetch failed: ${resp.status}`);
+            this.uidIndex = await resp.json();
+            logger.info("Init", `Index loaded (${Object.keys(this.uidIndex.locator || {}).length} items)`);
         } catch (e) {
-            logger.error("init", "Critical: Failed to load DB Index", e);
+            logger.error("Init", "Failed to load index", e);
             throw e;
         }
-    }
+    },
 
-    _getLocator(uid) {
-        return this.index.locator[uid];
-    }
-
-    _resolveStructureName(chunkName) {
-        if (chunkName.startsWith('structure/')) {
-            return chunkName.split('/')[1];
+    /**
+     * Lấy danh sách UID thuộc về một book (hoặc pool 'primary').
+     */
+    getPool(bookId) {
+        if (!this.uidIndex || !this.uidIndex.pools) return [];
+        
+        if (bookId === 'primary') {
+            // Tổng hợp từ config PRIMARY_BOOKS
+            let combined = [];
+            PRIMARY_BOOKS.forEach(bid => {
+                const bookPool = this.uidIndex.pools.books[bid] || [];
+                combined = combined.concat(bookPool);
+            });
+            return combined;
         }
-        return chunkName.replace(/_chunk_\d+$/, '_struct');
-    }
+        
+        // Trả về pool của một sách cụ thể
+        return this.uidIndex.pools.books[bookId] || [];
+    },
 
-    async fetchStructure(structName) {
-        const cleanName = structName.replace(/^structure\//, '');
-        if (this.structureCache.has(cleanName)) return this.structureCache.get(cleanName);
-        const url = `assets/db/structure/${cleanName}.json`;
-        try {
-            const data = await this._loadData(cleanName, url);
-            this.structureCache.set(cleanName, data);
-            return data;
-        } catch (e) {
-            logger.error("fetchStructure", `Failed to load ${structName}`, e);
+    /**
+     * Tải nội dung JSON (hỗ trợ cả Online fetch và Offline loader cache).
+     */
+    async _fetchResource(path, key) {
+        // A. Thử lấy từ Offline Cache trước
+        if (window.__DB_LOADER__.cache[key]) {
+            return window.__DB_LOADER__.cache[key];
+        }
+
+        // B. Fetch qua mạng (Online)
+        // Nếu đang ở file:// protocol mà không có cache -> Sẽ lỗi CORS (chấp nhận)
+        const resp = await fetch(path);
+        if (!resp.ok) throw new Error(`Resource 404: ${path}`);
+        return await resp.json();
+    },
+
+    /**
+     * Lấy dữ liệu bài kinh đầy đủ (Content + Meta).
+     */
+    async getSutta(suttaId) {
+        await this.init();
+
+        // Check RAM cache
+        if (this.suttaCache.has(suttaId)) {
+            return this.suttaCache.get(suttaId);
+        }
+
+        // Tìm vị trí file (Locator)
+        const locatorKey = this.uidIndex.locator[suttaId];
+        if (!locatorKey) {
+            logger.warn("getSutta", `Locator not found for ${suttaId}`);
             return null;
         }
-    }
 
-    async fetchContentChunk(chunkName) {
-        // [FIX] Thêm Promise cache để tránh race condition (gọi nhiều lần cùng 1 file)
-        if (this.contentCache.has(chunkName)) return this.contentCache.get(chunkName);
-        
-        // Kiểm tra xem có đang fetch dở không (pending promise)
-        if (this._pendingFetches && this._pendingFetches[chunkName]) {
-            return this._pendingFetches[chunkName];
-        }
-        if (!this._pendingFetches) this._pendingFetches = {};
+        // LocatorKey có dạng: "content/mn_chunk_1" hoặc "structure/super_struct"
+        const isStructure = locatorKey.includes("_struct");
+        const path = `assets/db/${locatorKey}.js`.replace('.js', '.json'); // Online dùng .json, logic loader tự xử lý
+        const resourceKey = locatorKey.split('/').pop(); // Tên file không path
 
-        const url = `assets/db/content/${chunkName}.json`;
-        
-        const fetchPromise = this._loadData(chunkName, url)
-            .then(data => {
-                this.contentCache.set(chunkName, data);
-                delete this._pendingFetches[chunkName];
-                return data;
-            })
-            .catch(e => {
-                logger.error("fetchChunk", `Failed to load ${chunkName}`, e);
-                delete this._pendingFetches[chunkName];
-                return null;
-            });
+        try {
+            const chunkData = await this._fetchResource(path, resourceKey);
             
-        this._pendingFetches[chunkName] = fetchPromise;
-        return fetchPromise;
-    }
+            // ChunkData chứa nhiều suttas: { "mn1": {...}, "mn2": {...} }
+            // Hoặc nếu là shortcut, nó cũng nằm trong đó.
+            
+            let suttaData = chunkData[suttaId];
 
+            if (!suttaData) {
+                // Trường hợp hy hữu: Locator trỏ đúng chunk nhưng trong chunk không có key
+                logger.warn("getSutta", `Key ${suttaId} missing in chunk ${resourceKey}`);
+                return null;
+            }
+
+            // Xử lý Shortcut (nếu đây là shortcut, cần lấy content của parent)
+            if (suttaData.meta && suttaData.meta.type === 'shortcut') {
+                const parentId = suttaData.meta.parent_uid;
+                const parentData = chunkData[parentId]; // Thường shortcut và parent nằm cùng chunk
+                
+                if (parentData) {
+                    // Mượn content của cha, nhưng giữ meta của con
+                    suttaData = {
+                        ...parentData, // Lấy content, author...
+                        meta: {
+                            ...parentData.meta, // Lấy base meta cha
+                            ...suttaData.meta   // Ghi đè meta con (acronym, title...)
+                        },
+                        uid: suttaId // Đảm bảo ID là con
+                    };
+                }
+            }
+
+            // Nếu đây là Branch (Structure View), load thêm Book Structure
+            if (isStructure) {
+                // Với Branch, content chính là cấu trúc sách
+                suttaData.bookStructure = chunkData.structure;
+                suttaData.isBranch = true;
+            } else {
+                // Với Leaf, cần load thêm structure của sách chứa nó để làm Nav
+                // (Optional: Có thể lazy load sau, nhưng load luôn cho tiện Nav)
+                const bookId = suttaId.match(/^[a-z]+/)[0]; // mn1 -> mn
+                // Logic tìm structure file của book
+                // Thường locator của book structure là "structure/{bookId}_struct"
+                // Ta có thể suy diễn hoặc tìm trong locator index một item đại diện
+            }
+            
+            // Format lại dữ liệu chuẩn để Controller dùng
+            const result = {
+                uid: suttaId,
+                content: suttaData.content || null,
+                meta: suttaData.meta || {},
+                isBranch: !!suttaData.isBranch,
+                bookStructure: suttaData.bookStructure || null
+            };
+
+            this.suttaCache.set(suttaId, result);
+            return result;
+
+        } catch (e) {
+            logger.error("getSutta", `Failed to load ${suttaId}`, e);
+            return null;
+        }
+    },
+
+    /**
+     * Lấy metadata cho một danh sách UIDs (Dùng cho view Branch để hiển thị list con).
+     */
     async fetchMetaForUids(uids) {
         await this.init();
+        const result = {};
         const chunksToLoad = new Set();
-        
+        const uidToChunk = {};
+
+        // 1. Gom nhóm các UID theo Chunk để fetch tối ưu
         uids.forEach(uid => {
-            const locator = this._getLocator(uid);
-            if (locator && !locator.includes('_struct') && !locator.startsWith('structure')) {
-                chunksToLoad.add(locator);
+            const loc = this.uidIndex.locator[uid];
+            if (loc) {
+                chunksToLoad.add(loc);
+                uidToChunk[uid] = loc;
             }
         });
 
-        if (chunksToLoad.size > 0) {
-            logger.debug("fetchMeta", `Loading ${chunksToLoad.size} chunks for branch view...`);
-            const promises = Array.from(chunksToLoad).map(chunk => this.fetchContentChunk(chunk));
-            await Promise.all(promises);
-        }
+        // 2. Fetch các chunks (Parallel)
+        const promises = Array.from(chunksToLoad).map(async (loc) => {
+            const path = `assets/db/${loc}.json`;
+            const key = loc.split('/').pop();
+            try {
+                const data = await this._fetchResource(path, key);
+                return { key: loc, data };
+            } catch (e) {
+                return { key: loc, data: {} };
+            }
+        });
 
-        const resultMeta = {};
+        const loadedChunks = await Promise.all(promises);
+        const chunkMap = {};
+        loadedChunks.forEach(item => chunkMap[item.key] = item.data);
+
+        // 3. Trích xuất meta
         uids.forEach(uid => {
-            const locator = this._getLocator(uid);
-            if (locator) {
-                const chunkData = this.contentCache.get(locator);
-                if (chunkData && chunkData[uid]) {
-                    resultMeta[uid] = chunkData[uid].meta;
-                }
+            const loc = uidToChunk[uid];
+            if (loc && chunkMap[loc] && chunkMap[loc][uid]) {
+                result[uid] = chunkMap[loc][uid].meta;
             }
         });
 
-        return resultMeta;
-    }
+        return result;
+    },
 
-    // ... (Giữ nguyên getSutta, getPool, downloadAll) ...
-    async getSutta(uid) {
-        await this.init();
-        const locator = this._getLocator(uid);
-        if (!locator) return null;
-
-        if (locator.includes('_struct') || locator.startsWith('structure/')) {
-            const structData = await this.fetchStructure(locator);
-            if (!structData) return null;
-            return {
-                uid: uid,
-                isBranch: true,
-                meta: structData.meta,
-                bookStructure: structData.structure
-            };
+    /**
+     * Lấy cấu trúc sách (hoặc Super Struct).
+     */
+    async fetchStructure(key) {
+        // key ví dụ: 'super_struct' hoặc 'mn_struct'
+        const loc = `structure/${key}`;
+        const path = `assets/db/${loc}.json`;
+        try {
+            return await this._fetchResource(path, key);
+        } catch (e) {
+            logger.warn("fetchStructure", `Failed ${key}`);
+            return null;
         }
+    },
 
-        const chunkName = locator;
-        const structName = this._resolveStructureName(chunkName);
-
-        const [structData, chunkData] = await Promise.all([
-            this.fetchStructure(structName),
-            this.fetchContentChunk(chunkName)
-        ]);
-
-        if (!structData || !chunkData) return null;
-
-        const combinedMeta = { ...structData.meta };
-        Object.keys(chunkData).forEach(key => {
-            if (chunkData[key].meta) combinedMeta[key] = chunkData[key].meta;
-        });
-
-        let itemData = chunkData[uid]; 
-        let myMeta = itemData ? itemData.meta : combinedMeta[uid];
-        let targetContent = itemData ? itemData.content : null;
-
-        if (myMeta && myMeta.type === 'shortcut') {
-            const parentUid = myMeta.parent_uid;
-            if (chunkData[parentUid]) {
-                targetContent = chunkData[parentUid].content;
-            }
-        }
-
-        return {
-            uid: uid,
-            isBranch: false,
-            content: targetContent,
-            meta: combinedMeta,
-            bookStructure: structData.structure
-        };
-    }
-
-    getPool(type = 'primary') {
-        if (!this.index) return [];
-        if (type === 'primary') {
-            let pool = [];
-            PRIMARY_BOOKS.forEach(bookId => {
-                const bookPool = this.index.pools.books[bookId];
-                if (bookPool) pool = pool.concat(bookPool);
-            });
-            return pool;
-        } else {
-            return this.index.pools.books[type] || [];
-        }
-    }
-
+    /**
+     * Download toàn bộ DB để cache vào Service Worker.
+     */
     async downloadAll(onProgress) {
         await this.init();
-        const contentChunks = new Set();
-        const structureFiles = new Set();
         
-        Object.values(this.index.locator).forEach(loc => {
-            if (loc.includes('_struct') || loc.startsWith('structure/')) {
-                const clean = loc.replace(/^structure\//, '');
-                structureFiles.add(clean);
-            } else {
-                contentChunks.add(loc);
-                const structName = this._resolveStructureName(loc);
-                structureFiles.add(structName);
-            }
-        });
+        // Lấy tất cả các locator (file chunks)
+        const allLocators = new Set(Object.values(this.uidIndex.locator));
+        // Thêm các file structure cơ bản nếu chưa có trong locator
+        allLocators.add("structure/super_struct");
 
-        const totalFiles = contentChunks.size + structureFiles.size;
-        let downloaded = 0;
+        const total = allLocators.size;
+        let current = 0;
+        
+        logger.info("DownloadAll", `Starting download of ${total} chunks...`);
 
-        const fetchQueue = async (urls, type) => {
-            for (const name of urls) {
+        // Chunking requests để tránh nghẽn mạng (batch size = 5)
+        const items = Array.from(allLocators);
+        const batchSize = 5;
+        
+        for (let i = 0; i < items.length; i += batchSize) {
+            const batch = items.slice(i, i + batchSize);
+            await Promise.all(batch.map(async (loc) => {
+                const path = `assets/db/${loc}.json`;
                 try {
-                    if (type === 'struct') await this.fetchStructure(name);
-                    else await this.fetchContentChunk(name);
-                    downloaded++;
-                    if (onProgress) onProgress(downloaded, totalFiles);
+                    await fetch(path); // Chỉ cần fetch để SW bắt và cache
                 } catch (e) {
-                    console.warn(`Download failed: ${name}`);
+                    // Ignore error, SW might handled it or net failed
                 }
-            }
-        };
-
-        await fetchQueue(Array.from(structureFiles), 'struct');
-        await fetchQueue(Array.from(contentChunks), 'content');
-        return true;
+            }));
+            
+            current += batch.length;
+            if (onProgress) onProgress(Math.min(current, total), total);
+        }
+        
+        logger.info("DownloadAll", "Completed.");
     }
-}
-
-export const DB = new DatabaseManager();
+};
