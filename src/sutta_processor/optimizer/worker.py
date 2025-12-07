@@ -30,12 +30,13 @@ def _flatten_tree(node: Any, meta_map: Dict[str, Any], result_list: List[str]) -
             _flatten_tree(value, meta_map, result_list)
 
 def _build_nav_map(linear_uids: List[str]) -> Dict[str, Dict[str, str]]:
+    """Tính toán Prev/Next."""
     nav_map = {}
     total = len(linear_uids)
     for i, uid in enumerate(linear_uids):
         nav_entry = {}
-        if i > 0: nav_entry["p"] = linear_uids[i-1]
-        if i < total - 1: nav_entry["n"] = linear_uids[i+1]
+        if i > 0: nav_entry["prev"] = linear_uids[i-1] # [CHANGED] p -> prev
+        if i < total - 1: nav_entry["next"] = linear_uids[i+1] # [CHANGED] n -> next
         if nav_entry: nav_map[uid] = nav_entry
     return nav_map
 
@@ -44,44 +45,32 @@ def _extract_sub_books(
     structure: Any, 
     full_meta: Dict[str, Any]
 ) -> List[Tuple[str, List[str]]]:
-    """
-    Tách cấu trúc sách lớn thành các sách con.
-    Hỗ trợ cấu trúc dạng Dict {"an": {"an1": ...}} hoặc List {"an": [{"an1": ...}]}
-    """
+    """Tách cấu trúc sách lớn thành các sách con."""
     sub_books = []
     
-    # 1. Tìm root content (nội dung bên trong key "an")
     root_content = structure
     if isinstance(structure, dict):
         if book_id in structure:
             root_content = structure[book_id]
         else:
-            # Fallback nếu root key không khớp book_id
             root_content = list(structure.values())[0]
 
-    # Helper xử lý 1 item con (vd: an1)
     def process_item(key, val):
-        # Chỉ chấp nhận nếu key bắt đầu bằng book_id (vd: an1 starts with an)
         if key.startswith(book_id) and key != book_id:
             sub_uids = []
             _flatten_tree(val, full_meta, sub_uids)
             if sub_uids:
                 sub_books.append((key, sub_uids))
 
-    # 2. Duyệt qua children
     if isinstance(root_content, dict):
-        # Cấu trúc: { "an1": [...], "an2": [...] }
         for k, v in root_content.items():
             process_item(k, v)
-            
     elif isinstance(root_content, list):
-        # Cấu trúc: [ {"an1": [...]}, {"an2": [...]} ]
         for item in root_content:
             if isinstance(item, dict):
                 for k, v in item.items():
                     process_item(k, v)
 
-    # Sort theo ID để đảm bảo thứ tự (an1, an2...)
     sub_books.sort(key=lambda x: x[0])
     return sub_books
 
@@ -119,52 +108,61 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
 
-        # 3. Metadata Processing
+        # 3. Metadata Processing Helpers
+        def build_entry(uid):
+            info = full_meta.get(uid, {})
+            m_type = info.get("type")
+            
+            # [CHANGED] Khôi phục các trường thông tin và dùng key tường minh
+            entry = {
+                "acronym": info.get("acronym"),
+                "translated_title": info.get("translated_title"),
+                "original_title": info.get("original_title"), # [RESTORED]
+                "author_uid": info.get("author_uid"),         # [RESTORED]
+                "type": m_type
+            }
+            
+            # Chỉ thêm blurb nếu có để tiết kiệm dung lượng (nhưng vẫn giữ lại)
+            if info.get("blurb"):
+                entry["blurb"] = info.get("blurb")            # [RESTORED]
+
+            if uid in nav_map: 
+                entry["nav"] = nav_map[uid]
+            
+            if uid in chunk_map_idx: 
+                entry["chunk"] = chunk_map_idx[uid]           # [CHANGED] c -> chunk
+
+            if m_type == "subleaf":
+                if "extract_id" in info: 
+                    entry["extract_id"] = info["extract_id"]  # [CHANGED] eid -> extract_id
+                if "parent_uid" in info: 
+                    entry["parent_uid"] = info["parent_uid"]  # [CHANGED] pid -> parent_uid
+            
+            return entry
+
         is_split_mode = book_id in SPLIT_CONFIG
-        
-        # Biến đếm tổng valid uids cho sách mẹ
         valid_random_uids_total = []
 
         if is_split_mode:
-            # --- SPLIT MODE (AN, SN) ---
+            # --- SPLIT MODE ---
             sub_books = _extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
-
-            if not sub_books:
-                logger.warning(f"⚠️ {book_id}: Split mode enabled but no sub-books found. structure type: {type(structure)}")
 
             for sub_id, sub_uids in sub_books:
                 sub_meta_map = {}
                 sub_valid_uids = []
                 
-                # Build Meta cho sách con
                 for uid in sub_uids:
-                    info = full_meta.get(uid, {})
-                    m_type = info.get("type")
-                    
-                    entry = {
-                        "acronym": info.get("acronym"),
-                        "title": info.get("translated_title") or info.get("original_title"),
-                        "type": m_type
-                    }
-                    if uid in nav_map: entry["nav"] = nav_map[uid]
-                    if uid in chunk_map_idx: entry["c"] = chunk_map_idx[uid]
-                    if m_type == "subleaf":
-                        if "extract_id" in info: entry["eid"] = info["extract_id"]
-                        if "parent_uid" in info: entry["pid"] = info["parent_uid"]
-                    
-                    sub_meta_map[uid] = entry
+                    sub_meta_map[uid] = build_entry(uid)
+                    m_type = full_meta.get(uid, {}).get("type")
                     
                     if m_type in ["leaf", "subleaf"]:
                         sub_valid_uids.append(uid)
-                        # Locator trỏ về sách con (an1)
                         result["locator_map"][uid] = sub_id 
                 
-                # Save Sub-Book Meta (an1.json)
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
                     "title": f"{sub_id.upper()}",
-                    # Với sách con, ta fake structure đơn giản để FE vẽ được list
                     "tree": {sub_id: structure.get(book_id, {}).get(sub_id, sub_uids)}, 
                     "meta": sub_meta_map,
                     "uids": sub_valid_uids
@@ -173,7 +171,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 valid_random_uids_total.extend(sub_valid_uids)
 
-            # Save Super-Book Meta (an.json)
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
@@ -185,20 +182,8 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             # --- NORMAL MODE ---
             slim_meta_map = {}
             for uid in linear_uids:
-                info = full_meta.get(uid, {})
-                m_type = info.get("type")
-                entry = {
-                    "acronym": info.get("acronym"),
-                    "title": info.get("translated_title") or info.get("original_title"),
-                    "type": m_type
-                }
-                if uid in nav_map: entry["nav"] = nav_map[uid]
-                if uid in chunk_map_idx: entry["c"] = chunk_map_idx[uid]
-                if m_type == "subleaf":
-                    if "extract_id" in info: entry["eid"] = info["extract_id"]
-                    if "parent_uid" in info: entry["pid"] = info["parent_uid"]
-
-                slim_meta_map[uid] = entry
+                slim_meta_map[uid] = build_entry(uid)
+                m_type = full_meta.get(uid, {}).get("type")
                 
                 if m_type in ["leaf", "subleaf"]:
                     valid_random_uids_total.append(uid)

@@ -8,10 +8,7 @@ logger = logging.getLogger("Optimizer.Pools")
 
 class PoolManager:
     def __init__(self):
-        # Lưu số lượng bài kinh hợp lệ: {"dn": 34}
         self.book_counts: Dict[str, int] = {}
-        
-        # Danh sách toàn bộ sách thuộc nhánh Sutta (Lấy từ Super Tree)
         self.sutta_universe: Set[str] = set()
 
     def register_book_count(self, book_id: str, count: int) -> None:
@@ -19,19 +16,15 @@ class PoolManager:
             self.book_counts[book_id] = count
 
     def set_sutta_universe(self, books: List[str]) -> None:
-        """Nhận danh sách sách Sutta từ Orchestrator."""
         self.sutta_universe = set(books)
 
     def generate_js_constants(self) -> None:
-        """
-        Sinh file constants.js.
-        Secondary = (Sutta Universe - Primary) AND (Has Data)
-        """
-        # 1. Tìm Secondary Candidate
+        # 1. Filter: Secondary = (Sutta Universe - Primary)
+        # Chỉ lấy những sách có trong universe (để loại bỏ Vinaya/Abhidhamma)
+        # Và phải có data (nằm trong book_counts)
+        
         candidates = self.sutta_universe - PRIMARY_BOOKS_SET
         
-        # 2. Chỉ lấy những sách THỰC SỰ có dữ liệu (đã được worker xử lý)
-        # Để tránh hiển thị những sách rỗng trong Menu
         valid_secondary = []
         for book_id in candidates:
             if book_id in self.book_counts:
