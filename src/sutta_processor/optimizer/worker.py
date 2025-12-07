@@ -114,4 +114,21 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
         # 4. Save Meta Pack (assets/db/meta/{book}.json)
         meta_pack = {
-            "id": book_id
+            "id": book_id,
+            "title": data.get("title"),
+            "tree": structure,    # Để vẽ Menu
+            "meta": slim_meta_map, # Metadata tra cứu nhanh
+            "uids": valid_random_uids # Local Pool cho Random
+        }
+        
+        io.save_category("meta", f"{book_id}.json", meta_pack)
+
+        # 5. Finalize
+        result["status"] = "success"
+        result["valid_count"] = len(valid_random_uids)
+        
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ Worker failed on {file_path.name}: {e}")
+        return result
