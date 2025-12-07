@@ -19,11 +19,9 @@ function getLeafList(structure) {
         } else if (Array.isArray(node)) {
             node.forEach(child => traverse(child));
         } else if (typeof node === 'object' && node !== null) {
-            if (isSubleafContainer(node)) {
-                list.push(Object.keys(node)[0]);
-            } else {
-                Object.values(node).forEach(child => traverse(child));
-            }
+            // [FIXED] Luôn duyệt sâu vào values thay vì chặn ở container
+            // Điều này giúp tìm thấy "dn" nằm trong { "long": ["dn"] }
+            Object.values(node).forEach(child => traverse(child));
         }
     }
     traverse(structure);
@@ -69,38 +67,34 @@ function getSubleafNavigation(structure, currentId) {
     return { prev, next, type: 'subleaf' };
 }
 
-// --- LOGIC BRANCH (FIXED: ARRAY AWARE) ---
+// --- LOGIC BRANCH (FIXED: ARRAY & COUSIN SUPPORT) ---
 function getBranchSiblings(structure, branchId) {
     // Helper: Tìm danh sách anh em chứa branchId
     function findSiblingGroup(node) {
         if (!node) return null;
 
-        // Trường hợp 1: Node là Mảng (Array)
-        // Cấu trúc Super Tree thường dùng mảng để giữ thứ tự: [{long:...}, {middle:...}]
+        // Trường hợp 1: Node là Mảng (Array) - Thường gặp trong Super Tree
         if (Array.isArray(node)) {
-            // Bước A: Gom nhóm "Virtual Siblings" ở cấp độ mảng này
+            // Bước A: Gom nhóm "Virtual Siblings" (Key của các object con trong mảng)
+            // Ví dụ: [{long:...}, {middle:...}] -> ['long', 'middle']
             let virtualKeys = [];
             for (const item of node) {
                 if (typeof item === 'string') {
                     virtualKeys.push(item);
                 } else if (typeof item === 'object' && item !== null) {
-                    // Lấy key của object con (ví dụ 'long' từ {long: [...]})
-                    // Loại bỏ các key meta/isBranch để không nhiễu
                     const keys = Object.keys(item).filter(k => k !== 'meta' && k !== 'isBranch');
                     virtualKeys.push(...keys);
                 }
             }
 
-            // Bước B: Kiểm tra xem branchId cần tìm có nằm trong danh sách ảo này không
             if (virtualKeys.includes(branchId)) {
                 return virtualKeys;
             }
 
-            // Bước C: Nếu không tìm thấy, đệ quy xuống từng phần tử con
+            // Bước B: Đệ quy xuống con
             for (const item of node) {
-                // Nếu item là object (container), đi sâu vào giá trị của nó
                 if (typeof item === 'object' && item !== null) {
-                    // Vì item thường là dạng { "long": [...] }, ta phải dive vào values
+                    // Dive vào values (vì item thường là wrapper {key: val})
                     for (const val of Object.values(item)) {
                         const res = findSiblingGroup(val);
                         if (res) return res;
@@ -110,15 +104,12 @@ function getBranchSiblings(structure, branchId) {
         }
         
         // Trường hợp 2: Node là Object thông thường
-        // Cấu trúc Local Tree thường dùng object: { dn1: ..., dn2: ... }
         else if (typeof node === 'object') {
-            // Bước A: Kiểm tra keys trực tiếp
             const keys = Object.keys(node).filter(k => k !== 'meta' && k !== 'isBranch');
             if (keys.includes(branchId)) {
                 return keys;
             }
 
-            // Bước B: Đệ quy xuống các values
             for (const key of keys) {
                 const res = findSiblingGroup(node[key]);
                 if (res) return res;
@@ -131,7 +122,7 @@ function getBranchSiblings(structure, branchId) {
     const siblings = findSiblingGroup(structure);
 
     if (!siblings) {
-        console.warn(`[NavLogic] No container found for branch: ${branchId}`);
+        // console.warn(`[NavLogic] No container found for branch: ${branchId}`);
         return { prev: null, next: null };
     }
 
@@ -147,11 +138,12 @@ function getBranchSiblings(structure, branchId) {
 // --- MAIN EXPORT ---
 
 export function calculateNavigation(structure, currentId) {
-    // 1. Subleaf
+    // 1. Subleaf Check
     const subleafNav = getSubleafNavigation(structure, currentId);
     if (subleafNav) return subleafNav;
 
-    // 2. Leaf (Reading Mode) - Chỉ check trong Leaf List
+    // 2. Leaf (Reading Mode)
+    // [NOTE] getLeafList mới sẽ tìm thấy 'dn', 'mn' trong super_struct vì nó duyệt sâu
     const leafList = getLeafList(structure);
     const leafIdx = leafList.indexOf(currentId);
     if (leafIdx !== -1) {
@@ -162,7 +154,8 @@ export function calculateNavigation(structure, currentId) {
         };
     }
 
-    // 3. Branch (Browsing Mode) - [FIXED] Dùng logic mới hỗ trợ Array
+    // 3. Branch (Browsing Mode)
+    // Dành cho các ID là Key (Group) như 'long', 'middle'
     const branchNav = getBranchSiblings(structure, currentId);
     return { ...branchNav, type: 'branch' };
 }
