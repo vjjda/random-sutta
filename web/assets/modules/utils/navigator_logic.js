@@ -1,15 +1,10 @@
 // Path: web/assets/modules/utils/navigator_logic.js
 
-// --- HELPERS ---
+// --- 1. HELPERS ---
 
-/**
- * Kiểm tra xem node có phải là container chứa Subleaf không
- * VD: { "an1.1-10": ["an1.1", "an1.2"] }
- */
 function isSubleafContainer(node) {
     if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
         const keys = Object.keys(node);
-        // Container chỉ có 1 key duy nhất là ParentID, value là mảng Subleaf
         if (keys.length === 1 && Array.isArray(node[keys[0]])) {
             return true;
         }
@@ -17,19 +12,8 @@ function isSubleafContainer(node) {
     return false;
 }
 
-function getIdFromNode(node) {
-    if (typeof node === 'string') return node;
-    if (isSubleafContainer(node)) return Object.keys(node)[0];
-    return null; // Branch object phức tạp hơn
-}
-
-// --- 1. LOGIC LEAF NAVIGATION (Làm phẳng danh sách bài kinh) ---
-/**
- * Tạo danh sách các "đầu mục bài kinh" (Leaves).
- * - String đơn ("mn1") -> Là Leaf.
- * - Subleaf Container ("an1.1-10") -> Lấy Key làm Leaf (đại diện cho cả nhóm).
- * - Bỏ qua nội dung bên trong Subleaf Container.
- */
+// --- 2. LOGIC LEAF/SUBLEAF (Linear Flattening) ---
+// Giữ nguyên logic làm phẳng danh sách để đọc tuần tự (Reading Mode)
 function getLeafList(structure) {
     let list = [];
 
@@ -40,11 +24,10 @@ function getLeafList(structure) {
             node.forEach(child => traverse(child));
         } else if (typeof node === 'object' && node !== null) {
             if (isSubleafContainer(node)) {
-                // Đây là Leaf dạng gộp (Parent). Thêm ID Parent vào list.
-                // Không duyệt sâu vào con (subleaves).
+                // Parent Leaf (VD: an1.1-10) -> Thêm vào list
                 list.push(Object.keys(node)[0]);
             } else {
-                // Đây là Branch (Vagga/Nipata). Duyệt tiếp vào con để tìm Leaf.
+                // Branch -> Duyệt sâu vào con để tìm Leaf
                 Object.values(node).forEach(child => traverse(child));
             }
         }
@@ -54,29 +37,33 @@ function getLeafList(structure) {
     return list;
 }
 
-// --- 2. LOGIC BRANCH NAVIGATION (Cùng cấp độ) ---
+// --- 3. LOGIC BRANCH (Strict Sibling) ---
+// Tìm cha của branchId và trả về anh em liền kề (Browsing Mode)
 function getBranchSiblings(structure, branchId) {
-    // Tìm object cha chứa key == branchId
-    function findParentContainer(node) {
+    let siblings = null;
+
+    // Hàm duyệt cây tìm container chứa key == branchId
+    function traverse(node) {
         if (typeof node === 'object' && node !== null) {
-            // Nếu node này chứa branchId như một key trực tiếp
+            // Kiểm tra xem node này có chứa branchId làm key trực tiếp không
             if (Object.prototype.hasOwnProperty.call(node, branchId)) {
-                return Object.keys(node); // Trả về danh sách anh em (keys)
+                siblings = Object.keys(node);
+                return true; // Stop traversing
             }
-            
+
             // Nếu không, duyệt tiếp con
             for (const key in node) {
-                // Bỏ qua nếu con là array (leaf list) hoặc subleaf container
+                // Bỏ qua nếu là Leaf Array hoặc Subleaf Container
                 if (Array.isArray(node[key]) || isSubleafContainer(node[key])) continue;
                 
-                const res = findParentContainer(node[key]);
-                if (res) return res;
+                if (traverse(node[key])) return true;
             }
         }
-        return null;
+        return false;
     }
 
-    const siblings = findParentContainer(structure);
+    traverse(structure);
+
     if (!siblings) return { prev: null, next: null };
 
     const idx = siblings.indexOf(branchId);
@@ -86,68 +73,70 @@ function getBranchSiblings(structure, branchId) {
     };
 }
 
-// --- 3. LOGIC SUBLEAF CONTEXT ---
-function findSubleafContext(structure, subleafId) {
-    // Tìm Parent Container chứa subleafId
-    function traverse(node) {
+// --- 4. LOGIC SUBLEAF SPECIFIC ---
+function getSubleafNavigation(structure, currentId) {
+    // Tìm context của subleaf
+    function findCtx(node) {
         if (typeof node === 'object' && node !== null) {
             if (isSubleafContainer(node)) {
                 const parentId = Object.keys(node)[0];
                 const children = node[parentId];
-                if (children.includes(subleafId)) {
+                if (children.includes(currentId)) {
                     return { parentId, children };
                 }
             } else if (!Array.isArray(node)) {
-                // Branch -> Duyệt sâu
                 for (const key in node) {
-                    const res = traverse(node[key]);
+                    const res = findCtx(node[key]);
                     if (res) return res;
                 }
             } else if (Array.isArray(node)) {
-                // Array -> Duyệt phần tử
                 for (const child of node) {
-                    const res = traverse(child);
+                    const res = findCtx(child);
                     if (res) return res;
                 }
             }
         }
         return null;
     }
-    return traverse(structure);
+
+    const ctx = findCtx(structure);
+    if (!ctx) return null;
+
+    const { parentId, children } = ctx;
+    const idx = children.indexOf(currentId);
+    
+    let prev = idx > 0 ? children[idx - 1] : null;
+    let next = idx < children.length - 1 ? children[idx + 1] : null;
+
+    // Escalation: Nhảy ra Parent Sibling
+    if (!prev || !next) {
+        const leafList = getLeafList(structure);
+        const parentIdx = leafList.indexOf(parentId);
+        
+        if (parentIdx !== -1) {
+            if (!prev && parentIdx > 0) prev = leafList[parentIdx - 1];
+            if (!next && parentIdx < leafList.length - 1) next = leafList[parentIdx + 1];
+        }
+    }
+
+    return { prev, next, type: 'subleaf' };
 }
+
 
 // --- MAIN EXPORT ---
 
 export function calculateNavigation(structure, currentId) {
-    // A. Xử lý SUBLEAF
-    const subCtx = findSubleafContext(structure, currentId);
-    if (subCtx) {
-        const { parentId, children } = subCtx;
-        const idx = children.indexOf(currentId);
-        
-        let prev = idx > 0 ? children[idx - 1] : null;
-        let next = idx < children.length - 1 ? children[idx + 1] : null;
+    // 1. Ưu tiên kiểm tra Subleaf (logic phức tạp nhất)
+    const subleafNav = getSubleafNavigation(structure, currentId);
+    if (subleafNav) return subleafNav;
 
-        // Escalation: Nếu hết đường nội bộ -> Nhảy sang đường của Parent
-        if (!prev || !next) {
-            const leafList = getLeafList(structure);
-            const parentIdx = leafList.indexOf(parentId);
-            
-            if (parentIdx !== -1) {
-                // Logic đặc thù:
-                // Prev của con cả = Prev Sibling của Bố
-                if (!prev && parentIdx > 0) prev = leafList[parentIdx - 1];
-                
-                // Next của con út = Next Sibling của Bố
-                if (!next && parentIdx < leafList.length - 1) next = leafList[parentIdx + 1];
-            }
-        }
-        return { prev, next, type: 'subleaf' };
-    }
-
-    // B. Xử lý LEAF (Bài kinh thường hoặc Parent Range)
+    // 2. Kiểm tra Leaf (trong danh sách phẳng)
+    // Lưu ý: Subleaf cũng có thể xuất hiện trong getLeafList (nếu logic getLeafList đổi),
+    // nhưng ở đây ta đã handle subleaf ở bước 1 rồi.
+    // Bước này dành cho Leaf thường (mn1) và Parent Leaf (an1.1-10)
     const leafList = getLeafList(structure);
     const leafIdx = leafList.indexOf(currentId);
+
     if (leafIdx !== -1) {
         return {
             prev: leafIdx > 0 ? leafList[leafIdx - 1] : null,
@@ -156,12 +145,8 @@ export function calculateNavigation(structure, currentId) {
         };
     }
 
-    // C. Xử lý BRANCH
-    // Nếu không phải Leaf/Subleaf -> Coi là Branch
-    return getBranchNavigation(structure, currentId);
-}
-
-function getBranchNavigation(structure, currentId) {
-    const nav = getBranchSiblings(structure, currentId);
-    return { ...nav, type: 'branch' };
+    // 3. Cuối cùng là Branch (Browsing)
+    // Chỉ tìm Sibling trong cùng container, KHÔNG leo thang.
+    const branchNav = getBranchSiblings(structure, currentId);
+    return { ...branchNav, type: 'branch' };
 }
