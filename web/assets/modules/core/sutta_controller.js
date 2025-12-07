@@ -26,24 +26,20 @@ export const SuttaController = {
         const result = await SuttaService.loadFullSuttaData(suttaId);
         
         if (!result || !result.data) {
-            // Not Found
             renderSutta(suttaId, null, { prev: null, next: null }, options);
             return false;
         }
 
-        // [FIX 3] Xử lý Alias Redirect
         if (result.data.isAlias) {
             const parentUid = result.data.meta.parent_uid;
             logger.info('loadSutta', `${suttaId} is alias -> Redirecting to ${parentUid}`);
-            
-            // Gọi đệ quy để load parent. 
-            // Lưu ý: shouldUpdateUrl=true để URL trên thanh địa chỉ đổi sang Parent (hoặc giữ nguyên tùy strategy)
-            // Ở đây ta đổi sang Parent để người dùng thấy nguồn gốc.
             this.loadSutta(parentUid, true, 0, { transition: false }); 
             return true; 
         }
+        
+        // [DEBUG LOG]
+        console.log(`[Controller] Ready to render ${suttaId}. NavData:`, result.navData);
 
-        // Render Normal / Branch
         const success = await renderSutta(suttaId, result.data, result.navData, options);
         
         if (success && shouldUpdateUrl) {

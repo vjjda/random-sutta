@@ -1,7 +1,5 @@
 // Path: web/assets/modules/utils/navigator_logic.js
 
-// --- 1. HELPERS ---
-
 function isSubleafContainer(node) {
     if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
         const keys = Object.keys(node);
@@ -12,7 +10,7 @@ function isSubleafContainer(node) {
     return false;
 }
 
-// --- 2. LOGIC LEAF/SUBLEAF (Reading Mode) ---
+// ... (getLeafList và getSubleafNavigation giữ nguyên vì đã ổn) ...
 function getLeafList(structure) {
     let list = [];
     function traverse(node) {
@@ -32,53 +30,16 @@ function getLeafList(structure) {
     return list;
 }
 
-// --- 3. LOGIC BRANCH (Browsing Mode - Fix cho Super Struct) ---
-function getBranchSiblings(structure, branchId) {
-    let siblings = null;
-
-    function traverse(node) {
-        if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
-            // Check nếu node này chứa branchId
-            if (Object.prototype.hasOwnProperty.call(node, branchId)) {
-                // Lọc bỏ các key meta/isBranch nếu có (đề phòng data bẩn)
-                siblings = Object.keys(node).filter(k => k !== 'meta' && k !== 'isBranch');
-                return true; 
-            }
-
-            // Duyệt sâu vào các con
-            for (const key in node) {
-                // Chỉ duyệt tiếp nếu con là Object Branch (không phải Leaf Array hay Subleaf)
-                const child = node[key];
-                if (typeof child === 'object' && child !== null && !Array.isArray(child) && !isSubleafContainer(child)) {
-                    if (traverse(child)) return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    // Bắt đầu duyệt từ root structure
-    traverse(structure);
-
-    if (!siblings) return { prev: null, next: null };
-
-    const idx = siblings.indexOf(branchId);
-    return {
-        prev: idx > 0 ? siblings[idx - 1] : null,
-        next: idx < siblings.length - 1 ? siblings[idx + 1] : null
-    };
-}
-
-// --- 4. LOGIC SUBLEAF ---
 function getSubleafNavigation(structure, currentId) {
+    // ... (Giữ nguyên logic subleaf cũ) ...
+    // Để ngắn gọn tôi không paste lại đoạn logic subleaf đã đúng
+    // Bạn giữ nguyên code phần này từ version trước
     function findCtx(node) {
         if (typeof node === 'object' && node !== null) {
             if (isSubleafContainer(node)) {
                 const parentId = Object.keys(node)[0];
                 const children = node[parentId];
-                if (children.includes(currentId)) {
-                    return { parentId, children };
-                }
+                if (children.includes(currentId)) return { parentId, children };
             } else if (!Array.isArray(node)) {
                 for (const key in node) {
                     const res = findCtx(node[key]);
@@ -93,49 +54,85 @@ function getSubleafNavigation(structure, currentId) {
         }
         return null;
     }
-
     const ctx = findCtx(structure);
     if (!ctx) return null;
-
     const { parentId, children } = ctx;
     const idx = children.indexOf(currentId);
-    
     let prev = idx > 0 ? children[idx - 1] : null;
     let next = idx < children.length - 1 ? children[idx + 1] : null;
-
-    // Escalation
     if (!prev || !next) {
         const leafList = getLeafList(structure);
         const parentIdx = leafList.indexOf(parentId);
-        
         if (parentIdx !== -1) {
             if (!prev && parentIdx > 0) prev = leafList[parentIdx - 1];
             if (!next && parentIdx < leafList.length - 1) next = leafList[parentIdx + 1];
         }
     }
-
     return { prev, next, type: 'subleaf' };
 }
 
-// --- MAIN EXPORT ---
+// [DEBUG LOG ADDED HERE]
+function getBranchSiblings(structure, branchId) {
+    console.log(`[NavLogic] searching branch siblings for: ${branchId}`);
+    let siblings = null;
+
+    function traverse(node, depth = 0) {
+        if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
+            // Check if node contains branchId
+            if (Object.prototype.hasOwnProperty.call(node, branchId)) {
+                console.log(`[NavLogic] Found container at depth ${depth}. Keys:`, Object.keys(node));
+                siblings = Object.keys(node).filter(k => k !== 'meta' && k !== 'isBranch');
+                return true; 
+            }
+
+            // Recurse
+            for (const key in node) {
+                const child = node[key];
+                // Skip leaves/subleaves to focus on branch structure
+                if (typeof child === 'object' && child !== null && !Array.isArray(child) && !isSubleafContainer(child)) {
+                    if (traverse(child, depth + 1)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    traverse(structure);
+
+    if (!siblings) {
+        console.warn(`[NavLogic] No container found for branch: ${branchId}`);
+        return { prev: null, next: null };
+    }
+
+    const idx = siblings.indexOf(branchId);
+    console.log(`[NavLogic] Index of ${branchId} is ${idx} in`, siblings);
+    
+    return {
+        prev: idx > 0 ? siblings[idx - 1] : null,
+        next: idx < siblings.length - 1 ? siblings[idx + 1] : null
+    };
+}
 
 export function calculateNavigation(structure, currentId) {
     // 1. Subleaf
     const subleafNav = getSubleafNavigation(structure, currentId);
-    if (subleafNav) return subleafNav;
+    if (subleafNav) {
+        console.log(`[NavLogic] Type: Subleaf. Prev=${subleafNav.prev}, Next=${subleafNav.next}`);
+        return subleafNav;
+    }
 
-    // 2. Leaf (Reading)
+    // 2. Leaf
     const leafList = getLeafList(structure);
     const leafIdx = leafList.indexOf(currentId);
     if (leafIdx !== -1) {
-        return {
-            prev: leafIdx > 0 ? leafList[leafIdx - 1] : null,
-            next: leafIdx < leafList.length - 1 ? leafList[leafIdx + 1] : null,
-            type: 'leaf'
-        };
+        const prev = leafIdx > 0 ? leafList[leafIdx - 1] : null;
+        const next = leafIdx < leafList.length - 1 ? leafList[leafIdx + 1] : null;
+        console.log(`[NavLogic] Type: Leaf. Prev=${prev}, Next=${next}`);
+        return { prev, next, type: 'leaf' };
     }
 
-    // 3. Branch (Browsing)
+    // 3. Branch
     const branchNav = getBranchSiblings(structure, currentId);
+    console.log(`[NavLogic] Type: Branch. Prev=${branchNav.prev}, Next=${branchNav.next}`);
     return { ...branchNav, type: 'branch' };
 }
