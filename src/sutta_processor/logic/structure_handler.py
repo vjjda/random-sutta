@@ -55,7 +55,6 @@ def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta],
             "author_uid": None
         }
         
-        # Chỉ thêm extract_id nếu có
         eid = info.get("extract_id")
         if eid:
             entry["extract_id"] = eid
@@ -68,34 +67,27 @@ def expand_structure_with_subleaves(
     meta_map: Dict[str, SuttaMeta], 
     target_meta_dict: Dict[str, Any]
 ) -> Any:
-    """
-    Đệ quy biến đổi Structure:
-    - String Node (Range) -> Object Node {parent: [subleaves]}
-    """
     if isinstance(node, str):
         uid = node
-        # Nếu node này có nội dung (là Leaf/Range)
         if uid in raw_content_map:
             payload = raw_content_map[uid]
             parent_meta = meta_map.get(uid, {})
             parent_acronym = parent_meta.get("acronym", "")
             
-            # 1. Gọi Expander
             expanded_ids, generated_meta = generate_subleaf_shortcuts(
                 root_uid=uid,
                 content=payload.get("data", {}),
                 parent_acronym=parent_acronym
             )
             
-            # 2. Cập nhật Meta mới sinh ra (Subleaf/Alias)
             for sc_id, sc_data in generated_meta.items():
                 if sc_id not in target_meta_dict:
                     api_info = meta_map.get(sc_id, {})
                     entry = {
-                        "type": sc_data["type"], # 'subleaf' or 'alias'
+                        "type": sc_data["type"],
                         "acronym": sc_data["acronym"],
-                        "parent_uid": sc_data["parent_uid"],
-                        "is_implicit": sc_data["is_implicit"]
+                        "parent_uid": sc_data["parent_uid"]
+                        # [UPDATED] Removed is_implicit
                     }
                     
                     if "extract_id" in sc_data:
@@ -108,13 +100,9 @@ def expand_structure_with_subleaves(
                     
                     target_meta_dict[sc_id] = entry
             
-            # 3. Transform Structure
-            # Nếu expanded_ids > 1 (có subleaves) -> Trả về Object lồng nhau
             if len(expanded_ids) > 1:
-                # Nếu ID đầu tiên khác root_uid, ta coi root_uid là container
                 return {uid: expanded_ids}
             else:
-                # Không expand được (hoặc chỉ có 1 con chính là nó) -> Giữ nguyên string
                 return uid
             
         return uid
@@ -148,10 +136,8 @@ def build_book_data(
 
     meta_dict: Dict[str, Any] = {}
     
-    # 1. Expand Structure
     final_structure = expand_structure_with_subleaves(simple_tree, raw_data, names_map, meta_dict)
     
-    # 2. Add missing parent meta (những Parent Leaf bị biến thành Key của Object vẫn cần meta)
     content_dict = {}
     for uid, payload in raw_data.items():
         if not payload: continue
@@ -172,5 +158,5 @@ def build_book_data(
         "title": book_meta.get("translated_title", book_id.upper()),
         "structure": final_structure,
         "meta": meta_dict,
-        "content": content_dict # Content giữ nguyên theo Parent Key
+        "content": content_dict
     }

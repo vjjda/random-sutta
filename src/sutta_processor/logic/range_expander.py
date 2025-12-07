@@ -23,6 +23,7 @@ def _parse_range_uid(uid: str) -> Optional[Tuple[str, int, int]]:
     return None
 
 def _find_explicit_child_ids(content: Dict[str, Any], prefix: str, start: int, end: int) -> Set[str]:
+    """Tìm các ID thực sự sở hữu segment trong content."""
     explicit_ids = set()
     potential_ids = {f"{prefix}{i}" for i in range(start, end + 1)}
     
@@ -63,11 +64,14 @@ def generate_subleaf_shortcuts(
     for i in range(start, end + 1):
         child_uid = f"{prefix}{i}"
         
+        # Determine Type
         if child_uid in explicit_ids:
+            # SUBLEAF: Có content -> Add vào structure
             ordered_ids.append(child_uid)
             entry_type = "subleaf"
             extract_id = child_uid
         else:
+            # ALIAS: Không content -> Chỉ Meta
             entry_type = "alias"
             extract_id = None
 
@@ -75,11 +79,11 @@ def generate_subleaf_shortcuts(
         if not smart_acronym:
             smart_acronym = child_uid.upper().replace('.', ' ')
 
+        # [UPDATED] Removed is_implicit
         meta_entry = {
             "type": entry_type,
             "parent_uid": root_uid,
-            "acronym": smart_acronym,
-            "is_implicit": (entry_type == "alias")
+            "acronym": smart_acronym
         }
         
         if extract_id:
