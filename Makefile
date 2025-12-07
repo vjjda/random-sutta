@@ -16,6 +16,7 @@ help:
 	@echo ""
 	@echo "⚙️  BUILD & DEV:"
 	@echo "  make build-data     - Chạy Sutta Processor (JSON -> Assets)"
+	@echo "  make build          - Chạy Full Build (Data + Release)"
 	@echo "  make dev            - Server Web gốc (Source)  -> http://localhost:8000"
 	@echo "  make dev-online     - Server Build Online      -> http://localhost:8001"
 	@echo "  make dev-offline    - Server Build Offline     -> http://localhost:8002"
