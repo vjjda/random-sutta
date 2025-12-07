@@ -1,6 +1,6 @@
 // Path: web/assets/modules/utils/navigator_logic.js
 
-// --- HELPERS GIỮ NGUYÊN ---
+// --- HELPERS ---
 function isSubleafContainer(node) {
     if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
         const keys = Object.keys(node);
@@ -30,10 +30,8 @@ function getLeafList(structure) {
     return list;
 }
 
-// --- LOGIC SUBLEAF GIỮ NGUYÊN ---
+// --- LOGIC SUBLEAF ---
 function getSubleafNavigation(structure, currentId) {
-    // ... (Giữ nguyên code subleaf đã đúng) ...
-    // Copy-paste lại đoạn code getSubleafNavigation từ phiên bản trước
     function findCtx(node) {
         if (typeof node === 'object' && node !== null) {
             if (isSubleafContainer(node)) {
@@ -71,43 +69,66 @@ function getSubleafNavigation(structure, currentId) {
     return { prev, next, type: 'subleaf' };
 }
 
-// --- FIX LOGIC BRANCH (Deep Search) ---
+// --- LOGIC BRANCH (FIXED: ARRAY AWARE) ---
 function getBranchSiblings(structure, branchId) {
-    console.log(`[NavLogic] searching branch siblings for: ${branchId}`);
-    let siblings = null;
+    // Helper: Tìm danh sách anh em chứa branchId
+    function findSiblingGroup(node) {
+        if (!node) return null;
 
-    function traverse(node, depth = 0) {
-        if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
-            
-            // 1. Check trực tiếp keys của node hiện tại
-            if (Object.prototype.hasOwnProperty.call(node, branchId)) {
-                console.log(`[NavLogic] Found container at depth ${depth}. Keys:`, Object.keys(node));
-                // Lấy tất cả keys làm siblings (trừ meta/isBranch)
-                siblings = Object.keys(node).filter(k => k !== 'meta' && k !== 'isBranch');
-                return true; 
+        // Trường hợp 1: Node là Mảng (Array)
+        // Cấu trúc Super Tree thường dùng mảng để giữ thứ tự: [{long:...}, {middle:...}]
+        if (Array.isArray(node)) {
+            // Bước A: Gom nhóm "Virtual Siblings" ở cấp độ mảng này
+            let virtualKeys = [];
+            for (const item of node) {
+                if (typeof item === 'string') {
+                    virtualKeys.push(item);
+                } else if (typeof item === 'object' && item !== null) {
+                    // Lấy key của object con (ví dụ 'long' từ {long: [...]})
+                    // Loại bỏ các key meta/isBranch để không nhiễu
+                    const keys = Object.keys(item).filter(k => k !== 'meta' && k !== 'isBranch');
+                    virtualKeys.push(...keys);
+                }
             }
 
-            // 2. Đệ quy xuống con
-            for (const key in node) {
-                // Bỏ qua meta để tránh nhiễu
-                if (key === 'meta' || key === 'isBranch') continue;
+            // Bước B: Kiểm tra xem branchId cần tìm có nằm trong danh sách ảo này không
+            if (virtualKeys.includes(branchId)) {
+                return virtualKeys;
+            }
 
-                const child = node[key];
-                
-                // Chỉ đi tiếp vào Object (không phải Array Leaf, không phải Subleaf)
-                // Tuy nhiên, Super Struct có thể chứa Array các strings (như "dn", "mn" nếu cấu trúc là list)
-                // Nhưng trong file mẫu bạn gửi, cấu trúc là Map { "long": [...], "middle": [...] }
-                // Nên ta tập trung vào Object traversal.
-                
-                if (typeof child === 'object' && child !== null && !Array.isArray(child) && !isSubleafContainer(child)) {
-                    if (traverse(child, depth + 1)) return true;
+            // Bước C: Nếu không tìm thấy, đệ quy xuống từng phần tử con
+            for (const item of node) {
+                // Nếu item là object (container), đi sâu vào giá trị của nó
+                if (typeof item === 'object' && item !== null) {
+                    // Vì item thường là dạng { "long": [...] }, ta phải dive vào values
+                    for (const val of Object.values(item)) {
+                        const res = findSiblingGroup(val);
+                        if (res) return res;
+                    }
                 }
             }
         }
-        return false;
+        
+        // Trường hợp 2: Node là Object thông thường
+        // Cấu trúc Local Tree thường dùng object: { dn1: ..., dn2: ... }
+        else if (typeof node === 'object') {
+            // Bước A: Kiểm tra keys trực tiếp
+            const keys = Object.keys(node).filter(k => k !== 'meta' && k !== 'isBranch');
+            if (keys.includes(branchId)) {
+                return keys;
+            }
+
+            // Bước B: Đệ quy xuống các values
+            for (const key of keys) {
+                const res = findSiblingGroup(node[key]);
+                if (res) return res;
+            }
+        }
+
+        return null;
     }
 
-    traverse(structure);
+    const siblings = findSiblingGroup(structure);
 
     if (!siblings) {
         console.warn(`[NavLogic] No container found for branch: ${branchId}`);
@@ -115,7 +136,6 @@ function getBranchSiblings(structure, branchId) {
     }
 
     const idx = siblings.indexOf(branchId);
-    // console.log(`[NavLogic] Index of ${branchId} is ${idx}`);
     
     return {
         prev: idx > 0 ? siblings[idx - 1] : null,
@@ -142,7 +162,7 @@ export function calculateNavigation(structure, currentId) {
         };
     }
 
-    // 3. Branch (Browsing Mode) - Chỉ tìm trong Branch Tree
+    // 3. Branch (Browsing Mode) - [FIXED] Dùng logic mới hỗ trợ Array
     const branchNav = getBranchSiblings(structure, currentId);
     return { ...branchNav, type: 'branch' };
 }
