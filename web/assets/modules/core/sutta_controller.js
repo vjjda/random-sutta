@@ -19,22 +19,33 @@ export const SuttaController = {
     let [baseId, hashPart] = suttaIdInput.split('#');
     const suttaId = baseId.trim().toLowerCase();
     const explicitHash = hashPart || null;
-
+    
     logger.info('loadSutta', `Request: ${suttaId}`);
 
     const performRender = async () => {
-        // [REFACTORED] Gọi Service thay vì tự gọi Repository
         const result = await SuttaService.loadFullSuttaData(suttaId);
-
-        if (!result) {
+        
+        if (!result || !result.data) {
             // Not Found
             renderSutta(suttaId, null, { prev: null, next: null }, options);
             return false;
         }
 
-        // Render
-        const success = await renderSutta(suttaId, result.data, result.navData, options);
+        // [FIX 3] Xử lý Alias Redirect
+        if (result.data.isAlias) {
+            const parentUid = result.data.meta.parent_uid;
+            logger.info('loadSutta', `${suttaId} is alias -> Redirecting to ${parentUid}`);
+            
+            // Gọi đệ quy để load parent. 
+            // Lưu ý: shouldUpdateUrl=true để URL trên thanh địa chỉ đổi sang Parent (hoặc giữ nguyên tùy strategy)
+            // Ở đây ta đổi sang Parent để người dùng thấy nguồn gốc.
+            this.loadSutta(parentUid, true, 0, { transition: false }); 
+            return true; 
+        }
 
+        // Render Normal / Branch
+        const success = await renderSutta(suttaId, result.data, result.navData, options);
+        
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
              Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
@@ -42,7 +53,6 @@ export const SuttaController = {
         return success;
     };
 
-    // [KEEP] Scroll Logic
     let targetScrollId = null;
     if (explicitHash) {
         targetScrollId = explicitHash.includes(':') ? explicitHash : `${suttaId}:${explicitHash}`;
@@ -60,15 +70,12 @@ export const SuttaController = {
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     hideComment();
-    // [REFACTORED] Gọi Service
     const filters = getActiveFilters();
     const targetUid = await SuttaService.getRandomSuttaId(filters);
-
     if (!targetUid) {
       alert("No suttas found. Please wait for database to load.");
       return;
     }
-    
     logger.info('loadRandomSutta', `Random selection: ${targetUid}`);
     this.loadSutta(targetUid, shouldUpdateUrl, 0, { transition: false });
   }

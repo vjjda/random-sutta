@@ -1,6 +1,6 @@
 // Path: web/assets/modules/services/sutta_service.js
 import { SuttaRepository } from '../data/sutta_repository.js';
-import { SuttaExtractor } from '../data/sutta_extractor.js'; // Import mới
+import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { NavigationService } from './navigation_service.js';
 import { getLogger } from '../utils/logger.js';
 
@@ -8,7 +8,7 @@ const logger = getLogger("SuttaService");
 
 export const SuttaService = {
     async loadFullSuttaData(suttaId) {
-        // 1. Lấy dữ liệu thô từ Repository (Load Chunk)
+        // 1. Get Entry
         let entry = await SuttaRepository.getSuttaEntry(suttaId);
         
         if (!entry) {
@@ -19,30 +19,25 @@ export const SuttaService = {
         const meta = entry.meta || {};
         let content = entry.content;
 
-        // 2. Xử lý SUBLEAF: Extract content từ Parent
+        // 2. Handle Subleaf (Extraction)
         if (meta.type === 'subleaf' && meta.parent_uid && meta.extract_id) {
             logger.info("load", `${suttaId} is subleaf. Fetching parent ${meta.parent_uid}...`);
-            
-            // Tải entry của Parent (thường nằm cùng chunk nên rất nhanh do cache)
             const parentEntry = await SuttaRepository.getSuttaEntry(meta.parent_uid);
             
             if (parentEntry && parentEntry.content) {
-                // Thực hiện Extract
                 content = SuttaExtractor.extract(parentEntry.content, meta.extract_id);
             } else {
-                logger.error("load", `Parent ${meta.parent_uid} content missing/empty.`);
+                logger.error("load", `Parent ${meta.parent_uid} content missing.`);
             }
-        }
-        // Xử lý ALIAS: Redirect (Logic này có thể handle ở Controller, nhưng data service trả về null content)
+        } 
+        // 3. Handle Alias
         else if (meta.type === 'alias') {
-             logger.info("load", `${suttaId} is alias.`);
              return { data: { uid: suttaId, meta: meta, isAlias: true }, navData: null };
         }
 
-        // 3. Lấy Structure để tính Navigation
-        // Cần biết Book ID để load file structure.
-        // UID: an1.1 -> Book: an.
-        const bookId = suttaId.match(/^[a-z]+/)[0]; // Regex đơn giản lấy chữ cái đầu
+        // 4. Navigation & Structure
+        // Lấy Book ID (vd: 'mn' từ 'mn1')
+        const bookId = suttaId.match(/^[a-z]+/)[0];
         const structData = await SuttaRepository.getBookStructure(bookId);
         
         let navData = { prev: null, next: null };
@@ -50,24 +45,33 @@ export const SuttaService = {
             navData = await NavigationService.getNavForSutta(suttaId, structData.structure);
         }
 
-        // 4. Return Data Object chuẩn cho Renderer
+        // 5. Fetch Navigation Metadata (NavMeta)
+        // Tách riêng meta của Prev/Next để không trộn lẫn vào meta bài chính
+        const uidsToFetch = [];
+        if (navData.prev) uidsToFetch.push(navData.prev);
+        if (navData.next) uidsToFetch.push(navData.next);
+
+        let navMeta = {};
+        if (uidsToFetch.length > 0) {
+            navMeta = await SuttaRepository.fetchMetaList(uidsToFetch);
+        }
+
         return {
             data: {
                 uid: suttaId,
-                meta: meta,
+                meta: meta,        // Meta chính chủ
+                navMeta: navMeta,  // Meta hàng xóm (Mới)
                 content: content,
-                bookStructure: structData ? structData.structure : null, // Để render TOC nếu cần
-                isBranch: meta.type === 'branch' // Support render branch card
+                bookStructure: structData ? structData.structure : null,
+                isBranch: entry.isBranch
             },
             navData: navData
         };
     },
 
-    // ... (Giữ nguyên logic getRandomSuttaId) ...
     async getRandomSuttaId(activeFilters) {
-         // Logic này cần update để lấy pool từ constants.js hoặc file pool riêng
-         // Vì uid_index.json của bạn không chứa list pool sẵn.
-         // Tạm thời giữ nguyên hoặc TODO
-         return "mn1"; // Placeholder
+        // TODO: Cần implement logic lấy random pool từ constants.js
+        // Tạm thời return hardcode để test flow
+        return "mn1"; 
     }
 };
