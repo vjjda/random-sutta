@@ -1,6 +1,7 @@
 # Path: src/sutta_processor/optimizer/worker.py
 import json
 import logging
+import traceback # [NEW]
 from pathlib import Path
 from typing import Dict, Any, List, Set
 
@@ -12,6 +13,7 @@ from .splitter import is_split_book, extract_sub_books
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
+    # ... (Giữ nguyên hàm này) ...
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
@@ -64,57 +66,56 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
         # 3. Metadata Processing
         if is_split_book(book_id):
-            # --- SPLIT MODE (AN, SN) ---
+            # [DEBUG] Log khi vào split mode
+            logger.debug(f"[{book_id}] Entering Split Mode...")
+            
             sub_books = extract_sub_books(book_id, structure, full_meta)
+            
+            # [DEBUG] Check kết quả tách sách
+            if not sub_books:
+                logger.error(f"[{book_id}] Failed to extract sub-books! Structure might be malformed.")
+                # Fallback: Treat as Normal Book? Or Fail? -> Fail để ta biết đường sửa
+                raise ValueError(f"Could not extract sub-books for {book_id}")
+
             sub_book_ids = []
-            total_valid_count = 0
+            
+            root_title = data.get("title", "")
 
             for sub_id, sub_leaves, sub_struct in sub_books:
                 sub_meta_map = {}
                 
-                # A. Thu thập keys: Bao gồm con cháu VÀ chính sách con (an1)
                 all_sub_keys: Set[str] = set()
                 collect_all_keys(sub_struct, all_sub_keys)
                 all_sub_keys.add(sub_id)
                 
-                # B. Map Locator & Meta
                 for k in all_sub_keys:
                     result["locator_map"][k] = sub_id
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
 
-                # [CONSISTENCY FIX] Inject Parent Meta & Parent Tree Node
-                # Để Breadcrumb hoạt động đúng: Tree trong an1.json phải có gốc là 'an'
-                # Và meta phải chứa info của 'an'
-                
-                # 1. Inject Parent Meta (an)
+                # Inject Parent Info
                 if book_id in full_meta:
                     sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
                 
-                # 2. Reconstruct Tree: { "an": { "an1": [...] } }
-                # Giúp Frontend traverse từ an1 -> an dễ dàng
                 final_tree = { book_id: { sub_id: sub_struct } }
 
-                # Save Sub-Book
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
-                    "title": f"{sub_id.upper()}",
-                    "tree": final_tree, # [CHANGED] Gốc cây là 'an'
+                    "title": f"{sub_id.upper()}", 
+                    "root_id": book_id,
+                    "root_title": root_title,
+                    "tree": final_tree, 
                     "meta": sub_meta_map,
                     "random_pool": sub_leaves
                 })
                 
                 sub_book_ids.append(sub_id)
-                
-                count = len(sub_leaves)
-                result["sub_counts"][sub_id] = count
-                total_valid_count += count
+                result["sub_counts"][sub_id] = len(sub_leaves)
 
-            # Save Super-Book (Chỉ dùng để duyệt mục lục tổng)
             result["locator_map"][book_id] = book_id
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
-                "title": data.get("title"),
+                "title": root_title,
                 "children": sub_book_ids
             })
             
@@ -144,5 +145,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         return result
 
     except Exception as e:
+        # [NEW] In full stack trace để debug lỗi AN/SN
         logger.error(f"❌ Worker failed on {file_path.name}: {e}")
+        traceback.print_exc()
         return result

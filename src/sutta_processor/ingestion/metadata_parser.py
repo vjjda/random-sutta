@@ -4,37 +4,28 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-# [UPDATED]
 from ..shared.app_config import RAW_API_JSON_DIR, CONFIG_AUTHOR_PRIORITY
 from ..shared.domain_types import SuttaMeta
 
 logger = logging.getLogger("SuttaProcessor.Ingestion.Meta")
 
 def _find_best_author(translations: List[Dict[str, Any]]) -> Optional[str]:
-    if not translations:
-        return None
-        
+    if not translations: return None
     valid_trans = {
         t.get("author_uid"): t 
         for t in translations 
         if t.get("lang") == "en" and t.get("segmented") is True
     }
-    
-    # [UPDATED]
     for author in CONFIG_AUTHOR_PRIORITY:
-        if author in valid_trans:
-            return author
-            
+        if author in valid_trans: return author
     return None
 
 def load_names_map() -> Dict[str, SuttaMeta]:
-    # [UPDATED]
     if not RAW_API_JSON_DIR.exists():
         logger.warning(f"⚠️ API Data directory not found: {RAW_API_JSON_DIR}")
         return {}
 
     logger.info("📚 Parsing metadata & resolving authors...")
-    
     meta_map: Dict[str, SuttaMeta] = {}
     json_files = sorted(list(RAW_API_JSON_DIR.rglob("*.json")))
 
@@ -55,22 +46,20 @@ def load_names_map() -> Dict[str, SuttaMeta]:
                 raw_scroll_target = item.get("scroll_target")
                 parent_uid = item.get("parent_uid")
                 final_scroll_target = raw_scroll_target
+                if raw_scroll_target == parent_uid: final_scroll_target = None
                 
-                if raw_scroll_target == parent_uid:
-                    final_scroll_target = None
-                
+                # [FIX] Dùng .get(key, default) an toàn tuyệt đối
                 entry: SuttaMeta = {
                     "uid": uid,
                     "type": item.get("type", "leaf"),
-                    "acronym": item.get("acronym") or "",
+                    "acronym": item.get("acronym", "") or "", # Fix lỗi None/Missing
                     "translated_title": (item.get("translated_title") or "").strip(),
                     "original_title": (item.get("original_title") or "").strip(),
                     "blurb": item.get("blurb"),
                     "best_author_uid": best_author,
                     "author_uid": None, 
-                    "scroll_target": final_scroll_target 
+                    "extract_id": final_scroll_target 
                 }
-                
                 meta_map[uid] = entry
 
         except Exception as e:
