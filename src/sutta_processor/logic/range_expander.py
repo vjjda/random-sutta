@@ -9,7 +9,6 @@ def _natural_keys(text: str) -> List[Any]:
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 def _parse_range_string(uid: str) -> Optional[Tuple[str, int, int]]:
-    """Parse 'an1.281-283' -> ('an1.', 281, 283)."""
     pattern = re.compile(r"^(.*?)(\d+)[-–](\d+)$")
     match = pattern.match(uid)
     if match:
@@ -45,7 +44,6 @@ def generate_subleaf_shortcuts(
     result_meta = {}
     ordered_structure_ids = []
 
-    # 1. Quét Content tìm Subleaves
     real_prefixes = set()
     for seg_id in content.keys():
         if ":" in seg_id:
@@ -55,7 +53,6 @@ def generate_subleaf_shortcuts(
     sorted_prefixes = sorted(list(real_prefixes), key=_natural_keys)
     root_range_info = _parse_range_string(root_uid)
 
-    # CASE A: Single Leaf
     is_single_leaf = (len(sorted_prefixes) == 0) or \
                      (len(sorted_prefixes) == 1 and sorted_prefixes[0] == root_uid)
 
@@ -72,6 +69,7 @@ def generate_subleaf_shortcuts(
                 except ValueError:
                     alias_acronym = ""
 
+                # Alias chỉ nằm trong Meta, KHÔNG vào structure list
                 result_meta[alias_id] = {
                     "type": "alias",
                     "parent_uid": root_uid,
@@ -80,12 +78,10 @@ def generate_subleaf_shortcuts(
                 }
         return [root_uid], result_meta
 
-    # CASE B: Container Leaf (Có Subleaves)
     else:
         for sub_uid in sorted_prefixes:
             ordered_structure_ids.append(sub_uid)
             
-            # 1. Subleaf Meta
             sub_acronym = ""
             if root_range_info:
                 root_prefix, r_start, r_end = root_range_info
@@ -104,10 +100,7 @@ def generate_subleaf_shortcuts(
                 "acronym": sub_acronym
             }
 
-            # 2. Alias Expansion cho Subleaf (nếu Subleaf là Range)
-            # VD: an1.281-283 -> an1.281, an1.282...
             parsed_sub = _parse_range_string(sub_uid)
-            
             if parsed_sub:
                 p_prefix, p_start, p_end = parsed_sub
                 aliases = _expand_alias_ids(p_prefix, p_start, p_end)
@@ -115,10 +108,6 @@ def generate_subleaf_shortcuts(
                 for alias_id in aliases:
                     if alias_id == sub_uid: continue
                     
-                    # [FIX QUAN TRỌNG] Thêm Alias vào Structure để được Index
-                    ordered_structure_ids.append(alias_id) # <--- DÒNG NÀY ĐÃ BỊ THIẾU
-
-                    # Acronym logic
                     try:
                         a_num = int(alias_id[len(p_prefix):])
                         base_acronym = sub_acronym if sub_acronym else parent_acronym
@@ -126,10 +115,11 @@ def generate_subleaf_shortcuts(
                     except ValueError:
                         alias_acronym = ""
 
+                    # Alias chỉ nằm trong Meta
                     result_meta[alias_id] = {
                         "type": "alias",
-                        "parent_uid": root_uid, # Trỏ về file gốc
-                        "extract_id": sub_uid,  # Trỏ về đoạn trích (Subleaf)
+                        "parent_uid": root_uid,
+                        "extract_id": sub_uid,
                         "acronym": alias_acronym
                     }
 
