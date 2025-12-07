@@ -1,41 +1,31 @@
 // Path: web/assets/modules/data/sutta_repository.js
 import { getLogger } from '../utils/logger.js';
 import { IODriver } from './io_driver.js';
-import { PRIMARY_BOOKS } from './constants.js';
 import { OfflineSyncer } from './offline_syncer.js';
+
+// [UPDATED] Import các thành phần con
+import { IndexRepository } from './repositories/index_repository.js';
+import { SuttaAssembler } from './logic/sutta_assembler.js';
 
 const logger = getLogger("SuttaRepo");
 
 export const SuttaRepository = {
-    uidIndex: null,
     suttaCache: new Map(),
 
+    // Delegate init sang IndexRepo
     async init() {
-        if (this.uidIndex) return;
-        if (window.__DB_INDEX__) {
-            this.uidIndex = window.__DB_INDEX__;
-            return;
-        }
-        try {
-            this.uidIndex = await IODriver.fetchResource('assets/db/uid_index.json', 'uid_index');
-        } catch (e) {
-            logger.error("init", "Index load failed", e);
-        }
+        await IndexRepository.ensureLoaded();
     },
 
     getPool(bookId) {
-        if (!this.uidIndex) return [];
-        if (bookId === 'primary') {
-            return PRIMARY_BOOKS.flatMap(bid => this.uidIndex.pools.books[bid] || []);
-        }
-        return this.uidIndex.pools.books[bookId] || [];
+        return IndexRepository.getPool(bookId);
     },
 
     async getSutta(suttaId) {
         await this.init();
         if (this.suttaCache.has(suttaId)) return this.suttaCache.get(suttaId);
 
-        const locatorKey = this.uidIndex.locator[suttaId];
+        const locatorKey = IndexRepository.getLocator(suttaId);
         if (!locatorKey) {
             logger.warn("getSutta", `Locator not found: ${suttaId}`);
             return null;
@@ -47,67 +37,35 @@ export const SuttaRepository = {
 
         try {
             const chunkData = await IODriver.fetchResource(path, resourceKey);
-            
-            // [FIX] Xử lý riêng cho Branch/Structure
+            let result = null;
+
             if (isStructure) {
-                // Với file Structure, chunkData chính là Book Object { id, structure, meta }
-                // Kiểm tra xem suttaId có tồn tại trong meta của book này không
-                // (Hoặc suttaId chính là id của book)
-                const isValid = chunkData.meta[suttaId] || chunkData.id === suttaId || (suttaId === 'sutta'); // Special case for super root
-                
-                if (!isValid) {
-                    logger.warn("getSutta", `Branch ID ${suttaId} not found in struct file`);
-                    return null;
+                // Logic lắp ráp Branch
+                result = SuttaAssembler.assembleBranch(suttaId, chunkData);
+            } else {
+                // Logic lắp ráp Leaf
+                let suttaData = chunkData[suttaId];
+                if (!suttaData) return null;
+
+                // 1. Resolve Shortcut
+                suttaData = SuttaAssembler.resolveShortcut(suttaData, chunkData, suttaId);
+
+                // 2. Load Structure nếu thiếu
+                let bookStructure = suttaData.bookStructure || null;
+                if (!bookStructure) {
+                    const bookId = suttaId.match(/^[a-z]+/)[0];
+                    const structLoc = IndexRepository.getLocator(bookId);
+                    if (structLoc) {
+                        const sKey = structLoc.split('/').pop();
+                        const sData = await IODriver.fetchResource(`assets/db/${structLoc}.json`, sKey);
+                        bookStructure = sData?.structure;
+                    }
                 }
 
-                const result = {
-                    uid: suttaId,
-                    content: null,
-                    // Trích xuất meta của riêng branch này từ file structure lớn
-                    meta: { [suttaId]: chunkData.meta[suttaId] || {} }, 
-                    isBranch: true,
-                    bookStructure: chunkData.structure
-                };
-                
-                this.suttaCache.set(suttaId, result);
-                return result;
+                result = SuttaAssembler.assembleLeaf(suttaId, suttaData, bookStructure);
             }
 
-            // [LOGIC CŨ] Xử lý cho Leaf/Content
-            let suttaData = chunkData[suttaId];
-            if (!suttaData) return null;
-
-            if (suttaData.meta?.type === 'shortcut') {
-                const parent = chunkData[suttaData.meta.parent_uid];
-                if (parent) {
-                    suttaData = { 
-                        ...parent, 
-                        meta: { ...parent.meta, ...suttaData.meta }, 
-                        uid: suttaId 
-                    };
-                }
-            }
-
-            let bookStructure = suttaData.bookStructure || null;
-            if (!bookStructure) {
-                const bookId = suttaId.match(/^[a-z]+/)[0];
-                const structLoc = this.uidIndex.locator[bookId];
-                if (structLoc) {
-                    const sKey = structLoc.split('/').pop();
-                    const sData = await IODriver.fetchResource(`assets/db/${structLoc}.json`, sKey);
-                    bookStructure = sData?.structure;
-                }
-            }
-
-            const result = {
-                uid: suttaId,
-                content: suttaData.content || null,
-                meta: { [suttaId]: suttaData.meta },
-                isBranch: !!suttaData.isBranch,
-                bookStructure
-            };
-
-            this.suttaCache.set(suttaId, result);
+            if (result) this.suttaCache.set(suttaId, result);
             return result;
 
         } catch (e) {
@@ -122,20 +80,21 @@ export const SuttaRepository = {
         const chunksToLoad = new Set();
         const uidToChunk = {};
 
+        // 1. Map UID -> Locator
         uids.forEach(uid => {
-            const loc = this.uidIndex.locator[uid];
+            const loc = IndexRepository.getLocator(uid);
             if (loc) {
                 chunksToLoad.add(loc);
                 uidToChunk[uid] = loc;
             }
         });
 
+        // 2. Parallel Fetch
         const promises = Array.from(chunksToLoad).map(async (loc) => {
             const path = `assets/db/${loc}.json`;
             const key = loc.split('/').pop();
             try {
-                const data = await IODriver.fetchResource(path, key);
-                return { key: loc, data };
+                return { key: loc, data: await IODriver.fetchResource(path, key) };
             } catch (e) {
                 return { key: loc, data: {} };
             }
@@ -145,14 +104,15 @@ export const SuttaRepository = {
         const chunkMap = {};
         loadedChunks.forEach(item => chunkMap[item.key] = item.data);
 
+        // 3. Extract Meta
         uids.forEach(uid => {
             const loc = uidToChunk[uid];
             const source = chunkMap[loc];
             if (source) {
                 if (source.meta && source.meta[uid]) {
-                    result[uid] = source.meta[uid]; 
+                    result[uid] = source.meta[uid];
                 } else if (source[uid] && source[uid].meta) {
-                    result[uid] = source[uid].meta; 
+                    result[uid] = source[uid].meta;
                 }
             }
         });
@@ -162,14 +122,14 @@ export const SuttaRepository = {
 
     async fetchStructureData(key) {
         const loc = `structure/${key}`;
-        const path = `assets/db/${loc}.json`;
         try {
-            return await IODriver.fetchResource(path, key);
+            return await IODriver.fetchResource(`assets/db/${loc}.json`, key);
         } catch (e) { return null; }
     },
 
     async downloadAll(onProgress) {
         await this.init();
-        return OfflineSyncer.downloadAll(this.uidIndex, onProgress);
+        // IndexRepo chứa dữ liệu, OfflineSyncer chứa logic loop
+        return OfflineSyncer.downloadAll({ locator: IndexRepository.index.locator }, onProgress);
     }
 };
