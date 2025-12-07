@@ -37,16 +37,16 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             m_type = info.get("type")
             
             # A. LEAF / SHORTCUT -> Đẩy HẾT sang Chunk
-            # Structure file sẽ không biết gì về Leaf ngoài ID trong Tree
             if m_type != "branch" and m_type != "root":
                 leaf_meta[uid] = info
 
             # B. BRANCH / ROOT -> Giữ lại ở Structure
             else:
                 branch_meta[uid] = info
-                result["locators"][uid] = f"{safe_name}_struct"
+                # [FIXED] Thêm tiền tố 'structure/' vào locator
+                result["locators"][uid] = f"structure/{safe_name}_struct"
 
-        # --- Save Structure (Siêu nhẹ - Chỉ có Tree + Branch Meta) ---
+        # --- Save Structure ---
         struct_data = {
             "id": data.get("id"),
             "title": data.get("title"),
@@ -63,7 +63,8 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             for fname, chunk_data in chunks:
                 io.save_dual(f"content/{fname}.json", chunk_data)
                 for uid in chunk_data.keys():
-                    result["locators"][uid] = fname
+                    # [FIXED] Thêm tiền tố 'content/' vào locator
+                    result["locators"][uid] = f"content/{fname}"
 
             result["valid_uids"] = PoolManager.filter_smart_uids(raw_content, full_meta)
 
