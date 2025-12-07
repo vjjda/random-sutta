@@ -2,8 +2,8 @@
 import { ContentCompiler } from "../data/content_compiler.js";
 import { setupTableOfHeadings } from "./toh_component.js";
 import { UIFactory } from "./ui_factory.js";
-import { calculateNavigation } from "./navigator.js";
-import { DB } from "../data/db_manager.js";
+// [DELETED] import { calculateNavigation } from "./navigator.js"; 
+// [DELETED] import { DB } from "../data/db_manager.js"; 
 
 let tohInstance = null;
 
@@ -24,6 +24,7 @@ function getDisplayInfo(uid, metaMap) {
 }
 
 function updateTopNavDOM(data, prevId, nextId) {
+    // ... (Giữ nguyên logic DOM manipulation bên trong, không thay đổi) ...
     const navHeader = document.getElementById("nav-header");
     const navMainTitle = document.getElementById("nav-main-title");
     const navSubTitle = document.getElementById("nav-sub-title");
@@ -67,9 +68,17 @@ function handleNotFound(suttaId) {
     statusDiv.classList.remove("hidden");
 }
 
-export async function renderSutta(suttaId, data, options = {}) {
+/**
+ * [REFACTORED]
+ * Renderer giờ chỉ nhận data và navData để hiển thị. 
+ * Không còn gọi DB hay tính toán Nav.
+ * @param {string} suttaId 
+ * @param {object} data - Dữ liệu bài kinh (content, meta, structure)
+ * @param {object} navData - Dữ liệu điều hướng { prev, next }
+ * @param {object} options 
+ */
+export async function renderSutta(suttaId, data, navData, options = {}) {
   const container = document.getElementById("sutta-container");
-  
   if (!data) {
     handleNotFound(suttaId);
     return false;
@@ -78,85 +87,21 @@ export async function renderSutta(suttaId, data, options = {}) {
   container.innerHTML = "";
   let htmlContent = "";
 
-  // 1. Tính toán Navigation Cục bộ
-  let nav = calculateNavigation(data.bookStructure, data.uid);
+  // [REMOVED] Logic calculateNavigation và Escalation đã chuyển sang NavigationService
 
-  // [FIXED] 2. Logic Leo thang (Escalation) - Áp dụng cho cả Leaf và Branch
-  // Nếu local nav rỗng (đứng một mình), thử tìm hàng xóm trong Super Struct
-  if (!nav.prev && !nav.next) {
-      try {
-          const superData = await DB.fetchStructure('super_struct');
-          if (superData) {
-              // Tìm trong bản đồ thế giới
-              const superNav = calculateNavigation(superData.structure, data.uid);
-              
-              if (superNav.prev || superNav.next) {
-                  nav = superNav;
-                  // Merge meta để hiển thị tên sách hàng xóm
-                  Object.assign(data.meta, superData.meta);
-              }
-          }
-      } catch (e) {
-          console.warn("Escalation to super_struct failed", e);
-      }
-  }
-
-  // --- RENDERING ---
-
+  // Branch View
   if (data.isBranch) {
-      function getChildrenIds(structure, currentUid) {
-          function findNode(node, targetId) {
-              if (!node) return null;
-              if (Array.isArray(node)) {
-                  for (let item of node) {
-                      if (item[targetId]) return item[targetId];
-                      const found = findNode(item, targetId);
-                      if (found) return found;
-                  }
-                  return null;
-              }
-              if (typeof node === 'object') {
-                  if (node[targetId]) return node[targetId];
-                  for (let key in node) {
-                      if (key === 'meta' || typeof node[key] !== 'object') continue;
-                      const found = findNode(node[key], targetId);
-                      if (found) return found;
-                  }
-              }
-              return null;
-          }
-          
-          const node = structure[currentUid] ? structure[currentUid] : findNode(structure, currentUid);
-          if (!node) return [];
-          
-          let ids = [];
-          if (Array.isArray(node)) {
-              node.forEach(item => {
-                  if (typeof item === 'string') ids.push(item);
-                  else if (typeof item === 'object') ids.push(...Object.keys(item));
-              });
-          } else if (typeof node === 'object') {
-              ids = Object.keys(node);
-          }
-          return ids;
-      }
-
-      const childrenIds = getChildrenIds(data.bookStructure, data.uid);
+      // NOTE: Logic fetchMetaForUids (lazy load meta cho con) vẫn đang nằm ở đây hoặc cần chuyển ra Controller.
+      // Để đảm bảo Renderer "sạch", dữ liệu 'data.meta' truyền vào NÊN ĐƯỢC chuẩn bị đủ từ bên ngoài.
+      // Tuy nhiên, để tránh thay đổi quá lớn một lúc, tạm thời ta giả định 'data.meta' đã đủ
+      // hoặc logic fetch con nằm ở Controller (sẽ cập nhật Controller sau).
       
-      if (childrenIds.length > 0) {
-          const leavesToFetch = childrenIds.filter(id => !data.meta[id]);
-          if (leavesToFetch.length > 0) {
-              const leafMetas = await DB.fetchMetaForUids(leavesToFetch);
-              Object.assign(data.meta, leafMetas);
-          }
-      }
-
       htmlContent = ContentCompiler.compileBranch(data.bookStructure, data.uid, data.meta);
       
       document.getElementById("toh-wrapper")?.classList.add("hidden");
       
-      updateTopNavDOM(data, nav.prev, nav.next); 
-      const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.meta);
+      updateTopNavDOM(data, navData.prev, navData.next); 
+      const bottomNavHtml = UIFactory.createBottomNavHtml(navData.prev, navData.next, data.meta);
       container.innerHTML = htmlContent + bottomNavHtml;
       
       return true;
@@ -170,9 +115,9 @@ export async function renderSutta(suttaId, data, options = {}) {
 
   htmlContent = ContentCompiler.compile(data.content, data.uid);
   
-  updateTopNavDOM(data, nav.prev, nav.next);
+  updateTopNavDOM(data, navData.prev, navData.next);
   
-  const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.meta);
+  const bottomNavHtml = UIFactory.createBottomNavHtml(navData.prev, navData.next, data.meta);
   container.innerHTML = htmlContent + bottomNavHtml;
 
   if (!tohInstance) tohInstance = setupTableOfHeadings();
