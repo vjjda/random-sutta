@@ -12,7 +12,6 @@ from .splitter import is_split_book, extract_sub_books
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
-    # ... (Giữ nguyên hàm này không đổi) ...
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
@@ -24,18 +23,18 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     if info.get("blurb"): entry["blurb"] = info["blurb"]
     
     entry["type"] = m_type
+    
     if uid in nav_map: entry["nav"] = nav_map[uid]
     if uid in chunk_map: entry["chunk"] = chunk_map[uid]
 
     if m_type == "subleaf":
         if "extract_id" in info: entry["extract_id"] = info["extract_id"]
         if "parent_uid" in info: entry["parent_uid"] = info["parent_uid"]
+        
     return entry
 
 def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
     io = IOManager(dry_run)
-    # result trả về locator_map để index, và valid_count cho thống kê
-    # Nhưng với split book, valid_count của sách mẹ sẽ là 0 để không export ra constants
     result = { "status": "error", "book_id": "", "valid_count": 0, "locator_map": {}, "sub_counts": {} }
 
     try:
@@ -68,48 +67,57 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             # --- SPLIT MODE (AN, SN) ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
-            
-            # Parent Title (Dùng để nhúng vào con)
-            root_title = data.get("title", "")
+            total_valid_count = 0
 
             for sub_id, sub_leaves, sub_struct in sub_books:
                 sub_meta_map = {}
                 
-                # A. Locator & Meta
+                # A. Thu thập keys: Bao gồm con cháu VÀ chính sách con (an1)
                 all_sub_keys: Set[str] = set()
                 collect_all_keys(sub_struct, all_sub_keys)
                 all_sub_keys.add(sub_id)
                 
+                # B. Map Locator & Meta
                 for k in all_sub_keys:
                     result["locator_map"][k] = sub_id
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
 
-                # B. Save Sub-Book
+                # [CONSISTENCY FIX] Inject Parent Meta & Parent Tree Node
+                # Để Breadcrumb hoạt động đúng: Tree trong an1.json phải có gốc là 'an'
+                # Và meta phải chứa info của 'an'
+                
+                # 1. Inject Parent Meta (an)
+                if book_id in full_meta:
+                    sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
+                
+                # 2. Reconstruct Tree: { "an": { "an1": [...] } }
+                # Giúp Frontend traverse từ an1 -> an dễ dàng
+                final_tree = { book_id: { sub_id: sub_struct } }
+
+                # Save Sub-Book
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
-                    "title": f"{sub_id.upper()}", # Title con (ví dụ: AN 1)
-                    "root_id": book_id,           # [NEW] Link ngược về AN
-                    "root_title": root_title,     # [NEW] Title của AN
-                    "tree": {sub_id: sub_struct}, 
+                    "title": f"{sub_id.upper()}",
+                    "tree": final_tree, # [CHANGED] Gốc cây là 'an'
                     "meta": sub_meta_map,
                     "random_pool": sub_leaves
                 })
                 
                 sub_book_ids.append(sub_id)
                 
-                # [NEW] Trả về count của sub-book để PoolManager ghi vào SUTTA_COUNTS
-                result["sub_counts"][sub_id] = len(sub_leaves)
+                count = len(sub_leaves)
+                result["sub_counts"][sub_id] = count
+                total_valid_count += count
 
-            # Save Super-Book (Chỉ để duyệt mục lục, không dùng Random)
+            # Save Super-Book (Chỉ dùng để duyệt mục lục tổng)
             result["locator_map"][book_id] = book_id
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
-                "title": root_title,
+                "title": data.get("title"),
                 "children": sub_book_ids
             })
             
-            # valid_count = 0 để sách mẹ (an) KHÔNG xuất hiện trong SUTTA_COUNTS
             result["valid_count"] = 0 
 
         else:
