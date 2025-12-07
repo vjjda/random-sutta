@@ -9,8 +9,16 @@ from ..shared.app_config import (
 )
 
 # Output Directories
+# [UPDATED] Cấu trúc mới: Tách Meta và Content
 WEB_DB_DIR = DIST_DB_DIR
+WEB_META_DIR = WEB_DB_DIR / "meta"
+WEB_CONTENT_DIR = WEB_DB_DIR / "content"
+
+# Mirror (cho Dry-run/Debug)
 MIRROR_DB_DIR = DEV_MIRROR_DB_DIR
+MIRROR_META_DIR = MIRROR_DB_DIR / "meta"
+MIRROR_CONTENT_DIR = MIRROR_DB_DIR / "content"
+
 JS_OUTPUT_DIR = DIST_JS_MODULES_DIR
 
 # Settings
