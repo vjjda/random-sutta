@@ -149,4 +149,28 @@ def build_book_data(
     meta_dict: Dict[str, Any] = {}
     
     # 1. Expand Structure
-    final_structure = expand_structure_with_subleaves(simple_tree, raw_data, names_map,
+    final_structure = expand_structure_with_subleaves(simple_tree, raw_data, names_map, meta_dict)
+    
+    # 2. Add missing parent meta (những Parent Leaf bị biến thành Key của Object vẫn cần meta)
+    content_dict = {}
+    for uid, payload in raw_data.items():
+        if not payload: continue
+        content_dict[uid] = payload.get("data", {})
+        
+        if uid not in meta_dict:
+            _add_meta_entry(uid, "leaf", names_map, meta_dict)
+            
+        author = payload.get("author_uid")
+        if uid in meta_dict and author:
+            meta_dict[uid]["author_uid"] = author
+
+    book_id = group_name.split("/")[-1]
+    book_meta = names_map.get(book_id, {})
+
+    return {
+        "id": book_id,
+        "title": book_meta.get("translated_title", book_id.upper()),
+        "structure": final_structure,
+        "meta": meta_dict,
+        "content": content_dict # Content giữ nguyên theo Parent Key
+    }
