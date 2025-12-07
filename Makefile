@@ -51,11 +51,16 @@ build-data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
 
+build:
+	@echo "🧠 Full Build (Data + Release)..."
+	$(PYTHON) -m src.sutta_processor
+	$(PYTHON) -m src.release_system
+
 # Server cho Source Code (web/) - Port 8000
 dev:
 	@echo "🌍 Starting SOURCE Server..."
-	@echo "   👉 http://localhost:8000/web/"
-	$(PYTHON) -m http.server 8000
+	@echo "   👉 http://localhost:8000/"
+	$(PYTHON) -m http.server 8000 --directory web
 
 # Server cho bản Build Online - Port 8001
 # Yêu cầu: Phải chạy 'make release' trước để có thư mục build
