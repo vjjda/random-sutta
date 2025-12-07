@@ -15,6 +15,7 @@ export const SuttaService = {
         const meta = entry.meta || {};
         let content = entry.content;
 
+        // ... (Logic Subleaf/Alias giữ nguyên) ...
         if (meta.type === 'subleaf' && meta.parent_uid && meta.extract_id) {
             const parentEntry = await SuttaRepository.getSuttaEntry(meta.parent_uid);
             if (parentEntry && parentEntry.content) {
@@ -36,13 +37,14 @@ export const SuttaService = {
             if (structData) localStructure = structData.structure;
         }
         
-        // [DEBUG LOG]
-        console.groupCollapsed(`[SuttaService] Calculating Nav for ${suttaId}`);
-        console.log("Structure used:", localStructure);
-        console.groupEnd();
+        // [FIX] Truyền Meta vào NavigationService
+        // Nếu là Branch (load từ _struct), dùng entry.fullMeta (meta gộp của cả sách)
+        // Nếu là Leaf, structData cũng chứa meta của cả sách đó
+        const contextMeta = entry.isBranch ? entry.fullMeta : (structData ? structData.meta : meta);
 
-        const navData = await NavigationService.getNavForSutta(suttaId, localStructure || {});
+        const navData = await NavigationService.getNavForSutta(suttaId, localStructure || {}, contextMeta);
 
+        // ... (Logic Fetch Nav Meta giữ nguyên) ...
         const uidsToFetch = [];
         if (navData.prev) uidsToFetch.push(navData.prev);
         if (navData.next) uidsToFetch.push(navData.next);
@@ -57,12 +59,13 @@ export const SuttaService = {
                 meta: entry.isBranch ? entry.fullMeta : meta, 
                 navMeta: navMeta, 
                 content: content,
-                bookStructure: localStructure || (structData ? structData.structure : null),
+                bookStructure: localStructure,
                 isBranch: entry.isBranch
             },
             navData: navData
         };
     },
+    // ... (Phần còn lại giữ nguyên) ...
     async getRandomSuttaId(activeFilters) {
         const pools = await SuttaRepository.getPools();
         let candidateBooks = (!activeFilters || activeFilters.length === 0) ? PRIMARY_BOOKS : activeFilters;
