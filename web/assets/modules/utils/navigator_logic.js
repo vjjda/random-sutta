@@ -1,98 +1,103 @@
 // Path: web/assets/modules/utils/navigator_logic.js
 
+// Helper: Trích xuất ID từ một node trong Structure
+// - Nếu là String ("an1.11-20") -> Trả về chính nó.
+// - Nếu là Object ({"an1.1-10": [...]}) -> Trả về Key ("an1.1-10").
+function getIdFromNode(node) {
+    if (typeof node === 'string') return node;
+    if (typeof node === 'object' && node !== null && !Array.isArray(node)) {
+        return Object.keys(node)[0];
+    }
+    return null;
+}
+
+// Helper: Tìm path đến node chứa targetId
+// Trả về mảng các context: [{ container, index, id }, ...]
+function findPath(structure, targetId, currentPath = []) {
+    // 1. Duyệt Array (Container chính)
+    if (Array.isArray(structure)) {
+        for (let i = 0; i < structure.length; i++) {
+            const node = structure[i];
+            const nodeId = getIdFromNode(node);
+
+            // Case A: Node chính là Target (Leaf hoặc Parent Leaf)
+            if (nodeId === targetId) {
+                return [...currentPath, { container: structure, index: i, id: nodeId }];
+            }
+
+            // Case B: Node là Object chứa con (Parent Leaf chứa Subleaves)
+            if (typeof node === 'object' && nodeId) {
+                // Nếu Target nằm trong đám con này
+                const children = node[nodeId];
+                if (Array.isArray(children)) {
+                    // Đệ quy vào trong
+                    const result = findPath(children, targetId, [
+                        ...currentPath, 
+                        { container: structure, index: i, id: nodeId }, // Context cha
+                        { container: children, index: -1, id: 'subleaf_wrapper' } // Context wrapper con
+                    ]);
+                    if (result) return result;
+                }
+            }
+        }
+    } 
+    // 2. Duyệt Subleaf List (đệ quy từ Case B)
+    // Lưu ý: Case B ở trên đã handle việc chui vào array con rồi, 
+    // nên ở đây ta chỉ check match string đơn giản.
+    
+    return null;
+}
+
+function resolveNeighbor(path, direction) {
+    // Duyệt ngược từ cuối path lên đầu (Bubble Up)
+    // path = [RootContext, ParentContext, SubleafContext...]
+    
+    for (let i = path.length - 1; i >= 0; i--) {
+        const context = path[i];
+        
+        // context.index là vị trí của node hiện tại trong context.container
+        // Nếu context là wrapper ảo (như lúc chui vào object), ta bỏ qua để lên cấp cao hơn
+        if (context.index === -1 && Array.isArray(context.container)) {
+             // Đây là trường hợp Subleaf tìm trong mảng con.
+             // Ta cần tìm index thực sự của ID trong mảng này.
+             // Tuy nhiên, để đơn giản, ta tìm lại index:
+             const currentId = path[path.length-1].id; // ID của item đang xét (ví dụ an1.1)
+             const realIndex = context.container.indexOf(currentId);
+             
+             if (realIndex !== -1) {
+                 const siblingIndex = realIndex + direction;
+                 if (context.container[siblingIndex]) {
+                     return getIdFromNode(context.container[siblingIndex]);
+                 }
+             }
+             // Nếu không thấy sibling trong mảng con -> Continue loop để leo lên cha (Parent Leaf)
+             continue;
+        }
+
+        // Logic cho container cấp cao (Root Array)
+        if (context.index !== -1 && Array.isArray(context.container)) {
+            const siblingIndex = context.index + direction;
+            const siblingNode = context.container[siblingIndex];
+            
+            if (siblingNode) {
+                return getIdFromNode(siblingNode);
+            }
+            // Nếu hết đường ở cấp này -> Continue loop để leo lên tiếp (ví dụ hết Vagga -> sang Vagga khác)
+        }
+    }
+    
+    return null;
+}
+
 export function calculateNavigation(structure, currentId) {
-    // 1. Tìm đường dẫn (Path) từ Root đến Node chứa currentId
-    // Path là mảng các context: [{ container, key, type }, ...]
+    // 1. Tìm đường dẫn ngữ cảnh
     const path = findPath(structure, currentId);
     
     if (!path) return { prev: null, next: null };
 
-    const currentContext = path[path.length - 1];
-    let { container, key, type } = currentContext; // key có thể là index (nếu array) hoặc string key
-
-    // 2. Tìm Sibling cơ bản (Cùng cấp)
-    let prev = getSibling(container, key, -1);
-    let next = getSibling(container, key, 1);
-
-    // 3. Xử lý ESCALATION (Leo thang) cho Subleaf
-    // Logic: Nếu đang ở trong một mảng con (Subleaf List) và chạm giới hạn -> Leo lên Parent
-    
-    if (type === 'array_item') {
-        // Kiểm tra xem array này có phải là con của một Object Leaf (Range) không
-        // Path mẫu: [..., {type: 'object_value', key: 'an1.1-10'}, {type: 'array_item', key: 0}]
-        const parentContext = path[path.length - 2];
-
-        if (parentContext && parentContext.type === 'object_value') {
-            // --- PREV: Subleaf đầu -> Về Parent ---
-            if (!prev) {
-                // Parent Key chính là ID của bài gộp (VD: "an1.1-10")
-                prev = parentContext.key; 
-            }
-
-            // --- NEXT: Subleaf cuối -> Về Sibling của Parent ---
-            if (!next) {
-                // Đệ quy: Tính Next của Parent (VD: Next của "an1.1-10")
-                const parentNav = calculateNavigation(structure, parentContext.key);
-                next = parentNav.next;
-            }
-        }
-    }
+    // 2. Resolve theo hướng
+    const prev = resolveNeighbor(path, -1);
+    const next = resolveNeighbor(path, 1);
 
     return { prev, next };
-}
-
-// --- HELPERS ---
-
-function findPath(node, target, currentPath = []) {
-    // 1. String Match (Leaf / Subleaf)
-    if (typeof node === 'string') {
-        return node === target ? currentPath : null;
-    }
-
-    // 2. Array: Duyệt index
-    if (Array.isArray(node)) {
-        for (let i = 0; i < node.length; i++) {
-            const path = findPath(node[i], target, [...currentPath, { container: node, key: i, type: 'array_item' }]);
-            if (path) return path;
-        }
-    }
-
-    // 3. Object: Duyệt key
-    if (typeof node === 'object' && node !== null) {
-        for (const key of Object.keys(node)) {
-            // Check nếu Key chính là Target (Trường hợp Branch/Parent ID)
-            if (key === target) {
-                return [...currentPath, { container: node, key: key, type: 'object_key' }];
-            }
-
-            // Recurse vào Value
-            const path = findPath(node[key], target, [...currentPath, { container: node, key: key, type: 'object_value' }]);
-            if (path) return path;
-        }
-    }
-
-    return null;
-}
-
-function getSibling(container, currentKey, direction) {
-    if (Array.isArray(container)) {
-        // Container là Array -> Key là Index (number)
-        const siblingItem = container[currentKey + direction];
-        return siblingItem ? getIdFromItem(siblingItem) : null;
-    } else {
-        // Container là Object -> Key là String
-        const keys = Object.keys(container);
-        const idx = keys.indexOf(currentKey);
-        if (idx === -1) return null;
-        return keys[idx + direction] || null;
-    }
-}
-
-function getIdFromItem(item) {
-    if (typeof item === 'string') return item;
-    if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
-        // Nếu item là object { "an1.1-10": [...] }, ID là key đầu tiên
-        return Object.keys(item)[0];
-    }
-    return null;
 }
