@@ -1,36 +1,32 @@
 # Path: src/sutta_processor/optimizer/pool_manager.py
 import json
 import logging
-from typing import Dict, List
+from typing import Dict, Set, List
 from .config import JS_OUTPUT_DIR, PRIMARY_BOOKS_LIST, PRIMARY_BOOKS_SET
 
 logger = logging.getLogger("Optimizer.Pools")
 
-# Các ID hệ thống cần loại bỏ khỏi danh sách sách
 IGNORED_IDS = {'tpk', 'sutta', 'vinaya', 'abhidhamma'}
 
 class PoolManager:
     def __init__(self):
         self.book_counts: Dict[str, int] = {}
+        self.sutta_universe: Set[str] = set()
 
     def register_book_count(self, book_id: str, count: int) -> None:
-        # Lưu count >= 0 (kể cả 0 để biết sách đó tồn tại)
         self.book_counts[book_id] = count
 
+    def set_sutta_universe(self, books: List[str]) -> None:
+        self.sutta_universe = set(books)
+
     def generate_js_constants(self) -> None:
-        """
-        Sinh file constants.js.
-        Secondary = (All Processed - Primary - Ignored)
-        """
-        all_processed = set(self.book_counts.keys())
+        # Logic: Sách thuộc nhánh Sutta TRỪ Primary TRỪ System IDs
+        candidates = self.sutta_universe - PRIMARY_BOOKS_SET - IGNORED_IDS
         
-        # Logic trừ tập hợp đơn giản, chính xác
-        candidates = all_processed - PRIMARY_BOOKS_SET - IGNORED_IDS
-        
-        # Chỉ lấy sách có count > 0 (tức là có bài để đọc)
         valid_secondary = []
         for book_id in candidates:
-            if self.book_counts[book_id] > 0:
+            # Phải là sách đã được processed (có trong book_counts)
+            if book_id in self.book_counts:
                 valid_secondary.append(book_id)
 
         sorted_secondary = sorted(valid_secondary)

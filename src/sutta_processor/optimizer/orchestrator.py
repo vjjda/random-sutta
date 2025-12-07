@@ -4,7 +4,7 @@ import logging
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Any, Set
 
 from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
@@ -22,7 +22,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v4.1 - Clean): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v5 - Refactored Worker): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -63,29 +63,77 @@ class DBOrchestrator:
 
         logger.info("✨ Optimization Completed.")
 
+    def _extract_sutta_books(self, structure: Any) -> List[str]:
+        """
+        Trích xuất danh sách sách thuộc 'sutta'.
+        Dựa vào cấu trúc super_book.json bạn cung cấp:
+        tpk -> [ { "sutta": [ {"long": ["dn"]}, {"minor": [{"kn": ["dhp", ...]}]} ] } ]
+        """
+        sutta_books: Set[str] = set()
+        
+        # 1. Tìm node "sutta"
+        def _find_sutta_root(node):
+            if isinstance(node, dict):
+                if "sutta" in node: return node["sutta"]
+                for v in node.values():
+                    res = _find_sutta_root(v)
+                    if res: return res
+            elif isinstance(node, list):
+                for item in node:
+                    res = _find_sutta_root(item)
+                    if res: return res
+            return None
+
+        # 2. Thu thập "Book ID" (Leaf của cây Category)
+        # Trong structure của bạn: dn, mn, sn, an là value string trong list.
+        # Nhưng kp, dhp lại nằm trong list của "kn".
+        def _collect_books(node):
+            if isinstance(node, str):
+                sutta_books.add(node)
+            elif isinstance(node, list):
+                for item in node:
+                    _collect_books(item)
+            elif isinstance(node, dict):
+                for v in node.values():
+                    _collect_books(v)
+
+        sutta_root = _find_sutta_root(structure)
+        if sutta_root:
+            _collect_books(sutta_root)
+            
+        # Loại bỏ các key nhóm (long, middle, minor, kn...) nếu chúng lọt vào
+        # Nhưng trong cấu trúc bạn đưa, key nhóm là Key của Dict, còn sách là Value (String hoặc List)
+        # Hàm _collect_books ở trên đệ quy vào Value nên sẽ lấy được 'dn', 'mn', 'dhp'.
+        # Key 'long', 'minor' sẽ bị bỏ qua vì chúng là Key.
+        # Tuy nhiên, cần lưu ý cấu trúc { "long": ["dn"] }. _collect_books duyệt values -> ["dn"] -> "dn". Đúng.
+        
+        return list(sutta_books)
+
     def _process_super(self, file_path: Path) -> None:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
-            # Map Locator cho các key đặc biệt trong Super Book (tpk, sutta...)
+            structure = data.get("structure", {})
+            sutta_books = self._extract_sutta_books(structure)
+            self.pool_manager.set_sutta_universe(sutta_books)
+
+            # Map Locator cho các key đặc biệt trong Super Book (tpk, sutta, vinaya...)
             meta = data.get("meta", {})
             for uid in meta.keys():
                 self.global_locator[uid] = "tpk"
 
-            # Super Book không có bài để random -> valid_count = 0
-            # Nhưng vẫn register để biết nó tồn tại (và bị filter bởi IGNORED_IDS)
             self.pool_manager.register_book_count("tpk", 0)
 
             meta_pack = {
                 "id": "tpk",
                 "title": data.get("title"),
-                "tree": data.get("structure"),
+                "tree": structure,
                 "meta": meta,
                 "uids": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed")
+            logger.info(f"   🌟 Super Book Processed (Found {len(sutta_books)} Sutta Candidates)")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")

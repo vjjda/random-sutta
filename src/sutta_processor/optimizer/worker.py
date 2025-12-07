@@ -6,16 +6,16 @@ from typing import Dict, Any, List, Set
 
 from .io_manager import IOManager
 from .chunker import chunk_content_with_meta
-from .tree_utils import flatten_tree_uids, build_nav_map
-from .splitter import is_split_book, extract_sub_books, collect_all_keys
+from .tree_utils import flatten_tree_uids, collect_all_keys, build_nav_map
+from .splitter import is_split_book, extract_sub_books
 
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
     info = full_meta.get(uid, {})
-    m_type = info.get("type", "branch") # Default branch nếu thiếu meta
+    m_type = info.get("type", "branch")
     
-    # Chỉ lấy các trường có dữ liệu
+    # [RESTORED] Khôi phục đầy đủ thông tin
     entry = {}
     if info.get("acronym"): entry["acronym"] = info["acronym"]
     if info.get("translated_title"): entry["translated_title"] = info["translated_title"]
@@ -23,7 +23,7 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     if info.get("author_uid"): entry["author_uid"] = info["author_uid"]
     if info.get("blurb"): entry["blurb"] = info["blurb"]
     
-    if m_type: entry["type"] = m_type
+    entry["type"] = m_type
     
     if uid in nav_map: entry["nav"] = nav_map[uid]
     if uid in chunk_map: entry["chunk"] = chunk_map[uid]
@@ -68,24 +68,23 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
         if is_split_book(book_id):
             # --- SPLIT MODE ---
-            # Nhận về cả sub_structure để quét keys
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
 
             for sub_id, sub_leaves, sub_struct in sub_books:
                 sub_meta_map = {}
-                sub_valid_uids = [] # Chỉ chứa leaves để random
+                sub_valid_uids = []
                 
                 # A. Thu thập TẤT CẢ keys (Branch + Leaf) trong sách con
                 all_sub_keys: Set[str] = set()
                 collect_all_keys(sub_struct, all_sub_keys)
                 
-                # B. Build Meta cho từng key tìm thấy
+                # B. Build Meta
                 for uid in all_sub_keys:
                     sub_meta_map[uid] = _build_meta_entry(uid, full_meta, nav_map, chunk_map_idx)
                     result["locator_map"][uid] = sub_id
                     
-                    # Logic Random Pool (Chỉ Leaf)
+                    # Trả lời câu hỏi của bạn: "uids" trong file meta chính là pool random
                     m_type = full_meta.get(uid, {}).get("type")
                     if m_type in ["leaf", "subleaf"]:
                         sub_valid_uids.append(uid)
@@ -94,10 +93,9 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
                     "title": f"{sub_id.upper()}",
-                    # Reconstruct tree đơn giản: { "an1": [...] }
                     "tree": {sub_id: sub_struct}, 
                     "meta": sub_meta_map,
-                    "uids": sub_valid_uids
+                    "uids": sub_valid_uids # <-- Random pool của sách con
                 })
                 
                 sub_book_ids.append(sub_id)
@@ -115,7 +113,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         else:
             # --- NORMAL MODE ---
             slim_meta_map = {}
-            # Duyệt full_meta keys là đủ để lấy hết Branch/Leaf
+            # Duyệt full_meta keys để lấy cả Branch/Leaf
             for uid in full_meta.keys():
                 slim_meta_map[uid] = _build_meta_entry(uid, full_meta, nav_map, chunk_map_idx)
                 result["locator_map"][uid] = book_id
@@ -129,7 +127,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 "title": data.get("title"),
                 "tree": structure,
                 "meta": slim_meta_map,
-                "uids": valid_uids_total
+                "uids": valid_uids_total # <-- Random pool của sách
             })
 
         result["status"] = "success"
@@ -138,6 +136,4 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"❌ Worker failed on {file_path.name}: {e}")
-        import traceback
-        traceback.print_exc()
         return result

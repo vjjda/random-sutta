@@ -1,10 +1,10 @@
 # Path: src/sutta_processor/optimizer/tree_utils.py
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 def flatten_tree_uids(node: Any, meta_map: Dict[str, Any], result_list: List[str]) -> None:
     """
-    Đệ quy làm phẳng cây structure để lấy thứ tự đọc tuyến tính.
-    Chỉ lấy Leaf/Subleaf.
+    Làm phẳng cây để lấy danh sách thứ tự đọc (Linear Reading Order).
+    Chỉ lấy các node có nội dung đọc được (Leaf/Subleaf).
     """
     if isinstance(node, str):
         m_type = meta_map.get(node, {}).get("type")
@@ -17,8 +17,23 @@ def flatten_tree_uids(node: Any, meta_map: Dict[str, Any], result_list: List[str
         for value in node.values():
             flatten_tree_uids(value, meta_map, result_list)
 
+def collect_all_keys(node: Any, collected: Set[str]) -> None:
+    """
+    Thu thập TẤT CẢ các keys (Branch, Leaf, Container) trong một cấu trúc cây.
+    Dùng để đảm bảo không bỏ sót metadata của các mục lục.
+    """
+    if isinstance(node, str):
+        collected.add(node)
+    elif isinstance(node, list):
+        for child in node:
+            collect_all_keys(child, collected)
+    elif isinstance(node, dict):
+        for key, val in node.items():
+            collected.add(key)
+            collect_all_keys(val, collected)
+
 def build_nav_map(linear_uids: List[str]) -> Dict[str, Dict[str, str]]:
-    """Tính toán Prev/Next cho danh sách phẳng."""
+    """Tính toán liên kết Prev/Next."""
     nav_map = {}
     total = len(linear_uids)
     for i, uid in enumerate(linear_uids):
