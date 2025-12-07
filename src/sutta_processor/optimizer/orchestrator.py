@@ -22,7 +22,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v5 - Refactored Worker): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v5.1 - Flattened Pools): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -48,11 +48,13 @@ class DBOrchestrator:
                     res = future.result()
                     if res["status"] == "success":
                         self.global_locator.update(res["locator_map"])
+                        # Pass sub_counts for flattened pool logic
                         self.pool_manager.register_book_count(
                             res["book_id"], 
-                            res["valid_count"]
+                            res["valid_count"],
+                            res.get("sub_counts")
                         )
-                        logger.info(f"   ✅ Processed: {fname} (Valid UIDs: {res['valid_count']})")
+                        logger.info(f"   ✅ Processed: {fname}")
                     else:
                         logger.warning(f"   ⚠️ Worker failure: {fname}")
                 except Exception as e:
@@ -64,14 +66,8 @@ class DBOrchestrator:
         logger.info("✨ Optimization Completed.")
 
     def _extract_sutta_books(self, structure: Any) -> List[str]:
-        """
-        Trích xuất danh sách sách thuộc 'sutta'.
-        Dựa vào cấu trúc super_book.json bạn cung cấp:
-        tpk -> [ { "sutta": [ {"long": ["dn"]}, {"minor": [{"kn": ["dhp", ...]}]} ] } ]
-        """
         sutta_books: Set[str] = set()
         
-        # 1. Tìm node "sutta"
         def _find_sutta_root(node):
             if isinstance(node, dict):
                 if "sutta" in node: return node["sutta"]
@@ -84,9 +80,6 @@ class DBOrchestrator:
                     if res: return res
             return None
 
-        # 2. Thu thập "Book ID" (Leaf của cây Category)
-        # Trong structure của bạn: dn, mn, sn, an là value string trong list.
-        # Nhưng kp, dhp lại nằm trong list của "kn".
         def _collect_books(node):
             if isinstance(node, str):
                 sutta_books.add(node)
@@ -101,12 +94,6 @@ class DBOrchestrator:
         if sutta_root:
             _collect_books(sutta_root)
             
-        # Loại bỏ các key nhóm (long, middle, minor, kn...) nếu chúng lọt vào
-        # Nhưng trong cấu trúc bạn đưa, key nhóm là Key của Dict, còn sách là Value (String hoặc List)
-        # Hàm _collect_books ở trên đệ quy vào Value nên sẽ lấy được 'dn', 'mn', 'dhp'.
-        # Key 'long', 'minor' sẽ bị bỏ qua vì chúng là Key.
-        # Tuy nhiên, cần lưu ý cấu trúc { "long": ["dn"] }. _collect_books duyệt values -> ["dn"] -> "dn". Đúng.
-        
         return list(sutta_books)
 
     def _process_super(self, file_path: Path) -> None:
@@ -115,14 +102,13 @@ class DBOrchestrator:
                 data = json.load(f)
             
             structure = data.get("structure", {})
-            sutta_books = self._extract_sutta_books(structure)
-            self.pool_manager.set_sutta_universe(sutta_books)
-
+            
             # Map Locator cho các key đặc biệt trong Super Book (tpk, sutta, vinaya...)
             meta = data.get("meta", {})
             for uid in meta.keys():
                 self.global_locator[uid] = "tpk"
 
+            # Register TPK với count 0
             self.pool_manager.register_book_count("tpk", 0)
 
             meta_pack = {
@@ -130,10 +116,10 @@ class DBOrchestrator:
                 "title": data.get("title"),
                 "tree": structure,
                 "meta": meta,
-                "uids": []
+                "random_pool": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed (Found {len(sutta_books)} Sutta Candidates)")
+            logger.info(f"   🌟 Super Book Processed")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
