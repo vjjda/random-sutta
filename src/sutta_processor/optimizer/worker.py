@@ -1,7 +1,6 @@
 # Path: src/sutta_processor/optimizer/worker.py
 import json
 import logging
-import traceback # [NEW]
 from pathlib import Path
 from typing import Dict, Any, List, Set
 
@@ -13,7 +12,6 @@ from .splitter import is_split_book, extract_sub_books
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
-    # ... (Giữ nguyên hàm này) ...
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
@@ -29,7 +27,8 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     if uid in nav_map: entry["nav"] = nav_map[uid]
     if uid in chunk_map: entry["chunk"] = chunk_map[uid]
 
-    if m_type == "subleaf":
+    # [FIX] Áp dụng cho cả Subleaf VÀ Alias
+    if m_type in ["subleaf", "alias"]:
         if "extract_id" in info: entry["extract_id"] = info["extract_id"]
         if "parent_uid" in info: entry["parent_uid"] = info["parent_uid"]
         
@@ -66,17 +65,8 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
         # 3. Metadata Processing
         if is_split_book(book_id):
-            # [DEBUG] Log khi vào split mode
-            logger.debug(f"[{book_id}] Entering Split Mode...")
-            
+            # --- SPLIT MODE (AN, SN) ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
-            
-            # [DEBUG] Check kết quả tách sách
-            if not sub_books:
-                logger.error(f"[{book_id}] Failed to extract sub-books! Structure might be malformed.")
-                # Fallback: Treat as Normal Book? Or Fail? -> Fail để ta biết đường sửa
-                raise ValueError(f"Could not extract sub-books for {book_id}")
-
             sub_book_ids = []
             
             root_title = data.get("title", "")
@@ -92,7 +82,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                     result["locator_map"][k] = sub_id
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
 
-                # Inject Parent Info
                 if book_id in full_meta:
                     sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
                 
@@ -100,7 +89,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
-                    "title": f"{sub_id.upper()}", 
+                    "title": f"{sub_id.upper()}",
                     "root_id": book_id,
                     "root_title": root_title,
                     "tree": final_tree, 
@@ -118,7 +107,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 "title": root_title,
                 "children": sub_book_ids
             })
-            
             result["valid_count"] = 0 
 
         else:
@@ -145,7 +133,5 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        # [NEW] In full stack trace để debug lỗi AN/SN
         logger.error(f"❌ Worker failed on {file_path.name}: {e}")
-        traceback.print_exc()
         return result
