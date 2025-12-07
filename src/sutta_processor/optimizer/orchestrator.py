@@ -70,8 +70,7 @@ class DBOrchestrator:
         if not self.dry_run:
             self.pool_manager.generate_js_constants()
         else:
-            # Dry-run vẫn generate constants để debug, nhưng có thể log ra console hoặc lưu file tmp
-            # Ở đây ta cứ lưu đè để check output
+            # Dry-run vẫn generate constants để debug
             self.pool_manager.generate_js_constants() 
 
         logger.info("✨ Optimization Completed.")
@@ -101,3 +100,7 @@ class DBOrchestrator:
         """Lưu file định tuyến uid_index.json"""
         # Đây giờ là file map đơn giản: { "mn1": "mn", ... }
         self.io.save_category("root", "uid_index.json", self.global_locator)
+
+def run_optimizer(dry_run: bool = False):
+    orchestrator = DBOrchestrator(dry_run)
+    orchestrator.run()
