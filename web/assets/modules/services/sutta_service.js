@@ -5,15 +5,67 @@ import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaService");
 
+// [HELPER] Trích xuất danh sách ID con từ cấu trúc
+function getChildrenIds(structure, currentUid) {
+    if (!structure) return [];
+    
+    // Đệ quy tìm node
+    function findNode(node, targetId) {
+        if (!node) return null;
+        
+        // Nếu node là mảng (children list)
+        if (Array.isArray(node)) {
+            for (let item of node) {
+                if (typeof item === 'object' && item[targetId]) return item[targetId];
+                // Deep search
+                const found = findNode(item, targetId);
+                if (found) return found;
+            }
+            return null;
+        }
+        
+        // Nếu node là object (branch map)
+        if (typeof node === 'object') {
+            if (node[targetId]) return node[targetId];
+            
+            // Special case cho root: 'tpk' chứa 'sutta'
+            if (targetId === 'sutta' && node['tpk'] && node['tpk']['sutta']) return node['tpk']['sutta'];
+
+            for (let key in node) {
+                if (key === 'meta' || typeof node[key] !== 'object') continue;
+                const found = findNode(node[key], targetId);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    // Nếu currentUid là root key của structure (ví dụ 'mn'), lấy trực tiếp
+    let node = structure[currentUid];
+    
+    // Nếu không tìm thấy ở root level, tìm sâu bên trong
+    if (!node) node = findNode(structure, currentUid);
+    
+    if (!node) return [];
+    
+    // Flatten danh sách ID con
+    let ids = [];
+    if (Array.isArray(node)) {
+        node.forEach(item => {
+            if (typeof item === 'string') ids.push(item);
+            else if (typeof item === 'object') ids.push(...Object.keys(item));
+        });
+    } else if (typeof node === 'object') {
+        ids = Object.keys(node);
+    }
+    return ids;
+}
+
 export const SuttaService = {
-    /**
-     * Logic cốt lõi: Lấy dữ liệu bài kinh đầy đủ để hiển thị.
-     */
     async loadFullSuttaData(suttaId) {
-        // 1. Lấy dữ liệu thô (Content + Meta bản thân)
+        // 1. Get Core Data
         let data = await SuttaRepository.getSutta(suttaId);
         
-        // Retry logic nếu lần đầu thất bại (do chưa init index chẳng hạn)
         if (!data) {
             await SuttaRepository.init();
             data = await SuttaRepository.getSutta(suttaId);
@@ -21,34 +73,32 @@ export const SuttaService = {
         
         if (!data) return null;
 
-        // 2. Tính toán Navigation (Prev/Next)
+        // 2. Calculate Nav
         const navData = await NavigationService.getNavForSutta(suttaId, data.bookStructure);
         
-        // 3. Tăng cường Meta (Lấy tên bài kinh cho nút Prev/Next)
-        const neighborIds = [navData.prev, navData.next].filter(id => id);
+        // 3. Prepare UIDs to fetch extra Meta
+        // Bao gồm: Hàng xóm (Nav) và Con cái (nếu là Branch)
+        const uidsToFetch = [];
         
-        // Gom nhóm ID cần fetch thêm meta (Hàng xóm + Con cháu nếu là Branch)
-        const uidsToFetch = [...neighborIds];
-        
+        if (navData.prev) uidsToFetch.push(navData.prev);
+        if (navData.next) uidsToFetch.push(navData.next);
+
         if (data.isBranch) {
-            // Helper function nhỏ để lấy ID con
-            const getChildren = (struct, uid) => {
-                 let node = struct[uid];
-                 // (Giản lược logic tìm node con, giả định node đã được flatten hoặc dễ tìm)
-                 // Trong thực tế, bạn có thể tái sử dụng hàm getChildrenIds ở Controller cũ 
-                 // hoặc để Renderer tự xử lý. 
-                 // Ở đây tôi giữ đơn giản: Chỉ fetch neighbor để Nav Bar đẹp.
-                 return []; 
-            };
-            // Logic fetch children meta tôi để Renderer tự lo hoặc xử lý sau nếu cần tối ưu
+            const childIds = getChildrenIds(data.bookStructure, suttaId);
+            // Lọc những ID chưa có meta trong data hiện tại
+            const missingChildren = childIds.filter(id => !data.meta[id]);
+            uidsToFetch.push(...missingChildren);
         }
 
+        // 4. Batch Fetch Meta
         if (uidsToFetch.length > 0) {
-            const extraMetas = await SuttaRepository.fetchMetaList(uidsToFetch);
+            // Loại bỏ trùng lặp
+            const uniqueIds = [...new Set(uidsToFetch)];
+            const extraMetas = await SuttaRepository.fetchMetaList(uniqueIds);
             Object.assign(data.meta, extraMetas);
         }
 
-        // 4. Merge Escalation Meta (nếu Nav leo thang lên Super Struct)
+        // 5. Merge Escalation Meta
         if (navData.extraMeta) {
             Object.assign(data.meta, navData.extraMeta);
         }
@@ -56,9 +106,6 @@ export const SuttaService = {
         return { data, navData };
     },
 
-    /**
-     * Logic chọn bài kinh ngẫu nhiên
-     */
     async getRandomSuttaId(activeFilters) {
         await SuttaRepository.init();
         let pool = [];
@@ -75,6 +122,5 @@ export const SuttaService = {
         return pool[Math.floor(Math.random() * pool.length)];
     },
     
-    // Delegate init cho App
     init: () => SuttaRepository.init()
 };
