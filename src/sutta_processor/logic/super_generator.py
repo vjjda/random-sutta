@@ -103,10 +103,41 @@ def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str
     
     final_meta = _load_super_metadata(valid_keys)
 
+    # [NEW] Wrap logic for Tipitaka Root
+    
+    # 1. Identify Direct Children and change type to 'branch'
+    top_level_keys = []
+    if isinstance(final_structure, list):
+         for item in final_structure:
+             if isinstance(item, str): top_level_keys.append(item)
+             elif isinstance(item, dict): top_level_keys.extend(item.keys())
+    elif isinstance(final_structure, dict):
+        top_level_keys.extend(final_structure.keys())
+    
+    for key in top_level_keys:
+        if key in final_meta:
+            final_meta[key]['type'] = 'branch'
+            
+    # 2. Create Tipitaka Meta
+    tipitaka_title = "The Three Baskets of the Buddhist Canon"
+    final_meta["tipitaka"] = {
+        "uid": "tipitaka",
+        "type": "root",
+        "acronym": "Tpk",
+        "translated_title": tipitaka_title,
+        "original_title": "Tipiṭaka",
+        "blurb": "This is a large collection of teachings attributed to the Buddha or his earliest disciples, who were teaching in India around 2500 years ago. They are regarded as sacred canon in all schools of Buddhism."
+    }
+    
+    # 3. Wrap Structure
+    new_structure = {
+        "tipitaka": final_structure
+    }
+
     return {
         "id": "tipitaka",
-        "title": "The Three Baskets of the Buddhist Canon",
-        "structure": final_structure,
+        "title": tipitaka_title,
+        "structure": new_structure,
         "meta": final_meta,
         "content": {} 
     }
