@@ -63,6 +63,7 @@ export const SuttaController = {
     logger.info('loadSutta', `Request: ${suttaId} ${explicitHash ? '#' + explicitHash : ''}`);
 
     const performRender = async () => {
+        // 1. Fetch Data
         let result = await DB.getSutta(suttaId);
         if (!result) {
              await DB.init();
@@ -73,12 +74,22 @@ export const SuttaController = {
              }
         }
 
+        // 2. Calculate Navigation
         const navData = await NavigationService.getNavForSutta(suttaId, result.bookStructure);
         
+        // [FIX] Tải Metadata cho Next/Prev để hiển thị Title trên nút Nav
+        const neighbors = [navData.prev, navData.next].filter(id => id);
+        if (neighbors.length > 0) {
+             const neighborMetas = await DB.fetchMetaForUids(neighbors);
+             Object.assign(result.meta, neighborMetas);
+        }
+
+        // Merge extraMeta từ Escalation (nếu có)
         if (navData.extraMeta) {
             Object.assign(result.meta, navData.extraMeta);
         }
 
+        // 3. Prepare Branch Meta (Giữ nguyên)
         if (result.isBranch) {
             const childrenIds = getChildrenIds(result.bookStructure, result.uid);
             if (childrenIds.length > 0) {
@@ -91,7 +102,8 @@ export const SuttaController = {
         }
 
         const success = await renderSutta(suttaId, result, navData, options);
-
+        
+        // ... (Phần update URL giữ nguyên)
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
              Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
