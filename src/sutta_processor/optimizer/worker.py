@@ -15,7 +15,6 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
-    # [RESTORED] Khôi phục đầy đủ thông tin
     entry = {}
     if info.get("acronym"): entry["acronym"] = info["acronym"]
     if info.get("translated_title"): entry["translated_title"] = info["translated_title"]
@@ -48,7 +47,8 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
         
-        # 1. Nav Calculation (Global)
+        # 1. Nav Calculation (Global) & Random Pool Source
+        # linear_uids chính là danh sách sạch để làm Random Pool (chỉ chứa leaf/subleaf cuối cùng)
         linear_uids = []
         flatten_tree_uids(structure, full_meta, linear_uids)
         nav_map = build_nav_map(linear_uids)
@@ -64,44 +64,41 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                     chunk_map_idx[uid] = idx
 
         # 3. Metadata Processing
-        valid_uids_total = []
-
+        
         if is_split_book(book_id):
             # --- SPLIT MODE ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
+            total_valid_count = 0
 
             for sub_id, sub_leaves, sub_struct in sub_books:
                 sub_meta_map = {}
-                sub_valid_uids = []
                 
-                # A. Thu thập TẤT CẢ keys (Branch + Leaf) trong sách con
+                # A. Locator: Thu thập TẤT CẢ keys (Branch + Leaf) trong sub_struct
                 all_sub_keys: Set[str] = set()
                 collect_all_keys(sub_struct, all_sub_keys)
                 
-                # B. Build Meta
-                for uid in all_sub_keys:
-                    sub_meta_map[uid] = _build_meta_entry(uid, full_meta, nav_map, chunk_map_idx)
-                    result["locator_map"][uid] = sub_id
-                    
-                    # Trả lời câu hỏi của bạn: "uids" trong file meta chính là pool random
-                    m_type = full_meta.get(uid, {}).get("type")
-                    if m_type in ["leaf", "subleaf"]:
-                        sub_valid_uids.append(uid)
+                # Map Locator cho mọi key tìm thấy
+                for k in all_sub_keys:
+                    result["locator_map"][k] = sub_id
+                    # Build Meta cho mọi key (kể cả Branch)
+                    sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
 
-                # Save Sub-Book
+                # B. Random Pool: Chính là sub_leaves (đã được flatten)
+                # sub_leaves đảm bảo không chứa Parent Container
+                
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
                     "title": f"{sub_id.upper()}",
                     "tree": {sub_id: sub_struct}, 
                     "meta": sub_meta_map,
-                    "uids": sub_valid_uids # <-- Random pool của sách con
+                    "random_pool": sub_leaves # [RENAMED]
                 })
                 
                 sub_book_ids.append(sub_id)
-                valid_uids_total.extend(sub_valid_uids)
+                total_valid_count += len(sub_leaves)
 
-            # Save Super-Book
+            # Save Super-Book (Map Locator cho chính nó)
             result["locator_map"][book_id] = book_id
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
@@ -109,29 +106,35 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 "title": data.get("title"),
                 "children": sub_book_ids
             })
+            result["valid_count"] = total_valid_count
 
         else:
             # --- NORMAL MODE ---
             slim_meta_map = {}
-            # Duyệt full_meta keys để lấy cả Branch/Leaf
-            for uid in full_meta.keys():
-                slim_meta_map[uid] = _build_meta_entry(uid, full_meta, nav_map, chunk_map_idx)
-                result["locator_map"][uid] = book_id
-                
-                if full_meta.get(uid, {}).get("type") in ["leaf", "subleaf"]:
-                    valid_uids_total.append(uid)
             
-            result["locator_map"][book_id] = book_id
+            # A. Locator: Thu thập TẤT CẢ keys từ structure
+            all_keys: Set[str] = set()
+            collect_all_keys(structure, all_keys)
+            
+            # Map Locator & Build Meta
+            for k in all_keys:
+                result["locator_map"][k] = book_id
+                slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
+            
+            # B. Random Pool: Chính là linear_uids (đã được flatten từ bước 1)
+            
+            result["locator_map"][book_id] = book_id # Map chính ID sách
+            
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "title": data.get("title"),
                 "tree": structure,
                 "meta": slim_meta_map,
-                "uids": valid_uids_total # <-- Random pool của sách
+                "random_pool": linear_uids # [RENAMED]
             })
+            result["valid_count"] = len(linear_uids)
 
         result["status"] = "success"
-        result["valid_count"] = len(valid_uids_total)
         return result
 
     except Exception as e:

@@ -5,9 +5,11 @@ def flatten_tree_uids(node: Any, meta_map: Dict[str, Any], result_list: List[str
     """
     Làm phẳng cây để lấy danh sách thứ tự đọc (Linear Reading Order).
     Chỉ lấy các node có nội dung đọc được (Leaf/Subleaf).
+    Tự động bỏ qua Branch và Parent Container.
     """
     if isinstance(node, str):
         m_type = meta_map.get(node, {}).get("type")
+        # Chỉ chấp nhận Leaf hoặc Subleaf
         if m_type in ["leaf", "subleaf"]:
             result_list.append(node)
     elif isinstance(node, list):
@@ -19,8 +21,8 @@ def flatten_tree_uids(node: Any, meta_map: Dict[str, Any], result_list: List[str
 
 def collect_all_keys(node: Any, collected: Set[str]) -> None:
     """
-    Thu thập TẤT CẢ các keys (Branch, Leaf, Container) trong một cấu trúc cây.
-    Dùng để đảm bảo không bỏ sót metadata của các mục lục.
+    Thu thập TẤT CẢ các keys (Branch, Leaf, Container) trong cấu trúc cây.
+    Dùng để Indexing (Locator).
     """
     if isinstance(node, str):
         collected.add(node)
@@ -29,7 +31,7 @@ def collect_all_keys(node: Any, collected: Set[str]) -> None:
             collect_all_keys(child, collected)
     elif isinstance(node, dict):
         for key, val in node.items():
-            collected.add(key)
+            collected.add(key) # Index cả Branch Key (vd: 'long', 'vagga')
             collect_all_keys(val, collected)
 
 def build_nav_map(linear_uids: List[str]) -> Dict[str, Dict[str, str]]:
