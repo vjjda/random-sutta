@@ -1,7 +1,7 @@
 /* Path: web/assets/css/layout/_container.css */
 #sutta-container {
   background: var(--bg-card);
-  padding: 40px;
+  padding: 20px 40px 40px 40px;
   border-radius: 8px;
   /* box-shadow: var(--shadow-soft); */
   min-height: 300px;
