@@ -15,6 +15,7 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
+    # [RESTORED] Khôi phục đủ thông tin
     entry = {}
     if info.get("acronym"): entry["acronym"] = info["acronym"]
     if info.get("translated_title"): entry["translated_title"] = info["translated_title"]
@@ -66,7 +67,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         # 3. Metadata Processing
         
         if is_split_book(book_id):
-            # --- SPLIT MODE ---
+            # --- SPLIT MODE (AN, SN) ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
             total_valid_count = 0
@@ -74,18 +75,20 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             for sub_id, sub_leaves, sub_struct in sub_books:
                 sub_meta_map = {}
                 
-                # A. Locator: Thu thập TẤT CẢ keys (Branch + Leaf) trong sub_struct
+                # A. Thu thập TẤT CẢ keys (Branch + Leaf) trong sub_struct
                 all_sub_keys: Set[str] = set()
                 collect_all_keys(sub_struct, all_sub_keys)
                 
-                # Map Locator cho mọi key tìm thấy
+                # [FIX] Quan trọng: Thêm chính ID của sách con (vd: an1) vào để Index
+                all_sub_keys.add(sub_id)
+                
+                # B. Map Locator và Build Meta cho mọi key tìm thấy
                 for k in all_sub_keys:
                     result["locator_map"][k] = sub_id
-                    # Build Meta cho mọi key (kể cả Branch)
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
 
-                # B. Random Pool: Chính là sub_leaves (đã được flatten)
-                # sub_leaves đảm bảo không chứa Parent Container
+                # C. Random Pool: Chính là sub_leaves (đã được flatten sạch sẽ)
+                # sub_leaves không chứa Parent Container
                 
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
@@ -98,8 +101,10 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 total_valid_count += len(sub_leaves)
 
-            # Save Super-Book (Map Locator cho chính nó)
+            # Save Super-Book Meta (an.json)
+            # Map cả Locator cho chính sách mẹ
             result["locator_map"][book_id] = book_id
+            
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
@@ -112,9 +117,12 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             # --- NORMAL MODE ---
             slim_meta_map = {}
             
-            # A. Locator: Thu thập TẤT CẢ keys từ structure
+            # A. Locator: Thu thập TẤT CẢ keys từ structure (Branch + Leaf)
             all_keys: Set[str] = set()
             collect_all_keys(structure, all_keys)
+            
+            # [FIX] Thêm chính ID sách (vd: mn)
+            all_keys.add(book_id)
             
             # Map Locator & Build Meta
             for k in all_keys:
@@ -122,8 +130,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
             
             # B. Random Pool: Chính là linear_uids (đã được flatten từ bước 1)
-            
-            result["locator_map"][book_id] = book_id # Map chính ID sách
             
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
