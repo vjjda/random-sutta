@@ -120,8 +120,8 @@ def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str
             
     # 2. Create Tipitaka Meta
     tipitaka_title = "The Three Baskets of the Buddhist Canon"
-    final_meta["tipitaka"] = {
-        "uid": "tipitaka",
+    final_meta["tpk"] = { # Changed uid here
+        "uid": "tpk",      # And here
         "type": "root",
         "acronym": "Tpk",
         "translated_title": tipitaka_title,
@@ -131,11 +131,11 @@ def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str
     
     # 3. Wrap Structure
     new_structure = {
-        "tipitaka": final_structure
+        "tpk": final_structure # Changed structure key here
     }
 
     return {
-        "id": "tipitaka",
+        "id": "tpk", # Changed top-level id here
         "title": tipitaka_title,
         "structure": new_structure,
         "meta": final_meta,
