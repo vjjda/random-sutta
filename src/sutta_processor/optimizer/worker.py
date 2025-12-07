@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Set
 
 from .io_manager import IOManager
 from .chunker import chunk_content_with_meta
-from .tree_utils import flatten_tree_uids, collect_all_keys, build_nav_map
+from .tree_utils import flatten_tree_uids, build_nav_map
 from .splitter import is_split_book, extract_sub_books
 
 logger = logging.getLogger("Optimizer.Worker")
@@ -16,10 +16,12 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
+    # 1. Alias: Chỉ cần Target
     if m_type == "alias":
         target = info.get("extract_id") or info.get("parent_uid")
         return { "type": "alias", "target_uid": target }
 
+    # 2. Các loại khác: Full Info
     entry = {}
     if info.get("acronym"): entry["acronym"] = info["acronym"]
     if info.get("translated_title"): entry["translated_title"] = info["translated_title"]
@@ -50,12 +52,12 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
         
-        # 1. Nav & Random (Global)
+        # 1. Nav & Random Pool (Dựa trên Tree để đảm bảo thứ tự đọc)
         linear_uids = []
         flatten_tree_uids(structure, full_meta, linear_uids)
         nav_map = build_nav_map(linear_uids)
         
-        # 2. Content
+        # 2. Content Chunking
         chunk_map_idx = {}
         raw_content = data.get("content", {})
         if raw_content:
@@ -65,31 +67,35 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
 
-        # 3. Metadata
+        # 3. Metadata Processing & Indexing
+        # Single Source of Truth: full_meta
+        
         if is_split_book(book_id):
             # --- SPLIT MODE ---
-            # extract_sub_books giờ trả về Set Keys đầy đủ (Tree + Alias)
+            # splitter đã gom nhóm key dựa trên structure + orphan meta
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
             root_title = data.get("title", "")
 
             for sub_id, all_sub_keys, sub_struct in sub_books:
                 sub_meta_map = {}
-                sub_leaves = [] # Re-calculate leaves for this sub-book for Random Pool
                 
+                # Filter Random Pool cho sách con (chỉ lấy những uid nằm trong sub_struct)
+                # Dùng linear_uids để giữ thứ tự, filter những cái thuộc về sub_id
+                # (Cách đơn giản: flatten lại sub_struct)
+                sub_pool = []
+                flatten_tree_uids(sub_struct, full_meta, sub_pool)
+
+                # Build Meta & Locator từ danh sách keys đã được splitter gom
                 for k in all_sub_keys:
                     result["locator_map"][k] = sub_id
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
-                    
-                    # Tính Random Pool cho sách con
-                    m_type = full_meta.get(k, {}).get("type")
-                    if m_type in ["leaf", "subleaf"]:
-                        sub_leaves.append(k)
 
-                # Inject Parent
+                # Inject Parent (Root) Meta vào sách con
                 if book_id in full_meta:
                     sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
                 
+                # Reconstruct Tree Root
                 final_tree = { book_id: { sub_id: sub_struct } }
 
                 io.save_category("meta", f"{sub_id}.json", {
@@ -99,18 +105,21 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                     "root_title": root_title,
                     "tree": final_tree, 
                     "meta": sub_meta_map,
-                    "random_pool": sub_leaves
+                    "random_pool": sub_pool
                 })
                 
                 sub_book_ids.append(sub_id)
-                result["sub_counts"][sub_id] = len(sub_leaves)
+                result["sub_counts"][sub_id] = len(sub_pool)
 
+            # Super-Book Indexing
             result["locator_map"][book_id] = book_id
+            
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
                 "title": root_title,
-                "children": sub_book_ids
+                "children": sub_book_ids,
+                "child_counts": result["sub_counts"]
             })
             result["valid_count"] = 0 
 
@@ -118,26 +127,21 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             # --- NORMAL MODE ---
             slim_meta_map = {}
             
-            # Logic quét Meta + Tree cho Normal book cũng tương tự:
-            # 1. Lấy keys từ Tree (để đảm bảo Branch có mặt)
-            all_keys = set()
-            collect_all_keys(structure, all_keys)
-            all_keys.add(book_id)
+            # [SIMPLE LOGIC] Duyệt toàn bộ Meta -> Đây là Truth!
+            # Bao gồm cả Branch, Leaf, Subleaf, Alias
+            for uid, info in full_meta.items():
+                slim_meta_map[uid] = _build_meta_entry(uid, full_meta, nav_map, chunk_map_idx)
+                result["locator_map"][uid] = book_id
             
-            # 2. Quét Meta để lấy nốt Alias (vì Alias giờ ko còn trong Tree)
-            for k in full_meta.keys():
-                all_keys.add(k)
+            # Map chính ID sách (thường đã có trong meta, nhưng map lại cho chắc)
+            result["locator_map"][book_id] = book_id
 
-            for k in all_keys:
-                result["locator_map"][k] = book_id
-                slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
-            
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "title": data.get("title"),
-                "tree": structure, # Clean Tree (No Alias)
-                "meta": slim_meta_map, # Full Meta (With Alias)
-                "random_pool": linear_uids
+                "tree": structure,
+                "meta": slim_meta_map,
+                "random_pool": linear_uids # Pool lấy từ Tree Flatten
             })
             result["valid_count"] = len(linear_uids)
 
