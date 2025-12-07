@@ -48,11 +48,10 @@ def load_names_map() -> Dict[str, SuttaMeta]:
                 final_scroll_target = raw_scroll_target
                 if raw_scroll_target == parent_uid: final_scroll_target = None
                 
-                # [FIX] Dùng .get(key, default) an toàn tuyệt đối
                 entry: SuttaMeta = {
                     "uid": uid,
                     "type": item.get("type", "leaf"),
-                    "acronym": item.get("acronym", "") or "", # Fix lỗi None/Missing
+                    "acronym": item.get("acronym", "") or "", # [FIX] Default empty string
                     "translated_title": (item.get("translated_title") or "").strip(),
                     "original_title": (item.get("original_title") or "").strip(),
                     "blurb": item.get("blurb"),
