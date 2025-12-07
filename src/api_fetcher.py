@@ -28,21 +28,37 @@ SUPER_TARGETS = ["sutta", "vinaya", "abhidhamma"]
 # Dùng Set để tra cứu nhanh O(1)
 LARGE_TARGETS: Set[str] = {"dn", "mn", "sn", "an"}
 
+# 4. New: Explicit Order for largest files to ensure they start first (uid, category)
+# Based on du -h output, sorted descending. Category corresponds to category_path argument in fetch_book_json.
+TOP_PRIORITY_ORDER_LIST = [
+    ("sutta", "super"),     # 35M
+    ("sn", "sutta"),        # 13M
+    ("an", "sutta"),        # 9.0M
+    ("vinaya", "super"),    # 9.0M
+    ("mn", "sutta"),        # 2.0M
+    ("thag", "sutta/kn"),   # 2.0M
+    ("tha-ap", "sutta/kn"), # 2.0M
+    ("ja", "sutta/kn"),     # 2.0M
+    ("abhidhamma", "super"),# 2.0M
+]
+TOP_PRIORITY_MAP = {item: i for i, item in enumerate(TOP_PRIORITY_ORDER_LIST)}
+
 logger = setup_logging("APIFetcher")
 
 def discover_books() -> List[Tuple[str, str]]:
     """
     Quét thư mục root để tìm sách và sắp xếp theo thứ tự ưu tiên:
-    1. Super (sutta, vinaya...)
-    2. Large (dn, mn, sn, an)
-    3. Normal (kn, etc.)
+    1. TOP_PRIORITY_ORDER_LIST (explicitly defined largest files)
+    2. Super (sutta, vinaya...) - remaining
+    3. Large (dn, mn, sn, an) - remaining
+    4. Normal (kn, etc.) - remaining
     """
     if not DATA_ROOT_DIR.exists():
         logger.error(f"❌ Root data not found at {DATA_ROOT_DIR}. Please run sutta_fetcher.py first.")
         return []
 
     # --- PHASE 1: Priority 1 (Super) ---
-    priority_super = [(uid, "super") for uid in SUPER_TARGETS]
+    priority_super_raw = [(uid, "super") for uid in SUPER_TARGETS]
     
     # --- PHASE 2: Scanning ---
     found_raw: List[Tuple[str, str]] = []
@@ -69,36 +85,61 @@ def discover_books() -> List[Tuple[str, str]]:
     for uid, category in EXTRA_UIDS.items():
         found_raw.append((uid, category))
 
-    # --- PHASE 3: Filtering & Sorting ---
+    # --- PHASE 3: Filtering & Sorting (Custom priority based on size) ---
     params_to_ignore = {'xplayground', '__pycache__', '.git', '.DS_Store'}
     
-    priority_large: List[Tuple[str, str]] = []
-    normal_books: List[Tuple[str, str]] = []
+    # Combine all discovered books and filter out ignored ones
+    all_discovered_books: List[Tuple[str, str]] = []
     seen_books = set()
 
-    # Phân loại sách tìm được vào Large hoặc Normal
-    for book, cat in found_raw:
-        if book in params_to_ignore or book in seen_books:
+    for book, cat in found_raw + priority_super_raw: # Include SUPER_TARGETS in this process
+        # book is uid, cat is category_path
+        # Special handling for Super targets as their 'uid' is "sutta", "vinaya", "abhidhamma"
+        # and their 'cat' is "super". The normal scan categorizes them as "sutta", "vinaya", "abhidhamma".
+        # Ensure correct categorization for TOP_PRIORITY_ORDER_LIST matching.
+        
+        # Adjust category for internal processing if it's a SUPER_TARGET
+        processed_cat = cat
+        if book in SUPER_TARGETS: processed_cat = "super"
+
+        if book in params_to_ignore or (book, processed_cat) in seen_books:
             continue
         
-        seen_books.add(book)
-        
-        if book in LARGE_TARGETS:
-            priority_large.append((book, cat))
-        else:
-            normal_books.append((book, cat))
+        seen_books.add((book, processed_cat))
+        all_discovered_books.append((book, processed_cat))
 
-    # Sắp xếp nội bộ từng nhóm để log đẹp hơn
-    priority_large.sort()
-    normal_books.sort()
+    # Split into explicit top priority and remaining
+    top_priority_tasks = []
+    remaining_books = []
     
-    logger.info(f"   ⚡ Priority 1 (Super): {len(priority_super)} tasks")
-    logger.info(f"   🔥 Priority 2 (Large): {len(priority_large)} tasks ({', '.join(b[0] for b in priority_large)})")
-    logger.info(f"   📚 Priority 3 (Normal): {len(normal_books)} tasks")
+    for book_info in all_discovered_books:
+        if book_info in TOP_PRIORITY_MAP:
+            top_priority_tasks.append(book_info)
+        else:
+            remaining_books.append(book_info)
 
-    # --- PHASE 4: Merge ---
-    # Thứ tự trả về quyết định thứ tự submit vào ThreadPool
-    return priority_super + priority_large + normal_books
+    # Sort top priority tasks according to TOP_PRIORITY_ORDER_LIST
+    top_priority_tasks.sort(key=lambda x: TOP_PRIORITY_MAP[x])
+
+    # Re-classify remaining books into super, large, normal categories for secondary sorting
+    remaining_priority_super = []
+    remaining_priority_large = []
+    remaining_normal_books = []
+
+    for book, cat in remaining_books:
+        if cat == "super": # Already categorized
+            remaining_priority_super.append((book, cat))
+        elif book in LARGE_TARGETS: # These will have category "sutta" etc.
+            remaining_priority_large.append((book, cat))
+        else: # Normal books can be in "sutta/kn", "vinaya", "abhidhamma" etc.
+            remaining_normal_books.append((book, cat))
+
+    remaining_priority_super.sort(key=lambda x: x[0])
+    remaining_priority_large.sort(key=lambda x: x[0])
+    remaining_normal_books.sort(key=lambda x: x[0])
+
+    # Final combined and sorted list
+    return top_priority_tasks + remaining_priority_super + remaining_priority_large + remaining_normal_books
 
 def fetch_book_json(book_info: Tuple[str, str]) -> str:
     """Tải metadata từ API."""
