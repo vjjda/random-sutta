@@ -1,6 +1,7 @@
 # Path: src/sutta_processor/optimizer/worker.py
 import json
 import logging
+import traceback
 from pathlib import Path
 from typing import Dict, Any, List, Set
 
@@ -15,6 +16,17 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
+    # [NEW LOGIC] Xử lý Alias tối giản (Soft Link)
+    if m_type == "alias":
+        # Target ưu tiên extract_id (nếu trỏ vào đoạn con) hoặc parent_uid (nếu trỏ vào file gốc)
+        # range_expander.py đã đảm bảo logic này
+        target = info.get("extract_id") or info.get("parent_uid")
+        return {
+            "type": "alias",
+            "target_uid": target
+        }
+
+    # --- Logic cho Leaf/Subleaf/Branch (Giữ nguyên) ---
     entry = {}
     if info.get("acronym"): entry["acronym"] = info["acronym"]
     if info.get("translated_title"): entry["translated_title"] = info["translated_title"]
@@ -27,8 +39,7 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     if uid in nav_map: entry["nav"] = nav_map[uid]
     if uid in chunk_map: entry["chunk"] = chunk_map[uid]
 
-    # [FIX] Áp dụng cho cả Subleaf VÀ Alias
-    if m_type in ["subleaf", "alias"]:
+    if m_type == "subleaf":
         if "extract_id" in info: entry["extract_id"] = info["extract_id"]
         if "parent_uid" in info: entry["parent_uid"] = info["parent_uid"]
         
@@ -65,7 +76,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
         # 3. Metadata Processing
         if is_split_book(book_id):
-            # --- SPLIT MODE (AN, SN) ---
+            # --- SPLIT MODE ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
             
@@ -73,7 +84,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
             for sub_id, sub_leaves, sub_struct in sub_books:
                 sub_meta_map = {}
-                
                 all_sub_keys: Set[str] = set()
                 collect_all_keys(sub_struct, all_sub_keys)
                 all_sub_keys.add(sub_id)
@@ -82,6 +92,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                     result["locator_map"][k] = sub_id
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
 
+                # Inject Parent Meta
                 if book_id in full_meta:
                     sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
                 
@@ -100,12 +111,14 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 result["sub_counts"][sub_id] = len(sub_leaves)
 
+            # Save Super-Book
             result["locator_map"][book_id] = book_id
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
                 "title": root_title,
-                "children": sub_book_ids
+                "children": sub_book_ids,
+                "child_counts": result["sub_counts"]
             })
             result["valid_count"] = 0 
 
@@ -134,4 +147,5 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"❌ Worker failed on {file_path.name}: {e}")
+        traceback.print_exc()
         return result
