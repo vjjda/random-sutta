@@ -1,7 +1,7 @@
 /* Path: web/assets/css/layout/_header.css */
 header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 5px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
 }

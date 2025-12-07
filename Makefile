@@ -52,7 +52,7 @@ build-data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
 
-build:
+build-full:
 	@echo "🧠 Full Build (Data + Release)..."
 	$(PYTHON) -m src.sutta_processor
 	$(PYTHON) -m src.release_system
