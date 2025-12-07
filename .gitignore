@@ -38,3 +38,7 @@ Thumbs.db
 /web/assets/db/
 
 .env_aliases
+
+# Direnv
+.direnv/
+.envrc
