@@ -2,29 +2,29 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 
 from .io_manager import IOManager
 from .chunker import chunk_content_with_meta
 from .tree_utils import flatten_tree_uids, build_nav_map
-from .splitter import is_split_book, extract_sub_books
+from .splitter import is_split_book, extract_sub_books, collect_all_keys
 
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
-    """Helper tạo object metadata chuẩn."""
     info = full_meta.get(uid, {})
-    m_type = info.get("type")
+    m_type = info.get("type", "branch") # Default branch nếu thiếu meta
     
-    entry = {
-        "acronym": info.get("acronym"),
-        "translated_title": info.get("translated_title"),
-        "original_title": info.get("original_title"),
-        "author_uid": info.get("author_uid"),
-        "type": m_type
-    }
+    # Chỉ lấy các trường có dữ liệu
+    entry = {}
+    if info.get("acronym"): entry["acronym"] = info["acronym"]
+    if info.get("translated_title"): entry["translated_title"] = info["translated_title"]
+    if info.get("original_title"): entry["original_title"] = info["original_title"]
+    if info.get("author_uid"): entry["author_uid"] = info["author_uid"]
+    if info.get("blurb"): entry["blurb"] = info["blurb"]
     
-    if info.get("blurb"): entry["blurb"] = info.get("blurb")
+    if m_type: entry["type"] = m_type
+    
     if uid in nav_map: entry["nav"] = nav_map[uid]
     if uid in chunk_map: entry["chunk"] = chunk_map[uid]
 
@@ -48,12 +48,12 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
         
-        # 1. Tính toán Nav toàn cục (cho cả sách mẹ để link xuyên suốt)
+        # 1. Nav Calculation (Global)
         linear_uids = []
         flatten_tree_uids(structure, full_meta, linear_uids)
         nav_map = build_nav_map(linear_uids)
         
-        # 2. Xử lý Content (Chunking)
+        # 2. Content Chunking
         chunk_map_idx = {}
         raw_content = data.get("content", {})
         if raw_content:
@@ -63,30 +63,39 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
 
-        # 3. Xử lý Metadata (Chia trường hợp Split/Normal)
+        # 3. Metadata Processing
         valid_uids_total = []
 
         if is_split_book(book_id):
-            # --- CASE A: SPLIT BOOK (AN, SN) ---
+            # --- SPLIT MODE ---
+            # Nhận về cả sub_structure để quét keys
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
 
-            for sub_id, sub_uids in sub_books:
+            for sub_id, sub_leaves, sub_struct in sub_books:
                 sub_meta_map = {}
-                sub_valid_uids = []
+                sub_valid_uids = [] # Chỉ chứa leaves để random
                 
-                for uid in sub_uids:
+                # A. Thu thập TẤT CẢ keys (Branch + Leaf) trong sách con
+                all_sub_keys: Set[str] = set()
+                collect_all_keys(sub_struct, all_sub_keys)
+                
+                # B. Build Meta cho từng key tìm thấy
+                for uid in all_sub_keys:
                     sub_meta_map[uid] = _build_meta_entry(uid, full_meta, nav_map, chunk_map_idx)
-                    result["locator_map"][uid] = sub_id # Trỏ về sách con
+                    result["locator_map"][uid] = sub_id
                     
-                    if full_meta.get(uid, {}).get("type") in ["leaf", "subleaf"]:
+                    # Logic Random Pool (Chỉ Leaf)
+                    m_type = full_meta.get(uid, {}).get("type")
+                    if m_type in ["leaf", "subleaf"]:
                         sub_valid_uids.append(uid)
 
-                # Save Sub-Book Meta
+                # Save Sub-Book
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
                     "title": f"{sub_id.upper()}",
-                    "tree": {sub_id: structure.get(book_id, {}).get(sub_id, sub_uids)},
+                    # Reconstruct tree đơn giản: { "an1": [...] }
+                    "tree": {sub_id: sub_struct}, 
                     "meta": sub_meta_map,
                     "uids": sub_valid_uids
                 })
@@ -94,7 +103,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 valid_uids_total.extend(sub_valid_uids)
 
-            # Save Super-Book Meta
+            # Save Super-Book
             result["locator_map"][book_id] = book_id
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
@@ -104,9 +113,9 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             })
 
         else:
-            # --- CASE B: NORMAL BOOK ---
+            # --- NORMAL MODE ---
             slim_meta_map = {}
-            # Duyệt qua full_meta để đảm bảo lấy cả Branch/Container
+            # Duyệt full_meta keys là đủ để lấy hết Branch/Leaf
             for uid in full_meta.keys():
                 slim_meta_map[uid] = _build_meta_entry(uid, full_meta, nav_map, chunk_map_idx)
                 result["locator_map"][uid] = book_id
@@ -114,9 +123,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 if full_meta.get(uid, {}).get("type") in ["leaf", "subleaf"]:
                     valid_uids_total.append(uid)
             
-            # Map chính book_id
             result["locator_map"][book_id] = book_id
-
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "title": data.get("title"),
@@ -131,4 +138,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"❌ Worker failed on {file_path.name}: {e}")
+        import traceback
+        traceback.print_exc()
         return result

@@ -4,7 +4,7 @@ import logging
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Any, Set
+from typing import Dict, List
 
 from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
@@ -22,7 +22,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v4 - Refactored): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v4.1 - Clean): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -63,76 +63,32 @@ class DBOrchestrator:
 
         logger.info("✨ Optimization Completed.")
 
-    def _extract_sutta_books(self, structure: Any) -> List[str]:
-        """
-        Quét sâu vào cây Super Tree để tìm danh sách sách thuộc 'sutta'.
-        """
-        sutta_books: Set[str] = set()
-        
-        # 1. Helper: Thu thập tất cả KEYS ở mọi level dưới node hiện tại
-        def _collect_all_keys(node):
-            if isinstance(node, dict):
-                for k, v in node.items():
-                    sutta_books.add(k)
-                    _collect_all_keys(v)
-            elif isinstance(node, list):
-                for item in node:
-                    _collect_all_keys(item)
-
-        # 2. Helper: Tìm node có key là "sutta"
-        def _find_sutta_root(node):
-            if isinstance(node, dict):
-                if "sutta" in node:
-                    # Tìm thấy! Thu thập toàn bộ con cháu
-                    _collect_all_keys(node["sutta"])
-                    return True # Stop searching this branch
-                
-                for v in node.values():
-                    if _find_sutta_root(v): return True
-                    
-            elif isinstance(node, list):
-                for item in node:
-                    if _find_sutta_root(item): return True
-            return False
-
-        # Bắt đầu tìm kiếm
-        found = _find_sutta_root(structure)
-        
-        if not found:
-            logger.warning("⚠️ Could not find 'sutta' node in Super Tree structure.")
-        
-        return list(sutta_books)
-
     def _process_super(self, file_path: Path) -> None:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
-            structure = data.get("structure", {})
-            
-            # Logic mới: Tìm 'sutta' node rồi lấy hết key con
-            sutta_books = self._extract_sutta_books(structure)
-            self.pool_manager.set_sutta_universe(sutta_books)
-
-            # Map Locator cho các key đặc biệt trong Super Book (tpk, sutta, vinaya...)
+            # Map Locator cho các key đặc biệt trong Super Book (tpk, sutta...)
             meta = data.get("meta", {})
             for uid in meta.keys():
                 self.global_locator[uid] = "tpk"
 
+            # Super Book không có bài để random -> valid_count = 0
+            # Nhưng vẫn register để biết nó tồn tại (và bị filter bởi IGNORED_IDS)
+            self.pool_manager.register_book_count("tpk", 0)
+
             meta_pack = {
                 "id": "tpk",
                 "title": data.get("title"),
-                "tree": structure,
+                "tree": data.get("structure"),
                 "meta": meta,
                 "uids": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed (Found {len(sutta_books)} Sutta Candidates)")
+            logger.info(f"   🌟 Super Book Processed")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
-            import traceback
-            traceback.print_exc()
 
     def _save_uid_index(self) -> None:
         self.io.save_category("root", "uid_index.json", self.global_locator)
