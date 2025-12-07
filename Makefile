@@ -42,7 +42,7 @@ sync:
 	@echo "📥 Syncing Bilara Text..."
 	$(PYTHON) -m src.sutta_fetcher
 	@echo "📥 Fetching API Metadata..."
-	$(PYTHON) src/api_fetcher.py
+	$(PYTHON) -m src.api_fetcher
 
 # ==============================================================================
 # ⚙️ BUILD & DEV
