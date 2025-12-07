@@ -123,7 +123,7 @@ def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str
     final_meta["tpk"] = { # Changed uid here
         "uid": "tpk",      # And here
         "type": "root",
-        "acronym": "Tpk",
+        "acronym": "Tipitaka", # Changed here
         "translated_title": tipitaka_title,
         "original_title": "Tipiṭaka",
         "blurb": "This is a large collection of teachings attributed to the Buddha or his earliest disciples, who were teaching in India around 2500 years ago. They are regarded as sacred canon in all schools of Buddhism."
