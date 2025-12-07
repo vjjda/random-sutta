@@ -1,27 +1,24 @@
 // Path: web/assets/modules/core/app.js
 import { Router } from './router.js';
 import { SuttaController } from './sutta_controller.js';
-import { DB } from '../data/db_manager.js';
-import { setupLogging, LogLevel, getLogger } from '../utils/logger.js'; // [UPDATED]
-
-// UI Managers & Components
-import { initFilters } from '../ui/components/filters.js';       // [UPDATED]
-import { setupQuickNav } from '../ui/components/search.js';      // [UPDATED]
-import { OfflineManager } from '../ui/managers/offline_manager.js'; // [UPDATED]
-import { DrawerManager } from '../ui/managers/drawer_manager.js';   // [UPDATED]
+// [UPDATED] Import Repository mới
+import { SuttaRepository } from '../data/sutta_repository.js'; 
+import { setupLogging, LogLevel, getLogger } from '../utils/logger.js';
+import { initFilters } from '../ui/components/filters.js';
+import { setupQuickNav } from '../ui/components/search.js';
+import { OfflineManager } from '../ui/managers/offline_manager.js';
+import { DrawerManager } from '../ui/managers/drawer_manager.js';
 
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // ... (Logic giữ nguyên như cũ) ...
+    // ... (Giữ nguyên phần setup logging và UI components) ...
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
-    
     const params = new URLSearchParams(window.location.search);
     const isDebug = params.get("debug") === "1" || params.get("debug") === "true";
     setupLogging({ level: isDebug ? LogLevel.DEBUG : LogLevel.INFO });
 
-    // Initialize UI Components
     DrawerManager.init();
     OfflineManager.init();
     initFilters();
@@ -37,7 +34,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     randomBtn.addEventListener("click", () => SuttaController.loadRandomSutta(true));
 
     try {
-        await DB.init();
+        // [UPDATED] Init Repository
+        await SuttaRepository.init();
+        
         statusDiv.classList.add("hidden");
         navHeader.classList.remove("hidden");
         randomBtn.disabled = false;
@@ -55,16 +54,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         statusDiv.textContent = "Error loading database.";
     }
 
+    // ... (Giữ nguyên phần popstate) ...
     window.addEventListener("popstate", (event) => {
         const currentParams = Router.getParams();
-        const currentHash = window.location.hash;
         const savedScroll = (event.state && event.state.scrollY) ? event.state.scrollY : 0;
         
-        logger.debug('popstate', `Navigating to: ${currentParams.q || 'HOME'} (Scroll: ${savedScroll})`);
-
         if (currentParams.q) {
             let loadId = currentParams.q;
-            if (currentHash) loadId += currentHash;
+            if (window.location.hash) loadId += window.location.hash;
             SuttaController.loadSutta(loadId, false, savedScroll, { transition: false });
         } else {
             SuttaController.loadRandomSutta(false); 

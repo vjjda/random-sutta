@@ -1,7 +1,8 @@
 // Path: web/assets/modules/services/navigation_service.js
-import { calculateNavigation } from "../utils/navigator_logic.js"; // [UPDATED]
-import { DB } from "../data/db_manager.js";
-import { getLogger } from "../utils/logger.js"; // [UPDATED]
+import { calculateNavigation } from "../utils/navigator_logic.js";
+// [UPDATED]
+import { SuttaRepository } from "../data/sutta_repository.js"; 
+import { getLogger } from "../utils/logger.js";
 
 const logger = getLogger("NavService");
 
@@ -11,11 +12,12 @@ export const NavigationService = {
 
     if (!nav.prev && !nav.next) {
       try {
-        const superData = await DB.fetchStructure('super_struct');
+        // [UPDATED] Gọi Repository
+        const superData = await SuttaRepository.fetchStructureData('super_struct');
         if (superData) {
           const superNav = calculateNavigation(superData.structure, suttaId);
           if (superNav.prev || superNav.next) {
-            logger.info("getNavForSutta", "Escalated to super_struct for navigation.");
+            logger.info("getNavForSutta", "Escalated to super_struct");
             return { 
                 ...superNav, 
                 extraMeta: superData.meta 
@@ -23,7 +25,7 @@ export const NavigationService = {
           }
         }
       } catch (e) {
-        logger.warn("getNavForSutta", "Escalation to super_struct failed", e);
+        logger.warn("getNavForSutta", "Escalation failed", e);
       }
     }
     return nav;

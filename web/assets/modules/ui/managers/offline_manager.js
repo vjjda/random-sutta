@@ -1,5 +1,6 @@
 // Path: web/assets/modules/ui/managers/offline_manager.js
-import { DB } from '../../data/db_manager.js';
+// [UPDATED]
+import { SuttaRepository } from '../../data/sutta_repository.js';
 import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("OfflineManager");
@@ -72,17 +73,14 @@ export const OfflineManager = {
         if (btnOffline) btnOffline.disabled = true;
 
         try {
-            await DB.downloadAll((current, total) => {
+            // [UPDATED] Gọi Repository
+            await SuttaRepository.downloadAll((current, total) => {
                 const percent = Math.round((current / total) * 100);
+                // ... (Update UI code cũ) ...
                 if (progressBar) progressBar.style.width = `${percent}%`;
-                
-                // Cập nhật text mỗi 20% để đỡ lag UI
-                if (percent % 20 === 0 && btnOffline) {
-                     const label = btnOffline.querySelector(".label");
-                     if(label) label.textContent = `Syncing... ${percent}%`;
-                }
             });
 
+            // ... (code cũ set localStorage) ...
             localStorage.setItem('sutta_offline_version', APP_VERSION);
             setUIState("ready", "Offline Ready", ICONS.CHECK);
 

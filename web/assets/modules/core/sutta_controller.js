@@ -1,54 +1,14 @@
 // Path: web/assets/modules/core/sutta_controller.js
+import { SuttaService } from '../services/sutta_service.js';
+import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
-import { DB } from '../data/db_manager.js';
-import { getLogger } from '../utils/logger.js'; // [UPDATED]
-
-// Logic & Views
-import { renderSutta } from '../ui/views/renderer.js';          // [UPDATED]
-import { NavigationService } from '../services/navigation_service.js'; // [UPDATED]
-import { getActiveFilters } from '../ui/components/filters.js'; // [UPDATED]
-import { initCommentPopup } from '../ui/components/popup.js';   // [UPDATED]
-import { Scroller } from '../ui/common/scroller.js';            // [UPDATED]
+import { getActiveFilters } from '../ui/components/filters.js';
+import { initCommentPopup } from '../ui/components/popup.js';
+import { Scroller } from '../ui/common/scroller.js';
+import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaController");
 const { hideComment } = initCommentPopup();
-
-// [HELPER] (Giữ nguyên logic getChildrenIds)
-function getChildrenIds(structure, currentUid) {
-    function findNode(node, targetId) {
-        if (!node) return null;
-        if (Array.isArray(node)) {
-            for (let item of node) {
-                if (item[targetId]) return item[targetId];
-                const found = findNode(item, targetId);
-                if (found) return found;
-            }
-            return null;
-        }
-        if (typeof node === 'object') {
-            if (node[targetId]) return node[targetId];
-            for (let key in node) {
-                if (key === 'meta' || typeof node[key] !== 'object') continue;
-                const found = findNode(node[key], targetId);
-                if (found) return found;
-            }
-        }
-        return null;
-    }
-    const node = structure[currentUid] ? structure[currentUid] : findNode(structure, currentUid);
-    if (!node) return [];
-    
-    let ids = [];
-    if (Array.isArray(node)) {
-        node.forEach(item => {
-            if (typeof item === 'string') ids.push(item);
-            else if (typeof item === 'object') ids.push(...Object.keys(item));
-        });
-    } else if (typeof node === 'object') {
-        ids = Object.keys(node);
-    }
-    return ids;
-}
 
 export const SuttaController = {
   loadSutta: async function (suttaIdInput, shouldUpdateUrl = true, scrollY = 0, options = {}) {
@@ -58,52 +18,23 @@ export const SuttaController = {
 
     let [baseId, hashPart] = suttaIdInput.split('#');
     const suttaId = baseId.trim().toLowerCase();
-    const explicitHash = hashPart ? hashPart : null;
+    const explicitHash = hashPart || null;
 
-    logger.info('loadSutta', `Request: ${suttaId} ${explicitHash ? '#' + explicitHash : ''}`);
+    logger.info('loadSutta', `Request: ${suttaId}`);
 
     const performRender = async () => {
-        // 1. Fetch Data
-        let result = await DB.getSutta(suttaId);
+        // [REFACTORED] Gọi Service thay vì tự gọi Repository
+        const result = await SuttaService.loadFullSuttaData(suttaId);
+
         if (!result) {
-             await DB.init();
-             result = await DB.getSutta(suttaId);
-             if (!result) {
-                 renderSutta(suttaId, null, { prev: null, next: null }, options);
-                 return false;
-             }
+            // Not Found
+            renderSutta(suttaId, null, { prev: null, next: null }, options);
+            return false;
         }
 
-        // 2. Calculate Navigation
-        const navData = await NavigationService.getNavForSutta(suttaId, result.bookStructure);
-        
-        // [FIX] Tải Metadata cho Next/Prev để hiển thị Title trên nút Nav
-        const neighbors = [navData.prev, navData.next].filter(id => id);
-        if (neighbors.length > 0) {
-             const neighborMetas = await DB.fetchMetaForUids(neighbors);
-             Object.assign(result.meta, neighborMetas);
-        }
+        // Render
+        const success = await renderSutta(suttaId, result.data, result.navData, options);
 
-        // Merge extraMeta từ Escalation (nếu có)
-        if (navData.extraMeta) {
-            Object.assign(result.meta, navData.extraMeta);
-        }
-
-        // 3. Prepare Branch Meta (Giữ nguyên)
-        if (result.isBranch) {
-            const childrenIds = getChildrenIds(result.bookStructure, result.uid);
-            if (childrenIds.length > 0) {
-                const leavesToFetch = childrenIds.filter(id => !result.meta[id]);
-                if (leavesToFetch.length > 0) {
-                    const leafMetas = await DB.fetchMetaForUids(leavesToFetch);
-                    Object.assign(result.meta, leafMetas);
-                }
-            }
-        }
-
-        const success = await renderSutta(suttaId, result, navData, options);
-        
-        // ... (Phần update URL giữ nguyên)
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
              Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
@@ -111,56 +42,32 @@ export const SuttaController = {
         return success;
     };
 
+    // [KEEP] Scroll Logic
     let targetScrollId = null;
     if (explicitHash) {
-        if (explicitHash.includes(':')) {
-            targetScrollId = explicitHash;
-        } else {
-            targetScrollId = `${suttaId}:${explicitHash}`;
-        }
+        targetScrollId = explicitHash.includes(':') ? explicitHash : `${suttaId}:${explicitHash}`;
     }
 
     if (isTransition) {
         await Scroller.transitionTo(performRender, targetScrollId);
     } else {
         await performRender();
-        if (targetScrollId && !document.getElementById(targetScrollId)) {
-             if (document.getElementById(explicitHash)) {
-                  targetScrollId = explicitHash;
-             }
-        }
-        if (targetScrollId) {
-            setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
-        } else if (scrollY > 0) {
-            window.scrollTo({ top: scrollY, behavior: 'instant' });
-        } else {
-            window.scrollTo({ top: 0, behavior: 'instant' });
-        }
+        if (targetScrollId) setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
+        else if (scrollY > 0) window.scrollTo({ top: scrollY, behavior: 'instant' });
+        else window.scrollTo({ top: 0, behavior: 'instant' });
     }
   },
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     hideComment();
-    await DB.init();
-    
-    const activeFilters = getActiveFilters(); 
-    let pool = [];
-    if (activeFilters.length === 0) {
-        pool = DB.getPool('primary');
-    } else {
-        activeFilters.forEach(bookId => {
-            const bookPool = DB.getPool(bookId);
-            if (bookPool) pool = pool.concat(bookPool);
-        });
-    }
+    // [REFACTORED] Gọi Service
+    const filters = getActiveFilters();
+    const targetUid = await SuttaService.getRandomSuttaId(filters);
 
-    if (!pool || pool.length === 0) {
-      alert("No suttas found. Please wait for database to load or check filters.");
+    if (!targetUid) {
+      alert("No suttas found. Please wait for database to load.");
       return;
     }
-
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    const targetUid = pool[randomIndex];
     
     logger.info('loadRandomSutta', `Random selection: ${targetUid}`);
     this.loadSutta(targetUid, shouldUpdateUrl, 0, { transition: false });
