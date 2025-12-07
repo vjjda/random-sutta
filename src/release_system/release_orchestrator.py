@@ -99,6 +99,16 @@ def run_release_process(
         if not web_content_modifier.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
             raise Exception("HTML patching failed.")
 
+        # [NEW] Offline Data Injection (Fix CORS for file://)
+        if not web_content_modifier.create_offline_index_js(BUILD_OFFLINE_DIR):
+             logger.warning("⚠️ Failed to create offline index JS (Offline mode might fail)")
+        
+        if not web_content_modifier.convert_db_json_to_js(BUILD_OFFLINE_DIR):
+             logger.warning("⚠️ Failed to convert DB JSON to JS")
+
+        if not web_content_modifier.inject_offline_index_script(BUILD_OFFLINE_DIR):
+             logger.warning("⚠️ Failed to inject offline index script (Offline mode might fail)")
+
         # 5. Create Zip (Chạy khi publish hoặc force zip)
         if create_zip:
             if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):

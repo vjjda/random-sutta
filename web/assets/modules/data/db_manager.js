@@ -11,14 +11,66 @@ class DatabaseManager {
         this.structureCache = new Map();
         this.contentCache = new Map();
         this.isInitialized = false;
+        
+        // [OFFLINE] JSONP Loader Setup
+        this.jsonpResolvers = {};
+        this.preloadedData = {};
+        
+        if (typeof window !== 'undefined') {
+            window.__DB_LOADER__ = {
+                receive: (key, data) => {
+                    if (this.jsonpResolvers[key]) {
+                        this.jsonpResolvers[key](data);
+                        delete this.jsonpResolvers[key];
+                    } else {
+                        // Cache if loaded before request
+                        this.preloadedData[key] = data;
+                    }
+                }
+            };
+        }
+    }
+
+    async _loadData(key, url) {
+        // Check Preloaded (JSONP push before request)
+        if (this.preloadedData && this.preloadedData[key]) {
+            const data = this.preloadedData[key];
+            delete this.preloadedData[key];
+            return data;
+        }
+
+        const isFileProtocol = window.location.protocol === 'file:';
+        
+        if (isFileProtocol) {
+             return new Promise((resolve, reject) => {
+                 this.jsonpResolvers[key] = resolve;
+                 
+                 const script = document.createElement('script');
+                 script.src = url.replace('.json', '.js');
+                 script.onerror = () => {
+                     delete this.jsonpResolvers[key];
+                     reject(new Error(`Failed to load script ${script.src}`));
+                 };
+                 document.head.appendChild(script);
+             });
+        } else {
+             const res = await fetch(url);
+             if (!res.ok) throw new Error(`HTTP ${res.status}`);
+             return await res.json();
+        }
     }
 
     async init() {
         if (this.isInitialized) return;
         try {
-            const response = await fetch('assets/db/uid_index.json');
-            if (!response.ok) throw new Error("Could not load uid_index.json");
-            this.index = await response.json();
+            // [OFFLINE-SUPPORT] Check global variable first
+            if (window.__DB_INDEX__) {
+                this.index = window.__DB_INDEX__;
+            } else {
+                const response = await fetch('assets/db/uid_index.json');
+                if (!response.ok) throw new Error("Could not load uid_index.json");
+                this.index = await response.json();
+            }
             this.isInitialized = true;
         } catch (e) {
             logger.error("init", "Critical: Failed to load DB Index", e);
@@ -42,9 +94,7 @@ class DatabaseManager {
         if (this.structureCache.has(cleanName)) return this.structureCache.get(cleanName);
         const url = `assets/db/structure/${cleanName}.json`;
         try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await this._loadData(cleanName, url);
             this.structureCache.set(cleanName, data);
             return data;
         } catch (e) {
@@ -65,11 +115,7 @@ class DatabaseManager {
 
         const url = `assets/db/content/${chunkName}.json`;
         
-        const fetchPromise = fetch(url)
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return res.json();
-            })
+        const fetchPromise = this._loadData(chunkName, url)
             .then(data => {
                 this.contentCache.set(chunkName, data);
                 delete this._pendingFetches[chunkName];

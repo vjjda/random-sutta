@@ -28,9 +28,22 @@ def _wrap_in_iife(content: str, file_name: str) -> str:
     Tự động detect 'export' để expose ra global window cho các file sau dùng.
     """
     # 1. Tìm các biến được export (ví dụ: export const Router = ...)
-    # Regex bắt: export + (const/let/var/function/class) + Tên biến
-    export_pattern = r'export\s+(?:const|let|var|function|class)\s+([a-zA-Z0-9_$]+)'
-    exports = re.findall(export_pattern, content)
+    # Regex cập nhật để bắt được cả 'export async function'
+    # Group 1: (Optional) async
+    # Group 2: Declaration type (function, class, const, let, var)
+    # Group 3: Name
+    export_pattern = r'export\s+(async\s+)?(?:function|class|const|let|var)\s+([a-zA-Z0-9_$]+)'
+    
+    matches = re.findall(export_pattern, content)
+    # matches sẽ là list các tuple [('async ', 'renderSutta'), ('', 'Router'), ...] tùy group
+    
+    # Lấy ra danh sách tên biến (Group cuối cùng trong regex, nhưng findall trả về tuple các group)
+    # Ở đây regex có 2 capturing group chính thức nếu không dùng non-capturing (?:)
+    # Nhưng tôi đã dùng (?:...) cho type, vậy:
+    # Group 1: (async\s+)? -> có thể rỗng
+    # Group 2: Name
+    
+    exports = [m[1] for m in matches]
     
     # 2. Xóa từ khóa 'export' (giữ lại khai báo)
     cleaned_content = re.sub(r'^export\s+', '', content, flags=re.MULTILINE)
