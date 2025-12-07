@@ -1,135 +1,99 @@
 // Path: web/assets/modules/data/sutta_repository.js
 import { getLogger } from '../utils/logger.js';
-import { IODriver } from './io_driver.js';
-import { OfflineSyncer } from './offline_syncer.js';
 
-// [UPDATED] Import các thành phần con
-import { IndexRepository } from './repositories/index_repository.js';
-import { SuttaAssembler } from './logic/sutta_assembler.js';
+const logger = getLogger("SuttaRepository");
 
-const logger = getLogger("SuttaRepo");
+// Cache memory để tránh request lại file chunk/structure đã tải
+const _cache = {
+    index: null,      // uid_index.json
+    chunks: {},       // content/xxx_chunk_1.json
+    structures: {}    // structure/xxx_struct.json
+};
 
 export const SuttaRepository = {
-    suttaCache: new Map(),
-
-    // Delegate init sang IndexRepo
     async init() {
-        await IndexRepository.ensureLoaded();
-    },
-
-    getPool(bookId) {
-        return IndexRepository.getPool(bookId);
-    },
-
-    async getSutta(suttaId) {
-        await this.init();
-        if (this.suttaCache.has(suttaId)) return this.suttaCache.get(suttaId);
-
-        const locatorKey = IndexRepository.getLocator(suttaId);
-        if (!locatorKey) {
-            logger.warn("getSutta", `Locator not found: ${suttaId}`);
-            return null;
-        }
-
-        const isStructure = locatorKey.includes("_struct");
-        const path = `assets/db/${locatorKey}.json`;
-        const resourceKey = locatorKey.split('/').pop();
-
+        if (_cache.index) return;
         try {
-            const chunkData = await IODriver.fetchResource(path, resourceKey);
-            let result = null;
-
-            if (isStructure) {
-                // Logic lắp ráp Branch
-                result = SuttaAssembler.assembleBranch(suttaId, chunkData);
-            } else {
-                // Logic lắp ráp Leaf
-                let suttaData = chunkData[suttaId];
-                if (!suttaData) return null;
-
-                // 1. Resolve Shortcut
-                suttaData = SuttaAssembler.resolveShortcut(suttaData, chunkData, suttaId);
-
-                // 2. Load Structure nếu thiếu
-                let bookStructure = suttaData.bookStructure || null;
-                if (!bookStructure) {
-                    const bookId = suttaId.match(/^[a-z]+/)[0];
-                    const structLoc = IndexRepository.getLocator(bookId);
-                    if (structLoc) {
-                        const sKey = structLoc.split('/').pop();
-                        const sData = await IODriver.fetchResource(`assets/db/${structLoc}.json`, sKey);
-                        bookStructure = sData?.structure;
-                    }
-                }
-
-                result = SuttaAssembler.assembleLeaf(suttaId, suttaData, bookStructure);
-            }
-
-            if (result) this.suttaCache.set(suttaId, result);
-            return result;
-
+            // Tải Master Index
+            const resp = await fetch('assets/db/uid_index.json');
+            if (!resp.ok) throw new Error("Could not load uid_index.json");
+            _cache.index = await resp.json();
+            logger.info("init", "DB Index loaded");
         } catch (e) {
-            logger.error("getSutta", `Failed ${suttaId}`, e);
-            return null;
+            logger.error("init", "Failed to init repository", e);
+            throw e;
         }
     },
 
-    async fetchMetaList(uids) {
-        await this.init();
-        const result = {};
-        const chunksToLoad = new Set();
-        const uidToChunk = {};
-
-        // 1. Map UID -> Locator
-        uids.forEach(uid => {
-            const loc = IndexRepository.getLocator(uid);
-            if (loc) {
-                chunksToLoad.add(loc);
-                uidToChunk[uid] = loc;
-            }
-        });
-
-        // 2. Parallel Fetch
-        const promises = Array.from(chunksToLoad).map(async (loc) => {
-            const path = `assets/db/${loc}.json`;
-            const key = loc.split('/').pop();
-            try {
-                return { key: loc, data: await IODriver.fetchResource(path, key) };
-            } catch (e) {
-                return { key: loc, data: {} };
-            }
-        });
-
-        const loadedChunks = await Promise.all(promises);
-        const chunkMap = {};
-        loadedChunks.forEach(item => chunkMap[item.key] = item.data);
-
-        // 3. Extract Meta
-        uids.forEach(uid => {
-            const loc = uidToChunk[uid];
-            const source = chunkMap[loc];
-            if (source) {
-                if (source.meta && source.meta[uid]) {
-                    result[uid] = source.meta[uid];
-                } else if (source[uid] && source[uid].meta) {
-                    result[uid] = source[uid].meta;
-                }
-            }
-        });
-
-        return result;
+    /**
+     * Tìm vị trí file chứa UID
+     */
+    _resolveLocator(uid) {
+        if (!_cache.index || !_cache.index.locator) return null;
+        return _cache.index.locator[uid]; // VD: "content/sutta_an_an_chunk_1"
     },
 
-    async fetchStructureData(key) {
-        const loc = `structure/${key}`;
-        try {
-            return await IODriver.fetchResource(`assets/db/${loc}.json`, key);
-        } catch (e) { return null; }
+    /**
+     * Tải file JSON từ server (hoặc cache)
+     */
+    async _fetchJson(relativePath) {
+        const fullPath = `assets/db/${relativePath}.json`;
+        
+        // Check cache chunks/structures
+        if (relativePath.startsWith('content/') && _cache.chunks[relativePath]) {
+            return _cache.chunks[relativePath];
+        }
+        if (relativePath.startsWith('structure/') && _cache.structures[relativePath]) {
+            return _cache.structures[relativePath];
+        }
+
+        logger.debug("fetch", `Fetching ${relativePath}...`);
+        const resp = await fetch(fullPath);
+        if (!resp.ok) return null;
+        
+        const data = await resp.json();
+
+        // Save to cache
+        if (relativePath.startsWith('content/')) _cache.chunks[relativePath] = data;
+        if (relativePath.startsWith('structure/')) _cache.structures[relativePath] = data;
+
+        return data;
     },
 
-    async downloadAll(onProgress) {
+    /**
+     * Lấy dữ liệu thô của một Entry (Leaf hoặc Subleaf) từ Chunk.
+     * Lưu ý: Hàm này trả về object trong chunk, có thể chỉ có meta (nếu là subleaf).
+     */
+    async getSuttaEntry(uid) {
         await this.init();
-        // IndexRepo chứa dữ liệu, OfflineSyncer chứa logic loop
-        return OfflineSyncer.downloadAll({ locator: IndexRepository.index.locator }, onProgress);
+        const locator = this._resolveLocator(uid);
+        if (!locator) {
+            logger.warn("getSuttaEntry", `UID ${uid} not found in index.`);
+            return null;
+        }
+
+        // Locator dạng "content/filename" -> Tải chunk
+        const chunkData = await this._fetchJson(locator);
+        if (!chunkData || !chunkData[uid]) return null;
+
+        return chunkData[uid]; // Trả về entry: { content: ..., meta: ... } hoặc { meta: ... }
+    },
+
+    /**
+     * Lấy Structure của một sách
+     */
+    async getBookStructure(bookId) {
+        // Locator cho structure thường là structure/sutta_{book}_struct
+        // Tuy nhiên index locator lưu theo UID. Ta có thể đoán path hoặc lookup root uid.
+        // Cách an toàn: Giả sử bookId là 'an' -> 'structure/sutta_an_an_struct'
+        // (Cần logic mapping chuẩn hơn nếu tên file phức tạp, nhưng tạm thời dùng convention này)
+        
+        // Hack: Tìm locator của uid đầu tiên của sách (VD: dn1) để biết file struct?
+        // Đơn giản hơn: Build process của bạn đã lưu locator cho các ROOT UID (dn, mn...)
+        await this.init();
+        const locator = this._resolveLocator(bookId); // VD: locator['an']
+        if (!locator) return null;
+
+        return await this._fetchJson(locator);
     }
 };

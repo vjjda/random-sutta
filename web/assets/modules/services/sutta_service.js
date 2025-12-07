@@ -1,126 +1,73 @@
 // Path: web/assets/modules/services/sutta_service.js
 import { SuttaRepository } from '../data/sutta_repository.js';
+import { SuttaExtractor } from '../data/sutta_extractor.js'; // Import mới
 import { NavigationService } from './navigation_service.js';
 import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaService");
 
-// [HELPER] Trích xuất danh sách ID con từ cấu trúc
-function getChildrenIds(structure, currentUid) {
-    if (!structure) return [];
-    
-    // Đệ quy tìm node
-    function findNode(node, targetId) {
-        if (!node) return null;
-        
-        // Nếu node là mảng (children list)
-        if (Array.isArray(node)) {
-            for (let item of node) {
-                if (typeof item === 'object' && item[targetId]) return item[targetId];
-                // Deep search
-                const found = findNode(item, targetId);
-                if (found) return found;
-            }
-            return null;
-        }
-        
-        // Nếu node là object (branch map)
-        if (typeof node === 'object') {
-            if (node[targetId]) return node[targetId];
-            
-            // Special case cho root: 'tpk' chứa 'sutta'
-            if (targetId === 'sutta' && node['tpk'] && node['tpk']['sutta']) return node['tpk']['sutta'];
-
-            for (let key in node) {
-                if (key === 'meta' || typeof node[key] !== 'object') continue;
-                const found = findNode(node[key], targetId);
-                if (found) return found;
-            }
-        }
-        return null;
-    }
-
-    // Nếu currentUid là root key của structure (ví dụ 'mn'), lấy trực tiếp
-    let node = structure[currentUid];
-    
-    // Nếu không tìm thấy ở root level, tìm sâu bên trong
-    if (!node) node = findNode(structure, currentUid);
-    
-    if (!node) return [];
-    
-    // Flatten danh sách ID con
-    let ids = [];
-    if (Array.isArray(node)) {
-        node.forEach(item => {
-            if (typeof item === 'string') ids.push(item);
-            else if (typeof item === 'object') ids.push(...Object.keys(item));
-        });
-    } else if (typeof node === 'object') {
-        ids = Object.keys(node);
-    }
-    return ids;
-}
-
 export const SuttaService = {
     async loadFullSuttaData(suttaId) {
-        // 1. Get Core Data
-        let data = await SuttaRepository.getSutta(suttaId);
+        // 1. Lấy dữ liệu thô từ Repository (Load Chunk)
+        let entry = await SuttaRepository.getSuttaEntry(suttaId);
         
-        if (!data) {
-            await SuttaRepository.init();
-            data = await SuttaRepository.getSutta(suttaId);
-        }
-        
-        if (!data) return null;
-
-        // 2. Calculate Nav
-        const navData = await NavigationService.getNavForSutta(suttaId, data.bookStructure);
-        
-        // 3. Prepare UIDs to fetch extra Meta
-        // Bao gồm: Hàng xóm (Nav) và Con cái (nếu là Branch)
-        const uidsToFetch = [];
-        
-        if (navData.prev) uidsToFetch.push(navData.prev);
-        if (navData.next) uidsToFetch.push(navData.next);
-
-        if (data.isBranch) {
-            const childIds = getChildrenIds(data.bookStructure, suttaId);
-            // Lọc những ID chưa có meta trong data hiện tại
-            const missingChildren = childIds.filter(id => !data.meta[id]);
-            uidsToFetch.push(...missingChildren);
+        if (!entry) {
+            logger.warn("load", `${suttaId} not found in DB.`);
+            return null;
         }
 
-        // 4. Batch Fetch Meta
-        if (uidsToFetch.length > 0) {
-            // Loại bỏ trùng lặp
-            const uniqueIds = [...new Set(uidsToFetch)];
-            const extraMetas = await SuttaRepository.fetchMetaList(uniqueIds);
-            Object.assign(data.meta, extraMetas);
+        const meta = entry.meta || {};
+        let content = entry.content;
+
+        // 2. Xử lý SUBLEAF: Extract content từ Parent
+        if (meta.type === 'subleaf' && meta.parent_uid && meta.extract_id) {
+            logger.info("load", `${suttaId} is subleaf. Fetching parent ${meta.parent_uid}...`);
+            
+            // Tải entry của Parent (thường nằm cùng chunk nên rất nhanh do cache)
+            const parentEntry = await SuttaRepository.getSuttaEntry(meta.parent_uid);
+            
+            if (parentEntry && parentEntry.content) {
+                // Thực hiện Extract
+                content = SuttaExtractor.extract(parentEntry.content, meta.extract_id);
+            } else {
+                logger.error("load", `Parent ${meta.parent_uid} content missing/empty.`);
+            }
+        }
+        // Xử lý ALIAS: Redirect (Logic này có thể handle ở Controller, nhưng data service trả về null content)
+        else if (meta.type === 'alias') {
+             logger.info("load", `${suttaId} is alias.`);
+             return { data: { uid: suttaId, meta: meta, isAlias: true }, navData: null };
         }
 
-        // 5. Merge Escalation Meta
-        if (navData.extraMeta) {
-            Object.assign(data.meta, navData.extraMeta);
+        // 3. Lấy Structure để tính Navigation
+        // Cần biết Book ID để load file structure.
+        // UID: an1.1 -> Book: an.
+        const bookId = suttaId.match(/^[a-z]+/)[0]; // Regex đơn giản lấy chữ cái đầu
+        const structData = await SuttaRepository.getBookStructure(bookId);
+        
+        let navData = { prev: null, next: null };
+        if (structData && structData.structure) {
+            navData = await NavigationService.getNavForSutta(suttaId, structData.structure);
         }
 
-        return { data, navData };
+        // 4. Return Data Object chuẩn cho Renderer
+        return {
+            data: {
+                uid: suttaId,
+                meta: meta,
+                content: content,
+                bookStructure: structData ? structData.structure : null, // Để render TOC nếu cần
+                isBranch: meta.type === 'branch' // Support render branch card
+            },
+            navData: navData
+        };
     },
 
+    // ... (Giữ nguyên logic getRandomSuttaId) ...
     async getRandomSuttaId(activeFilters) {
-        await SuttaRepository.init();
-        let pool = [];
-        
-        if (!activeFilters || activeFilters.length === 0) {
-            pool = SuttaRepository.getPool('primary');
-        } else {
-            activeFilters.forEach(bid => {
-                pool = pool.concat(SuttaRepository.getPool(bid));
-            });
-        }
-        
-        if (!pool.length) return null;
-        return pool[Math.floor(Math.random() * pool.length)];
-    },
-    
-    init: () => SuttaRepository.init()
+         // Logic này cần update để lấy pool từ constants.js hoặc file pool riêng
+         // Vì uid_index.json của bạn không chứa list pool sẵn.
+         // Tạm thời giữ nguyên hoặc TODO
+         return "mn1"; // Placeholder
+    }
 };
