@@ -11,7 +11,7 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
     if not file_path.exists():
         logger.warning(f"⚠️ File not found: {file_path}")
         return False
-        
+       
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -30,7 +30,6 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
         logger.error(f"❌ Error updating {file_path.name}: {e}")
         return False
 
-# ... (Giữ nguyên inject_version_into_sw, inject_version_into_app_js, patch_sw_assets_for_offline) ...
 def inject_version_into_sw(target_dir: Path, version_tag: str) -> bool:
     logger.info(f"💉 Injecting cache version '{version_tag}' into {target_dir.name}/sw.js...")
     sw_path = target_dir / "sw.js"
@@ -46,12 +45,11 @@ def inject_version_into_app_js(target_dir: Path, version_tag: str) -> bool:
     return _update_file(app_js_path, pattern, replacement)
 
 
-# ... (Previous imports)
-
 def create_offline_index_js(build_dir: Path) -> bool:
     """
     Creates assets/db_index.js containing the content of uid_index.json
     assigned to window.__DB_INDEX__.
+    Also removes the original uid_index.json to save space.
     """
     try:
         json_path = build_dir / "assets" / "db" / "uid_index.json"
@@ -70,6 +68,10 @@ def create_offline_index_js(build_dir: Path) -> bool:
         with open(js_path, 'w', encoding='utf-8') as f:
             f.write(js_content)
             
+        # [CLEANUP] Remove source JSON
+        json_path.unlink()
+        logger.info(f"   🧹 Removed source: {json_path.name}")
+            
         return True
     except Exception as e:
         logger.error(f"❌ Failed to create offline index JS: {e}")
@@ -78,7 +80,8 @@ def create_offline_index_js(build_dir: Path) -> bool:
 def convert_db_json_to_js(build_dir: Path) -> bool:
     """
     Converts all JSON files in assets/db/structure and assets/db/content
-    to .js files wrapping data in window.__DB_LOADER__.receive('key', data)
+    to .js files wrapping data in window.__DB_LOADER__.receive('key', data).
+    Removes original JSON files after conversion.
     """
     logger.info("🔨 Converting DB JSON files to JS for Offline support...")
     
@@ -95,7 +98,10 @@ def convert_db_json_to_js(build_dir: Path) -> bool:
         target_dir = db_dir / subdir
         if not target_dir.exists(): continue
         
-        for json_file in target_dir.glob("*.json"):
+        # [CHANGED] Convert list to iterate safely while modifying filesystem
+        json_files = list(target_dir.glob("*.json"))
+        
+        for json_file in json_files:
             try:
                 # Key is the filename without extension (e.g. sutta_an_struct)
                 key = json_file.stem
@@ -104,23 +110,20 @@ def convert_db_json_to_js(build_dir: Path) -> bool:
                     data = json.load(f)
                 
                 js_content = f'window.__DB_LOADER__.receive("{key}", {json.dumps(data, ensure_ascii=False)});'
-                
                 js_file = json_file.with_suffix('.js')
+                
                 with open(js_file, 'w', encoding='utf-8') as f:
                     f.write(js_content)
                 
-                # Optional: Remove JSON to save space? 
-                # Better keep it if user wants to use a web server later, 
-                # but for strict offline zip, removing saves space.
-                # Let's keep it for now or remove if size is concern.
-                # json_file.unlink() 
+                # [CLEANUP] Remove source JSON
+                json_file.unlink()
                 
                 success_count += 1
             except Exception as e:
                 logger.error(f"Failed to convert {json_file.name}: {e}")
                 fail_count += 1
 
-    logger.info(f"✨ Converted {success_count} files to JS (Failed: {fail_count})")
+    logger.info(f"✨ Converted & Cleaned {success_count} files (Failed: {fail_count})")
     return True
 
 def inject_offline_index_script(build_dir: Path) -> bool:
@@ -132,13 +135,9 @@ def inject_offline_index_script(build_dir: Path) -> bool:
     logger.info("💉 Injecting db_index.js script tag...")
     
     # We look for the main app script (which was patched to app.bundle.js in offline mode)
-    # or just inject before </body>
-    
     script_tag = '<script src="assets/db_index.js"></script>'
     
-    # Try to inject before the first script tag or at the end of body
     # Logic: Find <script defer src="assets/app.bundle.js..."></script> and put it before
-    
     pattern = r'(<script defer src="assets/app\.bundle\.js.*?</script>)'
     replacement = f'{script_tag}\n    \\1'
     
@@ -163,7 +162,6 @@ def _patch_html_assets(index_path: Path, version_tag: str, is_offline: bool) -> 
     # 3. JS Offline
     js_ok = True
     if is_offline:
-        # [FIXED REGEX] Linh hoạt hơn với khoảng trắng (\s+) và xuống dòng
         # Tìm thẻ script type="module" trỏ tới app.js
         # Group 1: Query params (ví dụ ?v=...)
         # Group 2: Phần còn lại của thẻ (ví dụ > hoặc attributes khác)
