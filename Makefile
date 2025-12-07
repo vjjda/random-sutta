@@ -64,12 +64,11 @@ dev-online:
 	@echo "   👉 http://localhost:8001/"
 	$(PYTHON) -m http.server 8001 --directory build/dev-online
 
-# Server cho bản Build Offline - Port 8002
-# Yêu cầu: Phải chạy 'make release' trước để có thư mục build
+# Server cho bản Build Offline - Mở trực tiếp file HTML
+# Giả lập môi trường không mạng, chạy trên protocol file://
 dev-offline:
-	@echo "🌍 Starting BUILD OFFLINE Server..."
-	@echo "   👉 http://localhost:8002/"
-	$(PYTHON) -m http.server 8002 --directory build/dev-offline
+	@echo "📂 Opening BUILD OFFLINE (file://)..."
+	open build/dev-offline/index.html
 
 # ==============================================================================
 # 🚀 RELEASE SYSTEM (Wrappers for src.release_system)
