@@ -6,56 +6,50 @@ from .config import JS_OUTPUT_DIR, PRIMARY_BOOKS_LIST, PRIMARY_BOOKS_SET
 
 logger = logging.getLogger("Optimizer.Pools")
 
+IGNORED_IDS = {'tpk', 'sutta', 'vinaya', 'abhidhamma'}
+
 class PoolManager:
     def __init__(self):
         self.book_counts: Dict[str, int] = {}
-        # Danh sách sách lý thuyết thuộc Sutta Pitaka (lấy từ Super Tree)
         self.sutta_universe: Set[str] = set()
 
     def register_book_count(self, book_id: str, count: int, sub_counts: Dict[str, int] = None) -> None:
-        """
-        Lưu số lượng bài.
-        Hỗ trợ cả sách thường (count) và sách gộp (sub_counts).
-        """
         if sub_counts:
             self.book_counts.update(sub_counts)
         elif count >= 0:
             self.book_counts[book_id] = count
 
     def set_sutta_universe(self, books: List[str]) -> None:
-        """Nhận danh sách sách Sutta từ Orchestrator (quét super_book)."""
         self.sutta_universe = set(books)
 
     def generate_js_constants(self) -> None:
-        """
-        Sinh file constants.js.
-        Logic: Secondary = (Sutta Universe - Primary) INTERSECT Processed Books
-        """
-        # 1. Xác định ứng viên Secondary (Theo lý thuyết)
-        # Loại bỏ Primary (DN, MN, AN, SN...) ra khỏi vũ trụ Sutta
-        theoretical_secondary = self.sutta_universe - PRIMARY_BOOKS_SET
+        # 1. Xác định Secondary Books
+        candidates = self.sutta_universe - PRIMARY_BOOKS_SET - IGNORED_IDS
         
-        # 2. Kiểm tra thực tế (Sách phải có dữ liệu)
         valid_secondary = []
-        for book_id in theoretical_secondary:
-            # Kiểm tra xem sách có trong book_counts không
-            # Lưu ý: Các sách Vinaya/Abhidhamma dù có trong book_counts cũng sẽ bị loại 
-            # vì chúng không nằm trong theoretical_secondary (vũ trụ Sutta).
+        for book_id in candidates:
             if self.book_counts.get(book_id, 0) > 0:
                 valid_secondary.append(book_id)
 
         sorted_secondary = sorted(valid_secondary)
         
-        # 3. Tạo Group Map cho AN/SN (Optional, giúp UI)
+        # 2. Tạo Group Map (Fix lỗi snp chui vào sn)
         book_groups = {}
+        target_groups = ["an", "sn"] 
+        
         for book_id in self.book_counts.keys():
-            for p_book in ["an", "sn"]: # Hardcode primary groups
+            for p_book in target_groups:
                 if book_id.startswith(p_book) and book_id != p_book:
-                    if p_book not in book_groups: book_groups[p_book] = []
+                    # [FIX] Loại trừ 'snp' ra khỏi nhóm 'sn'
+                    if p_book == "sn" and book_id == "snp":
+                        continue
+                        
+                    if p_book not in book_groups: 
+                        book_groups[p_book] = []
                     book_groups[p_book].append(book_id)
         
         for k in book_groups:
-            book_groups[k].sort(key=lambda x: (len(x), x)) # Sort an1, an2, an10
+            book_groups[k].sort(key=lambda x: (len(x), x))
 
         content = (
             "// Path: web/assets/modules/data/constants.js\n"
@@ -73,4 +67,4 @@ class PoolManager:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
             
-        logger.info(f"   ✨ Generated constants.js (Secondary: {len(sorted_secondary)} books)")
+        logger.info(f"   ✨ Generated constants.js")
