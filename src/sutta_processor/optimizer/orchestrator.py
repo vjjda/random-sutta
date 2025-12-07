@@ -22,7 +22,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v5.1 - Flattened Pools): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v5.2 - Fix Secondary): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -48,7 +48,8 @@ class DBOrchestrator:
                     res = future.result()
                     if res["status"] == "success":
                         self.global_locator.update(res["locator_map"])
-                        # Pass sub_counts for flattened pool logic
+                        
+                        # Pass sub_counts cho pool manager
                         self.pool_manager.register_book_count(
                             res["book_id"], 
                             res["valid_count"],
@@ -66,8 +67,12 @@ class DBOrchestrator:
         logger.info("✨ Optimization Completed.")
 
     def _extract_sutta_books(self, structure: Any) -> List[str]:
+        """
+        Trích xuất danh sách sách thuộc 'sutta' từ cấu trúc super_book.
+        """
         sutta_books: Set[str] = set()
         
+        # 1. Helper: Tìm node "sutta" (Root của nhánh Sutta)
         def _find_sutta_root(node):
             if isinstance(node, dict):
                 if "sutta" in node: return node["sutta"]
@@ -80,19 +85,21 @@ class DBOrchestrator:
                     if res: return res
             return None
 
-        def _collect_books(node):
+        # 2. Helper: Thu thập Leaf Values (Tên sách)
+        # Trong super_book: { "kn": ["dhp", "iti"] } -> "dhp", "iti" là values
+        def _collect_leaves(node):
             if isinstance(node, str):
                 sutta_books.add(node)
             elif isinstance(node, list):
                 for item in node:
-                    _collect_books(item)
+                    _collect_leaves(item)
             elif isinstance(node, dict):
                 for v in node.values():
-                    _collect_books(v)
+                    _collect_leaves(v)
 
         sutta_root = _find_sutta_root(structure)
         if sutta_root:
-            _collect_books(sutta_root)
+            _collect_leaves(sutta_root)
             
         return list(sutta_books)
 
@@ -103,12 +110,16 @@ class DBOrchestrator:
             
             structure = data.get("structure", {})
             
-            # Map Locator cho các key đặc biệt trong Super Book (tpk, sutta, vinaya...)
+            # Logic: Tìm 'sutta' node rồi lấy hết values bên trong
+            sutta_books = self._extract_sutta_books(structure)
+            self.pool_manager.set_sutta_universe(sutta_books)
+
             meta = data.get("meta", {})
+            # Map Locator cho các key đặc biệt trong Super Book (tpk, sutta, vinaya...)
             for uid in meta.keys():
                 self.global_locator[uid] = "tpk"
 
-            # Register TPK với count 0
+            # TPK count = 0 (để không random trúng)
             self.pool_manager.register_book_count("tpk", 0)
 
             meta_pack = {
@@ -119,7 +130,7 @@ class DBOrchestrator:
                 "random_pool": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed")
+            logger.info(f"   🌟 Super Book Processed (Found {len(sutta_books)} Sutta Candidates)")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")

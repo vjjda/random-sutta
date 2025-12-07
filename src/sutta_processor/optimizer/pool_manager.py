@@ -6,74 +6,56 @@ from .config import JS_OUTPUT_DIR, PRIMARY_BOOKS_LIST, PRIMARY_BOOKS_SET
 
 logger = logging.getLogger("Optimizer.Pools")
 
-# Loại bỏ các ID hệ thống
-IGNORED_IDS = {'tpk', 'sutta', 'vinaya', 'abhidhamma'}
-
 class PoolManager:
     def __init__(self):
-        # Lưu count của các sách THỰC TẾ (dn, an1, an2...)
         self.book_counts: Dict[str, int] = {}
+        # Danh sách sách lý thuyết thuộc Sutta Pitaka (lấy từ Super Tree)
+        self.sutta_universe: Set[str] = set()
 
     def register_book_count(self, book_id: str, count: int, sub_counts: Dict[str, int] = None) -> None:
         """
-        - Nếu là sách thường: count > 0, sub_counts = None -> Lưu count.
-        - Nếu là sách gộp: count = 0, sub_counts = {an1: 10, ...} -> Lưu sub_counts.
+        Lưu số lượng bài.
+        Hỗ trợ cả sách thường (count) và sách gộp (sub_counts).
         """
         if sub_counts:
-            # Flatten: Đưa thẳng con vào danh sách đếm
             self.book_counts.update(sub_counts)
-        elif count > 0:
+        elif count >= 0:
             self.book_counts[book_id] = count
 
+    def set_sutta_universe(self, books: List[str]) -> None:
+        """Nhận danh sách sách Sutta từ Orchestrator (quét super_book)."""
+        self.sutta_universe = set(books)
+
     def generate_js_constants(self) -> None:
-        # SUTTA_COUNTS bây giờ chứa: { "dn": 34, "an1": 100, "an2": 200 ... }
-        # Không còn "an" hay "sn" ở root nữa.
+        """
+        Sinh file constants.js.
+        Logic: Secondary = (Sutta Universe - Primary) INTERSECT Processed Books
+        """
+        # 1. Xác định ứng viên Secondary (Theo lý thuyết)
+        # Loại bỏ Primary (DN, MN, AN, SN...) ra khỏi vũ trụ Sutta
+        theoretical_secondary = self.sutta_universe - PRIMARY_BOOKS_SET
         
-        # Tạo danh sách Secondary
-        # Vì PRIMARY_BOOKS vẫn chứa "an", "sn" (để filter group)
-        # Nên logic tính Secondary phải loại bỏ các con của Primary.
-        
-        # Cách đơn giản: Nếu key không nằm trong Primary -> Secondary.
-        # Nhưng an1, an2 không nằm trong Primary -> Chúng sẽ biến thành Secondary? -> SAI.
-        # Chúng ta cần logic map: an1 thuộc nhóm an -> an thuộc Primary -> an1 thuộc Primary.
-        
+        # 2. Kiểm tra thực tế (Sách phải có dữ liệu)
         valid_secondary = []
-        
-        # Định nghĩa map prefix cho Primary Split
-        # primary_prefixes = ["an", "sn"]
-        
-        for book_id in self.book_counts.keys():
-            # Check if book is explicit primary
-            if book_id in PRIMARY_BOOKS_SET:
-                continue
-                
-            # Check if book is child of primary (e.g. an1 starts with an)
-            is_child_of_primary = False
-            for p_book in PRIMARY_BOOKS_LIST: # danh sách ngắn, loop ok
-                # Logic: book_id starts with p_book (an1 starts with an) AND p_book is split target
-                if book_id.startswith(p_book) and book_id != p_book:
-                    # Kiểm tra kỹ hơn: an1 vs ana (nếu có sách ana). 
-                    # Nhưng với bilara data hiện tại thì safe.
-                    if p_book in ["an", "sn"]: 
-                        is_child_of_primary = True
-                        break
-            
-            if not is_child_of_primary and book_id not in IGNORED_IDS:
+        for book_id in theoretical_secondary:
+            # Kiểm tra xem sách có trong book_counts không
+            # Lưu ý: Các sách Vinaya/Abhidhamma dù có trong book_counts cũng sẽ bị loại 
+            # vì chúng không nằm trong theoretical_secondary (vũ trụ Sutta).
+            if self.book_counts.get(book_id, 0) > 0:
                 valid_secondary.append(book_id)
 
         sorted_secondary = sorted(valid_secondary)
         
-        # Tạo Group Map cho Frontend dễ hiển thị Filter
-        # BOOK_GROUPS = { "an": ["an1", ...], "sn": ["sn1", ...] }
+        # 3. Tạo Group Map cho AN/SN (Optional, giúp UI)
         book_groups = {}
         for book_id in self.book_counts.keys():
-            for p_book in ["an", "sn"]:
+            for p_book in ["an", "sn"]: # Hardcode primary groups
                 if book_id.startswith(p_book) and book_id != p_book:
                     if p_book not in book_groups: book_groups[p_book] = []
                     book_groups[p_book].append(book_id)
         
         for k in book_groups:
-            book_groups[k].sort()
+            book_groups[k].sort(key=lambda x: (len(x), x)) # Sort an1, an2, an10
 
         content = (
             "// Path: web/assets/modules/data/constants.js\n"
@@ -91,4 +73,4 @@ class PoolManager:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
             
-        logger.info(f"   ✨ Generated constants.js")
+        logger.info(f"   ✨ Generated constants.js (Secondary: {len(sorted_secondary)} books)")
