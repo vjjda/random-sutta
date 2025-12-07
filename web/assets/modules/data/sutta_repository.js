@@ -33,34 +33,13 @@ export const SuttaRepository = {
      */
     async getPools() {
         await this.init();
-        return _cache.index ? _cache.index.pools : {};
-    },
-
-    async _fetchJson(relativePath) {
-        // ... (Giữ nguyên logic cache/fetch) ...
-        const fullPath = `assets/db/${relativePath}.json`;
         
-        if (relativePath.startsWith('content/') && _cache.chunks[relativePath]) return _cache.chunks[relativePath];
-        if (relativePath.startsWith('structure/') && _cache.structures[relativePath]) return _cache.structures[relativePath];
-
-        try {
-            const resp = await fetch(fullPath);
-            if (!resp.ok) return null;
-            const data = await resp.json();
-
-            if (relativePath.startsWith('content/')) _cache.chunks[relativePath] = data;
-            if (relativePath.startsWith('structure/')) _cache.structures[relativePath] = data;
-            
-            return data;
-        } catch (e) {
-            logger.error("fetch", `Error loading ${fullPath}`, e);
-            return null;
+        // [FIX] Fallback cho 'tpk' nếu không có trong index
+        let locator = this._resolveLocator(uid);
+        if (!locator && uid === 'tpk') {
+            locator = 'structure/super_struct';
         }
-    },
-
-    async getSuttaEntry(uid) {
-        await this.init();
-        const locator = this._resolveLocator(uid);
+        
         if (!locator) return null;
 
         // CASE 1: Branch/Root
@@ -72,14 +51,13 @@ export const SuttaRepository = {
             return {
                 uid: uid,
                 meta: metaInfo || {}, 
-                // [FIX] Trả về toàn bộ meta của file structure để Renderer vẽ các con
-                fullMeta: structData.meta, 
-                bookStructure: structData.structure,
+                fullMeta: structData.meta, // Quan trọng: Trả về full meta để nav service dùng
+                bookStructure: structData.structure, // Quan trọng: Structure để tính nav
                 isBranch: true 
             };
         }
-
-        // CASE 2: Leaf/Subleaf
+        
+        // ... (CASE 2: Content giữ nguyên)
         if (locator.startsWith('content/')) {
             const chunkData = await this._fetchJson(locator);
             if (!chunkData || !chunkData[uid]) return null;
