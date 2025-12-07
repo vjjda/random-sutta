@@ -44,6 +44,7 @@ def generate_subleaf_shortcuts(
     result_meta = {}
     ordered_structure_ids = []
 
+    # 1. Quét Content tìm Subleaves
     real_prefixes = set()
     for seg_id in content.keys():
         if ":" in seg_id:
@@ -53,6 +54,7 @@ def generate_subleaf_shortcuts(
     sorted_prefixes = sorted(list(real_prefixes), key=_natural_keys)
     root_range_info = _parse_range_string(root_uid)
 
+    # CASE A: Single Leaf
     is_single_leaf = (len(sorted_prefixes) == 0) or \
                      (len(sorted_prefixes) == 1 and sorted_prefixes[0] == root_uid)
 
@@ -60,6 +62,11 @@ def generate_subleaf_shortcuts(
         if root_range_info:
             prefix, start, end = root_range_info
             aliases = _expand_alias_ids(prefix, start, end)
+            
+            # [LOG] Thông báo bung Alias cho Single Leaf
+            if len(aliases) > 0:
+                logger.info(f"   ✨ Expanding Alias: {root_uid} -> {len(aliases)} aliases ({aliases[0]}...)")
+
             for alias_id in aliases:
                 if alias_id == root_uid: continue
                 try:
@@ -69,7 +76,6 @@ def generate_subleaf_shortcuts(
                 except ValueError:
                     alias_acronym = ""
 
-                # Alias chỉ nằm trong Meta, KHÔNG vào structure list
                 result_meta[alias_id] = {
                     "type": "alias",
                     "parent_uid": root_uid,
@@ -78,7 +84,11 @@ def generate_subleaf_shortcuts(
                 }
         return [root_uid], result_meta
 
+    # CASE B: Container Leaf (Có Subleaves)
     else:
+        # [LOG] Thông báo tách Subleaf
+        logger.info(f"   🌿 Splitting Container: {root_uid} -> {len(sorted_prefixes)} subleaves")
+
         for sub_uid in sorted_prefixes:
             ordered_structure_ids.append(sub_uid)
             
@@ -105,6 +115,10 @@ def generate_subleaf_shortcuts(
                 p_prefix, p_start, p_end = parsed_sub
                 aliases = _expand_alias_ids(p_prefix, p_start, p_end)
                 
+                # [LOG] Thông báo bung Alias cho Subleaf (nếu có)
+                if len(aliases) > 0:
+                    logger.info(f"      ↳ Sub-Alias: {sub_uid} -> {len(aliases)} items")
+
                 for alias_id in aliases:
                     if alias_id == sub_uid: continue
                     
@@ -115,7 +129,6 @@ def generate_subleaf_shortcuts(
                     except ValueError:
                         alias_acronym = ""
 
-                    # Alias chỉ nằm trong Meta
                     result_meta[alias_id] = {
                         "type": "alias",
                         "parent_uid": root_uid,
