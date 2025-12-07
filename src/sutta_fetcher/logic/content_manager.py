@@ -19,7 +19,10 @@ class ContentManager:
         DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
     def _get_book_structure_map(self) -> Dict[str, str]:
-        """Quét thư mục CACHE Root để xây dựng bản đồ cấu trúc (cho Smart Tree)."""
+        """
+        Builds map of book_id -> relative_path (e.g. 'dn' -> 'sutta/dn')
+        Optimized to scan only relevant directory levels instead of full rglob.
+        """
         root_src = CACHE_DIR / "sc_bilara_data/root/pli/ms"
         structure_map = {}
         
@@ -27,16 +30,32 @@ class ContentManager:
             logger.warning(f"⚠️ Cannot find root text in cache at {root_src}")
             return structure_map
 
-        for item in root_src.rglob("*"):
-            if item.is_dir():
-                if item.name in ["sutta", "vinaya", "abhidhamma", "kn"]:
-                    continue
-                try:
-                    rel_path = item.relative_to(root_src)
-                    category_path = str(rel_path.parent)
-                    structure_map[item.name] = category_path
-                except ValueError:
-                    continue
+        # Helper to register books in a directory
+        def scan_dir(path: Path, relative_base: str):
+            if not path.exists(): return
+            for item in path.iterdir():
+                if item.is_dir():
+                     # Construct the logic relative path (e.g. sutta/dn)
+                     # For KN: sutta/kn/dhp
+                     structure_map[item.name] = f"{relative_base}/{item.name}"
+
+        # 1. Main Nikayas (sutta/dn, sutta/mn, etc.)
+        sutta_dir = root_src / "sutta"
+        if sutta_dir.exists():
+            for item in sutta_dir.iterdir():
+                if item.is_dir():
+                    if item.name == "kn":
+                        # 2. Khuddaka Nikaya (sutta/kn/dhp, etc.)
+                        scan_dir(item, "sutta/kn")
+                    else:
+                        structure_map[item.name] = f"sutta/{item.name}"
+        
+        # 3. Vinaya
+        scan_dir(root_src / "vinaya", "vinaya")
+        
+        # 4. Abhidhamma
+        scan_dir(root_src / "abhidhamma", "abhidhamma")
+
         return structure_map
 
     def _smart_copy_tree(self, src_path: Path, dest_path: Path) -> str:
