@@ -10,7 +10,10 @@ const logger = getLogger("SuttaService");
 export const SuttaService = {
     async loadFullSuttaData(suttaId) {
         let entry = await SuttaRepository.getSuttaEntry(suttaId);
+        
         if (!entry) {
+            // [Fix] Fallback đặc biệt cho các root items (long, middle...) nếu index chưa chuẩn
+            // Đôi khi index trỏ đúng nhưng entry trả về null do cache/fetch fail
             logger.warn("load", `${suttaId} not found in DB.`);
             return null;
         }
@@ -18,7 +21,7 @@ export const SuttaService = {
         const meta = entry.meta || {};
         let content = entry.content;
 
-        // Subleaf Handling
+        // Subleaf
         if (meta.type === 'subleaf' && meta.parent_uid && meta.extract_id) {
             logger.info("load", `${suttaId} is subleaf. Fetching parent ${meta.parent_uid}...`);
             const parentEntry = await SuttaRepository.getSuttaEntry(meta.parent_uid);
@@ -29,26 +32,25 @@ export const SuttaService = {
              return { data: { uid: suttaId, meta: meta, isAlias: true }, navData: null };
         }
 
-        // [FIX] Navigation Logic
+        // Navigation Structure Setup
         let localStructure = null;
         let structData = null;
 
-        // Case A: Nếu bản thân là Branch, Repository đã trả về structure của nó (từ super_struct hoặc file riêng)
+        // [Logic quan trọng cho Super Struct items]
         if (entry.isBranch && entry.bookStructure) {
+            // Nếu là branch (như 'long'), repository đã trả về toàn bộ super_struct trong bookStructure
             localStructure = entry.bookStructure;
-        } 
-        // Case B: Nếu là Leaf/Subleaf, thử load structure của sách chứa nó
-        else {
+        } else {
+            // Nếu là leaf, load structure của book chứa nó
             const bookId = suttaId.match(/^[a-z]+/)[0];
             structData = await SuttaRepository.getBookStructure(bookId);
             if (structData) localStructure = structData.structure;
         }
         
-        // [QUAN TRỌNG] Luôn gọi NavigationService, kể cả khi localStructure là null/empty
-        // Để NavigationService có cơ hội kích hoạt logic "Escalation" lên super_struct
+        // Gọi Nav Service
         const navData = await NavigationService.getNavForSutta(suttaId, localStructure || {});
 
-        // Nav Meta
+        // Nav Meta fetching
         const uidsToFetch = [];
         if (navData.prev) uidsToFetch.push(navData.prev);
         if (navData.next) uidsToFetch.push(navData.next);
@@ -60,10 +62,10 @@ export const SuttaService = {
         return {
             data: {
                 uid: suttaId,
+                // Dùng fullMeta nếu là Branch để render Card con
                 meta: entry.isBranch ? entry.fullMeta : meta, 
                 navMeta: navMeta, 
                 content: content,
-                // Ưu tiên dùng structure đã load được (cho render TOC)
                 bookStructure: localStructure || (structData ? structData.structure : null),
                 isBranch: entry.isBranch
             },
