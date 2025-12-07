@@ -14,17 +14,59 @@ EXTRA_BOOKS = {
     "pli-tv-bu-pm": "vinaya/pli-tv-bu-pm"
 }
 
-def _build_root_file_index() -> Dict[str, Path]:
-    logger.info("⚡ Indexing root files...")
-    # [UPDATED]
-    root_dir = RAW_BILARA_TEXT_DIR
-    index = {}
-    if not root_dir.exists(): return index
-    for file_path in root_dir.rglob("*_root-*.json"):
-        if file_path.is_file():
-            sutta_id = file_path.name.split("_")[0]
-            index[sutta_id] = file_path
-    return index
+def _build_file_indices() -> Tuple[Dict[str, Path], Dict[str, Dict[str, Path]], Dict[str, Path], Dict[str, Path]]:
+    """
+    Scans the raw data directories ONCE to build lookup maps for all file types.
+    Returns: (root_index, trans_index, html_index, comment_index)
+    """
+    logger.info("⚡ Indexing ALL raw files (Root, Trans, HTML, Comment)...")
+    
+    root_index = {}
+    trans_index = {}
+    html_index = {}
+    comment_index = {}
+
+    # 1. Index Root Files
+    if RAW_BILARA_TEXT_DIR.exists():
+        for file_path in RAW_BILARA_TEXT_DIR.rglob("*_root-*.json"):
+            if file_path.is_file():
+                sutta_id = file_path.name.split("_")[0]
+                root_index[sutta_id] = file_path
+
+    # 2. Index Translation Files
+    trans_dir = RAW_BILARA_DIR / "translation" / "en"
+    if trans_dir.exists():
+        for file_path in trans_dir.rglob("*_translation-en-*.json"):
+            if file_path.is_file():
+                # Filename format: {sutta_id}_translation-en-{author_uid}.json
+                parts = file_path.name.replace(".json", "").split("_")
+                if len(parts) >= 2:
+                    sutta_id = parts[0]
+                    # suffix is translation-en-{author_uid}
+                    suffix_parts = parts[1].split("-")
+                    if len(suffix_parts) >= 3:
+                        author_uid = suffix_parts[2]
+                        
+                        if sutta_id not in trans_index: trans_index[sutta_id] = {}
+                        trans_index[sutta_id][author_uid] = file_path
+
+    # 3. Index HTML Files
+    html_dir = RAW_BILARA_DIR / "html"
+    if html_dir.exists():
+        for file_path in html_dir.rglob("*_html.json"):
+             if file_path.is_file():
+                sutta_id = file_path.name.split("_")[0]
+                html_index[sutta_id] = file_path
+
+    # 4. Index Comment Files
+    comment_dir = RAW_BILARA_DIR / "comment"
+    if comment_dir.exists():
+        for file_path in comment_dir.rglob("*_comment-*.json"):
+            if file_path.is_file():
+                sutta_id = file_path.name.split("_")[0]
+                comment_index[sutta_id] = file_path
+
+    return root_index, trans_index, html_index, comment_index
 
 def _identify_book_group_from_tree(tree_file: Path) -> str:
     try:
@@ -52,17 +94,19 @@ def _get_priority_score(group_name: str) -> int:
     if group_name.startswith("abhidhamma"): return 2
     return 3
 
-def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, Path, Optional[str]]]]:
+def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str]]]]:
     # [UPDATED]
     tree_dir = RAW_BILARA_DIR / "tree"
     if not tree_dir.exists():
         logger.warning(f"Tree directory missing: {tree_dir}")
         return {}
 
-    file_index = _build_root_file_index()
+    # Build comprehensive indices once
+    root_index, trans_index, html_index, comment_index = _build_file_indices()
+    
     logger.info(f"🌲 Scanning Tree files...")
     
-    raw_tasks_list: List[Tuple[str, List[Tuple[str, Path, Optional[str]]]]] = []
+    raw_tasks_list: List[Tuple[str, List[Tuple]]] = []
     total_suttas = 0
     
     tree_files = sorted(list(tree_dir.rglob("*-tree.json")))
@@ -78,12 +122,22 @@ def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, P
             
             tasks = []
             for uid in ordered_uids:
-                if uid in file_index:
-                    root_path = file_index[uid]
+                if uid in root_index:
+                    root_path = root_index[uid]
                     author_uid = None
                     if uid in meta_map:
                         author_uid = meta_map[uid].get("best_author_uid")
-                    tasks.append((uid, root_path, author_uid))
+                    
+                    # Resolve paths immediately
+                    html_path = html_index.get(uid)
+                    comment_path = comment_index.get(uid)
+                    
+                    trans_path = None
+                    if author_uid and uid in trans_index:
+                        trans_path = trans_index[uid].get(author_uid)
+
+                    # Expanded Tuple
+                    tasks.append((uid, root_path, trans_path, html_path, comment_path, author_uid))
             
             if tasks:
                 raw_tasks_list.append((group_id, tasks))
@@ -92,12 +146,18 @@ def generate_book_tasks(meta_map: Dict[str, Any]) -> Dict[str, List[Tuple[str, P
             logger.error(f"Error parsing tree {tree_file.name}: {e}")
 
     for book_id, group_name in EXTRA_BOOKS.items():
-        if book_id in file_index:
+        if book_id in root_index:
             logger.info(f"   ➕ Injecting extra book: {group_name}")
-            root_path = file_index[book_id]
+            root_path = root_index[book_id]
             author_uid = meta_map.get(book_id, {}).get("best_author_uid")
             
-            tasks = [(book_id, root_path, author_uid)]
+            html_path = html_index.get(book_id)
+            comment_path = comment_index.get(book_id)
+            trans_path = None
+            if author_uid and book_id in trans_index:
+                trans_path = trans_index[book_id].get(author_uid)
+            
+            tasks = [(book_id, root_path, trans_path, html_path, comment_path, author_uid)]
             raw_tasks_list.append((group_name, tasks))
             total_suttas += 1
 

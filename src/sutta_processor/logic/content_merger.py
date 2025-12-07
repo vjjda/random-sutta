@@ -5,9 +5,6 @@ import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Any
 
-# [UPDATED]
-from ..shared.app_config import RAW_BILARA_DIR
-
 logger = logging.getLogger("SuttaProcessor.Logic.Merger")
 
 def load_json(path: Path) -> Dict[str, str]:
@@ -18,25 +15,6 @@ def load_json(path: Path) -> Dict[str, str]:
             return json.load(f)
     except Exception:
         return {}
-
-def get_file_path(sutta_id: str, category: str, author_uid: str = None) -> Optional[Path]:
-    # [UPDATED] RAW_BILARA_DIR
-    if category == "translation":
-        if not author_uid: return None
-        base = RAW_BILARA_DIR / "translation" / "en" / author_uid
-        pattern = f"{sutta_id}_translation-en-{author_uid}.json"
-    elif category == "html":
-        base = RAW_BILARA_DIR / "html"
-        pattern = f"{sutta_id}_html.json"
-    elif category == "comment":
-        base = RAW_BILARA_DIR / "comment" / "en"
-        pattern = f"{sutta_id}_comment-en-*.json"
-    else:
-        return None
-
-    if not base.exists(): return None
-    found = list(base.rglob(pattern))
-    return found[0] if found else None
 
 def natural_keys(text: str):
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
@@ -57,14 +35,12 @@ def _sanitize_links(text: str) -> str:
 
     return re.sub(pattern, repl, text)
 
-def process_worker(args: Tuple[str, Path, Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]]]:
-    sutta_id, root_path, author_uid = args
+def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]]]:
+    # [OPTIMIZED] Unpack expanded tuple with pre-resolved paths
+    sutta_id, root_path, trans_path, html_path, comment_path, author_uid = args
     
     try:
-        trans_path = get_file_path(sutta_id, "translation", author_uid) if author_uid else None
-        html_path = get_file_path(sutta_id, "html")
-        comment_path = get_file_path(sutta_id, "comment")
-
+        # Pre-check: If HTML missing, skip immediately
         if not html_path:
             return "skipped", sutta_id, None
 
