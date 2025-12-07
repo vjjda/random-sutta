@@ -22,7 +22,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v3.2 - Explicit Keys): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v3.3 - Full Indexing): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -64,13 +64,8 @@ class DBOrchestrator:
         logger.info("✨ Optimization Completed.")
 
     def _extract_sutta_books(self, structure: Any) -> List[str]:
-        """
-        Trích xuất danh sách sách nằm trong nhánh 'sutta'.
-        Logic: Tìm node 'sutta', sau đó lấy tất cả các keys con cháu.
-        """
         sutta_books = set()
         
-        # 1. Tìm node "sutta" trong cây
         def _find_sutta_node(root):
             if isinstance(root, dict):
                 if "sutta" in root: return root["sutta"]
@@ -83,12 +78,9 @@ class DBOrchestrator:
                     if res: return res
             return None
 
-        # 2. Thu thập tất cả key (là mã sách) dưới node sutta
         def _collect_keys(node):
             if isinstance(node, dict):
                 for k, v in node.items():
-                    # Giả định: Key ở level này là tên sách (dn, mn...) hoặc nhóm (kn)
-                    # Cách đơn giản: Cứ lấy hết key, sau này filter bằng processed books
                     sutta_books.add(k)
                     _collect_keys(v)
             elif isinstance(node, list):
@@ -110,11 +102,16 @@ class DBOrchestrator:
             sutta_books = self._extract_sutta_books(structure)
             self.pool_manager.set_sutta_universe(sutta_books)
 
+            # [FIXED] Đăng ký locator cho tpk, sutta, vinaya...
+            meta = data.get("meta", {})
+            for uid in meta.keys():
+                self.global_locator[uid] = "tpk"
+
             meta_pack = {
                 "id": "tpk",
                 "title": data.get("title"),
                 "tree": structure,
-                "meta": data.get("meta"), 
+                "meta": meta,
                 "uids": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)

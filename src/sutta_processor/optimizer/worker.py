@@ -10,15 +10,15 @@ from .chunker import chunk_content_with_meta
 
 logger = logging.getLogger("Optimizer.Worker")
 
-# Các sách cần chia nhỏ
 SPLIT_CONFIG = {
     "an": "nipata",
     "sn": "vagga"
 }
 
 def _flatten_tree(node: Any, meta_map: Dict[str, Any], result_list: List[str]) -> None:
-    """Đệ quy làm phẳng cây structure để lấy thứ tự đọc tuyến tính."""
     if isinstance(node, str):
+        # Flatten vẫn chỉ lấy Leaf/Subleaf cho Linear Reading Order (Nav)
+        # Branch không cần nằm trong Linear Order (Prev/Next)
         m_type = meta_map.get(node, {}).get("type")
         if m_type in ["leaf", "subleaf"]:
             result_list.append(node)
@@ -30,24 +30,17 @@ def _flatten_tree(node: Any, meta_map: Dict[str, Any], result_list: List[str]) -
             _flatten_tree(value, meta_map, result_list)
 
 def _build_nav_map(linear_uids: List[str]) -> Dict[str, Dict[str, str]]:
-    """Tính toán Prev/Next."""
     nav_map = {}
     total = len(linear_uids)
     for i, uid in enumerate(linear_uids):
         nav_entry = {}
-        if i > 0: nav_entry["prev"] = linear_uids[i-1] # [CHANGED] p -> prev
-        if i < total - 1: nav_entry["next"] = linear_uids[i+1] # [CHANGED] n -> next
+        if i > 0: nav_entry["prev"] = linear_uids[i-1]
+        if i < total - 1: nav_entry["next"] = linear_uids[i+1]
         if nav_entry: nav_map[uid] = nav_entry
     return nav_map
 
-def _extract_sub_books(
-    book_id: str, 
-    structure: Any, 
-    full_meta: Dict[str, Any]
-) -> List[Tuple[str, List[str]]]:
-    """Tách cấu trúc sách lớn thành các sách con."""
+def _extract_sub_books(book_id: str, structure: Any, full_meta: Dict[str, Any]) -> List[Tuple[str, List[str]]]:
     sub_books = []
-    
     root_content = structure
     if isinstance(structure, dict):
         if book_id in structure:
@@ -108,35 +101,24 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
 
-        # 3. Metadata Processing Helpers
+        # 3. Metadata Processing Helper
         def build_entry(uid):
             info = full_meta.get(uid, {})
             m_type = info.get("type")
-            
-            # [CHANGED] Khôi phục các trường thông tin và dùng key tường minh
             entry = {
                 "acronym": info.get("acronym"),
                 "translated_title": info.get("translated_title"),
-                "original_title": info.get("original_title"), # [RESTORED]
-                "author_uid": info.get("author_uid"),         # [RESTORED]
+                "original_title": info.get("original_title"),
+                "author_uid": info.get("author_uid"),
                 "type": m_type
             }
-            
-            # Chỉ thêm blurb nếu có để tiết kiệm dung lượng (nhưng vẫn giữ lại)
-            if info.get("blurb"):
-                entry["blurb"] = info.get("blurb")            # [RESTORED]
-
-            if uid in nav_map: 
-                entry["nav"] = nav_map[uid]
-            
-            if uid in chunk_map_idx: 
-                entry["chunk"] = chunk_map_idx[uid]           # [CHANGED] c -> chunk
+            if info.get("blurb"): entry["blurb"] = info.get("blurb")
+            if uid in nav_map: entry["nav"] = nav_map[uid]
+            if uid in chunk_map_idx: entry["chunk"] = chunk_map_idx[uid]
 
             if m_type == "subleaf":
-                if "extract_id" in info: 
-                    entry["extract_id"] = info["extract_id"]  # [CHANGED] eid -> extract_id
-                if "parent_uid" in info: 
-                    entry["parent_uid"] = info["parent_uid"]  # [CHANGED] pid -> parent_uid
+                if "extract_id" in info: entry["extract_id"] = info["extract_id"]
+                if "parent_uid" in info: entry["parent_uid"] = info["parent_uid"]
             
             return entry
 
@@ -152,13 +134,21 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_meta_map = {}
                 sub_valid_uids = []
                 
+                # Với sách con, ta cần đảm bảo mọi UID trong sub_uids đều được map
+                # Tuy nhiên, sub_uids lấy từ flatten_tree nên chỉ chứa Leaf/Subleaf.
+                # Ta cần map cả các Branch con nếu có. Nhưng ở đây đơn giản hóa: 
+                # Chấp nhận chỉ map những gì flatten tìm thấy + logic bổ sung nếu cần.
+                # (Với AN/SN thì cấu trúc khá phẳng nên flatten là đủ)
+                
                 for uid in sub_uids:
                     sub_meta_map[uid] = build_entry(uid)
                     m_type = full_meta.get(uid, {}).get("type")
                     
+                    # [FIXED] Map Locator cho TẤT CẢ uid tìm thấy trong sách con
+                    result["locator_map"][uid] = sub_id 
+                    
                     if m_type in ["leaf", "subleaf"]:
                         sub_valid_uids.append(uid)
-                        result["locator_map"][uid] = sub_id 
                 
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
@@ -171,6 +161,10 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 valid_random_uids_total.extend(sub_valid_uids)
 
+            # Super-Book Meta
+            # [FIXED] Map cả Locator cho Super Book (vd: an -> an)
+            result["locator_map"][book_id] = book_id
+            
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
@@ -181,13 +175,24 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         else:
             # --- NORMAL MODE ---
             slim_meta_map = {}
-            for uid in linear_uids:
-                slim_meta_map[uid] = build_entry(uid)
-                m_type = full_meta.get(uid, {}).get("type")
+            
+            # [FIXED] Duyệt qua FULL META thay vì linear_uids để không bỏ sót Branch/Container
+            for uid, info in full_meta.items():
+                m_type = info.get("type")
                 
+                # Build entry (có thể thiếu Nav nếu là Branch - không sao)
+                entry = build_entry(uid)
+                slim_meta_map[uid] = entry
+                
+                # [FIXED] Map Locator cho TẤT CẢ mọi thứ
+                result["locator_map"][uid] = book_id
+                
+                # Chỉ gom vào Pool nếu là bài đọc được
                 if m_type in ["leaf", "subleaf"]:
                     valid_random_uids_total.append(uid)
-                    result["locator_map"][uid] = book_id
+
+            # Map luôn cả ID của sách (vd: mn -> mn)
+            result["locator_map"][book_id] = book_id
 
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
