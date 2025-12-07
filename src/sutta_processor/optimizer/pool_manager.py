@@ -26,9 +26,9 @@ class PoolManager:
 
         structure = super_data.get("structure", [])
         
-        # [FIX] Handle new nested 'tipitaka' root structure
-        if isinstance(structure, dict) and "tipitaka" in structure:
-            structure = structure["tipitaka"]
+        # [FIX] Handle new nested 'tpk' root structure
+        if isinstance(structure, dict) and "tpk" in structure:
+            structure = structure["tpk"]
             
         # Ensure we are iterating a list (legacy structure was list directly)
         if isinstance(structure, list):
