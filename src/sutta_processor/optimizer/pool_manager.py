@@ -9,9 +9,6 @@ logger = logging.getLogger("Optimizer.Pools")
 class PoolManager:
     def __init__(self):
         self.sutta_books: Set[str] = set()
-        
-        # [OPTIMIZED] Loại bỏ 'primary' list để tránh duplicate data.
-        # Client sẽ tự tổng hợp Primary Pool từ 'books' dựa trên config.
         self.pools: Dict[str, Any] = {
             "books": {} 
         }
@@ -25,12 +22,9 @@ class PoolManager:
                 for v in node.values(): _extract(v, collection)
 
         structure = super_data.get("structure", [])
-        
-        # [FIX] Handle new nested 'tpk' root structure
         if isinstance(structure, dict) and "tpk" in structure:
             structure = structure["tpk"]
             
-        # Ensure we are iterating a list (legacy structure was list directly)
         if isinstance(structure, list):
             for item in structure:
                 if isinstance(item, dict) and "sutta" in item:
@@ -39,33 +33,37 @@ class PoolManager:
 
     @staticmethod
     def filter_smart_uids(raw_content: Dict[str, Any], meta_map: Dict[str, Any]) -> List[str]:
-        candidates = set(raw_content.keys())
+        """
+        Lọc UID cho Random Pool:
+        - Nếu có Subleaf: Chỉ lấy Subleaf (có extract_id), bỏ Parent.
+        - Nếu không có Subleaf (bài đơn): Lấy Parent.
+        - Bỏ qua Alias (không có extract_id hoặc extract_id null).
+        """
+        candidates = set()
         blacklist_parents = set()
 
         for uid, info in meta_map.items():
-            if info.get("type") == "shortcut":
-                parent = info.get("parent_uid")
-                target = info.get("scroll_target")
-                
-                if target:
-                    candidates.add(uid)
-                    if parent: blacklist_parents.add(parent)
+            m_type = info.get("type")
+            extract_id = info.get("extract_id")
+            parent = info.get("parent_uid")
 
-        return sorted([u for u in candidates if u not in blacklist_parents])
+            if m_type == "subleaf" and extract_id:
+                candidates.add(uid)
+                if parent: blacklist_parents.add(parent)
+            
+            elif m_type == "leaf":
+                # Tạm thời thêm vào, sẽ bị remove nếu nằm trong blacklist sau
+                candidates.add(uid)
+
+        # Lọc cuối cùng
+        final_list = [u for u in candidates if u not in blacklist_parents]
+        return sorted(final_list)
 
     def merge_worker_result(self, book_id: str, valid_uids: List[str]):
-        """
-        [OPTIMIZED] Chỉ lưu vào pool của từng sách.
-        Không cộng dồn vào primary pool nữa.
-        """
         if not book_id: return
-        
-        # Add to book pool
         if book_id not in self.pools["books"]:
             self.pools["books"][book_id] = []
         self.pools["books"][book_id].extend(valid_uids)
-
-        # [REMOVED] Logic add to 'primary' is gone.
 
     def generate_js_constants(self):
         secondary = sorted(list(self.sutta_books - PRIMARY_BOOKS_SET))

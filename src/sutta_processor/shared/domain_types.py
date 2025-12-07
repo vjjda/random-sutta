@@ -3,15 +3,16 @@ from typing import TypedDict, Dict, Optional, Any
 
 class SuttaMeta(TypedDict):
     uid: str
-    type: str  # 'leaf' | 'branch'
+    type: str  # 'leaf' | 'branch' | 'subleaf' | 'alias'
     acronym: str
     translated_title: str
     original_title: str
     blurb: Optional[str]
     best_author_uid: Optional[str]
     author_uid: Optional[str]
-    # [QUAN TRỌNG] Thêm trường này để lưu thông tin scroll đã xử lý
-    scroll_target: Optional[str] 
+    # [NEW] extract_id thay thế cho scroll_target
+    # Dùng để làm prefix filter lấy content segment
+    extract_id: Optional[str] 
 
 class SuttaSegment(TypedDict, total=False):
     pli: str

@@ -3,16 +3,14 @@ import json
 import logging
 from typing import Dict, Any, List
 
-# [UPDATED]
 from ..shared.app_config import RAW_BILARA_DIR
 from ..shared.domain_types import SuttaMeta
-from .range_expander import generate_range_shortcuts
+from .range_expander import generate_subleaf_shortcuts
 
 logger = logging.getLogger("SuttaProcessor.Logic.Structure")
 
 def load_original_tree(group_name: str) -> Dict[str, Any]:
     book_id = group_name.split("/")[-1]
-    # [UPDATED]
     tree_path = RAW_BILARA_DIR / "tree" / group_name / f"{book_id}-tree.json"
     
     if not tree_path.exists():
@@ -45,18 +43,6 @@ def simplify_structure(node: Any) -> Any:
         return {k: simplify_structure(v) for k, v in node.items()}
     return node
 
-def flatten_tree_leaves(node: Any) -> List[str]:
-    leaves = []
-    if isinstance(node, str):
-        return [node]
-    elif isinstance(node, list):
-        for child in node:
-            leaves.extend(flatten_tree_leaves(child))
-    elif isinstance(node, dict):
-        for children in node.values():
-            leaves.extend(flatten_tree_leaves(children))
-    return leaves
-
 def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta], target_dict: Dict[str, Any]) -> None:
     if uid not in target_dict:
         info = meta_map.get(uid, {}) # type: ignore
@@ -67,19 +53,77 @@ def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta],
             "original_title": info.get("original_title", ""),
             "blurb": info.get("blurb"),
             "author_uid": None,
-            "scroll_target": info.get("scroll_target")
+            "extract_id": info.get("extract_id") # Updated field
         }
 
-def collect_meta_from_structure(node: Any, meta_map: Dict[str, SuttaMeta], target_dict: Dict[str, Any]) -> None:
+def expand_structure_with_subleaves(
+    node: Any, 
+    raw_content_map: Dict[str, Any], 
+    meta_map: Dict[str, SuttaMeta], 
+    target_meta_dict: Dict[str, Any]
+) -> Any:
+    """
+    Đệ quy biến đổi Structure:
+    - String Node (Range) -> Object Node {parent: [subleaves]}
+    """
     if isinstance(node, str):
-        _add_meta_entry(node, "leaf", meta_map, target_dict)
+        uid = node
+        # Nếu node này có nội dung (là Leaf/Range)
+        if uid in raw_content_map:
+            payload = raw_content_map[uid]
+            parent_meta = meta_map.get(uid, {})
+            parent_acronym = parent_meta.get("acronym", "")
+            
+            # 1. Gọi Expander
+            expanded_ids, generated_meta = generate_subleaf_shortcuts(
+                root_uid=uid,
+                content=payload.get("data", {}),
+                parent_acronym=parent_acronym
+            )
+            
+            # 2. Cập nhật Meta mới sinh ra (Subleaf/Alias)
+            for sc_id, sc_data in generated_meta.items():
+                if sc_id not in target_meta_dict:
+                    api_info = meta_map.get(sc_id, {})
+                    entry = {
+                        "type": sc_data["type"], # 'subleaf' or 'alias'
+                        "acronym": sc_data["acronym"],
+                        "parent_uid": sc_data["parent_uid"],
+                        "extract_id": sc_data["extract_id"] # Quan trọng: ID để filter content
+                    }
+                    if api_info.get("translated_title"):
+                        entry["translated_title"] = api_info["translated_title"]
+                    if api_info.get("original_title"):
+                        entry["original_title"] = api_info["original_title"]
+                    
+                    target_meta_dict[sc_id] = entry
+            
+            # 3. Transform Structure
+            # Nếu expanded_ids > 1 (có subleaves) -> Trả về Object lồng nhau
+            if len(expanded_ids) > 1:
+                # Nếu ID đầu tiên khác root_uid, ta coi root_uid là container
+                return {uid: expanded_ids}
+            else:
+                # Không expand được (hoặc chỉ có 1 con chính là nó) -> Giữ nguyên string
+                return uid
+            
+        return uid
+
     elif isinstance(node, list):
+        new_list = []
         for child in node:
-            collect_meta_from_structure(child, meta_map, target_dict)
+            res = expand_structure_with_subleaves(child, raw_content_map, meta_map, target_meta_dict)
+            new_list.append(res)
+        return new_list
+
     elif isinstance(node, dict):
-        for uid, children in node.items():
-            _add_meta_entry(uid, "branch", meta_map, target_dict)
-            collect_meta_from_structure(children, meta_map, target_dict)
+        new_dict = {}
+        for key, val in node.items():
+            new_dict[key] = expand_structure_with_subleaves(val, raw_content_map, meta_map, target_meta_dict)
+            _add_meta_entry(key, "branch", meta_map, target_meta_dict)
+        return new_dict
+    
+    return node
 
 def build_book_data(
     group_name: str, 
@@ -87,78 +131,33 @@ def build_book_data(
     names_map: Dict[str, SuttaMeta]
 ) -> Dict[str, Any]:
     raw_tree = load_original_tree(group_name)
-    structure = simplify_structure(raw_tree)
+    simple_tree = simplify_structure(raw_tree)
 
     meta_dict: Dict[str, Any] = {}
-    collect_meta_from_structure(structure, names_map, meta_dict)
     
+    # 1. Recursive Expand
+    final_structure = expand_structure_with_subleaves(simple_tree, raw_data, names_map, meta_dict)
+    
+    # 2. Add missing parent meta (những Parent Leaf bị biến thành Key của Object vẫn cần meta)
     content_dict = {}
-    
     for uid, payload in raw_data.items():
         if not payload: continue
+        content_dict[uid] = payload.get("data", {})
         
-        content_dict[uid] = payload.get("data", {}) 
-        
+        if uid not in meta_dict:
+            _add_meta_entry(uid, "leaf", names_map, meta_dict)
+            
         author = payload.get("author_uid")
         if uid in meta_dict and author:
             meta_dict[uid]["author_uid"] = author
 
-        parent_meta = names_map.get(uid, {})
-        parent_acronym = parent_meta.get("acronym", "")
-
-        shortcuts = generate_range_shortcuts(
-            root_uid=uid, 
-            content=payload.get("data", {}),
-            parent_acronym=parent_acronym
-        )
-
-        for sc_id, sc_data in shortcuts.items():
-            if sc_id not in meta_dict:
-                api_info = names_map.get(sc_id, {})
-                final_target = sc_data["scroll_target"]
-                if final_target == sc_data["parent_uid"]:
-                    final_target = None
-
-                shortcut_entry = {
-                    "type": "shortcut",
-                    "acronym": sc_data["acronym"],
-                    "parent_uid": sc_data["parent_uid"], 
-                    "is_implicit": sc_data["is_implicit"]
-                }
-
-                if final_target:
-                    shortcut_entry["scroll_target"] = final_target
-                
-                if api_info.get("translated_title"):
-                    shortcut_entry["translated_title"] = api_info["translated_title"]
-                
-                if api_info.get("original_title"):
-                    shortcut_entry["original_title"] = api_info["original_title"]
-
-                meta_dict[sc_id] = shortcut_entry
-
-    for sid in raw_data.keys():
-        if sid not in meta_dict:
-            _add_meta_entry(sid, "leaf", names_map, meta_dict)
-
-    ordered_leaves = flatten_tree_leaves(structure)
-    final_content_ordered = {}
-    
-    for uid in ordered_leaves:
-        if uid in content_dict:
-            final_content_ordered[uid] = content_dict[uid]
-    
-    for uid, content in content_dict.items():
-        if uid not in final_content_ordered:
-            final_content_ordered[uid] = content
-
     book_id = group_name.split("/")[-1]
-    book_meta = names_map.get(book_id, {}) 
+    book_meta = names_map.get(book_id, {})
 
     return {
         "id": book_id,
         "title": book_meta.get("translated_title", book_id.upper()),
-        "structure": structure,
+        "structure": final_structure,
         "meta": meta_dict,
-        "content": final_content_ordered 
+        "content": content_dict # Content giữ nguyên theo Parent Key
     }

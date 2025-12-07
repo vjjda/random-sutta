@@ -36,14 +36,14 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         for uid, info in full_meta.items():
             m_type = info.get("type")
             
-            # A. LEAF / SHORTCUT -> Đẩy HẾT sang Chunk
-            if m_type != "branch" and m_type != "root":
+            # A. LEAF / SUBLEAF / ALIAS -> Vào Content Chunk
+            if m_type in ["leaf", "subleaf", "alias"]:
                 leaf_meta[uid] = info
-
-            # B. BRANCH / ROOT -> Giữ lại ở Structure
+                # Lưu ý: Locator của Subleaf/Alias sẽ được gán trong vòng lặp chunker bên dưới
+            
+            # B. BRANCH / ROOT -> Vào Structure File
             else:
                 branch_meta[uid] = info
-                # [FIXED] Thêm tiền tố 'structure/' vào locator
                 result["locators"][uid] = f"structure/{safe_name}_struct"
 
         # --- Save Structure ---
@@ -55,17 +55,19 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         }
         io.save_dual(f"structure/{safe_name}_struct.json", struct_data)
 
-        # --- Process Content & Leaf Meta ---
+        # --- Process Content ---
         raw_content = data.get("content", {})
         
         if raw_content:
             chunks = chunk_content_with_meta(safe_name, raw_content, leaf_meta)
             for fname, chunk_data in chunks:
                 io.save_dual(f"content/{fname}.json", chunk_data)
+                
+                # Tạo Locator: Mọi ID trong chunk (bao gồm parent, subleaf, alias) đều trỏ về file này
                 for uid in chunk_data.keys():
-                    # [FIXED] Thêm tiền tố 'content/' vào locator
                     result["locators"][uid] = f"content/{fname}"
 
+            # Filter UIDs cho Random Pool
             result["valid_uids"] = PoolManager.filter_smart_uids(raw_content, full_meta)
 
         result["status"] = "success"
