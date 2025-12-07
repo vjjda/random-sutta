@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Set
 
 from .io_manager import IOManager
 from .chunker import chunk_content_with_meta
-from .tree_utils import flatten_tree_uids, collect_all_keys, build_nav_map
+from .tree_utils import flatten_tree_uids, collect_all_keys, build_nav_map, prune_tree_aliases # [NEW]
 from .splitter import is_split_book, extract_sub_books
 
 logger = logging.getLogger("Optimizer.Worker")
@@ -16,17 +16,14 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
-    # [NEW LOGIC] Xử lý Alias tối giản (Soft Link)
+    # Alias tối giản
     if m_type == "alias":
-        # Target ưu tiên extract_id (nếu trỏ vào đoạn con) hoặc parent_uid (nếu trỏ vào file gốc)
-        # range_expander.py đã đảm bảo logic này
         target = info.get("extract_id") or info.get("parent_uid")
         return {
             "type": "alias",
             "target_uid": target
         }
 
-    # --- Logic cho Leaf/Subleaf/Branch (Giữ nguyên) ---
     entry = {}
     if info.get("acronym"): entry["acronym"] = info["acronym"]
     if info.get("translated_title"): entry["translated_title"] = info["translated_title"]
@@ -79,7 +76,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             # --- SPLIT MODE ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
-            
             root_title = data.get("title", "")
 
             for sub_id, sub_leaves, sub_struct in sub_books:
@@ -92,19 +88,21 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                     result["locator_map"][k] = sub_id
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
 
-                # Inject Parent Meta
                 if book_id in full_meta:
                     sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
                 
                 final_tree = { book_id: { sub_id: sub_struct } }
+                
+                # [NEW] Làm sạch Tree trước khi lưu
+                clean_tree = prune_tree_aliases(final_tree, full_meta)
 
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
                     "title": f"{sub_id.upper()}",
                     "root_id": book_id,
                     "root_title": root_title,
-                    "tree": final_tree, 
-                    "meta": sub_meta_map,
+                    "tree": clean_tree, # Saved Clean Tree
+                    "meta": sub_meta_map, # Meta vẫn chứa alias
                     "random_pool": sub_leaves
                 })
                 
@@ -113,10 +111,15 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
             # Save Super-Book
             result["locator_map"][book_id] = book_id
+            
+            # Super book tree cũng cần clean (nếu nó chứa alias ở level cao, dù ít gặp)
+            clean_struct = prune_tree_aliases(structure, full_meta)
+            
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
                 "title": root_title,
+                "tree": clean_struct,
                 "children": sub_book_ids,
                 "child_counts": result["sub_counts"]
             })
@@ -133,10 +136,13 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 result["locator_map"][k] = book_id
                 slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
             
+            # [NEW] Làm sạch Tree
+            clean_tree = prune_tree_aliases(structure, full_meta)
+
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "title": data.get("title"),
-                "tree": structure,
+                "tree": clean_tree, # Saved Clean Tree
                 "meta": slim_meta_map,
                 "random_pool": linear_uids
             })
