@@ -28,20 +28,26 @@ export const SuttaRepository = {
         return _cache.index.locator[uid];
     },
 
+    /**
+     * [MỚI] Lấy danh sách Pools từ index
+     */
+    async getPools() {
+        await this.init();
+        return _cache.index ? _cache.index.pools : {};
+    },
+
     async _fetchJson(relativePath) {
+        // ... (Giữ nguyên logic cache/fetch) ...
         const fullPath = `assets/db/${relativePath}.json`;
         
-        // Cache Check
         if (relativePath.startsWith('content/') && _cache.chunks[relativePath]) return _cache.chunks[relativePath];
         if (relativePath.startsWith('structure/') && _cache.structures[relativePath]) return _cache.structures[relativePath];
 
-        // logger.debug("fetch", `Fetching ${relativePath}...`);
         try {
             const resp = await fetch(fullPath);
             if (!resp.ok) return null;
             const data = await resp.json();
 
-            // Save to Cache
             if (relativePath.startsWith('content/')) _cache.chunks[relativePath] = data;
             if (relativePath.startsWith('structure/')) _cache.structures[relativePath] = data;
             
@@ -52,72 +58,54 @@ export const SuttaRepository = {
         }
     },
 
-    /**
-     * Lấy dữ liệu entry (Leaf, Subleaf, hoặc Branch/Root)
-     */
     async getSuttaEntry(uid) {
         await this.init();
         const locator = this._resolveLocator(uid);
-        
-        if (!locator) {
-            // logger.warn("getSuttaEntry", `UID ${uid} not found in index.`);
-            return null;
-        }
+        if (!locator) return null;
 
-        // CASE 1: Branch/Root (Locator bắt đầu bằng 'structure/')
+        // CASE 1: Branch/Root
         if (locator.startsWith('structure/')) {
             const structData = await this._fetchJson(locator);
             if (!structData) return null;
 
-            // Structure File format: { id: "mn", meta: { "mn": {...} }, structure: ... }
-            // Trả về định dạng chuẩn hóa
             const metaInfo = structData.meta && structData.meta[uid];
             return {
                 uid: uid,
                 meta: metaInfo || {}, 
+                // [FIX] Trả về toàn bộ meta của file structure để Renderer vẽ các con
+                fullMeta: structData.meta, 
                 bookStructure: structData.structure,
                 isBranch: true 
             };
         }
 
-        // CASE 2: Leaf/Subleaf (Locator bắt đầu bằng 'content/')
+        // CASE 2: Leaf/Subleaf
         if (locator.startsWith('content/')) {
             const chunkData = await this._fetchJson(locator);
             if (!chunkData || !chunkData[uid]) return null;
             return chunkData[uid]; 
         }
-
         return null;
     },
 
-    /**
-     * Tải hàng loạt Metadata cho danh sách UIDs (Dùng cho Navigation)
-     */
     async fetchMetaList(uids) {
         await this.init();
         const result = {};
-        const uniqueIds = [...new Set(uids)].filter(u => u); // Lọc trùng và null
-
-        // Chạy song song để tối ưu tốc độ
+        const uniqueIds = [...new Set(uids)].filter(u => u);
+        
         await Promise.all(uniqueIds.map(async (uid) => {
             const entry = await this.getSuttaEntry(uid);
             if (entry && entry.meta) {
                 result[uid] = entry.meta;
             }
         }));
-        
         return result;
     },
 
     async getBookStructure(bookId) {
         await this.init();
         let locator = this._resolveLocator(bookId);
-        
-        // Fallback convention nếu không tìm thấy locator trực tiếp
-        if (!locator) {
-             locator = `structure/sutta_${bookId}_${bookId}_struct`;
-        }
-        
+        if (!locator) locator = `structure/sutta_${bookId}_${bookId}_struct`;
         return await this._fetchJson(locator);
     }
 };
