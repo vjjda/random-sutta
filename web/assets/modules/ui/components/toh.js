@@ -1,8 +1,7 @@
-// Path: web/assets/modules/ui/toh_component.js
-import { Scroller } from './scroller.js';
+// Path: web/assets/modules/ui/components/toh.js
+import { Scroller } from '../common/scroller.js';
 
 export function setupTableOfHeadings() {
-    // ... (Giữ nguyên phần khai báo biến) ...
     const wrapper = document.getElementById("toh-wrapper");
     const fab = document.getElementById("toh-fab");
     const menu = document.getElementById("toh-menu");
@@ -13,13 +12,14 @@ export function setupTableOfHeadings() {
         return { generate: () => {} };
     }
 
-    // ... (Giữ nguyên event listener của Menu) ...
+    // Toggle menu logic
     fab.onclick = (e) => {
         menu.classList.toggle("hidden");
         fab.classList.toggle("active");
         e.stopPropagation();
     };
     
+    // Đóng menu khi click ra ngoài
     document.addEventListener("click", (e) => {
         if (!menu.classList.contains("hidden") && !wrapper.contains(e.target)) {
             menu.classList.add("hidden");
@@ -32,8 +32,10 @@ export function setupTableOfHeadings() {
         menu.classList.add("hidden");
         fab.classList.remove("active");
 
+        // Quét các thẻ Heading trong nội dung bài kinh
         const headings = container.querySelectorAll("h1, h2, h3, h4, h5");
         
+        // Nếu ít hơn 2 heading thì ẩn luôn TOH cho gọn
         if (headings.length < 2) {
             wrapper.classList.add("hidden");
             return;
@@ -42,6 +44,7 @@ export function setupTableOfHeadings() {
         wrapper.classList.remove("hidden");
 
         headings.forEach((heading, index) => {
+            // Đảm bảo heading có ID để link tới
             if (!heading.id) {
                 heading.id = `toh-heading-${index}`;
             }
@@ -52,6 +55,7 @@ export function setupTableOfHeadings() {
             const span = document.createElement("span"); 
             span.className = "toh-link";
             
+            // Ưu tiên lấy text tiếng Anh hoặc Pali
             let labelText = heading.textContent;
             const engNode = heading.querySelector(".eng");
             const pliNode = heading.querySelector(".pli");
@@ -64,11 +68,9 @@ export function setupTableOfHeadings() {
             
             span.textContent = labelText.replace(/\s+/g, ' ').trim();
             
-            // [FIX] Click Handler dùng Animation
+            // Click Handler: Cuộn mượt + Đóng menu
             span.onclick = () => {
-                // Sử dụng hàm mới để có hiệu ứng Fade -> Jump -> Fade
                 Scroller.animateScrollTo(heading.id);
-                
                 menu.classList.add("hidden");
                 fab.classList.remove("active");
             };

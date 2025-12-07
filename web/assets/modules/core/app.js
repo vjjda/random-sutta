@@ -1,17 +1,19 @@
 // Path: web/assets/modules/core/app.js
 import { Router } from './router.js';
-import { initFilters } from '../ui/filters.js';
-import { setupQuickNav } from '../ui/search_component.js';
 import { SuttaController } from './sutta_controller.js';
-import { setupLogging, LogLevel, getLogger } from '../shared/logger.js';
 import { DB } from '../data/db_manager.js';
-import { OfflineManager } from '../ui/offline_manager.js'; // [NEW]
-import { DrawerManager } from '../ui/drawer_manager.js';   // [NEW]
+import { setupLogging, LogLevel, getLogger } from '../utils/logger.js'; // [UPDATED]
+
+// UI Managers & Components
+import { initFilters } from '../ui/components/filters.js';       // [UPDATED]
+import { setupQuickNav } from '../ui/components/search.js';      // [UPDATED]
+import { OfflineManager } from '../ui/managers/offline_manager.js'; // [UPDATED]
+import { DrawerManager } from '../ui/managers/drawer_manager.js';   // [UPDATED]
 
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // 1. Setup Environment
+    // ... (Logic giữ nguyên như cũ) ...
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
     
@@ -19,33 +21,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     const isDebug = params.get("debug") === "1" || params.get("debug") === "true";
     setupLogging({ level: isDebug ? LogLevel.DEBUG : LogLevel.INFO });
 
-    // 2. Initialize UI Components
+    // Initialize UI Components
     DrawerManager.init();
     OfflineManager.init();
     initFilters();
     setupQuickNav((query) => SuttaController.loadSutta(query));
 
-    // 3. Expose Globals
     window.loadSutta = (id, u, s, o) => SuttaController.loadSutta(id, u, s, o);
     window.triggerRandomSutta = () => SuttaController.loadRandomSutta(true);
 
-    // 4. Bind Events
     const randomBtn = document.getElementById("btn-random");
     const statusDiv = document.getElementById("status");
     const navHeader = document.getElementById("nav-header");
 
     randomBtn.addEventListener("click", () => SuttaController.loadRandomSutta(true));
 
-    // 5. Bootstrap Data & Route
     try {
         await DB.init();
-        
-        // Update UI State after DB ready
         statusDiv.classList.add("hidden");
         navHeader.classList.remove("hidden");
         randomBtn.disabled = false;
 
-        // Routing Logic
         const initialParams = Router.getParams();
         if (initialParams.q) {
             let loadId = initialParams.q;
@@ -54,13 +50,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             SuttaController.loadRandomSutta(true);
         }
-
     } catch (err) {
         logger.error('Init', err);
         statusDiv.textContent = "Error loading database.";
     }
 
-    // 6. Handle Browser Navigation (Popstate)
     window.addEventListener("popstate", (event) => {
         const currentParams = Router.getParams();
         const currentHash = window.location.hash;

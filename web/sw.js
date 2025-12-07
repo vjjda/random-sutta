@@ -1,6 +1,6 @@
 // Path: web/sw.js
 
-// [VERSIONING]
+// [REVERTED] Giữ nguyên placeholder để Release System tự replace
 const CACHE_NAME = "sutta-cache-dev-placeholder";
 
 console.log(`[SW] Startup (${CACHE_NAME})`);
@@ -10,8 +10,7 @@ const SHELL_ASSETS = [
   "./index.html",
   "./assets/style.css",
   
-  // [CHANGED] Trong môi trường Dev (Source), ta dùng file module gốc.
-  // Hệ thống Build sẽ tự động thay dòng này thành 'app.bundle.js' khi release.
+  // Entry point chính
   "./assets/modules/core/app.js", 
   
   // Icons
@@ -30,18 +29,13 @@ const SHELL_ASSETS = [
   "./assets/modules/data/constants.js"
 ];
 
-// ... (Giữ nguyên phần còn lại của file sw.js)
-// install, activate, fetch events...
+// ... (Các phần logic install, activate, fetch giữ nguyên không đổi) ...
 self.addEventListener("install", (event) => {
   console.log(`[SW] Installing ${CACHE_NAME}...`);
   self.skipWaiting();
-
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log(`[SW] Pre-caching ${SHELL_ASSETS.length} shell items.`);
-      return cache.addAll(SHELL_ASSETS).catch(err => {
-          console.error("[SW] Pre-cache failed (Check if all files exist):", err);
-      });
+      return cache.addAll(SHELL_ASSETS);
     })
   );
 });
@@ -71,10 +65,7 @@ self.addEventListener("fetch", (event) => {
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       const cachedResponse = await cache.match(request);
-
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+      if (cachedResponse) return cachedResponse;
 
       try {
         const networkResponse = await fetch(request);
@@ -83,9 +74,7 @@ self.addEventListener("fetch", (event) => {
         }
         return networkResponse;
       } catch (error) {
-        if (request.mode === "navigate") {
-          return cache.match("./index.html");
-        }
+        if (request.mode === "navigate") return cache.match("./index.html");
         return new Response("Offline", { status: 408 });
       }
     })()

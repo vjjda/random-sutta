@@ -1,11 +1,10 @@
-// Path: web/assets/modules/ui/offline_manager.js
-import { DB } from '../data/db_manager.js';
-import { getLogger } from '../shared/logger.js';
+// Path: web/assets/modules/ui/managers/offline_manager.js
+import { DB } from '../../data/db_manager.js';
+import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("OfflineManager");
-const APP_VERSION = "dev-placeholder"; // Nên đồng bộ với config chung
+const APP_VERSION = "dev-placeholder"; // Trong thực tế, giá trị này sẽ được build system thay thế
 
-// SVG Constants
 const ICONS = {
     SYNC: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 5.5A11 11 0 0 0 12 2c-6.237 0-11.232 5.26-10.96 11.58C1.4 21.03 8.35 26 15 22.6M2.5 22v-6h6M2.66 18.5a11 11 0 0 0 19.8-7.3"></path></svg>`,
     CHECK: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
@@ -16,7 +15,7 @@ export const OfflineManager = {
     init() {
         const btnOffline = document.getElementById("btn-download-offline");
         
-        // Auto run logic on init
+        // Tự động chạy logic kiểm tra sau khi khởi tạo 3 giây
         setTimeout(() => {
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(() => this.runSmartBackgroundDownload());
@@ -25,9 +24,10 @@ export const OfflineManager = {
             }
         }, 3000);
 
-        // Bind click event
+        // Gắn sự kiện click
         if (btnOffline) {
             btnOffline.addEventListener("click", () => {
+                // Xóa version cũ để ép buộc tải lại
                 localStorage.removeItem('sutta_offline_version');
                 this.runSmartBackgroundDownload();
             });
@@ -56,6 +56,7 @@ export const OfflineManager = {
             }
         };
 
+        // Nếu đã cache phiên bản mới nhất -> DONE
         if (storedVersion === APP_VERSION) {
             logger.info("BackgroundDL", `Cache up-to-date (${APP_VERSION}).`);
             setUIState("ready", "Offline Ready", ICONS.CHECK);
@@ -63,6 +64,7 @@ export const OfflineManager = {
             return;
         }
 
+        // Nếu đang ở chế độ tiết kiệm dữ liệu -> Bỏ qua
         if (navigator.connection && navigator.connection.saveData) return;
 
         logger.info("BackgroundDL", "Starting silent download...");
@@ -74,6 +76,7 @@ export const OfflineManager = {
                 const percent = Math.round((current / total) * 100);
                 if (progressBar) progressBar.style.width = `${percent}%`;
                 
+                // Cập nhật text mỗi 20% để đỡ lag UI
                 if (percent % 20 === 0 && btnOffline) {
                      const label = btnOffline.querySelector(".label");
                      if(label) label.textContent = `Syncing... ${percent}%`;

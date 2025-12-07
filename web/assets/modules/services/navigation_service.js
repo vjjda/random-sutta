@@ -1,21 +1,14 @@
 // Path: web/assets/modules/services/navigation_service.js
-import { calculateNavigation } from "../ui/navigator.js";
+import { calculateNavigation } from "../utils/navigator_logic.js"; // [UPDATED]
 import { DB } from "../data/db_manager.js";
-import { getLogger } from "../shared/logger.js";
+import { getLogger } from "../utils/logger.js"; // [UPDATED]
 
 const logger = getLogger("NavService");
 
 export const NavigationService = {
-  /**
-   * Tính toán điều hướng (Next/Prev) cho một bài kinh.
-   * Tự động leo thang lên Super Structure nếu không tìm thấy trong Local Structure.
-   */
   async getNavForSutta(suttaId, localStructure) {
-    // 1. Tính toán dựa trên cấu trúc cục bộ của sách hiện tại
     let nav = calculateNavigation(localStructure, suttaId);
 
-    // 2. Logic Leo thang (Escalation)
-    // Nếu local nav rỗng (đứng một mình), thử tìm hàng xóm trong Super Struct (Toàn thư)
     if (!nav.prev && !nav.next) {
       try {
         const superData = await DB.fetchStructure('super_struct');
@@ -25,7 +18,7 @@ export const NavigationService = {
             logger.info("getNavForSutta", "Escalated to super_struct for navigation.");
             return { 
                 ...superNav, 
-                extraMeta: superData.meta // Trả kèm meta để Controller merge hiển thị tên
+                extraMeta: superData.meta 
             }; 
           }
         }
@@ -33,7 +26,6 @@ export const NavigationService = {
         logger.warn("getNavForSutta", "Escalation to super_struct failed", e);
       }
     }
-    
     return nav;
   }
 };

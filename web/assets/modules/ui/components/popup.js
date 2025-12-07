@@ -1,11 +1,8 @@
-// Path: web/assets/modules/ui/popup_handler.js
-import { getLogger } from '../shared/logger.js';
+// Path: web/assets/modules/ui/components/popup.js
+import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("PopupHandler");
 
-/**
- * Khởi tạo logic cho Popup chú giải (Comment).
- */
 export function initCommentPopup() {
     const popup = document.getElementById("comment-popup");
     const content = document.getElementById("comment-content");
@@ -26,6 +23,7 @@ export function initCommentPopup() {
         popup.classList.add("hidden");
     }
     
+    // Xử lý click vào marker chú giải trong nội dung bài kinh
     container.addEventListener("click", (event) => {
         if (event.target.classList.contains("comment-marker")) {
             const text = event.target.dataset.comment;
@@ -34,17 +32,20 @@ export function initCommentPopup() {
                 event.stopPropagation();
             }
         } else {
+            // Click ra ngoài thì đóng popup
             if (!popup.classList.contains('hidden') && !popup.contains(event.target)) {
                  hideComment();
             }
         }
     });
 
+    // Xử lý link bên trong nội dung popup (nếu có refer đến bài kinh khác)
     content.addEventListener("click", (event) => {
         const link = event.target.closest("a");
         if (link && link.href) {
             try {
                 const urlObj = new URL(link.href);
+                // Nếu link trỏ về suttacentral hoặc internal nav
                 if (urlObj.searchParams.has("q")) {
                     event.preventDefault();
                     let suttaId = urlObj.searchParams.get("q");

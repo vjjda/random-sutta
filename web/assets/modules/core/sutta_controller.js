@@ -1,17 +1,19 @@
 // Path: web/assets/modules/core/sutta_controller.js
 import { Router } from './router.js';
 import { DB } from '../data/db_manager.js';
-import { renderSutta } from '../ui/renderer.js';
-import { NavigationService } from '../services/navigation_service.js'; // [NEW]
-import { getActiveFilters } from '../ui/filters.js';
-import { initCommentPopup } from '../ui/popup_handler.js';
-import { getLogger } from '../shared/logger.js';
-import { Scroller } from '../ui/scroller.js';
+import { getLogger } from '../utils/logger.js'; // [UPDATED]
+
+// Logic & Views
+import { renderSutta } from '../ui/views/renderer.js';          // [UPDATED]
+import { NavigationService } from '../services/navigation_service.js'; // [UPDATED]
+import { getActiveFilters } from '../ui/components/filters.js'; // [UPDATED]
+import { initCommentPopup } from '../ui/components/popup.js';   // [UPDATED]
+import { Scroller } from '../ui/common/scroller.js';            // [UPDATED]
 
 const logger = getLogger("SuttaController");
 const { hideComment } = initCommentPopup();
 
-// [HELPER] Logic lấy ID con của một Branch (Moved from Renderer)
+// [HELPER] (Giữ nguyên logic getChildrenIds)
 function getChildrenIds(structure, currentUid) {
     function findNode(node, targetId) {
         if (!node) return null;
@@ -61,28 +63,22 @@ export const SuttaController = {
     logger.info('loadSutta', `Request: ${suttaId} ${explicitHash ? '#' + explicitHash : ''}`);
 
     const performRender = async () => {
-        // 1. Fetch Data
         let result = await DB.getSutta(suttaId);
         if (!result) {
              await DB.init();
              result = await DB.getSutta(suttaId);
              if (!result) {
-                 // Not found -> Render Error (NavData rỗng)
                  renderSutta(suttaId, null, { prev: null, next: null }, options);
                  return false;
              }
         }
 
-        // 2. [NEW] Calculate Navigation
         const navData = await NavigationService.getNavForSutta(suttaId, result.bookStructure);
         
-        // Merge extraMeta từ Navigation (nếu có escalations)
         if (navData.extraMeta) {
             Object.assign(result.meta, navData.extraMeta);
         }
 
-        // 3. [NEW] Prepare Branch Meta (Nếu là Branch View)
-        // Logic này trước kia nằm trong Renderer, giờ chuyển về Controller để Renderer thuần khiết
         if (result.isBranch) {
             const childrenIds = getChildrenIds(result.bookStructure, result.uid);
             if (childrenIds.length > 0) {
@@ -94,10 +90,8 @@ export const SuttaController = {
             }
         }
 
-        // 4. Render UI
         const success = await renderSutta(suttaId, result, navData, options);
 
-        // 5. Update URL
         if (success && shouldUpdateUrl) {
              const finalHash = explicitHash ? `#${explicitHash}` : '';
              Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
@@ -105,7 +99,6 @@ export const SuttaController = {
         return success;
     };
 
-    // Logic Scroll giữ nguyên
     let targetScrollId = null;
     if (explicitHash) {
         if (explicitHash.includes(':')) {
@@ -135,7 +128,6 @@ export const SuttaController = {
   },
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
-    // ... Logic Random giữ nguyên ...
     hideComment();
     await DB.init();
     

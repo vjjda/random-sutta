@@ -1,4 +1,4 @@
-// Path: web/assets/modules/ui/search_component.js
+// Path: web/assets/modules/ui/components/search.js
 
 export function setupQuickNav(onSearchCallback) {
   const displayContainer = document.getElementById("nav-title-display");
@@ -21,7 +21,7 @@ export function setupQuickNav(onSearchCallback) {
     textMode.classList.remove("hidden");
   }
 
-  // Chuyển sang Input Mode khi click
+  // Chuyển sang Input Mode khi click vào tiêu đề
   displayContainer.addEventListener("click", (e) => {
     if (e.target === inputField || e.target === goBtn || inputMode.contains(e.target)) {
       return;
@@ -35,7 +35,7 @@ export function setupQuickNav(onSearchCallback) {
       cancelSearch();
       return;
     }
-    // Gọi callback (loadSutta)
+    // Gọi callback (thường là SuttaController.loadSutta)
     if (onSearchCallback) onSearchCallback(query);
     cancelSearch();
   };
@@ -50,6 +50,7 @@ export function setupQuickNav(onSearchCallback) {
     }
   });
 
+  // Tự đóng khi mất focus
   inputField.addEventListener("blur", (e) => {
     setTimeout(() => {
       if (!inputMode.contains(document.activeElement)) {

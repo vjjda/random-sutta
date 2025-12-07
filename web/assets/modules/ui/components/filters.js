@@ -1,6 +1,8 @@
-// Path: web/assets/modules/ui/filters.js
-import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../data/constants.js';
-import { Router } from '../core/router.js';
+// Path: web/assets/modules/ui/components/filters.js
+
+// [FIXED] Đường dẫn import phải lùi 2 cấp (../../) để ra khỏi 'components' và 'ui'
+import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../../data/constants.js'; 
+import { Router } from '../../core/router.js'; // [FIXED] Cũng cần sửa path về core
 
 const filterSet = new Set();
 
