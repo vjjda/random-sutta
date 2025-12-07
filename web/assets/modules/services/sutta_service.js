@@ -2,7 +2,7 @@
 import { SuttaRepository } from '../data/sutta_repository.js';
 import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { NavigationService } from './navigation_service.js';
-import { PRIMARY_BOOKS } from '../data/constants.js'; // [MỚI] Import Constants
+import { PRIMARY_BOOKS } from '../data/constants.js';
 import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaService");
@@ -20,7 +20,6 @@ export const SuttaService = {
 
         // Subleaf Handling
         if (meta.type === 'subleaf' && meta.parent_uid && meta.extract_id) {
-            // ... (Giữ nguyên logic extract) ...
             logger.info("load", `${suttaId} is subleaf. Fetching parent ${meta.parent_uid}...`);
             const parentEntry = await SuttaRepository.getSuttaEntry(meta.parent_uid);
             if (parentEntry && parentEntry.content) {
@@ -30,13 +29,24 @@ export const SuttaService = {
              return { data: { uid: suttaId, meta: meta, isAlias: true }, navData: null };
         }
 
-        // Navigation
-        const bookId = suttaId.match(/^[a-z]+/)[0];
-        const structData = await SuttaRepository.getBookStructure(bookId);
-        let navData = { prev: null, next: null };
-        if (structData && structData.structure) {
-            navData = await NavigationService.getNavForSutta(suttaId, structData.structure);
+        // [FIX] Navigation Logic
+        let localStructure = null;
+        let structData = null;
+
+        // Case A: Nếu bản thân là Branch, Repository đã trả về structure của nó (từ super_struct hoặc file riêng)
+        if (entry.isBranch && entry.bookStructure) {
+            localStructure = entry.bookStructure;
+        } 
+        // Case B: Nếu là Leaf/Subleaf, thử load structure của sách chứa nó
+        else {
+            const bookId = suttaId.match(/^[a-z]+/)[0];
+            structData = await SuttaRepository.getBookStructure(bookId);
+            if (structData) localStructure = structData.structure;
         }
+        
+        // [QUAN TRỌNG] Luôn gọi NavigationService, kể cả khi localStructure là null/empty
+        // Để NavigationService có cơ hội kích hoạt logic "Escalation" lên super_struct
+        const navData = await NavigationService.getNavForSutta(suttaId, localStructure || {});
 
         // Nav Meta
         const uidsToFetch = [];
@@ -50,33 +60,21 @@ export const SuttaService = {
         return {
             data: {
                 uid: suttaId,
-                // [FIX] Nếu là Branch, dùng fullMeta (chứa info con cái). Nếu không, dùng meta thường.
                 meta: entry.isBranch ? entry.fullMeta : meta, 
                 navMeta: navMeta, 
                 content: content,
-                bookStructure: structData ? structData.structure : null,
+                // Ưu tiên dùng structure đã load được (cho render TOC)
+                bookStructure: localStructure || (structData ? structData.structure : null),
                 isBranch: entry.isBranch
             },
             navData: navData
         };
     },
 
-    // [FIX] Logic Random thực tế
     async getRandomSuttaId(activeFilters) {
         const pools = await SuttaRepository.getPools();
-        // pools structure: { books: { "mn": [...], "dn": [...] } }
+        let candidateBooks = (!activeFilters || activeFilters.length === 0) ? PRIMARY_BOOKS : activeFilters;
         
-        let candidateBooks = [];
-        
-        // 1. Xác định các sách cần random
-        if (!activeFilters || activeFilters.length === 0) {
-            // Nếu không chọn gì -> Random trong Primary Books
-            candidateBooks = PRIMARY_BOOKS;
-        } else {
-            candidateBooks = activeFilters;
-        }
-
-        // 2. Gom UID từ các sách đã chọn
         let unifiedPool = [];
         if (pools && pools.books) {
             candidateBooks.forEach(bookId => {
@@ -87,12 +85,7 @@ export const SuttaService = {
             });
         }
 
-        if (unifiedPool.length === 0) {
-            logger.warn("random", "No suttas found in selected pool");
-            return null;
-        }
-
-        // 3. Pick random
+        if (unifiedPool.length === 0) return null;
         const randomIndex = Math.floor(Math.random() * unifiedPool.length);
         return unifiedPool[randomIndex];
     },
