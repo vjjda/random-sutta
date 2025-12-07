@@ -29,12 +29,41 @@ export const SuttaRepository = {
     },
 
     /**
-     * [MỚI] Lấy danh sách Pools từ index
+     * Lấy danh sách Pools từ index (Fix lỗi ReferenceError uid)
      */
     async getPools() {
         await this.init();
+        // [FIX] Xóa dòng thừa "const locator = this._resolveLocator(uid);" gây lỗi
+        return _cache.index ? _cache.index.pools : {};
+    },
+
+    async _fetchJson(relativePath) {
+        const fullPath = `assets/db/${relativePath}.json`;
         
-        // [FIX] Fallback cho 'tpk' nếu không có trong index
+        // Cache Check
+        if (relativePath.startsWith('content/') && _cache.chunks[relativePath]) return _cache.chunks[relativePath];
+        if (relativePath.startsWith('structure/') && _cache.structures[relativePath]) return _cache.structures[relativePath];
+
+        try {
+            const resp = await fetch(fullPath);
+            if (!resp.ok) return null;
+            const data = await resp.json();
+
+            // Save to Cache
+            if (relativePath.startsWith('content/')) _cache.chunks[relativePath] = data;
+            if (relativePath.startsWith('structure/')) _cache.structures[relativePath] = data;
+            
+            return data;
+        } catch (e) {
+            logger.error("fetch", `Error loading ${fullPath}`, e);
+            return null;
+        }
+    },
+
+    async getSuttaEntry(uid) {
+        await this.init();
+        
+        // Fallback cho 'tpk' nếu không có trong index locator
         let locator = this._resolveLocator(uid);
         if (!locator && uid === 'tpk') {
             locator = 'structure/super_struct';
@@ -42,7 +71,7 @@ export const SuttaRepository = {
         
         if (!locator) return null;
 
-        // CASE 1: Branch/Root
+        // CASE 1: Branch/Root (Locator bắt đầu bằng 'structure/')
         if (locator.startsWith('structure/')) {
             const structData = await this._fetchJson(locator);
             if (!structData) return null;
@@ -51,18 +80,19 @@ export const SuttaRepository = {
             return {
                 uid: uid,
                 meta: metaInfo || {}, 
-                fullMeta: structData.meta, // Quan trọng: Trả về full meta để nav service dùng
-                bookStructure: structData.structure, // Quan trọng: Structure để tính nav
+                fullMeta: structData.meta, // Trả về full meta để nav service dùng tooltip
+                bookStructure: structData.structure,
                 isBranch: true 
             };
         }
-        
-        // ... (CASE 2: Content giữ nguyên)
+
+        // CASE 2: Leaf/Subleaf (Locator bắt đầu bằng 'content/')
         if (locator.startsWith('content/')) {
             const chunkData = await this._fetchJson(locator);
             if (!chunkData || !chunkData[uid]) return null;
             return chunkData[uid]; 
         }
+
         return null;
     },
 
@@ -83,7 +113,13 @@ export const SuttaRepository = {
     async getBookStructure(bookId) {
         await this.init();
         let locator = this._resolveLocator(bookId);
-        if (!locator) locator = `structure/sutta_${bookId}_${bookId}_struct`;
+        
+        // Fallback convention
+        if (!locator) {
+             // Thử đoán tên file structure chuẩn
+             locator = `structure/sutta_${bookId}_${bookId}_struct`;
+        }
+        
         return await this._fetchJson(locator);
     }
 };
