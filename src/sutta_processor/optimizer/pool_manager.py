@@ -25,10 +25,17 @@ class PoolManager:
                 for v in node.values(): _extract(v, collection)
 
         structure = super_data.get("structure", [])
-        for item in structure:
-            if "sutta" in item:
-                _extract(item["sutta"], self.sutta_books)
-                break
+        
+        # [FIX] Handle new nested 'tipitaka' root structure
+        if isinstance(structure, dict) and "tipitaka" in structure:
+            structure = structure["tipitaka"]
+            
+        # Ensure we are iterating a list (legacy structure was list directly)
+        if isinstance(structure, list):
+            for item in structure:
+                if isinstance(item, dict) and "sutta" in item:
+                    _extract(item["sutta"], self.sutta_books)
+                    break
 
     @staticmethod
     def filter_smart_uids(raw_content: Dict[str, Any], meta_map: Dict[str, Any]) -> List[str]:
