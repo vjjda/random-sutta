@@ -135,8 +135,17 @@ export const SuttaService = {
             // [NEW] Smart Prefetch for Neighbors
             if (options.prefetchNav) {
                 neighborsToFetch.forEach(neighborUid => {
-                    // Fire-and-forget load to warm up cache
-                    // Pass prefetchNav: false to avoid infinite recursion storm
+                    // Optimization: Check if neighbor is in the same chunk
+                    const loc = SuttaRepository.getLocation(neighborUid);
+                    if (loc) {
+                        const [nBook, nChunk] = loc;
+                        // Nếu cùng Book và cùng Chunk với bài hiện tại -> Bỏ qua (vì đã có trong RAM)
+                        if (nBook === hintBook && nChunk === hintChunk) {
+                            return; 
+                        }
+                    }
+
+                    // Fire-and-forget load to warm up cache for NEW chunks
                     this.loadSutta(neighborUid, { prefetchNav: false })
                         .catch(e => logger.warn("Prefetch", `Failed to prefetch ${neighborUid}`));
                 });
