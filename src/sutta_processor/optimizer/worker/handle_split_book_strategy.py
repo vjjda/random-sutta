@@ -3,14 +3,12 @@ from typing import Dict, Any, Set
 
 from ..io_manager import IOManager
 from ..chunker import chunk_content
-# [UPDATED] Import mới
-from ..tree_utils import collect_all_keys, extract_nav_sequence, generate_random_pool
+from ..tree_utils import flatten_tree_uids, collect_all_keys
 from ..splitter import extract_sub_books
 from ..schema import build_meta_entry, build_book_payload
 from .chunk_index_resolver import resolve_chunk_idx
 
 def execute_split_book_strategy(
-    # ... args như cũ ...
     book_id: str, 
     data: Dict, 
     full_meta: Dict, 
@@ -36,19 +34,17 @@ def execute_split_book_strategy(
     total_valid_count = 0
 
     for sub_id, all_sub_keys, sub_struct in sub_books:
-        # 1. Content Chunking
+        # 1. Content Chunking cho Sách Con
         sub_content = {}
-        
-        # [UPDATED] Lấy danh sách lá chính xác cho content filtering
-        # Sử dụng lại logic nav sequence cục bộ cho sub-book
-        sub_sequence = extract_nav_sequence(sub_struct, full_meta)
-        sub_leaves_check = generate_random_pool(sub_sequence)
+        sub_leaves_check = []
+        flatten_tree_uids(sub_struct, full_meta, sub_leaves_check)
         
         for uid in sub_leaves_check:
-            # ... Logic lấy content như cũ ...
+            # Case 1: ID có trực tiếp trong content
             if uid in raw_content:
                 sub_content[uid] = raw_content[uid]
             else:
+                # Case 2: ID là subleaf, nội dung nằm ở Parent Container
                 parent = full_meta.get(uid, {}).get("parent_uid")
                 if parent and parent in raw_content:
                     sub_content[parent] = raw_content[parent]
