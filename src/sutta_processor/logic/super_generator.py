@@ -4,8 +4,9 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Set, Optional
 
-# [UPDATED]
 from ..shared.app_config import RAW_SUPER_TREE_FILE, RAW_SUPER_META_DIR
+# [NEW] Import logic tính nav từ logic layer
+from .tree_utils import generate_depth_navigation
 
 logger = logging.getLogger("SuttaProcessor.Logic.SuperGen")
 
@@ -57,7 +58,6 @@ def _load_super_metadata(valid_keys: Set[str]) -> Dict[str, Any]:
     merged_meta = {}
     target_files = ["sutta.json", "vinaya.json", "abhidhamma.json"]
     
-    # [UPDATED]
     for fname in target_files:
         fpath = RAW_SUPER_META_DIR / fname
         if not fpath.exists():
@@ -81,7 +81,6 @@ def _load_super_metadata(valid_keys: Set[str]) -> Dict[str, Any]:
     return merged_meta
 
 def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str, Any]]:
-    # [UPDATED]
     if not RAW_SUPER_TREE_FILE.exists():
         logger.error(f"❌ Super tree not found at {RAW_SUPER_TREE_FILE}")
         return None
@@ -103,8 +102,6 @@ def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str
     
     final_meta = _load_super_metadata(valid_keys)
 
-    # [NEW] Wrap logic for Tipitaka Root
-    
     # 1. Identify Direct Children and change type to 'branch'
     top_level_keys = []
     if isinstance(final_structure, list):
@@ -120,22 +117,32 @@ def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str
             
     # 2. Create Tipitaka Meta
     tipitaka_title = "The Three Baskets of the Buddhist Canon"
-    final_meta["tpk"] = { # Changed uid here
-        "uid": "tpk",      # And here
+    final_meta["tpk"] = {
+        "uid": "tpk",
         "type": "root",
-        "acronym": "Tipitaka", # Changed here
+        "acronym": "Tipitaka",
         "translated_title": tipitaka_title,
         "original_title": "Tipiṭaka",
-        "blurb": "This is a large collection of teachings attributed to the Buddha or his earliest disciples, who were teaching in India around 2500 years ago. They are regarded as sacred canon in all schools of Buddhism."
+        "blurb": "This is a large collection of teachings attributed to the Buddha or his earliest disciples."
     }
     
     # 3. Wrap Structure
     new_structure = {
-        "tpk": final_structure # Changed structure key here
+        "tpk": final_structure
     }
+    
+    # [NEW] 4. Calculate Navigation (Staging Phase)
+    # Tính toán Nav cho toàn bộ cây Super Tree ngay tại đây
+    logger.info("   🧭 Calculating Super Navigation...")
+    tpk_nav_map = generate_depth_navigation(new_structure, final_meta)
+    
+    # Inject Nav vào Meta
+    for uid, nav_entry in tpk_nav_map.items():
+        if uid in final_meta:
+            final_meta[uid]["nav"] = nav_entry
 
     return {
-        "id": "tpk", # Changed top-level id here
+        "id": "tpk",
         "title": tipitaka_title,
         "structure": new_structure,
         "meta": final_meta,

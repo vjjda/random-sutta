@@ -10,8 +10,7 @@ from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .pool_manager import PoolManager
 from .worker import process_book_task
-# [NEW] Import logic tính nav
-from .tree_utils import generate_depth_navigation
+# [REMOVED] generate_depth_navigation (Không cần import nữa)
 
 logger = logging.getLogger("Optimizer.Main")
 
@@ -21,18 +20,16 @@ class DBOrchestrator:
         self.io = IOManager(dry_run)
         self.pool_manager = PoolManager()
         self.global_locator: Dict[str, List[Any]] = {}
-        # [NEW] Lưu trữ bản đồ điều hướng toàn cục (từ Super Book)
         self.super_nav_map: Dict[str, Dict[str, str]] = {}
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6.3 - Global Nav Inheritance): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v6.4 - Staging Nav): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
         book_files = []
         
-        # 1. Tách Super Book ra để xử lý TRƯỚC
         for f in all_files:
             if f.name == "super_book.json":
                 self._process_super(f)
@@ -45,13 +42,12 @@ class DBOrchestrator:
             futures = {}
             
             for f in book_files:
-                # [NEW] Xác định ID sách từ tên file (vd: mn_book.json -> mn)
-                # Để tìm xem nó có Nav trong bản đồ tổng thể không
                 book_id_guess = f.name.replace("_book.json", "")
-                external_nav = self.super_nav_map.get(book_id_guess)
                 
-                # Truyền external_nav vào worker
-                futures[executor.submit(process_book_task, f, self.dry_run, external_nav)] = f.name
+                # [KEEP] Vẫn lấy nav từ map để truyền xuống worker
+                ext_nav = self.super_nav_map.get(book_id_guess)
+                
+                futures[executor.submit(process_book_task, f, self.dry_run, ext_nav)] = f.name
 
             for future in as_completed(futures):
                 fname = futures[future]
@@ -83,8 +79,8 @@ class DBOrchestrator:
 
         logger.info("✨ Optimization Completed.")
 
+    # ... (Hàm _extract_sutta_books giữ nguyên) ...
     def _extract_sutta_books(self, structure: Any) -> List[str]:
-        # (Giữ nguyên hàm này từ code cũ)
         sutta_books: Set[str] = set()
         def _find_sutta_root(node):
             if isinstance(node, dict):
@@ -124,21 +120,22 @@ class DBOrchestrator:
 
             meta = data.get("meta", {})
             
-            # [NEW] Tính toán Nav cho Super Tree (Branch Nav)
-            # Hàm generate_depth_navigation sẽ tạo link cho dn <-> mn <-> sn...
-            self.super_nav_map = generate_depth_navigation(structure, meta)
+            # [UPDATED] Không tính toán lại nữa. 
+            # Đọc Nav Map trực tiếp từ file (đã được Staging tính toán)
             
-            # Inject Nav vào chính Meta của Super Book (tpk.json)
-            for uid, nav_entry in self.super_nav_map.items():
-                if uid in meta:
-                    meta[uid]["nav"] = nav_entry
-
-            # Locator cho tpk
+            # Populate self.super_nav_map từ meta để dùng cho các sách con
+            for uid, info in meta.items():
+                if "nav" in info:
+                    self.super_nav_map[uid] = info["nav"]
+            
+            # Inject Nav vào Locator (nếu cần)
             for uid in meta.keys():
                 self.global_locator[uid] = ["tpk", None]
 
             self.pool_manager.register_book_count("tpk", 0)
 
+            # Save Output (Meta Pack cho TPK)
+            # Vì Staging đã có Nav, ta chỉ việc bê sang
             meta_pack = {
                 "id": "tpk",
                 "title": data.get("title"),
@@ -147,10 +144,12 @@ class DBOrchestrator:
                 "random_pool": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed (Generated Nav for {len(self.super_nav_map)} items)")
+            logger.info(f"   🌟 Super Book Processed (Nav loaded from Staging: {len(self.super_nav_map)} entries)")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _save_uid_index(self) -> None:
         self.io.save_category("root", "uid_index.json", self.global_locator)
