@@ -13,7 +13,7 @@ export const ContentCompiler = {
         
         sortedKeys.forEach(segmentId => {
             const seg = contentMap[segmentId];
-            const { pli, eng, html: htmlDecor, comm } = seg; // [UPDATED] Lấy thêm comm
+            const { pli, eng, html: htmlDecor, comm } = seg;
 
             let openTag = "";
             let closeTag = "";
@@ -31,21 +31,15 @@ export const ContentCompiler = {
             if (pli) {
                 segmentHtml += `<span class="pli" lang="pi">${pli}</span>`;
             }
-            
             if (eng) {
                 segmentHtml += `<span class="eng" lang="en">${eng}</span>`;
             }
-
-            // [NEW] Logic Render Comment
             if (comm) {
-                // Escape dấu nháy kép để tránh vỡ HTML attribute
                 const safeComm = comm.replace(/"/g, '&quot;');
-                // Giữ nguyên class 'comment-marker' và data-comment để popup.js hoạt động
                 segmentHtml += `<span class="comment-marker" title="View note" data-comment="${safeComm}">*</span>`;
             }
             
             segmentHtml += `</span>`; 
-
             html += `${openTag}${segmentHtml}${closeTag}`;
         });
 
@@ -53,54 +47,68 @@ export const ContentCompiler = {
         return html;
     },
 
-    // --- 2. RENDER BRANCH STRUCTURE (MENU) ---
+    // --- 2. RENDER BRANCH STRUCTURE (SHALLOW MENU) ---
     compileBranch: function (structure, rootUid, metaMap) {
         if (!structure) return "";
 
         let html = `<div class="branch-container">`;
         
-        const buildTreeHtml = (node, depth = 0) => {
-            let out = "";
-            
-            if (Array.isArray(node)) {
-                out += `<ul class="branch-group depth-${depth}">`;
-                node.forEach(child => {
-                    out += buildTreeHtml(child, depth);
-                });
-                out += `</ul>`;
-            } 
-            else if (typeof node === 'object' && node !== null) {
-                Object.keys(node).forEach(key => {
-                    out += this._createCard(key, metaMap, "group");
-                    out += buildTreeHtml(node[key], depth + 1);
-                });
-            } 
-            else if (typeof node === 'string') {
-                out += this._createCard(node, metaMap, "leaf");
-            }
-            
-            return out;
-        };
-
-        let rootNode = structure;
+        // 1. Xác định Node mục tiêu trong cây
+        // Structure thường có dạng: { "an": ["an1", "an2"] }
+        // Nếu ta đang ở "an", ta muốn lấy giá trị của key "an"
+        let targetNode = structure;
+        
         if (structure[rootUid]) {
-            rootNode = structure[rootUid];
+            targetNode = structure[rootUid];
+        } else {
+            // Trường hợp rootUid không phải là key ở cấp cao nhất (ví dụ node con sâu hơn được truyền vào)
+            // Giữ nguyên targetNode là structure hiện tại
         }
 
-        html += buildTreeHtml(rootNode);
+        // 2. Chỉ render con trực tiếp (Immediate Children)
+        html += `<ul class="branch-group">`;
+
+        // Case A: List (Danh sách ID con) -> Render từng ID
+        if (Array.isArray(targetNode)) {
+            targetNode.forEach(childId => {
+                if (typeof childId === 'string') {
+                    html += this._createCard(childId, metaMap, "leaf");
+                } else if (typeof childId === 'object') {
+                    // Nếu con là object (nhóm con), render key của nó
+                    Object.keys(childId).forEach(key => {
+                        html += this._createCard(key, metaMap, "group");
+                    });
+                }
+            });
+        } 
+        // Case B: Object (Dictionary các nhóm con) -> Render Key
+        else if (typeof targetNode === 'object' && targetNode !== null) {
+            Object.keys(targetNode).forEach(key => {
+                html += this._createCard(key, metaMap, "group");
+            });
+        }
+
+        html += `</ul>`;
         html += `</div>`;
         return html;
     },
 
     _createCard: function (uid, metaMap, type) {
         const info = metaMap[uid] || {};
+        // Fallback tên hiển thị
         const title = info.translated_title || info.original_title || uid;
         const acronym = info.acronym || uid.toUpperCase();
+        
+        // Chỉ hiện blurb nếu có và ngắn gọn
         const blurb = info.blurb ? `<div class="b-blurb">${info.blurb}</div>` : "";
+        
+        // CSS Class: group (có mũi tên/đậm) hoặc leaf (bài kinh)
         const cssClass = type === "group" ? "branch-card-group" : "branch-card-leaf";
 
+        // Badge loại sách
         let badge = "";
         if (info.type === 'sub_book') badge = `<span class="b-badge">Book</span>`;
+        else if (info.type === 'branch') badge = `<span class="b-badge">Section</span>`;
         
         return `
         <li class="${cssClass}">

@@ -86,8 +86,16 @@ export async function renderSutta(suttaId, data, options = {}) {
   const prevId = nav.prev || null;
   const nextId = nav.next || null;
 
+  // [UPDATED Logic] Xác định loại hiển thị dựa trên Meta Type
+  const type = data.meta ? data.meta.type : null;
+  
+  // Các loại này sẽ hiển thị dạng Menu (Branch)
+  const isBranchView = ['root', 'super_book', 'sub_book', 'branch'].includes(type) || 
+                       (data.bookStructure && !data.content);
+
   // --- CASE 1: BRANCH / MENU ---
-  if (data.bookStructure && !data.content) {
+  if (isBranchView) {
+      // Sử dụng contextMeta (được Service truyền) để hiển thị thông tin con
       htmlContent = ContentCompiler.compileBranch(data.bookStructure, data.uid, data.contextMeta || {});
       document.getElementById("toh-wrapper")?.classList.add("hidden");
   } 
@@ -96,8 +104,16 @@ export async function renderSutta(suttaId, data, options = {}) {
   else if (data.content) {
       htmlContent = ContentCompiler.compile(data.content, data.uid);
       
-      // [FIX] REMOVED: Đoạn code tự inject <header><h1>...</h1> đã bị xóa theo yêu cầu
-      // Header giờ chỉ nằm ở thanh điều hướng dính (sticky nav)
+      const info = getDisplayInfo(data.uid, data.meta);
+      const headerHtml = `
+            <header>
+                <h1 class="sutta-title">
+                    <span class="acronym">${info.main}</span>
+                    <span class="translated-title">${info.sub}</span>
+                </h1>
+            </header>
+        `;
+      htmlContent = headerHtml + htmlContent;
   } 
   
   else {
