@@ -3,7 +3,7 @@ import { SuttaRepository } from '../../data/sutta_repository.js';
 import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("OfflineManager");
-const APP_VERSION = "dev-placeholder"; // Trong thực tế, giá trị này sẽ được build system thay thế
+const APP_VERSION = "dev-placeholder"; // Sẽ được replace bởi build system
 
 const ICONS = {
     SYNC: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 5.5A11 11 0 0 0 12 2c-6.237 0-11.232 5.26-10.96 11.58C1.4 21.03 8.35 26 15 22.6M2.5 22v-6h6M2.66 18.5a11 11 0 0 0 19.8-7.3"></path></svg>`,
@@ -14,8 +14,8 @@ const ICONS = {
 export const OfflineManager = {
     init() {
         const btnOffline = document.getElementById("btn-download-offline");
-        
-        // Tự động chạy logic kiểm tra sau khi khởi tạo 3 giây
+        const btnUpdate = document.getElementById("btn-update-offline");
+
         setTimeout(() => {
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(() => this.runSmartBackgroundDownload());
@@ -24,19 +24,55 @@ export const OfflineManager = {
             }
         }, 3000);
 
-        // Gắn sự kiện click
+        // Click nút chính: Download hoặc Show Version
         if (btnOffline) {
             btnOffline.addEventListener("click", () => {
-                // Xóa version cũ để ép buộc tải lại
-                localStorage.removeItem('sutta_offline_version');
-                this.runSmartBackgroundDownload();
+                const wrapper = document.getElementById("offline-wrapper");
+                
+                // Nếu đang ở trạng thái Ready -> Show Version
+                if (wrapper && wrapper.classList.contains("ready")) {
+                    this.showVersionInfo(btnOffline);
+                } else {
+                    // Nếu chưa ready -> Download
+                    localStorage.removeItem('sutta_offline_version');
+                    this.runSmartBackgroundDownload();
+                }
             });
         }
+
+        // Click nút Update nhỏ: Ép tải lại
+        if (btnUpdate) {
+            btnUpdate.addEventListener("click", (e) => {
+                e.stopPropagation(); // Tránh kích hoạt nút cha (nếu có)
+                if (confirm("Force update offline database?")) {
+                    localStorage.removeItem('sutta_offline_version');
+                    this.runSmartBackgroundDownload();
+                }
+            });
+        }
+    },
+
+    // [NEW] Hiển thị version tạm thời
+    showVersionInfo(btnElement) {
+        const label = btnElement.querySelector(".label");
+        if (!label) return;
+
+        const originalText = label.textContent;
+        const version = localStorage.getItem('sutta_offline_version') || "Unknown";
+        
+        // Hiển thị version
+        label.textContent = `Ver: ${version}`;
+        
+        // Reset sau 3s
+        setTimeout(() => {
+            label.textContent = "Offline Ready";
+        }, 3000);
     },
 
     async runSmartBackgroundDownload() {
         const storedVersion = localStorage.getItem('sutta_offline_version');
         const btnOffline = document.getElementById("btn-download-offline");
+        const btnUpdate = document.getElementById("btn-update-offline");
         const progressBar = document.getElementById("offline-progress-bar");
         const wrapper = document.getElementById("offline-wrapper");
 
@@ -54,34 +90,39 @@ export const OfflineManager = {
             if (progressBar) {
                 progressBar.style.width = `${percent}%`;
             }
+            
+            // Xử lý nút update nhỏ
+            if (btnUpdate) {
+                if (state === 'ready') btnUpdate.classList.remove('hidden');
+                else btnUpdate.classList.add('hidden');
+            }
         };
 
-        // Nếu đã cache phiên bản mới nhất -> DONE
         if (storedVersion === APP_VERSION) {
             logger.info("BackgroundDL", `Cache up-to-date (${APP_VERSION}).`);
             setUIState("ready", "Offline Ready", ICONS.CHECK);
-            if (btnOffline) btnOffline.disabled = true;
+            // Không disable nút nữa để user có thể click xem version
+            if (btnOffline) btnOffline.disabled = false; 
             return;
         }
 
-        // Nếu đang ở chế độ tiết kiệm dữ liệu -> Bỏ qua
         if (navigator.connection && navigator.connection.saveData) return;
 
         logger.info("BackgroundDL", "Starting silent download...");
         setUIState("syncing", "Syncing Library...", ICONS.SYNC, 0);
+        
+        // Disable nút khi đang tải
         if (btnOffline) btnOffline.disabled = true;
 
         try {
-            // [UPDATED] Gọi Repository
             await SuttaRepository.downloadAll((current, total) => {
                 const percent = Math.round((current / total) * 100);
-                // ... (Update UI code cũ) ...
                 if (progressBar) progressBar.style.width = `${percent}%`;
             });
 
-            // ... (code cũ set localStorage) ...
             localStorage.setItem('sutta_offline_version', APP_VERSION);
             setUIState("ready", "Offline Ready", ICONS.CHECK);
+            if (btnOffline) btnOffline.disabled = false;
 
         } catch (e) {
             logger.error("BackgroundDL", "Sync failed", e);
