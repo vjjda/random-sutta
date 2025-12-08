@@ -12,7 +12,6 @@ export const ZipImporter = {
 
         // 2. Xác định Cache Name
         const keys = await caches.keys();
-        // [FIX] Sửa điều kiện để khớp với cả 'sutta-cache-v...' và 'sutta-cache-dev-placeholder'
         const cacheName = keys.find(k => k.startsWith("sutta-cache-"));
         
         if (!cacheName) {
@@ -22,8 +21,9 @@ export const ZipImporter = {
         const cache = await caches.open(cacheName);
         
         // 3. Tải file Zip
+        const zipUrl = 'assets/db/db_bundle.zip'; // Lưu URL để dùng lại
         logger.info("Run", "Downloading db_bundle.zip...");
-        const response = await fetch('assets/db/db_bundle.zip');
+        const response = await fetch(zipUrl);
         if (!response.ok) throw new Error("Failed to download DB bundle");
         
         const blob = await response.blob();
@@ -60,6 +60,21 @@ export const ZipImporter = {
             if (onProgress) onProgress(Math.min(count, total), total);
             
             await new Promise(r => setTimeout(r, 0));
+        }
+        
+        // [NEW] 6. Cleanup: Xóa file zip gốc khỏi cache
+        // Vì SW tự động cache mọi request GET, nên file zip này đang nằm trong cache.
+        // Xóa nó đi để tiết kiệm dung lượng (vì ta đã có nội dung giải nén rồi).
+        try {
+            const wasDeleted = await cache.delete(zipUrl);
+            if (wasDeleted) {
+                logger.info("Run", "🧹 Cleaned up temporary db_bundle.zip from cache.");
+            } else {
+                // Trường hợp fetch chưa kịp cache hoặc SW không cache file lớn
+                logger.info("Run", "db_bundle.zip was not in cache (skipped cleanup).");
+            }
+        } catch (e) {
+            logger.warn("Run", "Failed to cleanup zip file", e);
         }
         
         logger.info("Run", `Imported ${total} files into Cache Storage.`);
