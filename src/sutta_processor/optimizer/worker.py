@@ -3,7 +3,7 @@ import json
 import logging
 import traceback
 from pathlib import Path
-from typing import Dict, Any, List, Set, Optional
+from typing import Dict, Any, List, Set
 
 from .io_manager import IOManager
 from .chunker import chunk_content
@@ -12,8 +12,7 @@ from .splitter import is_split_book, extract_sub_books
 
 logger = logging.getLogger("Optimizer.Worker")
 
-def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict) -> Dict[str, Any]:
-    # [CHANGED] Bỏ tham số chunk_map
+def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
@@ -31,8 +30,7 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict) -> Dict[str, Any
     entry["type"] = m_type
     
     if uid in nav_map: entry["nav"] = nav_map[uid]
-    
-    # [REMOVED] Không lưu 'chunk' vào meta nữa. Single source of truth là uid_index.
+    if uid in chunk_map: entry["chunk"] = chunk_map[uid]
 
     if m_type == "subleaf":
         if "extract_id" in info: entry["extract_id"] = info["extract_id"]
@@ -42,7 +40,15 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict) -> Dict[str, Any
 
 def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
     io = IOManager(dry_run)
-    result = { "status": "error", "book_id": "", "valid_count": 0, "locator_map": {}, "sub_counts": {} }
+    # [UPDATED] Thêm key 'sub_books_list' để báo cáo cấu trúc nhóm
+    result = { 
+        "status": "error", 
+        "book_id": "", 
+        "valid_count": 0, 
+        "locator_map": {}, 
+        "sub_counts": {},
+        "sub_books_list": [] 
+    }
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -69,55 +75,42 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
 
-        # Helper: Resolve chunk index
-        def _get_chunk_idx(uid):
-            # 1. Direct hit
-            if uid in chunk_map_idx:
-                return chunk_map_idx[uid]
-            
-            # 2. Indirect hit (Subleaf hoặc Alias)
-            info = full_meta.get(uid, {})
-            m_type = info.get("type")
-            
-            if m_type in ["alias", "subleaf"]:
-                parent = info.get("parent_uid")
-                if parent and parent in chunk_map_idx:
-                    return chunk_map_idx[parent]
-                
-                # Fallback: Extract ID
-                target = info.get("extract_id")
-                if target and target in chunk_map_idx:
-                    return chunk_map_idx[target]
-                
-                # [DEBUG] Log warning nếu subleaf không tìm thấy chunk
-                # logger.warning(f"⚠️ Locator Warning: {uid} ({m_type}) has no chunk! Parent: {parent}")
-            
-            return None
-
         # 3. Metadata Processing
         if is_split_book(book_id):
             # --- SPLIT MODE ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
             root_title = data.get("title", "")
+            
+            # Prepare Super Meta (để hiển thị Menu)
+            super_meta_map = {}
+            if book_id in full_meta:
+                super_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
+
+            total_valid_count = 0
 
             for sub_id, all_sub_keys, sub_struct in sub_books:
                 sub_meta_map = {}
                 sub_leaves = []
                 
                 for k in all_sub_keys:
-                    c_idx = _get_chunk_idx(k)
+                    c_idx = chunk_map_idx.get(k) # Safe get
                     result["locator_map"][k] = [sub_id, c_idx]
                     
-                    sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map)
+                    sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
                     
                     m_type = full_meta.get(k, {}).get("type")
                     if m_type in ["leaf", "subleaf"]:
                         sub_leaves.append(k)
 
                 if book_id in full_meta:
-                    sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map)
+                    sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
                 
+                if sub_id in full_meta:
+                    super_meta_map[sub_id] = _build_meta_entry(sub_id, full_meta, nav_map, chunk_map_idx)
+                else:
+                    super_meta_map[sub_id] = { "acronym": sub_id.upper(), "type": "branch" }
+
                 final_tree = { book_id: { sub_id: sub_struct } }
 
                 io.save_category("meta", f"{sub_id}.json", {
@@ -131,18 +124,30 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 })
                 
                 sub_book_ids.append(sub_id)
-                result["sub_counts"][sub_id] = len(sub_leaves)
+                count = len(sub_leaves)
+                
+                # Báo cáo số lượng con
+                result["sub_counts"][sub_id] = count
+                total_valid_count += count
 
+            # Save Super-Book (Standardized)
             result["locator_map"][book_id] = [book_id, None]
-            
+            super_tree = { book_id: sub_book_ids }
+
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
-                "type": "super_group",
                 "title": root_title,
-                "children": sub_book_ids,
-                "child_counts": result["sub_counts"]
+                "type": "super_group",
+                "tree": super_tree,
+                "meta": super_meta_map,
+                "random_pool": [],     
             })
-            result["valid_count"] = 0 
+            
+            # [CHANGED] Trả về Tổng số lượng để SUTTA_COUNTS ghi nhận trọng số của Parent
+            result["valid_count"] = total_valid_count
+            
+            # [CHANGED] Trả về danh sách con chính thức để tạo SUB_BOOKS
+            result["sub_books_list"] = sub_book_ids
 
         else:
             # --- NORMAL MODE ---
@@ -150,16 +155,12 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             all_keys = set()
             collect_all_keys(structure, all_keys)
             all_keys.add(book_id)
-            
-            for k in full_meta.keys():
-                all_keys.add(k)
+            for k in full_meta.keys(): all_keys.add(k)
 
             for k in all_keys:
-                c_idx = _get_chunk_idx(k)
+                c_idx = chunk_map_idx.get(k)
                 result["locator_map"][k] = [book_id, c_idx]
-                
-                # [CHANGED] Không truyền chunk_map_idx nữa
-                slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map)
+                slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
             
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,

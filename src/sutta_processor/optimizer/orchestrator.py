@@ -18,12 +18,11 @@ class DBOrchestrator:
         self.dry_run = dry_run
         self.io = IOManager(dry_run)
         self.pool_manager = PoolManager()
-        # [CHANGED] Locator Value Type: List[Any]
         self.global_locator: Dict[str, List[Any]] = {}
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6 - Enhanced Locator): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v6.1 - Explicit Sub-Books): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -49,11 +48,21 @@ class DBOrchestrator:
                     res = future.result()
                     if res["status"] == "success":
                         self.global_locator.update(res["locator_map"])
+                        
+                        # 1. Register Counts (Parent & Children)
                         self.pool_manager.register_book_count(
                             res["book_id"], 
                             res["valid_count"],
                             res.get("sub_counts")
                         )
+                        
+                        # 2. Register Structure (Explicit List from Worker)
+                        if res.get("sub_books_list"):
+                            self.pool_manager.register_group_structure(
+                                res["book_id"], 
+                                res["sub_books_list"]
+                            )
+                            
                         logger.info(f"   ✅ Processed: {fname}")
                     else:
                         logger.warning(f"   ⚠️ Worker failure: {fname}")
@@ -107,9 +116,9 @@ class DBOrchestrator:
 
             meta = data.get("meta", {})
             for uid in meta.keys():
-                # [CHANGED] Locator format: ["tpk", None]
                 self.global_locator[uid] = ["tpk", None]
 
+            # TPK count 0 (not randomable)
             self.pool_manager.register_book_count("tpk", 0)
 
             meta_pack = {
