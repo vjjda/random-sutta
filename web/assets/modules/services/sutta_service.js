@@ -8,11 +8,20 @@ const logger = getLogger("SuttaService");
 
 export const SuttaService = {
     _randomBuffer: [], // [NEW] Buffer for preloaded random suttas
+    _bgWorkStarted: false,
     
     async init() {
         await SuttaRepository.init();
         RandomHelper.init(); // [NEW] Delegate init
-        // [NEW] Start buffering immediately
+        // Buffer initiation is now deferred to startBackgroundWork()
+    },
+
+    // [NEW] Explicitly start background tasks (Buffer, Preload, etc.)
+    startBackgroundWork() {
+        if (this._bgWorkStarted) return;
+        this._bgWorkStarted = true;
+        
+        logger.info("Service", "Starting background buffering...");
         this._fillBuffer();
     },
 

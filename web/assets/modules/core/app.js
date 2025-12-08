@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     randomBtn.addEventListener("click", () => SuttaController.loadRandomSutta(true));
 
-    try {
+    try:
         // [FIXED] Init Service (Service sẽ init Repo và Helper)
         await SuttaService.init(); 
 
@@ -44,11 +44,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         randomBtn.disabled = false;
 
         const initialParams = Router.getParams();
+        
+        // [OPTIMIZATION] Direct Load Strategy
         if (initialParams.q) {
             let loadId = initialParams.q;
             if (window.location.hash) loadId += window.location.hash;
-            SuttaController.loadSutta(loadId, true);
+            
+            // 1. Load the requested sutta IMMEDIATELY (High Priority)
+            // We await this to ensure full bandwidth is dedicated to the user's request
+            await SuttaController.loadSutta(loadId, true);
+            
+            // 2. ONLY start background work (buffering/preloading) after the main content is ready
+            SuttaService.startBackgroundWork();
         } else {
+            // Home Page Strategy:
+            // 1. Start buffering immediately so the Random button becomes instant ASAP
+            SuttaService.startBackgroundWork();
+            
+            // 2. Load the first random sutta
             SuttaController.loadRandomSutta(true);
         }
     } catch (err) {
