@@ -27,7 +27,7 @@ help:
 	@echo "  make release-zip    - Build & Tạo file .zip (-z)"
 	@echo "  make release-web    - Build & Deploy lên GitHub Pages (-w)"
 	@echo "  make release-beta   - PUBLISH PRE-RELEASE (-p) (Commit -> Push -> GH Release)"
-	@echo "  make publish        - PUBLISH OFFICIAL (-p -o) (Đánh dấu là Latest Release)"
+	@echo "  make publish        - PUBLISH OFFICIAL (-p -w) (Commit -> Push -> GH Release -> Deploy Web)"
 	@echo ""
 	@echo "🧹 MAINTENANCE:"
 	@echo "  make clean          - Dọn dẹp file rác, cache, build cũ"
@@ -103,11 +103,14 @@ release-beta:
 	@echo "🚀 PUBLISHING PRE-RELEASE (Beta)..."
 	$(PYTHON) -m src.release_system --publish
 
-# 5. Publish Official (-p -o)
+release-official:
+	@echo "🚀 PUBLISHING OFFICIAL RELEASE..."
+	$(PYTHON) -m src.release_system --official
+
 # Dùng cho bản chính thức (Latest)
 publish:
 	@echo "🌟 PUBLISHING OFFICIAL RELEASE..."
-	$(PYTHON) -m src.release_system --official --publish
+	$(PYTHON) -m src.release_system --official --web
 
 # ==============================================================================
 # 🧹 CLEANUP
