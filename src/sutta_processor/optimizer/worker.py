@@ -28,14 +28,12 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     if info.get("blurb"): entry["blurb"] = info["blurb"]
     
     entry["type"] = m_type
-    
     if uid in nav_map: entry["nav"] = nav_map[uid]
     if uid in chunk_map: entry["chunk"] = chunk_map[uid]
 
     if m_type == "subleaf":
         if "extract_id" in info: entry["extract_id"] = info["extract_id"]
         if "parent_uid" in info: entry["parent_uid"] = info["parent_uid"]
-        
     return entry
 
 def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
@@ -52,12 +50,10 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
         
-        # 1. Nav & Random
         linear_uids = []
         flatten_tree_uids(structure, full_meta, linear_uids)
         nav_map = build_nav_map(linear_uids)
         
-        # 2. Content
         chunk_map_idx = {}
         raw_content = data.get("content", {})
         if raw_content:
@@ -67,14 +63,12 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
 
-        # 3. Metadata Processing
         if is_split_book(book_id):
             # --- SPLIT MODE ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
             root_title = data.get("title", "")
             
-            # Prepare Super Meta (để hiển thị Menu)
             super_meta_map = {}
             if book_id in full_meta:
                 super_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
@@ -88,7 +82,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for k in all_sub_keys:
                     c_idx = chunk_map_idx.get(k)
                     result["locator_map"][k] = [sub_id, c_idx]
-                    
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
                     
                     m_type = full_meta.get(k, {}).get("type")
@@ -117,22 +110,21 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 
                 sub_book_ids.append(sub_id)
                 count = len(sub_leaves)
-                
                 result["sub_counts"][sub_id] = count
                 total_valid_count += count
 
-            # Save Super-Book Meta
+            # Save Super-Book (CLEANED)
             result["locator_map"][book_id] = [book_id, None]
             super_tree = { book_id: sub_book_ids }
 
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "title": root_title,
-                "type": "super_group",
+                "type": "super_group", # Flag cho Frontend
                 "tree": super_tree,
                 "meta": super_meta_map,
-                "random_pool": [],
-                # [REMOVED] child_counts đã bị xóa để tránh dư thừa
+                "children": sub_book_ids
+                # [REMOVED] random_pool
             })
             
             result["valid_count"] = total_valid_count
