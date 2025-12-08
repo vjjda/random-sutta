@@ -6,8 +6,12 @@ from pathlib import Path
 from typing import Dict, Any
 
 from ..io_manager import IOManager
-# [FIXED] Removed 'build_nav_map' from imports
-from ..tree_utils import extract_nav_sequence, generate_navigation_map, generate_random_pool
+from ..tree_utils import (
+    extract_nav_sequence, 
+    generate_navigation_map, 
+    generate_random_pool,
+    generate_depth_navigation # [NEW] Import
+)
 from ..splitter import is_split_book
 
 from .handle_split_book_strategy import execute_split_book_strategy
@@ -36,24 +40,26 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
         
-        # [UPDATED LOGIC]
-        # 1. Trích xuất trình tự đọc (Sequence) - Dual Layer
+        # 1. Nav Calculation (Leaf/Subleaf) - Luồng Đọc
         nav_sequence = extract_nav_sequence(structure, full_meta)
-        
-        # 2. Tạo Random Pool (Phẳng hóa từ sequence)
         linear_uids = generate_random_pool(nav_sequence)
+        reading_nav_map = generate_navigation_map(nav_sequence)
         
-        # 3. Tạo Nav Map (Luồng kép: Backbone + Deep Dive)
-        nav_map = generate_navigation_map(nav_sequence)
+        # 2. Branch Navigation (Depth-Level) - Luồng Duyệt
+        branch_nav_map = generate_depth_navigation(structure, full_meta)
         
-        # 4. Dispatch strategy
+        # 3. Merge Nav Maps (Ưu tiên Reading Nav nếu trùng)
+        # Vì Branch và Leaf không bao giờ trùng ID nên merge an toàn.
+        full_nav_map = {**branch_nav_map, **reading_nav_map}
+        
+        # 4. Dispatch
         if is_split_book(book_id):
             execute_split_book_strategy(
-                book_id, data, full_meta, structure, nav_map, io, result
+                book_id, data, full_meta, structure, full_nav_map, io, result
             )
         else:
             execute_normal_book_strategy(
-                book_id, data, full_meta, structure, nav_map, linear_uids, io, result
+                book_id, data, full_meta, structure, full_nav_map, linear_uids, io, result
             )
 
         result["status"] = "success"

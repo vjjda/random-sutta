@@ -10,6 +10,7 @@ from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .pool_manager import PoolManager
 from .worker import process_book_task
+from .tree_utils import generate_depth_navigation
 
 logger = logging.getLogger("Optimizer.Main")
 
@@ -115,10 +116,19 @@ class DBOrchestrator:
             self.pool_manager.set_sutta_universe(sutta_books)
 
             meta = data.get("meta", {})
+            
+            # [NEW] Calculate Nav for Super Tree (Branch Nav)
+            # Vì tpk không có Leaf, chỉ có Branch, nên chỉ cần Depth Nav.
+            tpk_nav_map = generate_depth_navigation(structure, meta)
+            
+            # Inject Nav vào Meta
+            for uid, nav_entry in tpk_nav_map.items():
+                if uid in meta:
+                    meta[uid]["nav"] = nav_entry
+
             for uid in meta.keys():
                 self.global_locator[uid] = ["tpk", None]
 
-            # TPK count 0 (not randomable)
             self.pool_manager.register_book_count("tpk", 0)
 
             meta_pack = {
@@ -133,10 +143,3 @@ class DBOrchestrator:
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
-
-    def _save_uid_index(self) -> None:
-        self.io.save_category("root", "uid_index.json", self.global_locator)
-
-def run_optimizer(dry_run: bool = False):
-    orchestrator = DBOrchestrator(dry_run)
-    orchestrator.run()
