@@ -6,43 +6,98 @@ import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaService");
 
+// --- [MEMORY CACHE SYSTEM] ---
+// 1. Cache trọng số để không phải tính lại mỗi lần bấm
+let _cachedWeightedMap = null; 
+let _lastFiltersHash = "";
+
+// 2. Cache danh sách ID (Pool) đã bóc tách từ file Meta
+// Key: bookId (ví dụ 'mn'), Value: Array<string> (['mn1', 'mn2'...])
+const _poolRamCache = new Map(); 
+
 export const SuttaService = {
     
-    // Khởi tạo Service (và Repository bên dưới)
     async init() {
         await SuttaRepository.init();
+        // Warm-up: Tính sẵn weight mặc định ngay khi app chạy
+        this._getOrBuildWeightedMap([]);
     },
 
-    // --- THUẬT TOÁN RANDOM (2-STEP WEIGHTED) ---
-    async getRandomPayload(activeFilters) {
-        // 1. Chuẩn bị danh sách sách (Candidates)
-        const rootBooks = (!activeFilters || activeFilters.length === 0) ? PRIMARY_BOOKS : activeFilters;
+    // --- [HELPER] QUẢN LÝ WEIGHTED MAP ---
+    _getFiltersHash(activeFilters) {
+        if (!activeFilters || activeFilters.length === 0) return "ALL";
+        return activeFilters.slice().sort().join("|");
+    },
+
+    _getOrBuildWeightedMap(activeFilters) {
+        const currentHash = this._getFiltersHash(activeFilters);
         
-        // Mở rộng (Flatten) các sách gộp: an -> an1, an2...
+        // Nếu filter không đổi -> Dùng lại kết quả cũ (Siêu nhanh)
+        if (_cachedWeightedMap && _lastFiltersHash === currentHash) {
+            return _cachedWeightedMap;
+        }
+
+        // Nếu có thay đổi, tính toán lại
+        const rootBooks = (!activeFilters || activeFilters.length === 0) ?
+            PRIMARY_BOOKS : activeFilters;
+        
         let candidates = [];
-        rootBooks.forEach(bookId => {
+        for (const bookId of rootBooks) {
             if (SUB_BOOKS[bookId]) {
-                candidates.push(...SUB_BOOKS[bookId]);
+                // Dùng vòng lặp for-of thay vì spread (...) để tiết kiệm bộ nhớ trên mobile
+                for (const sub of SUB_BOOKS[bookId]) {
+                    candidates.push(sub);
+                }
             } else {
                 candidates.push(bookId);
             }
-        });
+        }
 
-        // 2. Tính tổng trọng số (Total Weight) dựa trên số lượng bài kinh
         let totalWeight = 0;
         const weightedCandidates = [];
 
-        candidates.forEach(bookId => {
+        for (const bookId of candidates) {
             const count = SUTTA_COUNTS[bookId] || 0;
             if (count > 0) {
                 totalWeight += count;
                 weightedCandidates.push({ id: bookId, weight: count });
             }
-        });
+        }
+
+        _cachedWeightedMap = { totalWeight, weightedCandidates };
+        _lastFiltersHash = currentHash;
+        
+        return _cachedWeightedMap;
+    },
+
+    // --- [HELPER] LẤY POOL TỪ RAM HOẶC FETCH ---
+    async _getPoolForBook(bookId) {
+        // BƯỚC 1: Kiểm tra RAM (Zero latency)
+        if (_poolRamCache.has(bookId)) {
+            return _poolRamCache.get(bookId);
+        }
+
+        // BƯỚC 2: Nếu chưa có, tải file Meta gốc (như cũ)
+        // Lưu ý: File này có thể đã được Browser Cache (Service Worker) nên tải rất nhanh,
+        // nhưng ta cần tránh việc JSON.parse nó nhiều lần.
+        const bookMeta = await SuttaRepository.fetchMeta(bookId);
+        
+        if (bookMeta && bookMeta.random_pool) {
+            // Lưu ngay vào RAM để lần sau dùng
+            _poolRamCache.set(bookId, bookMeta.random_pool);
+            return bookMeta.random_pool;
+        }
+        
+        return [];
+    },
+
+    // --- LOGIC RANDOM CHÍNH ---
+    async getRandomPayload(activeFilters) {
+        // 1. Chọn Sách (Dùng Cache Weight)
+        const { totalWeight, weightedCandidates } = this._getOrBuildWeightedMap(activeFilters);
 
         if (totalWeight === 0) return null;
 
-        // 3. Chọn Sách (Weighted Random)
         let randomVal = Math.floor(Math.random() * totalWeight);
         let targetBook = null;
 
@@ -56,49 +111,46 @@ export const SuttaService = {
 
         logger.info("Random", `Selected Book: ${targetBook}`);
 
-        // 4. Tải Meta và Chọn Bài (Uniform Random trong sách đó)
-        const bookMeta = await SuttaRepository.fetchMeta(targetBook);
+        // 2. Lấy danh sách bài (Dùng Cache Pool)
+        // Đây là chỗ cải thiện tốc độ chính: 
+        // Thay vì tải toàn bộ object Meta nặng nề, ta chỉ lấy mảng ID từ RAM.
+        const randomPool = await this._getPoolForBook(targetBook);
         
-        if (!bookMeta || !bookMeta.random_pool || bookMeta.random_pool.length === 0) {
-            logger.warn("Random", `Book ${targetBook} has empty random pool.`);
+        if (!randomPool || randomPool.length === 0) {
+            logger.warn("Random", `Book ${targetBook} has empty pool.`);
             return null;
         }
 
-        const randomIdx = Math.floor(Math.random() * bookMeta.random_pool.length);
-        const targetUid = bookMeta.random_pool[randomIdx];
-        const metaEntry = bookMeta.meta[targetUid];
+        // 3. Chọn ngẫu nhiên ID
+        const randomIdx = Math.floor(Math.random() * randomPool.length);
+        const targetUid = randomPool[randomIdx];
         
-        // 5. Trả về Payload đầy đủ (Kèm gợi ý Chunk để Fast Path)
+        // 4. Trả về kết quả
+        // Lưu ý: Ta KHÔNG trả về `meta` ở đây nữa vì ta chưa cần tải chi tiết.
+        // `loadSutta` sẽ lo việc tải chi tiết sau. Điều này giúp UI phản hồi ngay lập tức.
         return {
             uid: targetUid,
-            book_id: targetBook,
-            chunk: metaEntry ? metaEntry.chunk : null, // Chunk Hint
-            meta: metaEntry,
-            bookMeta: bookMeta
+            book_id: targetBook
         };
     },
 
-    // --- LOGIC TẢI BÀI KINH (CORE) ---
-    // Input có thể là String ID (từ URL) hoặc Object (từ Random)
+    // --- LOGIC TẢI BÀI KINH (GIỮ NGUYÊN LOGIC CŨ, CHỈ CHỈNH INPUT) ---
     async loadSutta(input) {
         let uid, hintChunk = null, hintBook = null;
 
         if (typeof input === 'object') {
-            // Fast Path: Đã có thông tin từ bước Random
             uid = input.uid;
-            hintChunk = input.chunk;
-            hintBook = input.book_id;
+            hintChunk = input.chunk || null;
+            hintBook = input.book_id || null;
         } else {
-            // Standard Path: Chỉ có ID
             uid = input;
         }
 
-        // 1. Xác định vị trí (Locate)
-        // Nếu chưa biết sách nào/chunk nào, phải tra cứu Index
+        // 1. Locate (Nếu thiếu hint từ bước Random, tra cứu Index)
         if (hintBook === null || hintChunk === null) {
             let loc = SuttaRepository.getLocation(uid);
             
-            // [FIX RACE CONDITION] Nếu Index chưa tải xong, hãy đợi
+            // Fix race condition: Đợi index nếu chưa tải xong
             if (!loc) {
                 await SuttaRepository.ensureIndex();
                 loc = SuttaRepository.getLocation(uid);
@@ -111,10 +163,11 @@ export const SuttaService = {
             [hintBook, hintChunk] = loc;
         }
 
-        // 2. Tải song song Meta & Content (Parallel Fetch)
+        // 2. Fetch Data (Meta + Content)
+        // Lúc này mới thực sự tải file nặng, nhưng UI đã chuyển cảnh nên người dùng
+        // sẽ thấy loading spinner thay vì cảm giác "đơ" nút bấm.
         const promises = [SuttaRepository.fetchMeta(hintBook)];
-        
-        // Nếu hintChunk khác null, tải content. Nếu null (Branch), chỉ tải Meta.
+
         if (hintChunk !== null) {
             promises.push(SuttaRepository.fetchContentChunk(hintBook, hintChunk));
         }
@@ -125,19 +178,22 @@ export const SuttaService = {
         const metaEntry = bookMeta.meta[uid];
         if (!metaEntry) return null;
 
-        // 3. Xử lý Alias (Redirect)
+        // Nếu chưa có trong Cache RAM, tiện thể lưu luôn để lần sau Random nhanh hơn
+        if (!_poolRamCache.has(hintBook) && bookMeta.random_pool) {
+             _poolRamCache.set(hintBook, bookMeta.random_pool);
+        }
+
+        // 3. Xử lý Alias
         if (metaEntry.type === 'alias') {
             return { isAlias: true, targetUid: metaEntry.target_uid };
         }
 
-        // 4. Trích xuất Nội dung
+        // 4. Trích xuất Content
         let content = null;
         if (contentChunk) {
-            // Case A: Bài thường (Leaf)
             if (contentChunk[uid]) {
                 content = contentChunk[uid];
             } 
-            // Case B: Bài con (Subleaf) - Cần trích từ cha
             else if (metaEntry.parent_uid && contentChunk[metaEntry.parent_uid]) {
                 const parentContent = contentChunk[metaEntry.parent_uid];
                 const extractKey = metaEntry.extract_id || uid;
@@ -145,7 +201,7 @@ export const SuttaService = {
             }
         }
 
-        // 5. Tải thông tin Nav (Cho nút Prev/Next)
+        // 5. Nav
         const nav = metaEntry.nav || {};
         const neighborsToFetch = [];
         if (nav.prev) neighborsToFetch.push(nav.prev);
@@ -153,23 +209,18 @@ export const SuttaService = {
 
         let navMeta = {};
         if (neighborsToFetch.length > 0) {
-            // Tải meta của các bài lân cận để hiển thị Title
             navMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
         }
 
-        // 6. Trả về kết quả cuối cùng cho Controller
         return {
             uid: uid,
             meta: metaEntry,
             content: content,
-            
-            // Context cho Breadcrumb/Menu
             root_title: bookMeta.super_book_title || bookMeta.title,
             book_title: bookMeta.title,
             tree: bookMeta.tree,
-            bookStructure: bookMeta.tree, // Alias cho renderer dễ dùng
-            contextMeta: bookMeta.meta,   // Full meta map của sách (để vẽ menu con)
-            
+            bookStructure: bookMeta.tree,
+            contextMeta: bookMeta.meta,
             nav: nav,
             navMeta: navMeta
         };
