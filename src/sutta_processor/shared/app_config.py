@@ -39,7 +39,7 @@ DEV_MIRROR_DB_DIR = _DATA_BASE / "db_mirror"
 
 # --- 5. LOGIC CONFIGURATION ---
 # Giới hạn kích thước mỗi file content chunk (500KB)
-DB_CHUNK_SIZE_BYTES = 500 * 1024 
+DB_CHUNK_SIZE_BYTES = 1500 * 1024 
 
 # Ưu tiên dịch giả
 CONFIG_AUTHOR_PRIORITY = ["sujato", "brahmali", "kelly"]
