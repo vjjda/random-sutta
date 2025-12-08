@@ -30,3 +30,85 @@ export const SECONDARY_BOOKS = [
   "thi-ap",
   "vv"
 ];
+
+// Group mapping for Split Books (e.g. an -> [an1, an2...])
+export const SUB_BOOKS = {
+  "an": [
+    "an1",
+    "an2",
+    "an3",
+    "an4",
+    "an5",
+    "an6",
+    "an7",
+    "an8",
+    "an9",
+    "an10",
+    "an11"
+  ],
+  "sn": [
+    "sn-mahavaggasamyutta",
+    "sn-nidanavaggasamyutta",
+    "sn-khandhavaggasamyutta",
+    "sn-sagathavaggasamyutta",
+    "sn-salayatanavaggasamyutta"
+  ]
+};
+
+// Map: { book_id: total_sutta_count } (Includes both Parents and Children)
+export const SUTTA_COUNTS = {
+  "an": 2033,
+  "an1": 449,
+  "an10": 211,
+  "an11": 43,
+  "an2": 194,
+  "an3": 183,
+  "an4": 278,
+  "an5": 271,
+  "an6": 125,
+  "an7": 101,
+  "an8": 96,
+  "an9": 82,
+  "bv": 29,
+  "cnd": 23,
+  "cp": 35,
+  "dhp": 423,
+  "dn": 34,
+  "ds": 21,
+  "dt": 19,
+  "iti": 112,
+  "ja": 547,
+  "kp": 9,
+  "kv": 219,
+  "mil": 248,
+  "mn": 152,
+  "mnd": 16,
+  "ne": 37,
+  "patthana": 728,
+  "pe": 9,
+  "pli-tv-bi-pm": 0,
+  "pli-tv-bi-vb": 140,
+  "pli-tv-bu-pm": 0,
+  "pli-tv-bu-vb": 227,
+  "pli-tv-kd": 22,
+  "pli-tv-pvr": 51,
+  "pp": 20,
+  "ps": 31,
+  "pv": 51,
+  "sn": 1937,
+  "sn-khandhavaggasamyutta": 373,
+  "sn-mahavaggasamyutta": 636,
+  "sn-nidanavaggasamyutta": 267,
+  "sn-sagathavaggasamyutta": 271,
+  "sn-salayatanavaggasamyutta": 390,
+  "snp": 73,
+  "tha-ap": 563,
+  "thag": 264,
+  "thi-ap": 40,
+  "thig": 73,
+  "tpk": 0,
+  "ud": 80,
+  "vb": 18,
+  "vv": 85,
+  "ya": 77
+};

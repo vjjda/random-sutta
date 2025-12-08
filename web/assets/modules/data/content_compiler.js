@@ -1,120 +1,137 @@
 // Path: web/assets/modules/data/content_compiler.js
 
+const SEGMENT_REGEX = /^([a-z]+[\d\.-]+):(\d+\.\d+(\.\d+)?)$/;
+
 export const ContentCompiler = {
-  compile: function (contentData, rootId) {
-    if (!contentData) return "";
-
-    let html = "";
+    // --- 1. RENDER TEXT CONTENT (LEAF) ---
     
-    // Sắp xếp thứ tự segment
-    const sortedKeys = Object.keys(contentData).sort((a, b) => {
-        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-    });
+    compile: function (contentMap, rootUid) {
+        if (!contentMap) return "";
 
-    sortedKeys.forEach((segmentId) => {
-      const segment = contentData[segmentId];
-      if (!segment) return;
+        // Sắp xếp segment theo thứ tự tự nhiên (1.1, 1.2, 1.10...)
+        const sortedKeys = Object.keys(contentMap).sort((a, b) => {
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        });
 
-      // 1. Tổng hợp nội dung bên trong (Pali + Eng + Comment) 
-      let contentInner = "";
-      
-      if (segment.pli) contentInner += `<span class='pli'>${segment.pli}</span>`;
-      if (segment.eng) contentInner += `<span class='eng'>${segment.eng}</span>`;
-      
-      // Khôi phục hiển thị Comment
-      if (segment.comm) {
-          const safeComm = segment.comm.replace(/"/g, '&quot;').replace(/'/g, "&apos;");
-          contentInner += `<span class='comment-marker' data-comment="${safeComm}">*</span>`;
-      }
+        let html = '<article>';
+        
+        sortedKeys.forEach(segmentId => {
+            const seg = contentMap[segmentId];
+            const { pli, eng, html: htmlDecor } = seg;
 
-      // 2. Render HTML và Gán ID
-      if (segment.html) {
-        // [QUAN TRỌNG] Bọc nội dung trong thẻ SPAN có ID để trình duyệt scroll được tới đây
-        // Ngay cả khi nó nằm trong thẻ <blockquote> hay <h2>
-        const wrappedContent = `<span id="${segmentId}">${contentInner}</span>`;
-        html += segment.html.replace("{}", wrappedContent);
-      } else {
-        // Đoạn văn thường: Gán ID trực tiếp vào thẻ P để CSS .segment hoạt động tốt nhất
-        html += `<p class='segment' id='${segmentId}'>${contentInner}</p>`;
-      }
-    });
+            // Xử lý HTML Decorators (thẻ mở/đóng <p>, <h1>...)
+            let openTag = "";
+            let closeTag = "";
+            
+            if (htmlDecor) {
+                // htmlDecor thường dạng "<p>{}" hoặc "{}</p>"
+                const parts = htmlDecor.split("{}");
+                if (parts.length === 2) {
+                    openTag = parts[0];
+                    closeTag = parts[1];
+                }
+            }
 
-    return html;
-  },
+            // Xây dựng nội dung Segment
+            // Thêm ID để Scroller có thể cuộn tới (neo)
+            // Thêm class highlight để CSS xử lý
+            let segmentHtml = `<span id="${segmentId}" class="segment">`;
+            
+            // Pali
+            if (pli) {
+                segmentHtml += `<span class="pli" lang="pi">${pli}</span>`;
+            }
+            
+            // English
+            if (eng) {
+                segmentHtml += `<span class="eng" lang="en">${eng}</span>`;
+            }
+            
+            segmentHtml += `</span>`; // End .segment
 
-  // (Giữ nguyên hàm compileBranch ổn định từ phiên bản trước)
-  compileBranch: function(structure, currentUid, metaMap) {
-      function findNode(node, targetId) {
-          if (!node) return null;
-          if (Array.isArray(node)) {
-              for (let item of node) {
-                  if (item[targetId]) return item[targetId];
-                  const found = findNode(item, targetId);
-                  if (found) return found;
-              }
-              return null;
-          }
-          if (typeof node === 'object') {
-              if (node[targetId]) return node[targetId];
-              for (let key in node) {
-                  if (key === 'meta' || typeof node[key] !== 'object') continue;
-                  const found = findNode(node[key], targetId);
-                  if (found) return found;
-              }
-          }
-          return null;
-      }
+            // Ghép vào bài chính
+            html += `${openTag}${segmentHtml}${closeTag}`;
+        });
 
-      const children = findNode(structure, currentUid);
+        html += '</article>';
+        return html;
+    },
 
-      if (!children) {
-          return `<div class="error-message">
-              <p>No items found in this section (${currentUid}).</p>
-          </div>`;
-      }
+    // --- 2. RENDER BRANCH STRUCTURE (MENU) ---
 
-      let html = `<div class="branch-container"><ul>`;
-      let itemsToRender = [];
+    compileBranch: function (structure, rootUid, metaMap) {
+        if (!structure) return "";
 
-      if (Array.isArray(children)) {
-          children.forEach(child => {
-              if (typeof child === 'string') {
-                  itemsToRender.push(child);
-              } else if (typeof child === 'object' && child !== null) {
-                  itemsToRender.push(...Object.keys(child));
-              }
-          });
-      } else if (typeof children === 'object' && children !== null) {
-          itemsToRender.push(...Object.keys(children));
-      }
-      
-      itemsToRender.forEach(childId => {
-          if (typeof childId !== 'string') return;
-          const info = metaMap[childId];
-          
-          const title = info ? (info.translated_title || info.acronym || childId.toUpperCase()) : childId.toUpperCase();
-          const subtitle = info ? (info.original_title || "") : "";
-          const blurb = info ? (info.blurb || "") : "";
-          const displayText = info ? (info.acronym || childId.toUpperCase()) : childId.toUpperCase();
-          
-          const type = info ? info.type : 'leaf';
-          const cssClass = (type === 'branch' || type === 'root' || type === 'group') ? 'branch-card-group' : 'branch-card-leaf';
+        let html = `<div class="branch-container">`;
+        
+        // Helper: Duyệt cây đệ quy
+        const buildTreeHtml = (node, depth = 0) => {
+            let out = "";
+            
+            // Case A: List (Danh sách con)
+            if (Array.isArray(node)) {
+                out += `<ul class="branch-group depth-${depth}">`;
+                node.forEach(child => {
+                    out += buildTreeHtml(child, depth); // depth giữ nguyên hoặc tăng tùy logic CSS
+                });
+                out += `</ul>`;
+            } 
+            // Case B: Object (Node cha / Wrapper)
+            else if (typeof node === 'object' && node !== null) {
+                // Duyệt qua các keys (thường là ID của nhóm con)
+                Object.keys(node).forEach(key => {
+                    // Render bản thân key đó (như một header/link)
+                    out += this._createCard(key, metaMap, "group");
+                    // Render nội dung bên trong
+                    out += buildTreeHtml(node[key], depth + 1);
+                });
+            } 
+            // Case C: String (Leaf/Subleaf - ID bài kinh)
+            else if (typeof node === 'string') {
+                out += this._createCard(node, metaMap, "leaf");
+            }
+            
+            return out;
+        };
 
-          html += `<li class="${cssClass}">
-                      <a href="?q=${childId}" class="b-card-link" onclick="event.preventDefault(); window.loadSutta('${childId}', true);">
-                          <div class="b-content">
-                              <div class="b-header">
-                                  <span class="b-title">${title}</span>
-                                  ${subtitle ? `<span class="b-orig">${subtitle}</span>` : ""}
-                              </div>
-                              ${blurb ? `<div class="b-blurb">${blurb}</div>` : ""}
-                              <div class="b-footer"><span class="b-badge">${displayText}</span></div>
-                          </div>
-                      </a>
-                  </li>`;
-      });
-      
-      html += `</ul></div>`;
-      return html;
-  }
+        // Bắt đầu duyệt từ root của structure
+        // Structure thường có dạng: { "an": ["an1", "an2"] } hoặc { "an1": { ... } }
+        // Ta muốn bỏ qua cái vỏ bọc rootUid ở cấp cao nhất nếu nó trùng với trang hiện tại
+        let rootNode = structure;
+        if (structure[rootUid]) {
+            rootNode = structure[rootUid];
+        }
+
+        html += buildTreeHtml(rootNode);
+        html += `</div>`;
+        return html;
+    },
+
+    // Helper tạo thẻ Card/Link cho Menu
+    _createCard: function (uid, metaMap, type) {
+        const info = metaMap[uid] || {};
+        const title = info.translated_title || info.original_title || uid;
+        const acronym = info.acronym || uid.toUpperCase();
+        const blurb = info.blurb ? `<div class="b-blurb">${info.blurb}</div>` : "";
+        const cssClass = type === "group" ? "branch-card-group" : "branch-card-leaf";
+
+        // Logic hiển thị Badge (Type)
+        let badge = "";
+        if (info.type === 'sub_book') badge = `<span class="b-badge">Book</span>`;
+        
+        return `
+        <li class="${cssClass}">
+            <a href="javascript:void(0)" onclick="window.loadSutta('${uid}')" class="b-card-link">
+                <div class="b-content">
+                    <div class="b-header">
+                        <span class="b-title">${title}</span>
+                        <span class="b-orig">${acronym}</span>
+                    </div>
+                    ${blurb}
+                    ${badge ? `<div class="b-footer">${badge}</div>` : ''}
+                </div>
+            </a>
+        </li>
+        `;
+    }
 };

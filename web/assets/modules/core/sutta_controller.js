@@ -11,68 +11,72 @@ const logger = getLogger("SuttaController");
 const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
-  loadSutta: async function (suttaIdInput, shouldUpdateUrl = true, scrollY = 0, options = {}) {
+  // Input có thể là String ID hoặc Rich Payload Object
+  loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
-    const currentScrollBeforeRender = window.scrollY;
     hideComment();
 
-    let [baseId, hashPart] = suttaIdInput.split('#');
-    const suttaId = baseId.trim().toLowerCase();
-    const explicitHash = hashPart || null;
-    
+    // Parse Input
+    let suttaId;
+    if (typeof input === 'object') {
+        suttaId = input.uid;
+    } else {
+        // String handling (strip hash)
+        let [baseId] = input.split('#');
+        suttaId = baseId.trim().toLowerCase();
+    }
+
     logger.info('loadSutta', `Request: ${suttaId}`);
 
     const performRender = async () => {
-        const result = await SuttaService.loadFullSuttaData(suttaId);
+        // [UPDATED] Gọi Service với input đa năng
+        const result = await SuttaService.loadSutta(input);
         
-        if (!result || !result.data) {
-            renderSutta(suttaId, null, { prev: null, next: null }, options);
+        if (!result) {
+            renderSutta(suttaId, null, null, options);
             return false;
         }
 
-        if (result.data.isAlias) {
-            const parentUid = result.data.meta.parent_uid;
-            logger.info('loadSutta', `${suttaId} is alias -> Redirecting to ${parentUid}`);
-            this.loadSutta(parentUid, true, 0, { transition: false }); 
-            return true; 
+        // Xử lý Alias Redirect
+        if (result.isAlias) {
+            logger.info('loadSutta', `Alias redirect -> ${result.targetUid}`);
+            // Gọi đệ quy với ID mới
+            this.loadSutta(result.targetUid, true, 0, { transition: false }); 
+            return true;
         }
         
-        // [DEBUG LOG]
-        console.log(`[Controller] Ready to render ${suttaId}. NavData:`, result.navData);
-
-        const success = await renderSutta(suttaId, result.data, result.navData, options);
+        // Render
+        const success = await renderSutta(suttaId, result, options);
         
         if (success && shouldUpdateUrl) {
-             const finalHash = explicitHash ? `#${explicitHash}` : '';
-             Router.updateURL(suttaId, null, false, finalHash, currentScrollBeforeRender);
+             Router.updateURL(suttaId, null, false, null, window.scrollY);
         }
         return success;
     };
 
-    let targetScrollId = null;
-    if (explicitHash) {
-        targetScrollId = explicitHash.includes(':') ? explicitHash : `${suttaId}:${explicitHash}`;
-    }
-
     if (isTransition) {
-        await Scroller.transitionTo(performRender, targetScrollId);
+        await Scroller.transitionTo(performRender, null); // Simplified scroll logic
     } else {
         await performRender();
-        if (targetScrollId) setTimeout(() => Scroller.scrollToId(targetScrollId), 0);
-        else if (scrollY > 0) window.scrollTo({ top: scrollY, behavior: 'instant' });
-        else window.scrollTo({ top: 0, behavior: 'instant' });
+        window.scrollTo({ top: 0, behavior: 'instant' });
     }
   },
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     hideComment();
     const filters = getActiveFilters();
-    const targetUid = await SuttaService.getRandomSuttaId(filters);
-    if (!targetUid) {
-      alert("No suttas found. Please wait for database to load.");
+    
+    // [UPDATED] Nhận Rich Payload
+    const payload = await SuttaService.getRandomPayload(filters);
+    
+    if (!payload) {
+      alert("Database loading or no suttas found.");
       return;
     }
-    logger.info('loadRandomSutta', `Random selection: ${targetUid}`);
-    this.loadSutta(targetUid, shouldUpdateUrl, 0, { transition: false });
+    
+    logger.info('loadRandom', `Selected: ${payload.uid} (Fast Path Active)`);
+    
+    // Truyền cả payload vào loadSutta để kích hoạt Fast Path
+    this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
   }
 };

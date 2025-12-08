@@ -3,123 +3,136 @@ import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaRepository");
 
-const _cache = {
-    index: null,
-    chunks: {},
-    structures: {}
+// Cache In-Memory (Tránh fetch lại những thứ đã tải)
+const CACHE = {
+    meta: new Map(),    // book_id -> json
+    content: new Map(), // chunk_id -> json
+    index: null         // uid_index
 };
 
 export const SuttaRepository = {
     async init() {
-        if (_cache.index) return;
+        if (CACHE.index) return;
+        
+        // 1. Check Offline Global Variable (Do build system inject vào)
+        if (window.__DB_INDEX__) {
+            CACHE.index = window.__DB_INDEX__;
+            logger.info("Init", "Loaded Index from Global (Offline Mode)");
+            return;
+        }
+
+        // 2. Fetch Network
         try {
             const resp = await fetch('assets/db/uid_index.json');
-            if (!resp.ok) throw new Error("Could not load uid_index.json");
-            _cache.index = await resp.json();
-            logger.info("init", "DB Index loaded");
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            CACHE.index = await resp.json();
+            logger.info("Init", "Loaded Index from Network");
         } catch (e) {
-            logger.error("init", "Failed to init repository", e);
+            logger.error("Init", "Failed to load uid_index.json", e);
             throw e;
         }
     },
 
-    _resolveLocator(uid) {
-        if (!_cache.index || !_cache.index.locator) return null;
-        return _cache.index.locator[uid];
+    /**
+     * Tra cứu vị trí của UID.
+     * @returns [book_id, chunk_index] hoặc null
+     */
+    getLocation(uid) {
+        if (!CACHE.index) return null;
+        return CACHE.index[uid] || null;
     },
 
     /**
-     * Lấy danh sách Pools từ index (Fix lỗi ReferenceError uid)
+     * Tải file Meta của một cuốn sách.
      */
-    async getPools() {
-        await this.init();
-        // [FIX] Xóa dòng thừa "const locator = this._resolveLocator(uid);" gây lỗi
-        return _cache.index ? _cache.index.pools : {};
-    },
+    async fetchMeta(bookId) {
+        if (CACHE.meta.has(bookId)) return CACHE.meta.get(bookId);
 
-    async _fetchJson(relativePath) {
-        const fullPath = `assets/db/${relativePath}.json`;
-        
-        // Cache Check
-        if (relativePath.startsWith('content/') && _cache.chunks[relativePath]) return _cache.chunks[relativePath];
-        if (relativePath.startsWith('structure/') && _cache.structures[relativePath]) return _cache.structures[relativePath];
+        // Check Offline Global Loader (nếu có)
+        if (window.__DB_LOADER__ && window.__DB_LOADER__.getMeta) {
+            const data = window.__DB_LOADER__.getMeta(bookId);
+            if (data) {
+                CACHE.meta.set(bookId, data);
+                return data;
+            }
+        }
 
+        const url = `assets/db/meta/${bookId}.json`;
         try {
-            const resp = await fetch(fullPath);
-            if (!resp.ok) return null;
+            const resp = await fetch(url);
+            if (!resp.ok) return null; // Sách không tồn tại
             const data = await resp.json();
-
-            // Save to Cache
-            if (relativePath.startsWith('content/')) _cache.chunks[relativePath] = data;
-            if (relativePath.startsWith('structure/')) _cache.structures[relativePath] = data;
-            
+            CACHE.meta.set(bookId, data);
             return data;
         } catch (e) {
-            logger.error("fetch", `Error loading ${fullPath}`, e);
+            logger.warn("fetchMeta", `Failed to load ${bookId}`, e);
             return null;
         }
     },
 
-    async getSuttaEntry(uid) {
-        await this.init();
-        
-        // Fallback cho 'tpk' nếu không có trong index locator
-        let locator = this._resolveLocator(uid);
-        if (!locator && uid === 'tpk') {
-            locator = 'structure/super_struct';
-        }
-        
-        if (!locator) return null;
+    /**
+     * Tải file Content Chunk.
+     */
+    async fetchContentChunk(bookId, chunkIdx) {
+        const cacheKey = `${bookId}_${chunkIdx}`;
+        if (CACHE.content.has(cacheKey)) return CACHE.content.get(cacheKey);
 
-        // CASE 1: Branch/Root (Locator bắt đầu bằng 'structure/')
-        if (locator.startsWith('structure/')) {
-            const structData = await this._fetchJson(locator);
-            if (!structData) return null;
-
-            const metaInfo = structData.meta && structData.meta[uid];
-            return {
-                uid: uid,
-                meta: metaInfo || {}, 
-                fullMeta: structData.meta, // Trả về full meta để nav service dùng tooltip
-                bookStructure: structData.structure,
-                isBranch: true 
-            };
-        }
-
-        // CASE 2: Leaf/Subleaf (Locator bắt đầu bằng 'content/')
-        if (locator.startsWith('content/')) {
-            const chunkData = await this._fetchJson(locator);
-            if (!chunkData || !chunkData[uid]) return null;
-            return chunkData[uid]; 
-        }
-
-        return null;
-    },
-
-    async fetchMetaList(uids) {
-        await this.init();
-        const result = {};
-        const uniqueIds = [...new Set(uids)].filter(u => u);
-        
-        await Promise.all(uniqueIds.map(async (uid) => {
-            const entry = await this.getSuttaEntry(uid);
-            if (entry && entry.meta) {
-                result[uid] = entry.meta;
+        // Check Offline Global
+        if (window.__DB_LOADER__ && window.__DB_LOADER__.getContent) {
+            const data = window.__DB_LOADER__.getContent(cacheKey);
+            if (data) {
+                CACHE.content.set(cacheKey, data);
+                return data;
             }
-        }));
-        return result;
+        }
+
+        const url = `assets/db/content/${bookId}_chunk_${chunkIdx}.json`;
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            CACHE.content.set(cacheKey, data);
+            return data;
+        } catch (e) {
+            logger.warn("fetchContent", `Failed to load chunk ${cacheKey}`, e);
+            return null;
+        }
     },
 
-    async getBookStructure(bookId) {
-        await this.init();
-        let locator = this._resolveLocator(bookId);
-        
-        // Fallback convention
-        if (!locator) {
-             // Thử đoán tên file structure chuẩn
-             locator = `structure/sutta_${bookId}_${bookId}_struct`;
+    /**
+     * Hàm helper: Lấy thông tin Meta cụ thể của 1 UID
+     * (Tự động tải file meta của sách chứa nó nếu chưa có)
+     */
+    async getMetaEntry(uid, hintBookId = null) {
+        let bookId = hintBookId;
+        if (!bookId) {
+            const loc = this.getLocation(uid);
+            if (loc) bookId = loc[0];
         }
         
-        return await this._fetchJson(locator);
+        if (!bookId) return null;
+
+        const bookMeta = await this.fetchMeta(bookId);
+        if (!bookMeta || !bookMeta.meta) return null;
+
+        // Trả về meta của uid, kèm theo tham chiếu gốc đến book (để vẽ breadcrumb)
+        const entry = bookMeta.meta[uid];
+        if (entry) {
+            // Inject context info (quan trọng cho breadcrumb)
+            entry._book_id = bookId;
+            entry._root_title = bookMeta.root_title || bookMeta.title;
+            entry._tree = bookMeta.tree;
+        }
+        return entry;
+    },
+
+    /**
+     * Logic Download All cho Offline Manager
+     * (Cần cập nhật logic này sau, tạm thời để placeholder để không crash app)
+     */
+    async downloadAll(onProgress) {
+        // TODO: Implement logic duyệt qua constants.js để tải tất cả meta và content
+        logger.info("DownloadAll", "Feature pending update for new DB structure");
+        if (onProgress) onProgress(100, 100);
     }
 };
