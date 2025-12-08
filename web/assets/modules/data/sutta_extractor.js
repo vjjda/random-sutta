@@ -1,39 +1,27 @@
 // Path: web/assets/modules/data/sutta_extractor.js
-import { getLogger } from '../utils/logger.js';
-
-const logger = getLogger("SuttaExtractor");
 
 export const SuttaExtractor = {
     /**
-     * Trích xuất nội dung của subleaf từ content của parent.
-     * @param {Object} parentContent - Object content của bài cha (VD: an1.1-10)
-     * @param {string} extractId - Prefix ID để lọc (VD: "an1.1")
-     * @returns {Object} - Content object chỉ chứa các segment của subleaf
+     * Trích xuất các segment con từ nội dung cha.
+     * @param {Object} parentContent - Object chứa toàn bộ segment của cha (vd: dhp1-20)
+     * @param {String} extractId - ID cần trích xuất (vd: "dhp1")
      */
     extract: function(parentContent, extractId) {
-        if (!parentContent || !extractId) {
-            logger.warn("extract", "Missing input", { parentContent, extractId });
-            return {};
-        }
+        if (!parentContent || !extractId) return null;
 
-        const extractedContent = {};
-        const prefix = extractId + ":"; // VD: "an1.1:"
+        const extracted = {};
+        const prefix = extractId + ":"; // vd: "dhp1:"
+        let found = false;
 
-        // Duyệt qua tất cả segment của cha
-        for (const [key, value] of Object.entries(parentContent)) {
-            // Chỉ lấy những segment bắt đầu bằng "an1.1:"
-            if (key.startsWith(prefix)) {
-                extractedContent[key] = value;
+        for (const [segId, data] of Object.entries(parentContent)) {
+            // Kiểm tra xem segment ID có bắt đầu bằng prefix của con không
+            // Ví dụ: "dhp1:1" bắt đầu bằng "dhp1:" -> Lấy
+            if (segId.startsWith(prefix)) {
+                extracted[segId] = data;
+                found = true;
             }
         }
 
-        const count = Object.keys(extractedContent).length;
-        if (count === 0) {
-            logger.warn("extract", `No segments found for ${extractId} in parent content.`);
-        } else {
-            logger.debug("extract", `Extracted ${count} segments for ${extractId}`);
-        }
-
-        return extractedContent;
+        return found ? extracted : null;
     }
 };

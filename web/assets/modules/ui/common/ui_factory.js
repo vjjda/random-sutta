@@ -20,22 +20,21 @@ export const UIFactory = {
   },
 
   createNavButton: function (suttaId, direction, metaMap) {
+    // Nếu ID là null/undefined -> Spacer rỗng
     if (!suttaId) return `<div class="nav-spacer"></div>`;
 
-    // [UPDATED Logic]
     let title = suttaId.toUpperCase();
     let subtitle = "";
 
+    // Tra cứu meta (được truyền từ navMeta)
     if (metaMap && metaMap[suttaId]) {
         const info = metaMap[suttaId];
-        // Quy tắc 1: Acronym > UID
-        title = info.acronym || title;
-        // Quy tắc 2: Translated Title > Original Title > Empty
-        subtitle = info.translated_title || info.original_title || "";
-    } else {
-        // Fallback nhẹ nếu chưa có meta (parse từ ID)
-        const match = suttaId.match(/^([a-z]+)(\d.*)$/i);
-        if (match) title = `${match[1].toUpperCase()} ${match[2]}`;
+        // 1. Dòng chính: Acronym (ngắn gọn)
+        if (info.acronym) title = info.acronym;
+        
+        // 2. Dòng phụ: Tên tiếng Anh -> hoặc Tên Pali
+        if (info.translated_title) subtitle = info.translated_title;
+        else if (info.original_title) subtitle = info.original_title;
     }
 
     const align = direction === 'left' ? 'left' : 'right';
