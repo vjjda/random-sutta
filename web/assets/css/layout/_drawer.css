@@ -174,6 +174,19 @@
     display: none; 
 }
 
+/* Progress Bar (Nền chạy) */
+#offline-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  background-color: rgba(139, 69, 19, 0.15); /* Tăng đậm lên chút (0.1 -> 0.15) cho dễ nhìn */
+  z-index: 1;
+  /* [CHANGED] Dùng linear để chạy đều, giảm thời gian xuống 0.2s cho phản hồi nhanh */
+  transition: width 0.2s linear; 
+}
+
 /* 2. Ready */
 #offline-wrapper.ready {
   background-color: transparent;

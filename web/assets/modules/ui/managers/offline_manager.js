@@ -116,7 +116,7 @@ export const OfflineManager = {
 
         try {
             await SuttaRepository.downloadAll((current, total) => {
-                const percent = Math.round((current / total) * 100);
+                const percent = (current / total * 100).toFixed(2);
                 if (progressBar) progressBar.style.width = `${percent}%`;
             });
 
