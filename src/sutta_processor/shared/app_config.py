@@ -38,8 +38,8 @@ LEGACY_DIST_BOOKS_DIR = _ASSETS_BASE / "books"
 DEV_MIRROR_DB_DIR = _DATA_BASE / "db_mirror"
 
 # --- 5. LOGIC CONFIGURATION ---
-# Giới hạn kích thước mỗi file content chunk (500KB)
-DB_CHUNK_SIZE_BYTES = 500 * 1024 
+# Giới hạn kích thước mỗi file content chunk (50KB) - Giảm nhỏ để tối ưu Direct Load
+DB_CHUNK_SIZE_BYTES = 50 * 1024 
 
 # Ưu tiên dịch giả
 CONFIG_AUTHOR_PRIORITY = ["sujato", "brahmali", "kelly"]
