@@ -13,6 +13,7 @@ from .splitter import is_split_book, extract_sub_books
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
+    # ... (Giữ nguyên hàm này) ...
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
@@ -35,7 +36,6 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     if m_type == "subleaf":
         if "extract_id" in info: entry["extract_id"] = info["extract_id"]
         if "parent_uid" in info: entry["parent_uid"] = info["parent_uid"]
-        
     return entry
 
 def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
@@ -51,87 +51,100 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
+        raw_content = data.get("content", {}) # Lấy content gốc
         
-        # 1. Nav & Random
+        # 1. Nav Calculation (Global - Nav vẫn cần tính trên toàn bộ sách mẹ để link xuyên suốt)
         linear_uids = []
         flatten_tree_uids(structure, full_meta, linear_uids)
         nav_map = build_nav_map(linear_uids)
         
-        # 2. Content
-        chunk_map_idx = {}
-        raw_content = data.get("content", {})
-        if raw_content:
-            chunks = chunk_content(book_id, raw_content)
-            for idx, (fname, chunk_data) in enumerate(chunks):
-                io.save_category("content", f"{fname}.json", chunk_data)
-                for uid in chunk_data.keys():
-                    chunk_map_idx[uid] = idx
+        # [REMOVED] Global Content Chunking ở đây.
+        # Chúng ta sẽ chunking cụ thể bên trong từng mode.
 
-        # 3. Metadata Processing
+        # 2. Processing
         if is_split_book(book_id):
             # --- SPLIT MODE (AN, SN) ---
             sub_books = extract_sub_books(book_id, structure, full_meta)
             sub_book_ids = []
+            root_title = data.get("title", "")
             
-            # Lấy Title của sách mẹ (để truyền xuống con)
-            super_title = data.get("title", "")
-            
-            # Super Meta (Menu cho sách mẹ)
+            # Super Meta
             super_meta_map = {}
+            # Chunk map giả cho super meta (vì super meta không cần chunk info)
+            dummy_chunk_map = {} 
             if book_id in full_meta:
-                super_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
+                super_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, dummy_chunk_map)
 
             total_valid_count = 0
 
             for sub_id, all_sub_keys, sub_struct in sub_books:
+                # A. Chunking cho Sách Con (New Logic)
+                # Lọc content chỉ thuộc về sub-book này
+                sub_content = {}
+                sub_leaves_for_content = []
+                
+                # Tìm các lá có nội dung trong sub_book
+                # Dùng lại hàm flatten để lấy đúng leaf
+                flatten_tree_uids(sub_struct, full_meta, sub_leaves_for_content)
+                
+                for uid in sub_leaves_for_content:
+                    if uid in raw_content:
+                        sub_content[uid] = raw_content[uid]
+                
+                # Thực hiện Chunking cho Sub-book
+                # File sinh ra sẽ là: an1_chunk_0.json, an1_chunk_1.json...
+                sub_chunk_map = {}
+                if sub_content:
+                    chunks = chunk_content(sub_id, sub_content)
+                    for idx, (fname, chunk_data) in enumerate(chunks):
+                        io.save_category("content", f"{fname}.json", chunk_data)
+                        for uid in chunk_data.keys():
+                            sub_chunk_map[uid] = idx
+
+                # B. Build Meta & Locator
                 sub_meta_map = {}
-                sub_leaves = []
                 
                 for k in all_sub_keys:
-                    c_idx = chunk_map_idx.get(k)
+                    # Locator trỏ về [sub_id, chunk_idx]
+                    c_idx = sub_chunk_map.get(k)
                     result["locator_map"][k] = [sub_id, c_idx]
-                    sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
                     
-                    m_type = full_meta.get(k, {}).get("type")
-                    if m_type in ["leaf", "subleaf"]:
-                        sub_leaves.append(k)
+                    sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, sub_chunk_map)
 
                 if book_id in full_meta:
-                    sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, chunk_map_idx)
+                    sub_meta_map[book_id] = _build_meta_entry(book_id, full_meta, nav_map, sub_chunk_map)
                 
                 if sub_id in full_meta:
-                    super_meta_map[sub_id] = _build_meta_entry(sub_id, full_meta, nav_map, chunk_map_idx)
+                    super_meta_map[sub_id] = _build_meta_entry(sub_id, full_meta, nav_map, dummy_chunk_map)
                 else:
                     super_meta_map[sub_id] = { "acronym": sub_id.upper(), "type": "branch" }
 
                 final_tree = { book_id: { sub_id: sub_struct } }
 
-                # [CHANGED] Save Sub-Book (an1.json)
                 io.save_category("meta", f"{sub_id}.json", {
                     "id": sub_id,
-                    "type": "sub_book",           # [NEW] Explicit Type
+                    "type": "sub_book",
                     "title": f"{sub_id.upper()}",
-                    "super_book_id": book_id,     # [RENAMED] root_id -> super_book_id
-                    "super_book_title": super_title, # [RENAMED] root_title -> super_book_title
+                    "super_book_id": book_id,
+                    "super_book_title": root_title,
                     "tree": final_tree, 
                     "meta": sub_meta_map,
-                    "random_pool": sub_leaves
+                    "random_pool": sub_leaves_for_content # Dùng luôn list đã tính
                 })
                 
                 sub_book_ids.append(sub_id)
-                count = len(sub_leaves)
-                
+                count = len(sub_leaves_for_content)
                 result["sub_counts"][sub_id] = count
                 total_valid_count += count
 
-            # [CHANGED] Save Super-Book (an.json)
+            # Save Super-Book
             result["locator_map"][book_id] = [book_id, None]
             super_tree = { book_id: sub_book_ids }
 
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
-                "type": "super_book",  # [RENAMED] super_group -> super_book
-                "title": super_title,
+                "type": "super_book",
+                "title": root_title,
                 "tree": super_tree,
                 "meta": super_meta_map,
                 "random_pool": [],     
@@ -141,7 +154,16 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             result["sub_books_list"] = sub_book_ids
 
         else:
-            # --- NORMAL MODE (MN, DN...) ---
+            # --- NORMAL MODE ---
+            # Chunking toàn bộ sách
+            normal_chunk_map = {}
+            if raw_content:
+                chunks = chunk_content(book_id, raw_content)
+                for idx, (fname, chunk_data) in enumerate(chunks):
+                    io.save_category("content", f"{fname}.json", chunk_data)
+                    for uid in chunk_data.keys():
+                        normal_chunk_map[uid] = idx
+
             slim_meta_map = {}
             all_keys = set()
             collect_all_keys(structure, all_keys)
@@ -149,14 +171,13 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
             for k in full_meta.keys(): all_keys.add(k)
 
             for k in all_keys:
-                c_idx = chunk_map_idx.get(k)
+                c_idx = normal_chunk_map.get(k)
                 result["locator_map"][k] = [book_id, c_idx]
-                slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
+                slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, normal_chunk_map)
             
-            # [CHANGED] Save Normal Book
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
-                "type": "book",       # [NEW] Explicit Type
+                "type": "book",
                 "title": data.get("title"),
                 "tree": structure,
                 "meta": slim_meta_map,
