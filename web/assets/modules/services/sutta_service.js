@@ -7,15 +7,61 @@ import { RandomHelper } from './random_helper.js'; // [NEW]
 const logger = getLogger("SuttaService");
 
 export const SuttaService = {
+    _randomBuffer: [], // [NEW] Buffer for preloaded random suttas
     
     async init() {
         await SuttaRepository.init();
         RandomHelper.init(); // [NEW] Delegate init
+        // [NEW] Start buffering immediately
+        this._fillBuffer();
     },
 
-    // [NEW] Delegate sang Helper
+    // [NEW] Background buffering logic
+    async _fillBuffer(filters = null) {
+        if (this._randomBuffer.length >= 3) return;
+
+        try {
+            // Get candidate (lightweight)
+            const payload = await RandomHelper.getRandomPayload(filters);
+            if (!payload) return;
+
+            // Pre-fetch data (heavyweight) - This warms up SuttaRepository cache & SW Cache
+            // We ignore the return value, we just want the side-effect of fetching
+            await this.loadSutta(payload);
+
+            this._randomBuffer.push(payload);
+            logger.info("Buffer", `Buffered: ${payload.uid} (Buffer Size: ${this._randomBuffer.length})`);
+            
+            // Recursive fill if still low
+            if (this._randomBuffer.length < 3) {
+                 this._fillBuffer(filters); 
+            }
+        } catch (e) {
+            logger.warn("Buffer", "Failed to buffer random sutta", e);
+        }
+    },
+
+    // [UPDATED] Get from Buffer if available
     async getRandomPayload(activeFilters) {
-        return await RandomHelper.getRandomPayload(activeFilters);
+        // 1. Try to pop from buffer
+        if (this._randomBuffer.length > 0) {
+             // Simple check: In a real app, we might check if buffered item matches current filters.
+             // For now, assuming filters change rarely, we just pop.
+             const item = this._randomBuffer.pop();
+             logger.info("Random", `Served from Buffer: ${item.uid} (Remaining: ${this._randomBuffer.length})`);
+             
+             // Refill in background
+             this._fillBuffer(activeFilters);
+             return item;
+        }
+
+        // 2. Fallback (Slow path)
+        const payload = await RandomHelper.getRandomPayload(activeFilters);
+        
+        // Refill for next time
+        this._fillBuffer(activeFilters);
+        
+        return payload;
     },
 
     // --- CORE LOGIC: LOAD CONTENT ---
