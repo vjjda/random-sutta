@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     randomBtn.addEventListener("click", () => SuttaController.loadRandomSutta(true));
 
-    try:
+    try {
         // [FIXED] Init Service (Service sẽ init Repo và Helper)
         await SuttaService.init(); 
 
