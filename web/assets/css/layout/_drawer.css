@@ -58,10 +58,14 @@
 .filter-btn {
   background-color: #e8e0d9;
   color: #5d4037;
-  border: 1px solid transparent;
+  /* Giữ border trong suốt để chiếm chỗ sẵn, tránh nhảy khi hover/active nếu có border màu */
+  border: 1px solid transparent; 
   padding: 6px 14px;
   font-size: 0.9rem;
   border-radius: var(--radius-sm);
+  /* [QUAN TRỌNG] Đặt font-weight cố định */
+  font-weight: 500; 
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .filter-btn:hover {
@@ -71,7 +75,7 @@
 .filter-btn.active {
   background-color: var(--primary-color);
   color: #fff;
-  font-weight: 600;
+  /* [ĐÃ SỬA] Xóa dòng font-weight: 600; để không thay đổi kích thước chữ */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
