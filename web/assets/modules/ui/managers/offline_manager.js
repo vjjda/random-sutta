@@ -1,5 +1,4 @@
 // Path: web/assets/modules/ui/managers/offline_manager.js
-// [UPDATED]
 import { SuttaRepository } from '../../data/sutta_repository.js';
 import { getLogger } from '../../utils/logger.js';
 

@@ -1,5 +1,6 @@
 // Path: web/assets/modules/data/loader/zip_importer.js
-import { getLogger } from '../../../utils/logger.js';
+// [FIX] Sửa đường dẫn import logger (lùi 2 cấp thay vì 3)
+import { getLogger } from '../../utils/logger.js'; 
 
 const logger = getLogger("ZipImporter");
 
@@ -10,8 +11,7 @@ export const ZipImporter = {
             await this._loadLibrary();
         }
 
-        // 2. Xác định Cache Name (Lấy từ SW hoặc config)
-        // [HACK] Lấy cache name động bằng cách query keys
+        // 2. Xác định Cache Name
         const keys = await caches.keys();
         const cacheName = keys.find(k => k.startsWith("sutta-cache-v"));
         
@@ -36,8 +36,6 @@ export const ZipImporter = {
         const files = Object.keys(zip.files);
         let count = 0;
         const total = files.length;
-        
-        // Batching để không đơ UI
         const BATCH_SIZE = 50;
         
         for (let i = 0; i < total; i += BATCH_SIZE) {
@@ -50,7 +48,6 @@ export const ZipImporter = {
                 const content = await file.async("string");
                 
                 // Giả lập Request/Response cho Cache API
-                // URL trong cache phải khớp với URL fetch thực tế: "assets/db/meta/mn.json"
                 const requestUrl = `assets/db/${filename}`;
                 const jsonResponse = new Response(content, {
                     headers: { "Content-Type": "application/json" }
@@ -62,7 +59,7 @@ export const ZipImporter = {
             count += batch.length;
             if (onProgress) onProgress(Math.min(count, total), total);
             
-            // Nhường thread cho UI thở
+            // Yield to main thread
             await new Promise(r => setTimeout(r, 0));
         }
         

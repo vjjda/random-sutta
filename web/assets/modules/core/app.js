@@ -1,13 +1,15 @@
 // Path: web/assets/modules/core/app.js
 import { Router } from './router.js';
 import { SuttaController } from './sutta_controller.js';
-// [UPDATED] Import Repository mới
 import { SuttaRepository } from '../data/sutta_repository.js'; 
 import { setupLogging, LogLevel, getLogger } from '../utils/logger.js';
 import { initFilters } from '../ui/components/filters.js';
 import { setupQuickNav } from '../ui/components/search.js';
 import { OfflineManager } from '../ui/managers/offline_manager.js';
 import { DrawerManager } from '../ui/managers/drawer_manager.js';
+
+// [FIX] Thêm biến này để Release System inject version vào
+const APP_VERSION = "dev-placeholder";
 
 const logger = getLogger("App");
 
