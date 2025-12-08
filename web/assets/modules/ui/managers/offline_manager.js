@@ -3,7 +3,7 @@ import { SuttaRepository } from '../../data/sutta_repository.js';
 import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("OfflineManager");
-const APP_VERSION = "dev-placeholder"; // Sẽ được replace bởi build system
+const APP_VERSION = "dev-placeholder"; 
 
 const ICONS = {
     SYNC: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 5.5A11 11 0 0 0 12 2c-6.237 0-11.232 5.26-10.96 11.58C1.4 21.03 8.35 26 15 22.6M2.5 22v-6h6M2.66 18.5a11 11 0 0 0 19.8-7.3"></path></svg>`,
@@ -24,46 +24,59 @@ export const OfflineManager = {
             }
         }, 3000);
 
-        // Click nút chính: Download hoặc Show Version
         if (btnOffline) {
             btnOffline.addEventListener("click", () => {
                 const wrapper = document.getElementById("offline-wrapper");
-                
-                // Nếu đang ở trạng thái Ready -> Show Version
                 if (wrapper && wrapper.classList.contains("ready")) {
                     this.showVersionInfo(btnOffline);
                 } else {
-                    // Nếu chưa ready -> Download
                     localStorage.removeItem('sutta_offline_version');
                     this.runSmartBackgroundDownload();
                 }
             });
         }
 
-        // Click nút Update nhỏ: Ép tải lại
+        // [FIX] Update Button Logic
         if (btnUpdate) {
-            btnUpdate.addEventListener("click", (e) => {
-                e.stopPropagation(); // Tránh kích hoạt nút cha (nếu có)
-                if (confirm("Force update offline database?")) {
+            btnUpdate.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                if (confirm("Reset cache and reload to get the latest version?")) {
+                    // 1. Clear LocalStorage Flag
                     localStorage.removeItem('sutta_offline_version');
-                    this.runSmartBackgroundDownload();
+                    
+                    // 2. Unregister Service Workers
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (const registration of registrations) {
+                            await registration.unregister();
+                        }
+                    }
+
+                    // 3. Clear Cache Storage (Quan trọng)
+                    if ('caches' in window) {
+                        const keys = await caches.keys();
+                        for (const key of keys) {
+                            await caches.delete(key);
+                        }
+                    }
+
+                    // 4. Hard Reload page
+                    window.location.reload();
                 }
             });
         }
     },
 
-    // [NEW] Hiển thị version tạm thời
     showVersionInfo(btnElement) {
         const label = btnElement.querySelector(".label");
         if (!label) return;
 
-        const originalText = label.textContent;
-        const version = localStorage.getItem('sutta_offline_version') || "Unknown";
+        // [FIX] Hiển thị cả APP_VERSION thực tế (từ code) để đối chiếu
+        const stored = localStorage.getItem('sutta_offline_version') || "N/A";
+        const current = APP_VERSION.replace('v', '');
         
-        // Hiển thị version
-        label.textContent = `Ver: ${version}`;
+        label.textContent = `Ver: ${current}`; // Ưu tiên hiện version của code đang chạy
         
-        // Reset sau 3s
         setTimeout(() => {
             label.textContent = "Offline Ready";
         }, 3000);
@@ -91,7 +104,6 @@ export const OfflineManager = {
                 progressBar.style.width = `${percent}%`;
             }
             
-            // Xử lý nút update nhỏ
             if (btnUpdate) {
                 if (state === 'ready') btnUpdate.classList.remove('hidden');
                 else btnUpdate.classList.add('hidden');
@@ -101,8 +113,7 @@ export const OfflineManager = {
         if (storedVersion === APP_VERSION) {
             logger.info("BackgroundDL", `Cache up-to-date (${APP_VERSION}).`);
             setUIState("ready", "Offline Ready", ICONS.CHECK);
-            // Không disable nút nữa để user có thể click xem version
-            if (btnOffline) btnOffline.disabled = false; 
+            if (btnOffline) btnOffline.disabled = false;
             return;
         }
 
@@ -111,7 +122,6 @@ export const OfflineManager = {
         logger.info("BackgroundDL", "Starting silent download...");
         setUIState("syncing", "Syncing Library...", ICONS.SYNC, 0);
         
-        // Disable nút khi đang tải
         if (btnOffline) btnOffline.disabled = true;
 
         try {
@@ -123,7 +133,6 @@ export const OfflineManager = {
             localStorage.setItem('sutta_offline_version', APP_VERSION);
             setUIState("ready", "Offline Ready", ICONS.CHECK);
             if (btnOffline) btnOffline.disabled = false;
-
         } catch (e) {
             logger.error("BackgroundDL", "Sync failed", e);
             setUIState("error", "Retry Download", ICONS.ALERT, 0);
