@@ -3,7 +3,6 @@ import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaRepository");
 
-// Cache In-Memory (Chỉ dùng cho runtime)
 const CACHE = {
     meta: new Map(),    
     content: new Map(), 
@@ -11,6 +10,7 @@ const CACHE = {
 };
 
 export const SuttaRepository = {
+    // ... (Giữ nguyên init và getLocation) ...
     async init() {
         if (CACHE.index) return;
         
@@ -61,7 +61,9 @@ export const SuttaRepository = {
     },
 
     async fetchContentChunk(bookId, chunkIdx) {
-        const cacheKey = `${bookId}_${chunkIdx}`;
+        // [FIX] Dùng key khớp với tên file (an1_chunk_0) để đồng bộ với Offline Loader
+        const cacheKey = `${bookId}_chunk_${chunkIdx}`;
+        
         if (CACHE.content.has(cacheKey)) return CACHE.content.get(cacheKey);
 
         if (window.__DB_LOADER__ && window.__DB_LOADER__.getContent) {
@@ -72,7 +74,7 @@ export const SuttaRepository = {
             }
         }
 
-        const url = `assets/db/content/${bookId}_chunk_${chunkIdx}.json`;
+        const url = `assets/db/content/${cacheKey}.json`;
         try {
             const resp = await fetch(url);
             if (!resp.ok) return null;
@@ -85,6 +87,7 @@ export const SuttaRepository = {
         }
     },
 
+    // ... (Giữ nguyên getMetaEntry, fetchMetaList, downloadAll) ...
     async getMetaEntry(uid, hintBookId = null) {
         let bookId = hintBookId;
         if (!bookId) {
@@ -100,7 +103,7 @@ export const SuttaRepository = {
         const entry = bookMeta.meta[uid];
         if (entry) {
             entry._book_id = bookId;
-            entry._root_title = bookMeta.root_title || bookMeta.title;
+            entry._root_title = bookMeta.super_book_title || bookMeta.title;
             entry._tree = bookMeta.tree;
         }
         return entry;
@@ -132,63 +135,42 @@ export const SuttaRepository = {
         return result;
     },
 
-    /**
-     * [UPDATED] Tải toàn bộ dữ liệu về để dùng Offline.
-     * Logic: Quét Index -> Tìm tất cả Meta & Content -> Fetch từng cái.
-     */
     async downloadAll(onProgress) {
-        await this.init(); // Đảm bảo Index đã có
-        
+        await this.init(); 
         if (!CACHE.index) {
             logger.error("DownloadAll", "Index not loaded");
             return;
         }
-
         logger.info("DownloadAll", "Scanning index for assets...");
         
-        // 1. Thu thập danh sách file cần tải
         const metaSet = new Set();
         const contentSet = new Set();
 
         Object.values(CACHE.index).forEach(loc => {
             if (!loc) return;
             const [bookId, chunkIdx] = loc;
-            
-            // Luôn cần Meta của sách này
             metaSet.add(bookId);
-            
-            // Nếu có chunk content, thêm vào list
             if (chunkIdx !== null) {
-                contentSet.add(`${bookId}|${chunkIdx}`);
+                contentSet.add(`${bookId}_chunk_${chunkIdx}`);
             }
         });
 
-        // Chuyển về dạng URL để tải
         const tasks = [];
-        
-        // Task Meta
         metaSet.forEach(bookId => {
             tasks.push(`assets/db/meta/${bookId}.json`);
         });
-
-        // Task Content
         contentSet.forEach(key => {
-            const [bookId, chunkIdx] = key.split('|');
-            tasks.push(`assets/db/content/${bookId}_chunk_${chunkIdx}.json`);
+            tasks.push(`assets/db/content/${key}.json`);
         });
 
         logger.info("DownloadAll", `Found ${tasks.length} files to sync.`);
 
-        // 2. Thực thi tải (Concurrency Queue)
-        // Giới hạn 5 request cùng lúc để không làm đơ trình duyệt
         const CONCURRENCY_LIMIT = 5;
         let completed = 0;
         let hasError = false;
 
         const processTask = async (url) => {
             try {
-                // Chỉ fetch, không lưu vào CACHE memory (để tiết kiệm RAM)
-                // Service Worker sẽ tự động bắt request này và lưu vào Disk Cache
                 const resp = await fetch(url);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             } catch (e) {
@@ -200,7 +182,6 @@ export const SuttaRepository = {
             }
         };
 
-        // Chạy queue
         const queue = [...tasks];
         const activeWorkers = [];
 
@@ -212,7 +193,6 @@ export const SuttaRepository = {
                 });
                 activeWorkers.push(worker);
             }
-            
             if (activeWorkers.length > 0) {
                 await Promise.race(activeWorkers);
             }
@@ -221,7 +201,6 @@ export const SuttaRepository = {
         if (hasError) {
             throw new Error("Some files failed to download.");
         }
-        
         logger.info("DownloadAll", "Sync completed successfully.");
     }
 };

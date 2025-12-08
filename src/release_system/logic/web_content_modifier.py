@@ -11,12 +11,11 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
     if not file_path.exists():
         logger.warning(f"⚠️ File not found: {file_path}")
         return False
-       
+        
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Sử dụng cờ re.DOTALL để dấu chấm (.) khớp với cả xuống dòng
         if not re.search(pattern, content, flags=re.DOTALL):
             logger.warning(f"⚠️ Pattern '{pattern}' not found in {file_path.name}")
             return False
@@ -44,13 +43,7 @@ def inject_version_into_app_js(target_dir: Path, version_tag: str) -> bool:
     replacement = f'const APP_VERSION = "{version_tag}";'
     return _update_file(app_js_path, pattern, replacement)
 
-
 def create_offline_index_js(build_dir: Path) -> bool:
-    """
-    Creates assets/db_index.js containing the content of uid_index.json
-    assigned to window.__DB_INDEX__.
-    Also removes the original uid_index.json to save space.
-    """
     try:
         json_path = build_dir / "assets" / "db" / "uid_index.json"
         js_path = build_dir / "assets" / "db_index.js"
@@ -58,7 +51,7 @@ def create_offline_index_js(build_dir: Path) -> bool:
         if not json_path.exists():
             logger.error(f"❌ Source file missing: {json_path}")
             return False
-            
+             
         logger.info(f"🔨 Converting {json_path.name} to JS variable...")
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -78,11 +71,6 @@ def create_offline_index_js(build_dir: Path) -> bool:
         return False
 
 def convert_db_json_to_js(build_dir: Path) -> bool:
-    """
-    Converts all JSON files in assets/db/structure and assets/db/content
-    to .js files wrapping data in window.__DB_LOADER__.receive('key', data).
-    Removes original JSON files after conversion.
-    """
     logger.info("🔨 Converting DB JSON files to JS for Offline support...")
     
     db_dir = build_dir / "assets" / "db"
@@ -93,31 +81,36 @@ def convert_db_json_to_js(build_dir: Path) -> bool:
     success_count = 0
     fail_count = 0
 
-    # Scan directories: structure and content
-    for subdir in ["structure", "content"]:
+    # [FIX] Đổi "structure" thành "meta"
+    for subdir in ["meta", "content"]:
         target_dir = db_dir / subdir
         if not target_dir.exists(): continue
         
-        # [CHANGED] Convert list to iterate safely while modifying filesystem
         json_files = list(target_dir.glob("*.json"))
         
         for json_file in json_files:
             try:
-                # Key is the filename without extension (e.g. sutta_an_struct)
+                # Key sẽ là tên file (vd: an1_chunk_0)
+                # Frontend SuttaRepository đã được update để dùng key này
                 key = json_file.stem
                 
                 with open(json_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 
-                js_content = f'window.__DB_LOADER__.receive("{key}", {json.dumps(data, ensure_ascii=False)});'
-                js_file = json_file.with_suffix('.js')
+                # Hàm receive tương ứng với DB Loader trong index.html (sẽ được inject)
+                method = "getMeta" if subdir == "meta" else "getContent"
+                # Nhưng thực tế ta dùng chung 1 loader generic hoặc 2 loader riêng
+                # Ở đây ta giả định window.__DB_LOADER__.receive(key, data) là đủ
+                # Tuy nhiên, để tối ưu RAM, ta nên chia ra
                 
+                # Tạm thời dùng format chung:
+                js_content = f'window.__DB_LOADER__.receive("{key}", {json.dumps(data, ensure_ascii=False)});'
+                
+                js_file = json_file.with_suffix('.js')
                 with open(js_file, 'w', encoding='utf-8') as f:
                     f.write(js_content)
                 
-                # [CLEANUP] Remove source JSON
                 json_file.unlink()
-                
                 success_count += 1
             except Exception as e:
                 logger.error(f"Failed to convert {json_file.name}: {e}")
@@ -127,17 +120,10 @@ def convert_db_json_to_js(build_dir: Path) -> bool:
     return True
 
 def inject_offline_index_script(build_dir: Path) -> bool:
-    """
-    Injects <script src="assets/db_index.js"></script> into index.html
-    BEFORE the main app bundle.
-    """
     index_path = build_dir / "index.html"
     logger.info("💉 Injecting db_index.js script tag...")
     
-    # We look for the main app script (which was patched to app.bundle.js in offline mode)
     script_tag = '<script src="assets/db_index.js"></script>'
-    
-    # Logic: Find <script defer src="assets/app.bundle.js..."></script> and put it before
     pattern = r'(<script defer src="assets/app\.bundle\.js.*?</script>)'
     replacement = f'{script_tag}\n    \\1'
     
@@ -146,9 +132,20 @@ def inject_offline_index_script(build_dir: Path) -> bool:
 def patch_sw_assets_for_offline(target_dir: Path) -> bool:
     logger.info(f"💉 Patching sw.js assets list for Offline Bundle...")
     sw_path = target_dir / "sw.js"
-    pattern = r'"\./assets/modules/core/app\.js"'
-    replacement = '"./assets/app.bundle.js"'
-    return _update_file(sw_path, pattern, replacement)
+    
+    # 1. Patch app.js -> app.bundle.js
+    pat1 = r'"\./assets/modules/core/app\.js"'
+    rep1 = '"./assets/app.bundle.js"'
+    res1 = _update_file(sw_path, pat1, rep1)
+    
+    # 2. [FIX] Patch uid_index.json -> db_index.js
+    # Vì uid_index.json đã bị xóa trong bản offline, SW không được cache nó nữa
+    # Thay vào đó cache file db_index.js mới tạo
+    pat2 = r'"\./assets/db/uid_index\.json",'
+    rep2 = '"./assets/db_index.js",'
+    res2 = _update_file(sw_path, pat2, rep2)
+    
+    return res1 or res2
 
 def _patch_html_assets(index_path: Path, version_tag: str, is_offline: bool) -> bool:
     # 1. Version Param
@@ -162,15 +159,8 @@ def _patch_html_assets(index_path: Path, version_tag: str, is_offline: bool) -> 
     # 3. JS Offline
     js_ok = True
     if is_offline:
-        # Tìm thẻ script type="module" trỏ tới app.js
-        # Group 1: Query params (ví dụ ?v=...)
-        # Group 2: Phần còn lại của thẻ (ví dụ > hoặc attributes khác)
         js_pattern = r'<script\s+type="module"\s+src="assets/modules/core/app\.js(.*?)"(.*?)</script>'
-        
-        # Thay thế bằng script defer trỏ tới app.bundle.js
-        # Giữ lại Group 1 (version param đã được patch ở bước 1)
         js_replace = r'<script defer src="assets/app.bundle.js\1"></script>'
-        
         js_ok = _update_file(index_path, js_pattern, js_replace)
 
     return version_ok and css_ok and js_ok
