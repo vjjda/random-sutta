@@ -18,22 +18,22 @@ export const SuttaService = {
 
     // [NEW] Background buffering logic
     async _fillBuffer(filters = null) {
-        if (this._randomBuffer.length >= 3) return;
+        if (this._randomBuffer.length >= 5) return;
 
         try {
             // Get candidate (lightweight)
             const payload = await RandomHelper.getRandomPayload(filters);
             if (!payload) return;
 
-            // Pre-fetch data (heavyweight) - This warms up SuttaRepository cache & SW Cache
-            // We ignore the return value, we just want the side-effect of fetching
-            await this.loadSutta(payload);
+            // Pre-fetch data (heavyweight)
+            // [UPDATED] Disable Nav Prefetch for random buffer to save bandwidth
+            await this.loadSutta(payload, { prefetchNav: false });
 
             this._randomBuffer.push(payload);
             logger.info("Buffer", `Buffered: ${payload.uid} (Buffer Size: ${this._randomBuffer.length})`);
             
             // Recursive fill if still low
-            if (this._randomBuffer.length < 3) {
+            if (this._randomBuffer.length < 5) {
                  this._fillBuffer(filters); 
             }
         } catch (e) {
@@ -65,7 +65,7 @@ export const SuttaService = {
     },
 
     // --- CORE LOGIC: LOAD CONTENT ---
-    async loadSutta(input) {
+    async loadSutta(input, options = { prefetchNav: true }) {
         let uid, hintChunk = null, hintBook = null;
 
         if (typeof input === 'object') {
@@ -131,6 +131,16 @@ export const SuttaService = {
         let navMeta = {};
         if (neighborsToFetch.length > 0) {
             navMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
+            
+            // [NEW] Smart Prefetch for Neighbors
+            if (options.prefetchNav) {
+                neighborsToFetch.forEach(neighborUid => {
+                    // Fire-and-forget load to warm up cache
+                    // Pass prefetchNav: false to avoid infinite recursion storm
+                    this.loadSutta(neighborUid, { prefetchNav: false })
+                        .catch(e => logger.warn("Prefetch", `Failed to prefetch ${neighborUid}`));
+                });
+            }
         }
 
         return {
