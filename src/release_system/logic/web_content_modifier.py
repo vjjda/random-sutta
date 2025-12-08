@@ -81,36 +81,36 @@ def convert_db_json_to_js(build_dir: Path) -> bool:
     success_count = 0
     fail_count = 0
 
-    # [FIX] Đổi "structure" thành "meta"
-    for subdir in ["meta", "content"]:
+    # [FIX] Đổi "structure" thành "meta" để khớp với output của Processor mới
+    for subdir in ["meta", "content"]: 
         target_dir = db_dir / subdir
-        if not target_dir.exists(): continue
+        if not target_dir.exists(): 
+            # Log warning để dễ debug nếu thiếu folder
+            logger.warning(f"⚠️ Directory not found: {subdir}")
+            continue
         
+        # [CHANGED] Dùng list() để an toàn khi modify file system
         json_files = list(target_dir.glob("*.json"))
         
         for json_file in json_files:
             try:
-                # Key sẽ là tên file (vd: an1_chunk_0)
-                # Frontend SuttaRepository đã được update để dùng key này
+                # Key là tên file (vd: an1, an1_chunk_0)
+                # Frontend SuttaRepository đã dùng key này
                 key = json_file.stem
                 
                 with open(json_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 
-                # Hàm receive tương ứng với DB Loader trong index.html (sẽ được inject)
-                method = "getMeta" if subdir == "meta" else "getContent"
-                # Nhưng thực tế ta dùng chung 1 loader generic hoặc 2 loader riêng
-                # Ở đây ta giả định window.__DB_LOADER__.receive(key, data) là đủ
-                # Tuy nhiên, để tối ưu RAM, ta nên chia ra
-                
-                # Tạm thời dùng format chung:
+                # Wrap vào JSONP
                 js_content = f'window.__DB_LOADER__.receive("{key}", {json.dumps(data, ensure_ascii=False)});'
                 
                 js_file = json_file.with_suffix('.js')
                 with open(js_file, 'w', encoding='utf-8') as f:
                     f.write(js_content)
                 
+                # Cleanup source JSON
                 json_file.unlink()
+                
                 success_count += 1
             except Exception as e:
                 logger.error(f"Failed to convert {json_file.name}: {e}")
