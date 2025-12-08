@@ -13,7 +13,7 @@ from .shared.app_config import (
 from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
 from .logic.content_merger import process_worker
-from .logic.structure_handler import build_book_data
+from .logic.structure import build_book_data
 from .logic.super_generator import generate_super_book_data
 from .output.asset_generator import write_book_file
 # [NEW OPTIMIZER]
