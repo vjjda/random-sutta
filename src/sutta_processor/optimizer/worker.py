@@ -40,15 +40,7 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
 
 def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
     io = IOManager(dry_run)
-    # [UPDATED] Thêm key 'sub_books_list' để báo cáo cấu trúc nhóm
-    result = { 
-        "status": "error", 
-        "book_id": "", 
-        "valid_count": 0, 
-        "locator_map": {}, 
-        "sub_counts": {},
-        "sub_books_list": [] 
-    }
+    result = { "status": "error", "book_id": "", "valid_count": 0, "locator_map": {}, "sub_counts": {} }
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -94,7 +86,7 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_leaves = []
                 
                 for k in all_sub_keys:
-                    c_idx = chunk_map_idx.get(k) # Safe get
+                    c_idx = chunk_map_idx.get(k)
                     result["locator_map"][k] = [sub_id, c_idx]
                     
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
@@ -126,11 +118,10 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 count = len(sub_leaves)
                 
-                # Báo cáo số lượng con
                 result["sub_counts"][sub_id] = count
                 total_valid_count += count
 
-            # Save Super-Book (Standardized)
+            # Save Super-Book Meta
             result["locator_map"][book_id] = [book_id, None]
             super_tree = { book_id: sub_book_ids }
 
@@ -140,13 +131,11 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 "type": "super_group",
                 "tree": super_tree,
                 "meta": super_meta_map,
-                "random_pool": [],     
+                "random_pool": [],
+                # [REMOVED] child_counts đã bị xóa để tránh dư thừa
             })
             
-            # [CHANGED] Trả về Tổng số lượng để SUTTA_COUNTS ghi nhận trọng số của Parent
             result["valid_count"] = total_valid_count
-            
-            # [CHANGED] Trả về danh sách con chính thức để tạo SUB_BOOKS
             result["sub_books_list"] = sub_book_ids
 
         else:
