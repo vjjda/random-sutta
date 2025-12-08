@@ -3,7 +3,7 @@ import json
 import logging
 import traceback
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from ..io_manager import IOManager
 from ..tree_utils import (
@@ -14,17 +14,13 @@ from ..tree_utils import (
 )
 from ..splitter import is_split_book
 
-# Explicit Imports (Tên file rõ ràng)
+# Explicit Imports các chiến lược xử lý
 from .handle_split_book_strategy import execute_split_book_strategy
 from .handle_normal_book_strategy import execute_normal_book_strategy
 
 logger = logging.getLogger("Optimizer.Worker")
 
-def process_book_task(
-    file_path: Path, 
-    dry_run: bool, 
-    external_nav: Optional[Dict[str, str]] = None
-) -> Dict[str, Any]:
+def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
     """
     Workflow chính điều phối việc xử lý một cuốn sách.
     1. Load dữ liệu thô.
@@ -52,25 +48,24 @@ def process_book_task(
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
         
-        # 2. Shared Calculations (Nav & Random Pool Order)
-        # Tính toán Nav Sequence (Backbone + Subleaves)
+        # 2. Shared Calculations (Tính toán dùng chung cho cả 2 mode)
+        
+        # A. Trích xuất trình tự đọc (Sequence) - Dual Layer
         nav_sequence = extract_nav_sequence(structure, full_meta)
         
-        # Tạo Linear UIDs cho Random Pool
+        # B. Tạo Random Pool (Phẳng hóa từ sequence, chỉ chứa Leaf có nội dung)
         linear_uids = generate_random_pool(nav_sequence)
         
-        # Tạo Nav Maps (Reading + Branch)
+        # C. Tạo Nav Maps (Luồng kép: Backbone + Deep Dive)
         reading_nav_map = generate_navigation_map(nav_sequence)
+        
+        # D. Tạo Branch Nav (Cho các mục lục)
         branch_nav_map = generate_depth_navigation(structure, full_meta)
         
-        # Merge Nav
+        # Merge Nav (Ưu tiên Reading Nav nếu có trùng)
         full_nav_map = {**branch_nav_map, **reading_nav_map}
         
-        # Inject External Nav (từ Super Book)
-        if external_nav:
-            full_nav_map[book_id] = external_nav
-
-        # 3. Dispatch to specific Strategy
+        # 3. Dispatch to specific Strategy (Chuyển việc cho chuyên gia)
         if is_split_book(book_id):
             execute_split_book_strategy(
                 book_id, data, full_meta, structure, full_nav_map, io, result
