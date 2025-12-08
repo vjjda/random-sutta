@@ -1,6 +1,5 @@
 // Path: web/assets/modules/data/loader/zip_importer.js
-// [FIX] Sửa đường dẫn import logger (lùi 2 cấp thay vì 3)
-import { getLogger } from '../../utils/logger.js'; 
+import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("ZipImporter");
 
@@ -13,7 +12,8 @@ export const ZipImporter = {
 
         // 2. Xác định Cache Name
         const keys = await caches.keys();
-        const cacheName = keys.find(k => k.startsWith("sutta-cache-v"));
+        // [FIX] Sửa điều kiện để khớp với cả 'sutta-cache-v...' và 'sutta-cache-dev-placeholder'
+        const cacheName = keys.find(k => k.startsWith("sutta-cache-"));
         
         if (!cacheName) {
             throw new Error("No active cache found. Please reload page.");
@@ -36,6 +36,7 @@ export const ZipImporter = {
         const files = Object.keys(zip.files);
         let count = 0;
         const total = files.length;
+        
         const BATCH_SIZE = 50;
         
         for (let i = 0; i < total; i += BATCH_SIZE) {
@@ -47,7 +48,6 @@ export const ZipImporter = {
 
                 const content = await file.async("string");
                 
-                // Giả lập Request/Response cho Cache API
                 const requestUrl = `assets/db/${filename}`;
                 const jsonResponse = new Response(content, {
                     headers: { "Content-Type": "application/json" }
@@ -59,7 +59,6 @@ export const ZipImporter = {
             count += batch.length;
             if (onProgress) onProgress(Math.min(count, total), total);
             
-            // Yield to main thread
             await new Promise(r => setTimeout(r, 0));
         }
         
