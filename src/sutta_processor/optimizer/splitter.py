@@ -14,11 +14,8 @@ def extract_sub_books(
 ) -> List[Tuple[str, Set[str], Any]]:
     """
     Tách sách mẹ thành các sách con.
-    Logic gom nhóm:
-    1. Dựa trên Structure Tree (Prefix matching cho Sub-book ID).
-    2. Dựa trên Parent Relation (cho Alias/Orphans).
     """
-    sub_books_map = {} # sub_id -> { "keys": set(), "struct": val, "order": int }
+    sub_books_map = {} 
     
     root_content = structure
     if isinstance(structure, dict):
@@ -29,20 +26,14 @@ def extract_sub_books(
             if values: root_content = values[0]
 
     # Map tra cứu ngược: uid (chính) -> sub_book_id
-    # Dùng để tìm nhà cho Alias dựa theo cha
     uid_to_subbook = {}
 
-    # 1. Quét Structure để định hình các Sub-books
+    # 1. Quét Structure
     current_order = 0
     
     def _process_node(key, val):
         nonlocal current_order
-        # Điều kiện nhận diện Sub-book: 
-        # Key bắt đầu bằng book_id (an1...) HOẶC nằm trong structure SN (sn-...)
-        # Với SN, key là "sn-...", book_id="sn". startswith ok.
         if isinstance(key, str) and key.startswith(book_id) and key != book_id:
-            
-            # Nếu sub_book chưa tồn tại thì tạo mới
             if key not in sub_books_map:
                 sub_books_map[key] = {
                     "keys": set(),
@@ -51,17 +42,14 @@ def extract_sub_books(
                 }
                 current_order += 1
             
-            # Thu thập toàn bộ keys chính thống trong cây con
             tree_keys = set()
             collect_all_keys(val, tree_keys)
             tree_keys.add(key)
             
-            # Update vào map chính và map ngược
             sub_books_map[key]["keys"].update(tree_keys)
             for k in tree_keys:
                 uid_to_subbook[k] = key
 
-    # Duyệt root content
     if isinstance(root_content, dict):
         for k, v in root_content.items(): _process_node(k, v)
     elif isinstance(root_content, list):
@@ -69,34 +57,31 @@ def extract_sub_books(
             if isinstance(item, dict):
                 for k, v in item.items(): _process_node(k, v)
 
-    # 2. Quét Meta để "vợt" Alias/Orphans (dựa trên Parent)
+    # 2. Quét Meta để "vợt" Alias/Orphans
     for uid, info in full_meta.items():
-        # Nếu UID đã có nơi chốn -> Bỏ qua
         if uid in uid_to_subbook:
             continue
             
-        # Nếu chưa có (thường là Alias), tìm cha nó
-        parent = info.get("parent_uid")
+        # [FIX] Kiểm tra cả parent_uid (cũ) VÀ target_uid (mới)
+        # Vì Alias trỏ đến Target, và Target đã có trong uid_to_subbook,
+        # nên ta có thể suy ra Alias thuộc về sub-book nào.
+        ref_key = info.get("parent_uid") or info.get("target_uid")
         
         target_sub = None
         
-        # Cách 1: Tìm theo Parent
-        if parent and parent in uid_to_subbook:
-            target_sub = uid_to_subbook[parent]
+        if ref_key and ref_key in uid_to_subbook:
+            target_sub = uid_to_subbook[ref_key]
             
-        # Cách 2: Nếu không có Parent hoặc Parent chưa index, thử Prefix (Fallback cho AN)
+        # Fallback Prefix
         elif any(uid.startswith(sub) for sub in sub_books_map.keys()):
-             # Tìm sub_id dài nhất mà uid startswith (an1 vs an10)
-             # Tuy nhiên logic cha-con ở trên đã cover 99% trường hợp alias
+             # Logic tìm sub dài nhất (để tránh an1 vs an10)
+             # Tuy nhiên với AN/SN hiện tại thì startswith là tạm ổn nếu ref_key fail
              pass
 
-        # Gán vào Sub-book tìm được
         if target_sub:
             sub_books_map[target_sub]["keys"].add(uid)
-            # Không cần update uid_to_subbook vì alias không làm cha ai cả
 
-    # 3. Convert sang List kết quả
-    # Sort lại theo thứ tự xuất hiện ban đầu
+    # 3. Kết quả
     sorted_sub_ids = sorted(sub_books_map.keys(), key=lambda k: sub_books_map[k]["order"])
     
     final_results = []
