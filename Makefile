@@ -15,8 +15,9 @@ help:
 	@echo "  make sync           - Đồng bộ TOÀN BỘ dữ liệu (Bilara Text + API Meta)"
 	@echo ""
 	@echo "⚙️  BUILD & DEV:"
+	@echo "  make build-dry     - Chạy Sutta Processor (Dry Run, không ghi file)"
 	@echo "  make build-data     - Chạy Sutta Processor (JSON -> Assets)"
-	@echo "  make build          - Chạy Full Build (Data + Release)"
+	@echo "  make build-full          - Chạy Full Build (Data + Release)"
 	@echo "  make dev            - Server Web gốc (Source)  -> http://localhost:8000"
 	@echo "  make dev-online     - Server Build Online      -> http://localhost:8001"
 	@echo "  make dev-offline    - Server Build Offline     -> http://localhost:8002"
@@ -48,6 +49,10 @@ sync:
 # ==============================================================================
 # ⚙️ BUILD & DEV
 # ==============================================================================
+build-dry:
+	@echo "🧠 Processing Data..."
+	$(PYTHON) -m src.sutta_processor -d
+
 build-data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
