@@ -10,6 +10,7 @@ from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .pool_manager import PoolManager
 from .worker import process_book_task
+# [NEW] Import logic nav
 from .tree_utils import generate_depth_navigation
 
 logger = logging.getLogger("Optimizer.Main")
@@ -23,7 +24,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6.1 - Explicit Sub-Books): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v6.2 - Branch Navigation): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -50,14 +51,12 @@ class DBOrchestrator:
                     if res["status"] == "success":
                         self.global_locator.update(res["locator_map"])
                         
-                        # 1. Register Counts (Parent & Children)
                         self.pool_manager.register_book_count(
                             res["book_id"], 
                             res["valid_count"],
                             res.get("sub_counts")
                         )
                         
-                        # 2. Register Structure (Explicit List from Worker)
                         if res.get("sub_books_list"):
                             self.pool_manager.register_group_structure(
                                 res["book_id"], 
@@ -117,11 +116,10 @@ class DBOrchestrator:
 
             meta = data.get("meta", {})
             
-            # [NEW] Calculate Nav for Super Tree (Branch Nav)
-            # Vì tpk không có Leaf, chỉ có Branch, nên chỉ cần Depth Nav.
+            # [NEW] Calculate Branch Navigation for Super Tree
             tpk_nav_map = generate_depth_navigation(structure, meta)
             
-            # Inject Nav vào Meta
+            # Inject Nav into Meta
             for uid, nav_entry in tpk_nav_map.items():
                 if uid in meta:
                     meta[uid]["nav"] = nav_entry
@@ -143,3 +141,10 @@ class DBOrchestrator:
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
+
+    def _save_uid_index(self) -> None:
+        self.io.save_category("root", "uid_index.json", self.global_locator)
+
+def run_optimizer(dry_run: bool = False):
+    orchestrator = DBOrchestrator(dry_run)
+    orchestrator.run()
