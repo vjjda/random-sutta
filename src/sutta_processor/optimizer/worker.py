@@ -13,7 +13,6 @@ from .splitter import is_split_book, extract_sub_books
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
-    # ... (Giữ nguyên hàm này không đổi) ...
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
@@ -68,17 +67,29 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
 
-        # Helper: Resolve chunk index (kể cả cho Alias)
+        # Helper: Resolve chunk index
         def _get_chunk_idx(uid):
+            # 1. Direct hit (Leaf gốc hoặc Container)
             if uid in chunk_map_idx:
                 return chunk_map_idx[uid]
             
-            # Nếu là Alias, thử tìm chunk của target
+            # 2. Indirect hit (Subleaf hoặc Alias)
             info = full_meta.get(uid, {})
-            if info.get("type") == "alias":
-                target = info.get("extract_id") or info.get("parent_uid")
+            m_type = info.get("type")
+            
+            # [FIX] Subleaf và Alias đều cần tra cứu parent_uid để tìm chunk
+            if m_type in ["alias", "subleaf"]:
+                parent = info.get("parent_uid")
+                # Ưu tiên parent_uid vì nó trỏ về file chứa content (Container)
+                if parent and parent in chunk_map_idx:
+                    return chunk_map_idx[parent]
+                
+                # Fallback: Thử extract_id (đôi khi alias trỏ về subleaf, mà subleaf lại chưa có trong chunk map direct,
+                # nhưng logic này giúp cover các case phức tạp nếu có)
+                target = info.get("extract_id")
                 if target and target in chunk_map_idx:
                     return chunk_map_idx[target]
+            
             return None
 
         # 3. Metadata Processing
@@ -93,7 +104,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_leaves = []
                 
                 for k in all_sub_keys:
-                    # [CHANGED] Locator Map lưu [sub_id, chunk_idx]
                     c_idx = _get_chunk_idx(k)
                     result["locator_map"][k] = [sub_id, c_idx]
                     
@@ -121,7 +131,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 result["sub_counts"][sub_id] = len(sub_leaves)
 
-            # Super-Book (Chỉ Meta, không Content)
             result["locator_map"][book_id] = [book_id, None]
             
             io.save_category("meta", f"{book_id}.json", {
@@ -144,7 +153,6 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 all_keys.add(k)
 
             for k in all_keys:
-                # [CHANGED] Locator Map lưu [book_id, chunk_idx]
                 c_idx = _get_chunk_idx(k)
                 result["locator_map"][k] = [book_id, c_idx]
                 
