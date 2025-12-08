@@ -4,13 +4,12 @@ import logging
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Any, Set
+from typing import Dict, List, Any, Set, Optional
 
 from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .pool_manager import PoolManager
 from .worker import process_book_task
-# [NEW] Import logic nav
 from .tree_utils import generate_depth_navigation
 
 logger = logging.getLogger("Optimizer.Main")
@@ -21,15 +20,18 @@ class DBOrchestrator:
         self.io = IOManager(dry_run)
         self.pool_manager = PoolManager()
         self.global_locator: Dict[str, List[Any]] = {}
+        # [NEW] Lưu trữ Nav của Super Tree để truyền xuống Worker
+        self.super_nav_map: Dict[str, Dict[str, str]] = {}
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6.2 - Branch Navigation): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v6.3 - Global Nav Inheritance): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
         book_files = []
         
+        # 1. Tách Super Book và xử lý TRƯỚC
         for f in all_files:
             if f.name == "super_book.json":
                 self._process_super(f)
@@ -39,10 +41,18 @@ class DBOrchestrator:
         max_workers = min(os.cpu_count() or 4, 8)
         
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(process_book_task, f, self.dry_run): f.name 
-                for f in book_files
-            }
+            futures = {}
+            
+            for f in book_files:
+                # [NEW] Xác định Book ID từ tên file để lấy Nav
+                # vd: mn_book.json -> mn
+                book_id_guess = f.name.replace("_book.json", "")
+                
+                # Lấy Nav từ Super Map (nếu có)
+                ext_nav = self.super_nav_map.get(book_id_guess)
+                
+                # Submit task kèm external_nav
+                futures[executor.submit(process_book_task, f, self.dry_run, ext_nav)] = f.name
 
             for future in as_completed(futures):
                 fname = futures[future]
@@ -116,11 +126,11 @@ class DBOrchestrator:
 
             meta = data.get("meta", {})
             
-            # [NEW] Calculate Branch Navigation for Super Tree
-            tpk_nav_map = generate_depth_navigation(structure, meta)
+            # [UPDATED] Lưu kết quả Nav vào self.super_nav_map
+            self.super_nav_map = generate_depth_navigation(structure, meta)
             
-            # Inject Nav into Meta
-            for uid, nav_entry in tpk_nav_map.items():
+            # Inject Nav vào Meta của TPK
+            for uid, nav_entry in self.super_nav_map.items():
                 if uid in meta:
                     meta[uid]["nav"] = nav_entry
 
@@ -137,7 +147,7 @@ class DBOrchestrator:
                 "random_pool": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed")
+            logger.info(f"   🌟 Super Book Processed (Nav Map Size: {len(self.super_nav_map)})")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
