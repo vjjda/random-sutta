@@ -4,12 +4,13 @@ import logging
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Any, Set, Optional
+from typing import Dict, List, Any, Set
 
 from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .pool_manager import PoolManager
 from .worker import process_book_task
+# [NEW] Import logic tính nav
 from .tree_utils import generate_depth_navigation
 
 logger = logging.getLogger("Optimizer.Main")
@@ -20,7 +21,7 @@ class DBOrchestrator:
         self.io = IOManager(dry_run)
         self.pool_manager = PoolManager()
         self.global_locator: Dict[str, List[Any]] = {}
-        # [NEW] Lưu trữ Nav của Super Tree để truyền xuống Worker
+        # [NEW] Lưu trữ bản đồ điều hướng toàn cục (từ Super Book)
         self.super_nav_map: Dict[str, Dict[str, str]] = {}
 
     def run(self) -> None:
@@ -31,7 +32,7 @@ class DBOrchestrator:
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
         book_files = []
         
-        # 1. Tách Super Book và xử lý TRƯỚC
+        # 1. Tách Super Book ra để xử lý TRƯỚC
         for f in all_files:
             if f.name == "super_book.json":
                 self._process_super(f)
@@ -44,15 +45,13 @@ class DBOrchestrator:
             futures = {}
             
             for f in book_files:
-                # [NEW] Xác định Book ID từ tên file để lấy Nav
-                # vd: mn_book.json -> mn
+                # [NEW] Xác định ID sách từ tên file (vd: mn_book.json -> mn)
+                # Để tìm xem nó có Nav trong bản đồ tổng thể không
                 book_id_guess = f.name.replace("_book.json", "")
+                external_nav = self.super_nav_map.get(book_id_guess)
                 
-                # Lấy Nav từ Super Map (nếu có)
-                ext_nav = self.super_nav_map.get(book_id_guess)
-                
-                # Submit task kèm external_nav
-                futures[executor.submit(process_book_task, f, self.dry_run, ext_nav)] = f.name
+                # Truyền external_nav vào worker
+                futures[executor.submit(process_book_task, f, self.dry_run, external_nav)] = f.name
 
             for future in as_completed(futures):
                 fname = futures[future]
@@ -85,8 +84,8 @@ class DBOrchestrator:
         logger.info("✨ Optimization Completed.")
 
     def _extract_sutta_books(self, structure: Any) -> List[str]:
+        # (Giữ nguyên hàm này từ code cũ)
         sutta_books: Set[str] = set()
-        
         def _find_sutta_root(node):
             if isinstance(node, dict):
                 if "sutta" in node: return node["sutta"]
@@ -112,7 +111,6 @@ class DBOrchestrator:
         sutta_root = _find_sutta_root(structure)
         if sutta_root:
             _collect_leaves(sutta_root)
-            
         return list(sutta_books)
 
     def _process_super(self, file_path: Path) -> None:
@@ -126,14 +124,16 @@ class DBOrchestrator:
 
             meta = data.get("meta", {})
             
-            # [UPDATED] Lưu kết quả Nav vào self.super_nav_map
+            # [NEW] Tính toán Nav cho Super Tree (Branch Nav)
+            # Hàm generate_depth_navigation sẽ tạo link cho dn <-> mn <-> sn...
             self.super_nav_map = generate_depth_navigation(structure, meta)
             
-            # Inject Nav vào Meta của TPK
+            # Inject Nav vào chính Meta của Super Book (tpk.json)
             for uid, nav_entry in self.super_nav_map.items():
                 if uid in meta:
                     meta[uid]["nav"] = nav_entry
 
+            # Locator cho tpk
             for uid in meta.keys():
                 self.global_locator[uid] = ["tpk", None]
 
@@ -147,7 +147,7 @@ class DBOrchestrator:
                 "random_pool": []
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed (Nav Map Size: {len(self.super_nav_map)})")
+            logger.info(f"   🌟 Super Book Processed (Generated Nav for {len(self.super_nav_map)} items)")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
