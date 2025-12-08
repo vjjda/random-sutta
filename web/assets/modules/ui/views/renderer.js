@@ -86,27 +86,15 @@ export async function renderSutta(suttaId, data, options = {}) {
   const prevId = nav.prev || null;
   const nextId = nav.next || null;
 
-  // [CHANGED Logic] Ưu tiên Content trước, sau đó mới đến Branch/Menu
-
   // --- CASE 1: CONTENT (Hiển thị nội dung) ---
-  // Nếu có content, render ngay lập tức bất kể type là gì (leaf hay branch)
   if (data.content) {
       htmlContent = ContentCompiler.compile(data.content, data.uid);
       
-      const info = getDisplayInfo(data.uid, data.meta);
-      const headerHtml = `
-            <header>
-                <h1 class="sutta-title">
-                    <span class="acronym">${info.main}</span>
-                    <span class="translated-title">${info.sub}</span>
-                </h1>
-            </header>
-        `;
-      htmlContent = headerHtml + htmlContent;
+      // [REMOVED] Đã xóa đoạn code inject <header><h1>...</h1> ở đây.
+      // Tiêu đề đã có trên Sticky Nav.
   } 
   
   // --- CASE 2: BRANCH / MENU (Hiển thị mục lục) ---
-  // Chỉ chạy vào đây nếu KHÔNG CÓ content
   else {
       const type = data.meta ? data.meta.type : null;
       const isBranchView = ['root', 'super_book', 'sub_book', 'book', 'branch'].includes(type) || data.bookStructure;
@@ -123,13 +111,12 @@ export async function renderSutta(suttaId, data, options = {}) {
           
           document.getElementById("toh-wrapper")?.classList.add("hidden");
       } else {
-          // Không có content, cũng không phải branch hợp lệ
           handleNotFound(suttaId);
           return false;
       }
   }
 
-  // --- COMMON UI (Nav & Header) ---
+  // --- COMMON UI ---
   const bottomNavHtml = UIFactory.createBottomNavHtml(
       prevId, 
       nextId, 
