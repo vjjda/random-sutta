@@ -14,6 +14,7 @@ const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
+    console.time('🚀 App Start to Ready');
     // ... (Giữ nguyên phần setup logging và UI components) ...
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
@@ -37,7 +38,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // [FIXED] Init Service (Service sẽ init Repo và Helper)
+        console.time('📡 Service Init');
         await SuttaService.init(); 
+        console.timeEnd('📡 Service Init');
 
         statusDiv.classList.add("hidden");
         navHeader.classList.remove("hidden");
@@ -52,7 +55,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             
             // 1. Load the requested sutta IMMEDIATELY (High Priority)
             // We await this to ensure full bandwidth is dedicated to the user's request
+            console.time('⏱️ Direct Load Total');
             await SuttaController.loadSutta(loadId, true);
+            console.timeEnd('⏱️ Direct Load Total');
             
             // 2. ONLY start background work (buffering/preloading) after the main content is ready
             SuttaService.startBackgroundWork();
@@ -64,6 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             // 2. Load the first random sutta
             SuttaController.loadRandomSutta(true);
         }
+        console.timeEnd('🚀 App Start to Ready');
     } catch (err) {
         logger.error('Init', err);
         statusDiv.textContent = "Error loading database.";
