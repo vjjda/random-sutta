@@ -4,6 +4,7 @@ import { MetaStore } from './repository/meta_store.js';
 import { ContentStore } from './repository/content_store.js';
 import { AssetLoader } from './loader/asset_loader.js';
 import { getLogger } from '../utils/logger.js';
+import { ZipImporter } from './loader/zip_importer.js'; // [NEW]
 
 const logger = getLogger("SuttaRepository");
 
@@ -81,83 +82,24 @@ export const SuttaRepository = {
     },
 
     /**
-     * Tải toàn bộ dữ liệu để Service Worker cache.
-     * Sử dụng hàng đợi để tránh nghẽn mạng.
+     * [UPDATED] Tải toàn bộ dữ liệu (Advanced Zip Strategy)
      */
     async downloadAll(onProgress) {
         await this.init();
 
-        // Nếu đang Offline thì không cần tải (vì file đã có sẵn trong gói zip/folder)
         if (AssetLoader.isOfflineMode()) {
-            logger.info("DownloadAll", "Already in Offline Mode. Skipping download.");
+            logger.info("DownloadAll", "Offline Mode detected. Skipping.");
             if (onProgress) onProgress(100, 100);
             return;
         }
-        
-        const index = IndexStore.getAll();
-        if (!index) {
-            logger.error("DownloadAll", "Index not loaded");
-            return;
+
+        try {
+            logger.info("DownloadAll", "Starting Zip Strategy...");
+            await ZipImporter.run(onProgress);
+            logger.info("DownloadAll", "Sync completed successfully.");
+        } catch (e) {
+            logger.error("DownloadAll", "Zip Strategy failed", e);
+            throw e;
         }
-
-        logger.info("DownloadAll", "Scanning index for assets...");
-        
-        // 1. Thu thập URL
-        const metaSet = new Set();
-        const contentSet = new Set();
-
-        Object.values(index).forEach(loc => {
-            if (!loc) return;
-            const [bookId, chunkIdx] = loc;
-            metaSet.add(bookId);
-            if (chunkIdx !== null) {
-                contentSet.add(`${bookId}_chunk_${chunkIdx}`);
-            }
-        });
-
-        const tasks = [];
-        metaSet.forEach(id => tasks.push(`assets/db/meta/${id}.json`));
-        contentSet.forEach(key => tasks.push(`assets/db/content/${key}.json`));
-
-        logger.info("DownloadAll", `Found ${tasks.length} files to sync.`);
-
-        // 2. Chạy hàng đợi (Concurrency Limit)
-        const CONCURRENCY_LIMIT = 5;
-        let completed = 0;
-        let hasError = false;
-
-        const processTask = async (url) => {
-            try {
-                const resp = await fetch(url);
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                // Không cần await resp.json() hay lưu vào RAM
-                // Chỉ cần fetch thành công là SW đã cache rồi.
-            } catch (e) {
-                logger.warn("DownloadAll", `Failed: ${url}`, e);
-                hasError = true;
-            } finally {
-                completed++;
-                if (onProgress) onProgress(completed, tasks.length);
-            }
-        };
-
-        const queue = [...tasks];
-        const activeWorkers = [];
-
-        while (queue.length > 0 || activeWorkers.length > 0) {
-            while (queue.length > 0 && activeWorkers.length < CONCURRENCY_LIMIT) {
-                const url = queue.shift();
-                const worker = processTask(url).then(() => {
-                    activeWorkers.splice(activeWorkers.indexOf(worker), 1);
-                });
-                activeWorkers.push(worker);
-            }
-            if (activeWorkers.length > 0) {
-                await Promise.race(activeWorkers);
-            }
-        }
-
-        if (hasError) throw new Error("Some files failed to download.");
-        logger.info("DownloadAll", "Sync completed successfully.");
     }
 };

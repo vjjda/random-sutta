@@ -18,6 +18,7 @@ from .logic.super_generator import generate_super_book_data
 from .output.asset_generator import write_book_file
 # [NEW OPTIMIZER]
 from .optimizer import run_optimizer
+from .output.zip_generator import create_db_bundle # [NEW]
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
 
@@ -113,5 +114,7 @@ class BuildManager:
         # 4. Run Optimizer (The Real Work)
         logger.info("⚡ Transforming processed data to Optimized DB...")
         run_optimizer(dry_run=self.dry_run)
-            
+        # [NEW] 5. Create DB Bundle (Chỉ chạy khi không dry-run)
+        if not self.dry_run:
+            create_db_bundle()
         logger.info("✅ All processing tasks completed.")
