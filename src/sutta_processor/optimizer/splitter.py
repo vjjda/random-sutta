@@ -1,6 +1,6 @@
 # Path: src/sutta_processor/optimizer/splitter.py
 from typing import Dict, Any, List, Tuple, Set
-from .tree_utils import collect_all_keys # [CHANGED] Reuse from utils
+from .tree_utils import collect_all_keys
 
 SPLIT_CONFIG = {
     "an": "nipata",
@@ -14,11 +14,10 @@ def extract_sub_books(
     book_id: str, 
     structure: Any, 
     full_meta: Dict[str, Any]
-) -> List[Tuple[str, Set[str], Any]]: # Return Set[str] keys instead of List uids
+) -> List[Tuple[str, Set[str], Any]]:
     """
     Tách sách mẹ thành các sách con.
-    Trả về: [(sub_id, all_keys_in_subbook, sub_structure), ...]
-    all_keys_in_subbook bao gồm cả Alias (không có trong Tree).
+    Giữ nguyên thứ tự gốc từ structure (KHÔNG sort alphabet).
     """
     sub_books = []
     
@@ -30,17 +29,31 @@ def extract_sub_books(
             values = list(structure.values())
             if values: root_content = values[0]
 
-    # Helper: Tìm sub-books từ cấu trúc cây
     # Map: sub_id -> (tree_keys_set, sub_structure)
+    # Dùng Dict để gom nhóm nếu structure gốc có nhiều phần rời rạc (ít gặp),
+    # nhưng quan trọng là ta sẽ list_order để lưu thứ tự xuất hiện đầu tiên.
     temp_map = {}
+    ordered_sub_ids = []
 
     def _process_node(key, val):
         if isinstance(key, str) and key.startswith(book_id) and key != book_id:
-            # Thu thập keys trong cây con này
+            # Nếu gặp sub_id mới, ghi nhận thứ tự
+            if key not in temp_map:
+                ordered_sub_ids.append(key)
+                
+            # Thu thập keys
             tree_keys = set()
             collect_all_keys(val, tree_keys)
             tree_keys.add(key)
-            temp_map[key] = (tree_keys, val)
+            
+            # Lưu/Merge vào map
+            if key in temp_map:
+                # Merge set nếu key xuất hiện nhiều lần (hiếm)
+                existing_keys, existing_val = temp_map[key]
+                existing_keys.update(tree_keys)
+                # Structure thì lấy cái mới nhất hoặc merge (ở đây simplify lấy cái đang duyệt)
+            else:
+                temp_map[key] = (tree_keys, val)
 
     if isinstance(root_content, dict):
         for k, v in root_content.items(): _process_node(k, v)
@@ -49,45 +62,24 @@ def extract_sub_books(
             if isinstance(item, dict):
                 for k, v in item.items(): _process_node(k, v)
 
-    # Convert map to list & Enrich with Orphans (Aliases)
-    # Logic: Alias an1.181 (trong meta) thuộc về sub-book an1 (trong temp_map)
-    # Ta duyệt meta 1 lần để gán orphan vào đúng chỗ
-    
-    # Sort sub_ids để duyệt có thứ tự
-    sorted_sub_ids = sorted(temp_map.keys())
-    
-    # Tạo list kết quả
+    # Tạo list kết quả dựa trên thứ tự đã lưu (ordered_sub_ids)
+    # Thay vì sorted(temp_map.keys())
     final_results = []
     
-    for sub_id in sorted_sub_ids:
+    for sub_id in ordered_sub_ids:
         tree_keys, sub_val = temp_map[sub_id]
         
-        # Quét Meta để tìm anh em họ hàng (Alias)
-        # Logic: Key bắt đầu bằng sub_id (vd: an1.181 starts with an1)
-        # Lưu ý: Cần cẩn thận với an10 vs an1. an10 startswith an1 -> False. OK.
-        # an1.181 starts with an1. OK.
-        # an12 starts with an1 -> False. OK.
-        
-        # Để tối ưu, ta không loop full meta mỗi lần.
-        # Nhưng vì số lượng sub_books ít (11 cho AN, 56 cho SN), loop cũng không sao.
-        
+        # Quét Meta tìm Alias (Orphans)
         extended_keys = tree_keys.copy()
         for meta_key in full_meta.keys():
             if meta_key in extended_keys: continue
             
-            # Check prefix membership
-            # Thêm dấu chấm hoặc ký tự phân cách để chính xác hơn nếu cần
-            # Ở đây đơn giản là check startswith.
-            # Với AN: an1, an2... an10.
-            # an1.xxx thuộc an1.
-            # an10.xxx thuộc an10.
-            # an1 vs an10: an10 không startswith an1. an1 cũng ko startswith an10. Safe.
-            
             if meta_key.startswith(sub_id):
-                # Double check: đảm bảo không thuộc về sub_id dài hơn (vd: an1 vs an11)
-                # Nhưng an11 không bắt đầu bằng an1. Nên logic này an toàn với bộ dữ liệu hiện tại.
                 extended_keys.add(meta_key)
         
         final_results.append((sub_id, extended_keys, sub_val))
 
+    # [FIX] KHÔNG SORT nũa để giữ thứ tự gốc (an1, an2, an3...)
+    # sub_books.sort(key=lambda x: x[0]) 
+    
     return final_results
