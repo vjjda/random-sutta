@@ -3,16 +3,17 @@ import json
 import logging
 import traceback
 from pathlib import Path
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Optional
 
 from .io_manager import IOManager
-from .chunker import chunk_content # [CHANGED] Import hàm mới
+from .chunker import chunk_content
 from .tree_utils import flatten_tree_uids, collect_all_keys, build_nav_map
 from .splitter import is_split_book, extract_sub_books
 
 logger = logging.getLogger("Optimizer.Worker")
 
 def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict) -> Dict[str, Any]:
+    # ... (Giữ nguyên hàm này không đổi) ...
     info = full_meta.get(uid, {})
     m_type = info.get("type", "branch")
     
@@ -30,11 +31,6 @@ def _build_meta_entry(uid: str, full_meta: Dict, nav_map: Dict, chunk_map: Dict)
     entry["type"] = m_type
     
     if uid in nav_map: entry["nav"] = nav_map[uid]
-    
-    # [LOGIC CHUNK]
-    # Chỉ gán chunk index nếu UID này thực sự có mặt trong file content.
-    # Với Subleaf (dhp1), nó không nằm trong content (chỉ dhp1-20 nằm), nên sẽ không có key 'chunk'.
-    # Điều này ĐÚNG, vì Frontend sẽ tìm Parent -> Load Chunk của Parent.
     if uid in chunk_map: entry["chunk"] = chunk_map[uid]
 
     if m_type == "subleaf":
@@ -57,21 +53,33 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
         full_meta = data.get("meta", {})
         structure = data.get("structure", {})
         
-        # 1. Nav & Random (Global)
+        # 1. Nav & Random
         linear_uids = []
         flatten_tree_uids(structure, full_meta, linear_uids)
         nav_map = build_nav_map(linear_uids)
         
-        # 2. Content Chunking (Clean)
+        # 2. Content
         chunk_map_idx = {}
         raw_content = data.get("content", {})
         if raw_content:
-            # [CHANGED] Gọi hàm mới, không truyền meta
             chunks = chunk_content(book_id, raw_content)
             for idx, (fname, chunk_data) in enumerate(chunks):
                 io.save_category("content", f"{fname}.json", chunk_data)
                 for uid in chunk_data.keys():
                     chunk_map_idx[uid] = idx
+
+        # Helper: Resolve chunk index (kể cả cho Alias)
+        def _get_chunk_idx(uid):
+            if uid in chunk_map_idx:
+                return chunk_map_idx[uid]
+            
+            # Nếu là Alias, thử tìm chunk của target
+            info = full_meta.get(uid, {})
+            if info.get("type") == "alias":
+                target = info.get("extract_id") or info.get("parent_uid")
+                if target and target in chunk_map_idx:
+                    return chunk_map_idx[target]
+            return None
 
         # 3. Metadata Processing
         if is_split_book(book_id):
@@ -82,10 +90,13 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
 
             for sub_id, all_sub_keys, sub_struct in sub_books:
                 sub_meta_map = {}
-                sub_leaves = [] 
+                sub_leaves = []
                 
                 for k in all_sub_keys:
-                    result["locator_map"][k] = sub_id
+                    # [CHANGED] Locator Map lưu [sub_id, chunk_idx]
+                    c_idx = _get_chunk_idx(k)
+                    result["locator_map"][k] = [sub_id, c_idx]
+                    
                     sub_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
                     
                     m_type = full_meta.get(k, {}).get("type")
@@ -110,7 +121,9 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 sub_book_ids.append(sub_id)
                 result["sub_counts"][sub_id] = len(sub_leaves)
 
-            result["locator_map"][book_id] = book_id
+            # Super-Book (Chỉ Meta, không Content)
+            result["locator_map"][book_id] = [book_id, None]
+            
             io.save_category("meta", f"{book_id}.json", {
                 "id": book_id,
                 "type": "super_group",
@@ -131,7 +144,10 @@ def process_book_task(file_path: Path, dry_run: bool) -> Dict[str, Any]:
                 all_keys.add(k)
 
             for k in all_keys:
-                result["locator_map"][k] = book_id
+                # [CHANGED] Locator Map lưu [book_id, chunk_idx]
+                c_idx = _get_chunk_idx(k)
+                result["locator_map"][k] = [book_id, c_idx]
+                
                 slim_meta_map[k] = _build_meta_entry(k, full_meta, nav_map, chunk_map_idx)
             
             io.save_category("meta", f"{book_id}.json", {
