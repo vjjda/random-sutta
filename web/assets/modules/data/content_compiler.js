@@ -5,7 +5,6 @@ export const ContentCompiler = {
     compile: function (contentMap, rootUid) {
         if (!contentMap) return "";
         
-        // Sort keys tự nhiên (1.1, 1.2, 1.10)
         const sortedKeys = Object.keys(contentMap).sort((a, b) => {
             return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
         });
@@ -48,7 +47,6 @@ export const ContentCompiler = {
     compileBranch: function (structure, rootUid, metaMap) {
         if (!structure) return `<div class="error-message">Structure is empty.</div>`;
 
-        // 1. Tìm Node mục tiêu
         const targetNode = this._findNode(structure, rootUid);
         
         if (!targetNode) {
@@ -62,7 +60,6 @@ export const ContentCompiler = {
         let html = `<div class="branch-container">`;
         html += `<ul class="branch-group">`;
 
-        // Chuẩn hóa items để render
         let itemsToRender = [];
         if (Array.isArray(targetNode)) {
             itemsToRender = targetNode;
@@ -76,20 +73,15 @@ export const ContentCompiler = {
 
         itemsToRender.forEach(item => {
             let uid = null;
-            // Nếu item là string (Leaf ID): "dn1"
             if (typeof item === 'string') {
                 uid = item;
-            } 
-            // Nếu item là object (Branch con): { "long": [...] }
-            else if (typeof item === 'object') {
+            } else if (typeof item === 'object') {
                 uid = Object.keys(item)[0];
             }
 
             if (uid) {
-                // Xác định loại để style CSS
                 const info = metaMap[uid] || {};
                 const metaType = info.type || 'leaf';
-                // Các loại này render dạng thẻ lớn (Group), còn lại là thẻ nhỏ (Leaf)
                 const isGroup = ['branch', 'book', 'sub_book', 'super_book', 'root'].includes(metaType);
                 
                 html += this._createCard(uid, metaMap, isGroup ? 'group' : 'leaf');
@@ -101,12 +93,9 @@ export const ContentCompiler = {
         return html;
     },
 
-    // Helper: Tìm node đệ quy
     _findNode: function(tree, targetUid) {
-        // 1. Direct Access
         if (tree[targetUid]) return tree[targetUid];
 
-        // 2. Recursive Search
         let children = [];
         if (Array.isArray(tree)) {
             children = tree;
@@ -116,10 +105,7 @@ export const ContentCompiler = {
 
         for (const child of children) {
             if (typeof child === 'object' && child !== null) {
-                // Nếu child là { "targetUid": [...] } -> Found!
                 if (child[targetUid]) return child[targetUid];
-                
-                // Nếu không, tìm sâu hơn
                 const found = this._findNode(child, targetUid);
                 if (found) return found;
             }
@@ -132,10 +118,8 @@ export const ContentCompiler = {
         const title = info.translated_title || info.original_title || uid;
         const acronym = info.acronym || uid.toUpperCase();
         
-        // CSS Class
         const cssClass = type === "group" ? "branch-card-group" : "branch-card-leaf";
         
-        // Badge
         let badge = "";
         const t = info.type;
         if (t === 'root') badge = `<span class="b-badge">Root</span>`;
@@ -144,10 +128,8 @@ export const ContentCompiler = {
         else if (t === 'book') badge = `<span class="b-badge">Book</span>`;
         else if (t === 'branch') badge = `<span class="b-badge">Section</span>`;
 
-        // Blurb (Chỉ hiện cho Group lớn)
-        const blurb = (info.blurb && type === 'group') 
-            ? `<div class="b-blurb">${info.blurb}</div>` 
-            : "";
+        // [CHANGED] Luôn hiển thị Blurb nếu có (không phân biệt Group hay Leaf)
+        const blurb = info.blurb ? `<div class="b-blurb">${info.blurb}</div>` : "";
 
         return `
         <li class="${cssClass}">
