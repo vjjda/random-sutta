@@ -39,10 +39,28 @@ def inject_version_into_sw(target_dir: Path, version_tag: str) -> bool:
 def inject_version_into_app_js(target_dir: Path, version_tag: str) -> bool:
     logger.info(f"💉 Injecting app version '{version_tag}' into app.js...")
     app_js_path = target_dir / "assets" / "modules" / "core" / "app.js"
-    pattern = r'const APP_VERSION = "dev-placeholder";'
+    # Pattern khớp với const APP_VERSION = "...";
+    pattern = r'const APP_VERSION = ".*?";' 
     replacement = f'const APP_VERSION = "{version_tag}";'
     return _update_file(app_js_path, pattern, replacement)
 
+def inject_version_into_offline_manager(target_dir: Path, version_tag: str) -> bool:
+    """[NEW] Inject version vào offline_manager.js để logic check update hoạt động đúng."""
+    logger.info(f"💉 Injecting version '{version_tag}' into offline_manager.js...")
+    file_path = target_dir / "assets" / "modules" / "ui" / "managers" / "offline_manager.js"
+    pattern = r'const APP_VERSION = ".*?";'
+    replacement = f'const APP_VERSION = "{version_tag}";'
+    return _update_file(file_path, pattern, replacement)
+
+def patch_sw_style_bundle(target_dir: Path) -> bool:
+    """[NEW] Cập nhật sw.js để cache style.bundle.css thay vì style.css."""
+    logger.info(f"💉 Patching sw.js style asset (CSS Bundle)...")
+    sw_path = target_dir / "sw.js"
+    pattern = r'"\./assets/style\.css"'
+    replacement = '"./assets/style.bundle.css"'
+    return _update_file(sw_path, pattern, replacement)
+
+# ... (Giữ nguyên các hàm create_offline_index_js, convert_db_json_to_js, inject_offline_index_script) ...
 def create_offline_index_js(build_dir: Path) -> bool:
     try:
         json_path = build_dir / "assets" / "db" / "uid_index.json"
@@ -61,10 +79,8 @@ def create_offline_index_js(build_dir: Path) -> bool:
         with open(js_path, 'w', encoding='utf-8') as f:
             f.write(js_content)
             
-        # [CLEANUP] Remove source JSON
         json_path.unlink()
         logger.info(f"   🧹 Removed source: {json_path.name}")
-            
         return True
     except Exception as e:
         logger.error(f"❌ Failed to create offline index JS: {e}")
@@ -72,7 +88,6 @@ def create_offline_index_js(build_dir: Path) -> bool:
 
 def convert_db_json_to_js(build_dir: Path) -> bool:
     logger.info("🔨 Converting DB JSON files to JS for Offline support...")
-    
     db_dir = build_dir / "assets" / "db"
     if not db_dir.exists():
         logger.error("DB directory not found")
@@ -81,36 +96,26 @@ def convert_db_json_to_js(build_dir: Path) -> bool:
     success_count = 0
     fail_count = 0
 
-    # [FIX] Đổi "structure" thành "meta" để khớp với output của Processor mới
     for subdir in ["meta", "content"]: 
         target_dir = db_dir / subdir
         if not target_dir.exists(): 
-            # Log warning để dễ debug nếu thiếu folder
             logger.warning(f"⚠️ Directory not found: {subdir}")
             continue
         
-        # [CHANGED] Dùng list() để an toàn khi modify file system
         json_files = list(target_dir.glob("*.json"))
         
         for json_file in json_files:
             try:
-                # Key là tên file (vd: an1, an1_chunk_0)
-                # Frontend SuttaRepository đã dùng key này
                 key = json_file.stem
-                
                 with open(json_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 
-                # Wrap vào JSONP
                 js_content = f'window.__DB_LOADER__.receive("{key}", {json.dumps(data, ensure_ascii=False)});'
-                
                 js_file = json_file.with_suffix('.js')
                 with open(js_file, 'w', encoding='utf-8') as f:
                     f.write(js_content)
                 
-                # Cleanup source JSON
                 json_file.unlink()
-                
                 success_count += 1
             except Exception as e:
                 logger.error(f"Failed to convert {json_file.name}: {e}")
@@ -122,11 +127,9 @@ def convert_db_json_to_js(build_dir: Path) -> bool:
 def inject_offline_index_script(build_dir: Path) -> bool:
     index_path = build_dir / "index.html"
     logger.info("💉 Injecting db_index.js script tag...")
-    
     script_tag = '<script src="assets/db_index.js"></script>'
     pattern = r'(<script defer src="assets/app\.bundle\.js.*?</script>)'
     replacement = f'{script_tag}\n    \\1'
-    
     return _update_file(index_path, pattern, replacement)
 
 def patch_sw_assets_for_offline(target_dir: Path) -> bool:
@@ -138,9 +141,7 @@ def patch_sw_assets_for_offline(target_dir: Path) -> bool:
     rep1 = '"./assets/app.bundle.js"'
     res1 = _update_file(sw_path, pat1, rep1)
     
-    # 2. [FIX] Patch uid_index.json -> db_index.js
-    # Vì uid_index.json đã bị xóa trong bản offline, SW không được cache nó nữa
-    # Thay vào đó cache file db_index.js mới tạo
+    # 2. Patch uid_index.json -> db_index.js
     pat2 = r'"\./assets/db/uid_index\.json",'
     rep2 = '"./assets/db_index.js",'
     res2 = _update_file(sw_path, pat2, rep2)

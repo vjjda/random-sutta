@@ -26,19 +26,16 @@ def run_release_process(
     create_zip: bool = False 
 ) -> None:
     
-    # [LOGIC MỚI] Nếu là Official Release (-o), tự động kích hoạt Publish (-p)
     if is_official:
         logger.info("🌟 Mode: OFFICIAL RELEASE (Auto-enabling Publish, Git & Zip)")
         publish_gh = True
 
-    # Logic ràng buộc cũ: Publish thì bắt buộc phải có Git và Zip
     if publish_gh: 
         enable_git = True
         create_zip = True 
 
     version_tag = release_versioning.generate_version_tag()
     
-    # Log rõ ràng chế độ đang chạy để user yên tâm
     mode_label = "OFFICIAL (Latest)" if is_official else "PRE-RELEASE"
     if not publish_gh: mode_label = "LOCAL BUILD (No Publish)"
 
@@ -56,17 +53,25 @@ def run_release_process(
         
         # 1. Inject SW Version
         if not web_content_modifier.inject_version_into_sw(BUILD_ONLINE_DIR, version_tag):
-             raise Exception("Failed to inject version (Online).")
+             raise Exception("Failed to inject version into SW (Online).")
 
-        # 2. Bundle CSS
+        # [NEW] 2. Inject App Version (vào app.js và offline_manager.js)
+        # Quan trọng để OfflineManager biết phiên bản hiện tại
+        web_content_modifier.inject_version_into_app_js(BUILD_ONLINE_DIR, version_tag)
+        web_content_modifier.inject_version_into_offline_manager(BUILD_ONLINE_DIR, version_tag)
+
+        # 3. Bundle CSS
         if not css_bundler.bundle_css(BUILD_ONLINE_DIR):
             raise Exception("Online CSS Bundling failed.")
 
-        # 3. Patch HTML
-        if not web_content_modifier.patch_online_html(BUILD_ONLINE_DIR, version_tag):
-            raise Exception("Online HTML patching failed.")
+        # [NEW] 4. Patch SW Assets (Replace style.css -> style.bundle.css)
+        web_content_modifier.patch_sw_style_bundle(BUILD_ONLINE_DIR)
 
-        # 4. Deploy (nếu có cờ -w)
+        # 5. Patch HTML
+        if not web_content_modifier.patch_online_html(BUILD_ONLINE_DIR, version_tag):
+             raise Exception("Online HTML patching failed.")
+
+        # Deploy
         if deploy_web:
             if not web_deployer.deploy_web_to_ghpages(BUILD_ONLINE_DIR, version_tag):
                 raise Exception("Web deployment failed.")
@@ -79,40 +84,46 @@ def run_release_process(
 
         # 1. Inject SW Version
         if not web_content_modifier.inject_version_into_sw(BUILD_OFFLINE_DIR, version_tag):
-             raise Exception("Failed to inject version (Offline).")
+             raise Exception("Failed to inject version into SW (Offline).")
 
-        # 2. Bundle JS (Offline Only)
+        # [NEW] 2. Inject App Version (TRƯỚC khi bundle JS)
+        web_content_modifier.inject_version_into_app_js(BUILD_OFFLINE_DIR, version_tag)
+        web_content_modifier.inject_version_into_offline_manager(BUILD_OFFLINE_DIR, version_tag)
+
+        # 3. Bundle JS (Offline Only)
         if not js_bundler.bundle_javascript(BUILD_OFFLINE_DIR):
-            raise Exception("JS Bundling failed.")
+             raise Exception("JS Bundling failed.")
             
-        # [NEW STEP] Patch SW Assets List (Module -> Bundle)
-        # Vì file app.bundle.js đã được tạo ở bước trên, giờ ta bảo SW cache nó.
+        # Patch SW Assets List (Module -> Bundle)
         if not web_content_modifier.patch_sw_assets_for_offline(BUILD_OFFLINE_DIR):
-             # Warning only, vì có thể regex không khớp nếu sw.js thay đổi
-             logger.warning("⚠️ Could not patch SW asset list (Check regex in web_content_modifier)")
+             logger.warning("⚠️ Could not patch SW asset list (Check regex)")
 
-        # 3. Bundle CSS (Offline)
+        # 4. Bundle CSS (Offline)
         if not css_bundler.bundle_css(BUILD_OFFLINE_DIR):
             raise Exception("Offline CSS Bundling failed.")
 
-        # 4. Patch HTML
+        # [NEW] 5. Patch SW Assets (Replace style.css -> style.bundle.css)
+        # Phải gọi sau khi bundle css xong
+        web_content_modifier.patch_sw_style_bundle(BUILD_OFFLINE_DIR)
+
+        # 6. Patch HTML
         if not web_content_modifier.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
             raise Exception("HTML patching failed.")
 
-        # [NEW] Offline Data Injection (Fix CORS for file://)
+        # 7. Offline Data Injection
         if not web_content_modifier.create_offline_index_js(BUILD_OFFLINE_DIR):
-             logger.warning("⚠️ Failed to create offline index JS (Offline mode might fail)")
+             logger.warning("⚠️ Failed to create offline index JS")
         
         if not web_content_modifier.convert_db_json_to_js(BUILD_OFFLINE_DIR):
              logger.warning("⚠️ Failed to convert DB JSON to JS")
 
         if not web_content_modifier.inject_offline_index_script(BUILD_OFFLINE_DIR):
-             logger.warning("⚠️ Failed to inject offline index script (Offline mode might fail)")
+             logger.warning("⚠️ Failed to inject offline index script")
 
-        # 5. Create Zip (Chạy khi publish hoặc force zip)
+        # Create Zip
         if create_zip:
             if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):
-                logger.info("✨ Offline Artifacts Created.")
+                 logger.info("✨ Offline Artifacts Created.")
             else:
                 raise Exception("Archiving failed")
         else:
@@ -122,15 +133,13 @@ def run_release_process(
         # PHASE 3: PUBLISH
         # =========================================================
         if enable_git:
-            if not git_automator.commit_source_changes(version_tag):
+             if not git_automator.commit_source_changes(version_tag):
                 logger.info("ℹ️  No source changes detected.")
             
-            if publish_gh:
+             if publish_gh:
                 if not git_automator.push_changes():
                     raise Exception("Git Push failed.")
                 
-                # File github_publisher.py đã có sẵn logic check is_official 
-                # để quyết định --latest hay --prerelease rồi nên không cần sửa.
                 if not github_publisher.publish_release(version_tag, is_official):
                     raise Exception("GitHub Release failed.")
         
