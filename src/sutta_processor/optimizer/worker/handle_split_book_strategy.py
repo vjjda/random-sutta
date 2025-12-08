@@ -31,8 +31,6 @@ def execute_split_book_strategy(
         super_meta_map[book_id] = build_meta_entry(book_id, full_meta, nav_map, None)
 
     total_valid_count = 0
-    
-    # [NEW] Dict để gom pool
     collected_pools = {}
 
     for sub_id, all_sub_keys, sub_struct in sub_books:
@@ -78,12 +76,13 @@ def execute_split_book_strategy(
 
         # Save Sub-Book
         final_tree = { book_id: { sub_id: sub_struct } }
+        
+        # [UPDATED] Không truyền random_pool
         sub_payload = build_book_payload(
             book_id=sub_id,
             title=f"{sub_id.upper()}",
             tree=final_tree,
             meta=sub_meta_map,
-            random_pool=sub_leaves_check,
             book_type="sub_book",
             root_id=book_id,
             root_title=root_title
@@ -94,20 +93,18 @@ def execute_split_book_strategy(
         count = len(sub_leaves_check)
         result["sub_counts"][sub_id] = count
         total_valid_count += count
-        
-        # [NEW] Gom pool
         collected_pools[sub_id] = sub_leaves_check
 
     # Save Super-Book
     result["locator_map"][book_id] = [book_id, None]
     super_tree = { book_id: sub_book_ids }
     
+    # [UPDATED] Không truyền random_pool
     super_payload = build_book_payload(
         book_id=book_id,
         title=root_title,
         tree=super_tree,
         meta=super_meta_map,
-        random_pool=[],
         book_type="super_book",
         children=sub_book_ids
     )
@@ -115,6 +112,4 @@ def execute_split_book_strategy(
     
     result["valid_count"] = total_valid_count
     result["sub_books_list"] = sub_book_ids
-    
-    # [NEW] Trả về danh sách pool
     result["pool_data"] = collected_pools

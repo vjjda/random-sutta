@@ -23,7 +23,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6.5 - Constants Pools): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v6.6 - Clean Meta): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -64,7 +64,6 @@ class DBOrchestrator:
                                 res["sub_books_list"]
                             )
                         
-                        # [NEW] Chuyển data pool cho Manager
                         if res.get("pool_data"):
                             self.pool_manager.register_pools(res["pool_data"])
                             
@@ -128,12 +127,12 @@ class DBOrchestrator:
 
             self.pool_manager.register_book_count("tpk", 0)
 
+            # [UPDATED] Xóa trường random_pool
             meta_pack = {
                 "id": "tpk",
                 "title": data.get("title"),
                 "tree": structure,
-                "meta": meta,
-                "random_pool": []
+                "meta": meta
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
             logger.info(f"   🌟 Super Book Processed (Nav loaded from Staging: {len(self.super_nav_map)} entries)")
@@ -146,7 +145,6 @@ class DBOrchestrator:
     def _save_uid_index(self) -> None:
         self.io.save_category("root", "uid_index.json", self.global_locator)
 
-# [FIX] Thêm hàm này để làm entry point cho module
 def run_optimizer(dry_run: bool = False):
     orchestrator = DBOrchestrator(dry_run)
     orchestrator.run()

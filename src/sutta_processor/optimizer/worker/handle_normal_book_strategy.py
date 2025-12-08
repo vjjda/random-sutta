@@ -46,19 +46,19 @@ def execute_normal_book_strategy(
         slim_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
     
     # Save Book
+    # [UPDATED] Không truyền random_pool
     payload = build_book_payload(
         book_id=book_id,
         title=data.get("title"),
         tree=structure,
         meta=slim_meta_map,
-        random_pool=linear_uids,
         book_type="book"
     )
     io.save_category("meta", f"{book_id}.json", payload)
     
     result["valid_count"] = len(linear_uids)
     
-    # [NEW] Gửi danh sách UIDs về để ghi vào constants.js
+    # [KEEP] Gửi pool về để ghi vào constants.js
     result["pool_data"] = {
         book_id: linear_uids
     }

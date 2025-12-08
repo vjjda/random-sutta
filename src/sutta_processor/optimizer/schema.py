@@ -15,10 +15,8 @@ def build_meta_entry(
     
     # 1. Alias (Slim)
     if m_type == "alias":
-        # [FIX] Ưu tiên lấy target_uid đã được chuẩn hóa từ Staging
         target = info.get("target_uid")
         
-        # Fallback cho dữ liệu cũ (nếu có)
         if not target:
             target = info.get("extract_id") or info.get("parent_uid")
             
@@ -57,23 +55,21 @@ def build_book_payload(
     title: str,
     tree: Any,
     meta: Dict[str, Any],
-    random_pool: List[str],
     book_type: str = "book",
-    # Optional fields for Split/Super books
     root_id: str = None,
     root_title: str = None,
     children: List[str] = None
 ) -> Dict[str, Any]:
     """
     Tạo cấu trúc JSON chuẩn cho file meta/{book}.json.
+    [UPDATED] Đã loại bỏ random_pool.
     """
     payload = {
         "id": book_id,
         "type": book_type,
         "title": title,
         "tree": tree,
-        "meta": meta,
-        "random_pool": random_pool
+        "meta": meta
     }
 
     # Inject optional fields
