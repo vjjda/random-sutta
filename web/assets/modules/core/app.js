@@ -1,7 +1,7 @@
 // Path: web/assets/modules/core/app.js
 import { Router } from './router.js';
 import { SuttaController } from './sutta_controller.js';
-import { SuttaRepository } from '../data/sutta_repository.js'; 
+import { SuttaService } from '../services/sutta_service.js'; // [CHANGED] Import Service thay vì Repo
 import { setupLogging, LogLevel, getLogger } from '../utils/logger.js';
 import { initFilters } from '../ui/components/filters.js';
 import { setupQuickNav } from '../ui/components/search.js';
@@ -36,9 +36,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     randomBtn.addEventListener("click", () => SuttaController.loadRandomSutta(true));
 
     try {
-        // [UPDATED] Init Repository
-        await SuttaRepository.init();
-        
+        // [FIXED] Init Service (Service sẽ init Repo và Helper)
+        await SuttaService.init(); 
+
         statusDiv.classList.add("hidden");
         navHeader.classList.remove("hidden");
         randomBtn.disabled = false;

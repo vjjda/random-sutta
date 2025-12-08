@@ -11,12 +11,10 @@ let _lastFiltersHash = "";
 const _poolRamCache = new Map();
 
 export const RandomHelper = {
-    // 1. Warm-up
     init() {
         this._getOrBuildWeightedMap([]);
     },
 
-    // 2. Internal Helpers
     _getFiltersHash(activeFilters) {
         if (!activeFilters || activeFilters.length === 0) return "ALL";
         return activeFilters.slice().sort().join("|");
@@ -29,7 +27,6 @@ export const RandomHelper = {
             return _cachedWeightedMap;
         }
 
-        // --- Logic tính toán trọng số ---
         const rootBooks = (!activeFilters || activeFilters.length === 0) ?
             PRIMARY_BOOKS : activeFilters;
         
@@ -61,35 +58,33 @@ export const RandomHelper = {
         return _cachedWeightedMap;
     },
 
+    // [FIXED] Logic này giờ sẽ lấy từ META thay vì POOL file
     async _getPoolForBook(bookId) {
-        // Cache RAM Layer
+        // 1. Kiểm tra RAM trước (Siêu nhanh)
         if (_poolRamCache.has(bookId)) {
             return _poolRamCache.get(bookId);
         }
 
         try {
-            // Data Layer
-            let poolData = [];
-            if (SuttaRepository.fetchPool) {
-                poolData = await SuttaRepository.fetchPool(bookId);
-            } else {
-                // Fallback
-                const response = await fetch(`./assets/db/pools/${bookId}.json`);
-                if (!response.ok) throw new Error("Pool not found");
-                poolData = await response.json();
-            }
-
-            if (poolData && Array.isArray(poolData)) {
+            // 2. Tải Meta File (Chứa cả pool lẫn title/nav)
+            // SuttaRepository sẽ lo việc cache file này dưới Disk/SW
+            const bookMeta = await SuttaRepository.fetchMeta(bookId);
+            
+            if (bookMeta && bookMeta.random_pool) {
+                const poolData = bookMeta.random_pool;
+                
+                // 3. Cache mảng ID vào RAM để lần sau không phải parse JSON nữa
                 _poolRamCache.set(bookId, poolData);
+                return poolData;
             }
-            return poolData;
+            
+            return [];
         } catch (e) {
-            logger.error("_getPoolForBook", `Failed to load pool for ${bookId}`, e);
+            logger.error("_getPoolForBook", `Failed to load meta for ${bookId}`, e);
             return [];
         }
     },
 
-    // 3. Main API
     async getRandomPayload(activeFilters) {
         const { totalWeight, weightedCandidates } = this._getOrBuildWeightedMap(activeFilters);
 
