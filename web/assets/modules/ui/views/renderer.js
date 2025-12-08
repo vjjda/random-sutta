@@ -26,7 +26,6 @@ function updateTopNavDOM(data, prevId, nextId) {
     const navSubTitle = document.getElementById("nav-sub-title");
     const statusDiv = document.getElementById("status");
 
-    // Title Header
     const currentInfo = getDisplayInfo(data.uid, data.meta);
     if (navMainTitle) navMainTitle.textContent = currentInfo.main;
     if (navSubTitle) navSubTitle.textContent = currentInfo.sub;
@@ -34,7 +33,6 @@ function updateTopNavDOM(data, prevId, nextId) {
     document.getElementById("nav-title-text")?.classList.remove("hidden");
     document.getElementById("nav-search-container")?.classList.add("hidden");
 
-    // Nav Buttons
     const setupBtn = (btnId, targetId, type) => {
         const btn = document.getElementById(btnId);
         if (!btn) return;
@@ -84,51 +82,64 @@ export async function renderSutta(suttaId, data, options = {}) {
   container.innerHTML = "";
   let htmlContent = "";
   
-  // Logic hiển thị Branch/Menu
-  const type = data.meta ? data.meta.type : null;
-  const isBranchView = ['root', 'super_book', 'sub_book', 'book', 'branch'].includes(type) || (data.bookStructure && !data.content);
+  const nav = data.nav || {}; 
+  const prevId = nav.prev || null;
+  const nextId = nav.next || null;
 
-  // --- CASE 1: BRANCH / MENU ---
-  if (isBranchView) {
-      // Data contextMeta chứa thông tin của tất cả các node trong file sách này
-      // Dùng nó để hiển thị title/blurb cho các item trong menu
-      const metaForMenu = data.contextMeta || {};
-      
-      // Inject chính meta hiện tại vào map (để fallback)
-      if (data.meta) metaForMenu[suttaId] = data.meta;
+  // [CHANGED Logic] Ưu tiên Content trước, sau đó mới đến Branch/Menu
 
-      htmlContent = ContentCompiler.compileBranch(
-          data.bookStructure, 
-          data.uid, 
-          metaForMenu
-      );
-      
-      document.getElementById("toh-wrapper")?.classList.add("hidden");
-  } 
-  
-  // --- CASE 2: LEAF (Nội dung) ---
-  else if (data.content) {
+  // --- CASE 1: CONTENT (Hiển thị nội dung) ---
+  // Nếu có content, render ngay lập tức bất kể type là gì (leaf hay branch)
+  if (data.content) {
       htmlContent = ContentCompiler.compile(data.content, data.uid);
+      
+      const info = getDisplayInfo(data.uid, data.meta);
+      const headerHtml = `
+            <header>
+                <h1 class="sutta-title">
+                    <span class="acronym">${info.main}</span>
+                    <span class="translated-title">${info.sub}</span>
+                </h1>
+            </header>
+        `;
+      htmlContent = headerHtml + htmlContent;
   } 
   
+  // --- CASE 2: BRANCH / MENU (Hiển thị mục lục) ---
+  // Chỉ chạy vào đây nếu KHÔNG CÓ content
   else {
-      handleNotFound(suttaId);
-      return false;
+      const type = data.meta ? data.meta.type : null;
+      const isBranchView = ['root', 'super_book', 'sub_book', 'book', 'branch'].includes(type) || data.bookStructure;
+
+      if (isBranchView) {
+          const metaForMenu = data.contextMeta || {};
+          if (data.meta) metaForMenu[suttaId] = data.meta;
+
+          htmlContent = ContentCompiler.compileBranch(
+              data.bookStructure, 
+              data.uid, 
+              metaForMenu
+          );
+          
+          document.getElementById("toh-wrapper")?.classList.add("hidden");
+      } else {
+          // Không có content, cũng không phải branch hợp lệ
+          handleNotFound(suttaId);
+          return false;
+      }
   }
 
-  // Footer Nav
-  const nav = data.nav || {};
+  // --- COMMON UI (Nav & Header) ---
   const bottomNavHtml = UIFactory.createBottomNavHtml(
-      nav.prev, 
-      nav.next, 
+      prevId, 
+      nextId, 
       data.navMeta || {} 
   );
   
   container.innerHTML = htmlContent + bottomNavHtml;
   
-  updateTopNavDOM(data, nav.prev, nav.next);
+  updateTopNavDOM(data, prevId, nextId);
 
-  // TOH Init
   if (data.content) {
       if (!tohInstance) tohInstance = setupTableOfHeadings();
       tohInstance.generate();
