@@ -8,13 +8,16 @@ import { getLogger } from '../utils/logger.js';
 const logger = getLogger("SuttaRepository");
 
 export const SuttaRepository = {
-    // --- Public API ---
-    
     async init() {
-        await IndexStore.init();
+        // [OPTIMIZATION] Không await IndexStore.init() ở đây nữa!
+        // Hãy để nó chạy ngầm (Fire-and-forget)
+        IndexStore.init().catch(err => logger.error("Init", "Background index load failed", err));
+        logger.info("Init", "Repository ready (Index loading in background...)");
     },
 
     getLocation(uid) {
+        // Hàm này giờ có thể trả về null nếu Index chưa tải xong.
+        // Các logic gọi nó phải có cơ chế Fallback hoặc Wait nếu cần thiết.
         return IndexStore.get(uid);
     },
 
@@ -26,13 +29,16 @@ export const SuttaRepository = {
         return await ContentStore.fetchChunk(bookId, chunkIdx);
     },
 
-    // API cũ giữ lại cho Service
     async getMetaEntry(uid, hintBookId = null) {
         let bookId = hintBookId;
+        
+        // Nếu không có hint, buộc phải đợi Index tải xong
         if (!bookId) {
+            await IndexStore.init(); // [WAIT] Chỉ đợi khi thực sự cần
             const loc = this.getLocation(uid);
             if (loc) bookId = loc[0];
         }
+        
         if (!bookId) return null;
 
         const bookMeta = await MetaStore.fetch(bookId);
@@ -48,6 +54,10 @@ export const SuttaRepository = {
     },
 
     async fetchMetaList(uids) {
+        // Để lấy meta cho list UID (nav buttons), ta cần biết chúng thuộc sách nào.
+        // Nên ở đây bắt buộc phải đợi Index.
+        await IndexStore.init();
+
         const result = {};
         const booksToFetch = new Set();
         
@@ -56,7 +66,6 @@ export const SuttaRepository = {
             if (loc) booksToFetch.add(loc[0]);
         });
 
-        // Parallel fetch
         await Promise.all(Array.from(booksToFetch).map(id => MetaStore.fetch(id)));
 
         uids.forEach(uid => {
