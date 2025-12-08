@@ -1,14 +1,14 @@
-# Path: src/sutta_processor/optimizer/worker/split_mode.py
+# Path: src/sutta_processor/optimizer/worker/handle_split_book_strategy.py
 from typing import Dict, Any, Set
 
 from ..io_manager import IOManager
 from ..chunker import chunk_content
-from ..tree_utils import flatten_tree_uids
+from ..tree_utils import flatten_tree_uids, collect_all_keys
 from ..splitter import extract_sub_books
 from ..schema import build_meta_entry, build_book_payload
-from .utils import resolve_chunk_idx
+from .chunk_index_resolver import resolve_chunk_idx
 
-def handle_split_mode(
+def execute_split_book_strategy(
     book_id: str, 
     data: Dict, 
     full_meta: Dict, 
@@ -17,7 +17,10 @@ def handle_split_mode(
     io: IOManager, 
     result: Dict
 ) -> None:
-    """Xử lý sách cần chia nhỏ (AN, SN)."""
+    """
+    Chiến lược xử lý cho các sách Super Book (AN, SN).
+    Nhiệm vụ: Tách thành các Sub-Book, tạo Meta/Content riêng cho từng con.
+    """
     sub_books = extract_sub_books(book_id, structure, full_meta)
     sub_book_ids = []
     root_title = data.get("title", "")
@@ -37,11 +40,10 @@ def handle_split_mode(
         flatten_tree_uids(sub_struct, full_meta, sub_leaves_check)
         
         for uid in sub_leaves_check:
-            # Case 1: ID có trực tiếp trong content
             if uid in raw_content:
                 sub_content[uid] = raw_content[uid]
             else:
-                # Case 2: ID là subleaf, nội dung nằm ở Parent Container
+                # Fix lỗi content thiếu: Lấy từ Parent Container
                 parent = full_meta.get(uid, {}).get("parent_uid")
                 if parent and parent in raw_content:
                     sub_content[parent] = raw_content[parent]

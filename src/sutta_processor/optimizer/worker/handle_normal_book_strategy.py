@@ -1,13 +1,13 @@
-# Path: src/sutta_processor/optimizer/worker/normal_mode.py
+# Path: src/sutta_processor/optimizer/worker/handle_normal_book_strategy.py
 from typing import Dict, Any, List
 
 from ..io_manager import IOManager
 from ..chunker import chunk_content
 from ..tree_utils import collect_all_keys
 from ..schema import build_meta_entry, build_book_payload
-from .utils import resolve_chunk_idx
+from .chunk_index_resolver import resolve_chunk_idx
 
-def handle_normal_mode(
+def execute_normal_book_strategy(
     book_id: str, 
     data: Dict, 
     full_meta: Dict, 
@@ -17,7 +17,10 @@ def handle_normal_mode(
     io: IOManager, 
     result: Dict
 ) -> None:
-    """Xử lý sách thường (MN, DN, ...)."""
+    """
+    Chiến lược xử lý cho các sách thường (MN, DN...).
+    Nhiệm vụ: Chunking toàn bộ content, tạo 1 file Meta duy nhất.
+    """
     # 1. Content Chunking
     normal_chunk_map = {}
     raw_content = data.get("content", {})
