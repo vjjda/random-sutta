@@ -50,7 +50,7 @@ function updateTopNavDOM(data, prevId, nextId) {
         } else {
             btn.disabled = true;
             btn.onclick = null;
-            btn.title = "End of list";
+            btn.title = ""; // Xóa tooltip cũ
         }
     };
 
@@ -86,34 +86,36 @@ export async function renderSutta(suttaId, data, options = {}) {
   const prevId = nav.prev || null;
   const nextId = nav.next || null;
 
-  // [UPDATED Logic] Xác định loại hiển thị dựa trên Meta Type
+  // Xác định loại View
   const type = data.meta ? data.meta.type : null;
   
-  // Các loại này sẽ hiển thị dạng Menu (Branch)
-  const isBranchView = ['root', 'super_book', 'sub_book', 'branch'].includes(type) || 
-                       (data.bookStructure && !data.content);
+  // Danh sách các type được coi là Branch/Menu
+  const branchTypes = ['root', 'super_book', 'sub_book', 'book', 'branch'];
+  
+  // Logic: Là Branch nếu type thuộc list trên HOẶC (có structure và không có content)
+  const isBranchView = branchTypes.includes(type) || (data.bookStructure && !data.content);
 
   // --- CASE 1: BRANCH / MENU ---
   if (isBranchView) {
-      // Sử dụng contextMeta (được Service truyền) để hiển thị thông tin con
-      htmlContent = ContentCompiler.compileBranch(data.bookStructure, data.uid, data.contextMeta || {});
+      // Dùng contextMeta để render danh sách con
+      // [FIX] Nếu data.contextMeta bị thiếu, fallback về data.meta (dù có thể thiếu info con)
+      const metaForMenu = data.contextMeta || {};
+      
+      // Inject chính meta của node hiện tại vào map để render header nếu cần
+      if (data.meta) metaForMenu[suttaId] = data.meta;
+
+      htmlContent = ContentCompiler.compileBranch(
+          data.bookStructure, 
+          data.uid, 
+          metaForMenu
+      );
+      
       document.getElementById("toh-wrapper")?.classList.add("hidden");
   } 
   
   // --- CASE 2: LEAF (Nội dung) ---
   else if (data.content) {
       htmlContent = ContentCompiler.compile(data.content, data.uid);
-      
-      const info = getDisplayInfo(data.uid, data.meta);
-      const headerHtml = `
-            <header>
-                <h1 class="sutta-title">
-                    <span class="acronym">${info.main}</span>
-                    <span class="translated-title">${info.sub}</span>
-                </h1>
-            </header>
-        `;
-      htmlContent = headerHtml + htmlContent;
   } 
   
   else {
@@ -121,6 +123,7 @@ export async function renderSutta(suttaId, data, options = {}) {
       return false;
   }
 
+  // Render Footer Nav
   const bottomNavHtml = UIFactory.createBottomNavHtml(
       prevId, 
       nextId, 
@@ -129,8 +132,10 @@ export async function renderSutta(suttaId, data, options = {}) {
   
   container.innerHTML = htmlContent + bottomNavHtml;
   
+  // Update Header
   updateTopNavDOM(data, prevId, nextId);
 
+  // Init TOH chỉ cho bài đọc
   if (data.content) {
       if (!tohInstance) tohInstance = setupTableOfHeadings();
       tohInstance.generate();

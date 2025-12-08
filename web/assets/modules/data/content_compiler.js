@@ -1,5 +1,7 @@
 // Path: web/assets/modules/data/content_compiler.js
 
+const SEGMENT_REGEX = /^([a-z]+[\d\.-]+):(\d+\.\d+(\.\d+)?)$/;
+
 export const ContentCompiler = {
     // --- 1. RENDER TEXT CONTENT (LEAF) ---
     compile: function (contentMap, rootUid) {
@@ -28,12 +30,9 @@ export const ContentCompiler = {
 
             let segmentHtml = `<span id="${segmentId}" class="segment">`;
             
-            if (pli) {
-                segmentHtml += `<span class="pli" lang="pi">${pli}</span>`;
-            }
-            if (eng) {
-                segmentHtml += `<span class="eng" lang="en">${eng}</span>`;
-            }
+            if (pli) segmentHtml += `<span class="pli" lang="pi">${pli}</span>`;
+            if (eng) segmentHtml += `<span class="eng" lang="en">${eng}</span>`;
+            
             if (comm) {
                 const safeComm = comm.replace(/"/g, '&quot;');
                 segmentHtml += `<span class="comment-marker" title="View note" data-comment="${safeComm}">*</span>`;
@@ -47,68 +46,93 @@ export const ContentCompiler = {
         return html;
     },
 
-    // --- 2. RENDER BRANCH STRUCTURE (SHALLOW MENU) ---
+    // --- 2. RENDER BRANCH STRUCTURE (MENU) ---
     compileBranch: function (structure, rootUid, metaMap) {
         if (!structure) return "";
 
-        let html = `<div class="branch-container">`;
+        // 1. Tìm Node mục tiêu trong cây (Deep Search)
+        const targetNode = this._findNode(structure, rootUid);
         
-        // 1. Xác định Node mục tiêu trong cây
-        // Structure thường có dạng: { "an": ["an1", "an2"] }
-        // Nếu ta đang ở "an", ta muốn lấy giá trị của key "an"
-        let targetNode = structure;
-        
-        if (structure[rootUid]) {
-            targetNode = structure[rootUid];
-        } else {
-            // Trường hợp rootUid không phải là key ở cấp cao nhất (ví dụ node con sâu hơn được truyền vào)
-            // Giữ nguyên targetNode là structure hiện tại
+        if (!targetNode) {
+            return `<div class="error-message">Empty structure for ${rootUid}</div>`;
         }
 
-        // 2. Chỉ render con trực tiếp (Immediate Children)
+        let html = `<div class="branch-container">`;
         html += `<ul class="branch-group">`;
 
-        // Case A: List (Danh sách ID con) -> Render từng ID
-        if (Array.isArray(targetNode)) {
-            targetNode.forEach(childId => {
-                if (typeof childId === 'string') {
-                    html += this._createCard(childId, metaMap, "leaf");
-                } else if (typeof childId === 'object') {
-                    // Nếu con là object (nhóm con), render key của nó
-                    Object.keys(childId).forEach(key => {
-                        html += this._createCard(key, metaMap, "group");
-                    });
-                }
-            });
-        } 
-        // Case B: Object (Dictionary các nhóm con) -> Render Key
-        else if (typeof targetNode === 'object' && targetNode !== null) {
-            Object.keys(targetNode).forEach(key => {
-                html += this._createCard(key, metaMap, "group");
-            });
-        }
+        // Logic Render:
+        // - Nếu Node là List: Render từng item trong list.
+        // - Nếu Node là Dict: Render Keys của Dict.
+        
+        const itemsToRender = Array.isArray(targetNode) ? targetNode : Object.keys(targetNode);
+
+        itemsToRender.forEach(item => {
+            let uid, childNode;
+
+            if (typeof item === 'string') {
+                uid = item; // Item là ID
+            } else if (typeof item === 'object') {
+                // Item là object { "key": [...] }, lấy key đầu tiên
+                uid = Object.keys(item)[0];
+            }
+
+            if (uid) {
+                // Determine Visual Type based on Meta Type, NOT structure type
+                const info = metaMap[uid] || {};
+                const metaType = info.type || 'leaf';
+                
+                // Nếu là 'leaf' hoặc 'subleaf' -> Render kiểu bài kinh (nhỏ)
+                // Nếu là 'branch', 'book', 'sub_book' -> Render kiểu nhóm (lớn)
+                const renderType = ['leaf', 'subleaf', 'alias'].includes(metaType) ? 'leaf' : 'group';
+                
+                html += this._createCard(uid, metaMap, renderType);
+            }
+        });
 
         html += `</ul>`;
         html += `</div>`;
         return html;
     },
 
+    // Helper: Tìm node tương ứng với UID trong cây lồng nhau
+    _findNode: function(tree, targetUid) {
+        // 1. Check Root Keys
+        if (tree[targetUid]) return tree[targetUid];
+
+        // 2. Recursive Search
+        // Tree có thể là Dict hoặc List
+        let children = [];
+        if (Array.isArray(tree)) children = tree;
+        else if (typeof tree === 'object') children = Object.values(tree);
+
+        for (const child of children) {
+            if (typeof child === 'object' && child !== null) {
+                // Nếu child là { "targetUid": [...] } -> Found!
+                if (child[targetUid]) return child[targetUid];
+                
+                // Nếu không, tìm sâu hơn
+                const found = this._findNode(child, targetUid);
+                if (found) return found;
+            }
+        }
+        return null;
+    },
+
     _createCard: function (uid, metaMap, type) {
         const info = metaMap[uid] || {};
-        // Fallback tên hiển thị
         const title = info.translated_title || info.original_title || uid;
         const acronym = info.acronym || uid.toUpperCase();
-        
-        // Chỉ hiện blurb nếu có và ngắn gọn
         const blurb = info.blurb ? `<div class="b-blurb">${info.blurb}</div>` : "";
         
-        // CSS Class: group (có mũi tên/đậm) hoặc leaf (bài kinh)
+        // CSS: Group (đậm/lớn), Leaf (nhỏ/phẳng)
         const cssClass = type === "group" ? "branch-card-group" : "branch-card-leaf";
 
-        // Badge loại sách
+        // Badge phân loại
         let badge = "";
-        if (info.type === 'sub_book') badge = `<span class="b-badge">Book</span>`;
+        if (info.type === 'book') badge = `<span class="b-badge">Book</span>`;
+        else if (info.type === 'sub_book') badge = `<span class="b-badge">Part</span>`;
         else if (info.type === 'branch') badge = `<span class="b-badge">Section</span>`;
+        else if (info.type === 'super_book') badge = `<span class="b-badge">Collection</span>`;
         
         return `
         <li class="${cssClass}">
