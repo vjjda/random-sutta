@@ -7,7 +7,6 @@ from ..shared.app_config import RAW_BILARA_DIR
 from ..shared.domain_types import SuttaMeta
 from .range_expander import generate_subleaf_shortcuts
 
-# Import nav utils
 from .tree_utils import (
     extract_nav_sequence, 
     generate_navigation_map, 
@@ -56,14 +55,12 @@ def _add_meta_entry(uid: str, type_default: str, meta_map: Dict[str, SuttaMeta],
         info = meta_map.get(uid, {}) # type: ignore
         entry = {
             "type": info.get("type", type_default),
-            # "acronym": info.get("acronym", ""), # [REMOVED] Don't add default empty
             "translated_title": info.get("translated_title", ""),
             "original_title": info.get("original_title", ""),
             "blurb": info.get("blurb"),
             "author_uid": None
         }
         
-        # [NEW] Chỉ thêm acronym nếu có
         if info.get("acronym"):
             entry["acronym"] = info["acronym"]
         
@@ -100,22 +97,17 @@ def expand_structure_with_subleaves(
                         
                         entry = {
                             "type": "alias",
-                            "target_uid": target, 
+                            "target_uid": target
+                            # [UPDATED] Không còn trường acronym
                         }
-                        
-                        # [FIX] Chỉ thêm acronym nếu có
-                        if sc_data.get("acronym"):
-                             entry["acronym"] = sc_data["acronym"]
 
                     else:
                         api_info = meta_map.get(sc_id, {})
                         entry = {
                             "type": sc_data["type"],
-                            # "acronym": sc_data.get("acronym", ""), # [REMOVED]
                             "parent_uid": sc_data["parent_uid"]
                         }
                         
-                        # [FIX]
                         if sc_data.get("acronym"):
                              entry["acronym"] = sc_data["acronym"]
 
@@ -165,10 +157,8 @@ def build_book_data(
 
     meta_dict: Dict[str, Any] = {}
     
-    # 1. Expand Subleaves & Build Base Meta
     final_structure = expand_structure_with_subleaves(simple_tree, raw_data, names_map, meta_dict)
     
-    # 2. Add Content Meta
     content_dict = {}
     for uid, payload in raw_data.items():
         if not payload: continue
@@ -181,7 +171,6 @@ def build_book_data(
         if uid in meta_dict and author:
             meta_dict[uid]["author_uid"] = author
 
-    # 3. Rich Staging Calculation
     nav_sequence = extract_nav_sequence(final_structure, meta_dict)
     reading_nav_map = generate_navigation_map(nav_sequence)
     random_pool = generate_random_pool(nav_sequence)

@@ -29,10 +29,6 @@ def _expand_alias_ids(prefix: str, start: int, end: int) -> List[str]:
     return [f"{prefix}{i}" for i in range(start, end + 1)]
 
 def _generate_smart_acronym(parent_acronym: str, start: int, end: int, replacement: str) -> str:
-    """
-    Thay thế dải số trong acronym cha bằng chuỗi thay thế mới.
-    [UPDATED] Chấp nhận replacement là string (hỗ trợ cả số đơn và dải số).
-    """
     if not parent_acronym: return ""
     range_pattern = re.compile(rf"{start}\s*[-–]\s*{end}")
     new_acronym = range_pattern.sub(str(replacement), parent_acronym)
@@ -72,19 +68,12 @@ def generate_subleaf_shortcuts(
             for alias_id in aliases:
                 if alias_id == root_uid: continue
                 
-                alias_acronym = ""
-                try:
-                    # Alias ID luôn là số đơn (do _expand_alias_ids tạo ra)
-                    num_part = alias_id[len(prefix):]
-                    alias_acronym = _generate_smart_acronym(parent_acronym, start, end, num_part)
-                except Exception:
-                    pass
-
+                # [CHANGED] Không tính toán acronym cho Alias nữa
                 result_meta[alias_id] = {
                     "type": "alias",
                     "parent_uid": root_uid,
-                    "extract_id": None, 
-                    "acronym": alias_acronym
+                    "extract_id": None
+                    # "acronym": ... [REMOVED]
                 }
         return [root_uid], result_meta
 
@@ -95,17 +84,13 @@ def generate_subleaf_shortcuts(
         for sub_uid in sorted_prefixes:
             ordered_structure_ids.append(sub_uid)
             
+            # Subleaf vẫn CẦN Acronym để hiển thị
             sub_acronym = ""
             if root_range_info:
                 root_prefix, r_start, r_end = root_range_info
                 if sub_uid.startswith(root_prefix):
-                    # [FIX] Không ép kiểu int(). Lấy toàn bộ phần đuôi.
-                    # Ví dụ: sub_uid="an1.586-590", prefix="an1." -> suffix="586-590"
                     suffix = sub_uid[len(root_prefix):]
-                    
-                    # Format đẹp (thay hyphen thường bằng en-dash)
                     display_suffix = suffix.replace("-", "–")
-                    
                     sub_acronym = _generate_smart_acronym(parent_acronym, r_start, r_end, display_suffix)
             
             result_meta[sub_uid] = {
@@ -126,19 +111,12 @@ def generate_subleaf_shortcuts(
                 for alias_id in aliases:
                     if alias_id == sub_uid: continue
                     
-                    alias_acronym = ""
-                    try:
-                        num_part = alias_id[len(p_prefix):]
-                        base_acronym = sub_acronym if sub_acronym else parent_acronym
-                        alias_acronym = _generate_smart_acronym(base_acronym, p_start, p_end, num_part)
-                    except Exception:
-                        pass
-
+                    # [CHANGED] Không tính toán acronym cho Alias nữa
                     result_meta[alias_id] = {
                         "type": "alias",
                         "parent_uid": root_uid,
-                        "extract_id": sub_uid,
-                        "acronym": alias_acronym
+                        "extract_id": sub_uid
+                        # "acronym": ... [REMOVED]
                     }
 
         return ordered_structure_ids, result_meta
