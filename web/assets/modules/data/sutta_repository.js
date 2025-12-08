@@ -1,7 +1,8 @@
 // Path: web/assets/modules/data/sutta_repository.js
 import { getLogger } from '../utils/logger.js';
 // [NOTE] Cần đảm bảo constants.js export PRIMARY_BOOKS
-import { PRIMARY_BOOKS } from './constants.js'; 
+import { PRIMARY_BOOKS } from './constants.js';
+import { ZipImporter } from './loader/zip_importer.js'; // [NEW]
 
 const logger = getLogger("SuttaRepo");
 
@@ -142,66 +143,18 @@ export const SuttaRepository = {
         }
     },
 
-    // [UPDATED] Real Download Logic for Offline Mode
+    // [UPDATED] Real Download Logic using Zip Bundle
     async downloadAll(onProgress) {
         await this.ensureIndex();
-        if (!_uidIndex) throw new Error("Index not loaded");
-
-        // 1. Identify all resources needed
-        const allMetaBooks = new Set();
-        const allChunks = new Set(); // format: "bookId|chunkIdx"
-
-        // Scan index to find all books and chunks
-        for (const [uid, loc] of Object.entries(_uidIndex)) {
-            const [bookId, chunkIdx] = loc;
-            allMetaBooks.add(bookId);
-            allChunks.add(`${bookId}|${chunkIdx}`);
+        logger.info("DownloadAll", "Starting optimized zip download...");
+        
+        try {
+            // Delegate to ZipImporter to download, unzip and cache everything
+            await ZipImporter.run(onProgress);
+            logger.info("DownloadAll", "Full download completed via Zip.");
+        } catch (e) {
+            logger.error("DownloadAll", "Zip download failed", e);
+            throw e; // Re-throw to let UI handle error state
         }
-
-        const tasks = [];
-
-        // Meta Tasks
-        for (const bookId of allMetaBooks) {
-            tasks.push(async () => await this.fetchMeta(bookId));
-        }
-
-        // Content Chunk Tasks
-        for (const chunkStr of allChunks) {
-            const [bookId, chunkIdx] = chunkStr.split('|');
-            tasks.push(async () => await this.fetchContentChunk(bookId, parseInt(chunkIdx)));
-        }
-
-        // 2. Execute with Concurrency Control
-        const total = tasks.length;
-        let completed = 0;
-        const CONCURRENCY = 5; // Tải 5 file cùng lúc
-
-        logger.info("DownloadAll", `Starting download of ${total} files...`);
-
-        // Helper to run a batch
-        const runBatch = async (batch) => {
-            await Promise.all(batch.map(task => task().then(() => {
-                completed++;
-                if (onProgress) onProgress(completed, total);
-            }).catch(e => {
-                logger.warn("DownloadAll", "File failed (skipping)", e);
-                // Vẫn tính là completed để thanh progress chạy tiếp
-                completed++;
-                if (onProgress) onProgress(completed, total);
-            })));
-        };
-
-        // Split into batches
-        for (let i = 0; i < total; i += CONCURRENCY) {
-            const batch = tasks.slice(i, i + CONCURRENCY);
-            await runBatch(batch);
-            
-            // Yield to UI thread every few batches
-            if (i % (CONCURRENCY * 2) === 0) {
-                await new Promise(r => setTimeout(r, 10)); 
-            }
-        }
-
-        logger.info("DownloadAll", "Full download completed.");
     }
 };

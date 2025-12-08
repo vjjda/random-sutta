@@ -71,6 +71,10 @@ def run_release_process(
         if not web_content_modifier.patch_online_html(BUILD_ONLINE_DIR, version_tag):
              raise Exception("Online HTML patching failed.")
 
+        # [NEW] 6. Create DB Bundle Zip (for Offline Download feature)
+        if not zip_packager.create_db_bundle(BUILD_ONLINE_DIR):
+             logger.warning("⚠️ Failed to create DB bundle zip (Offline download may fail).")
+
         # Deploy
         if deploy_web:
             if not web_deployer.deploy_web_to_ghpages(BUILD_ONLINE_DIR, version_tag):
