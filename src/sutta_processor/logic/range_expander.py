@@ -28,10 +28,14 @@ def _expand_alias_ids(prefix: str, start: int, end: int) -> List[str]:
     if (end - start) > 500: return []
     return [f"{prefix}{i}" for i in range(start, end + 1)]
 
-def _generate_smart_acronym(parent_acronym: str, start: int, end: int, current_num: int) -> str:
+def _generate_smart_acronym(parent_acronym: str, start: int, end: int, replacement: str) -> str:
+    """
+    Thay thế dải số trong acronym cha bằng chuỗi thay thế mới.
+    [UPDATED] Chấp nhận replacement là string (hỗ trợ cả số đơn và dải số).
+    """
     if not parent_acronym: return ""
     range_pattern = re.compile(rf"{start}\s*[-–]\s*{end}")
-    new_acronym = range_pattern.sub(str(current_num), parent_acronym)
+    new_acronym = range_pattern.sub(str(replacement), parent_acronym)
     if new_acronym == parent_acronym: return "" 
     return new_acronym
 
@@ -44,7 +48,6 @@ def generate_subleaf_shortcuts(
     result_meta = {}
     ordered_structure_ids = []
 
-    # 1. Quét Content tìm Subleaves
     real_prefixes = set()
     for seg_id in content.keys():
         if ":" in seg_id:
@@ -63,18 +66,19 @@ def generate_subleaf_shortcuts(
             prefix, start, end = root_range_info
             aliases = _expand_alias_ids(prefix, start, end)
             
-            # [LOG] Thông báo bung Alias cho Single Leaf
             if len(aliases) > 0:
-                logger.info(f"   ✨ Expanding Alias: {root_uid} -> {len(aliases)} aliases ({aliases[0]}...)")
+                logger.info(f"   ✨ Expanding Alias: {root_uid} -> {len(aliases)} aliases")
 
             for alias_id in aliases:
                 if alias_id == root_uid: continue
+                
+                alias_acronym = ""
                 try:
+                    # Alias ID luôn là số đơn (do _expand_alias_ids tạo ra)
                     num_part = alias_id[len(prefix):]
-                    current_num = int(num_part)
-                    alias_acronym = _generate_smart_acronym(parent_acronym, start, end, current_num)
-                except ValueError:
-                    alias_acronym = ""
+                    alias_acronym = _generate_smart_acronym(parent_acronym, start, end, num_part)
+                except Exception:
+                    pass
 
                 result_meta[alias_id] = {
                     "type": "alias",
@@ -84,9 +88,8 @@ def generate_subleaf_shortcuts(
                 }
         return [root_uid], result_meta
 
-    # CASE B: Container Leaf (Có Subleaves)
+    # CASE B: Container Leaf
     else:
-        # [LOG] Thông báo tách Subleaf
         logger.info(f"   🌿 Splitting Container: {root_uid} -> {len(sorted_prefixes)} subleaves")
 
         for sub_uid in sorted_prefixes:
@@ -96,12 +99,14 @@ def generate_subleaf_shortcuts(
             if root_range_info:
                 root_prefix, r_start, r_end = root_range_info
                 if sub_uid.startswith(root_prefix):
-                    try:
-                        num_part = sub_uid[len(root_prefix):]
-                        current_num = int(num_part)
-                        sub_acronym = _generate_smart_acronym(parent_acronym, r_start, r_end, current_num)
-                    except ValueError:
-                        pass
+                    # [FIX] Không ép kiểu int(). Lấy toàn bộ phần đuôi.
+                    # Ví dụ: sub_uid="an1.586-590", prefix="an1." -> suffix="586-590"
+                    suffix = sub_uid[len(root_prefix):]
+                    
+                    # Format đẹp (thay hyphen thường bằng en-dash)
+                    display_suffix = suffix.replace("-", "–")
+                    
+                    sub_acronym = _generate_smart_acronym(parent_acronym, r_start, r_end, display_suffix)
             
             result_meta[sub_uid] = {
                 "type": "subleaf",
@@ -115,19 +120,19 @@ def generate_subleaf_shortcuts(
                 p_prefix, p_start, p_end = parsed_sub
                 aliases = _expand_alias_ids(p_prefix, p_start, p_end)
                 
-                # [LOG] Thông báo bung Alias cho Subleaf (nếu có)
                 if len(aliases) > 0:
                     logger.info(f"      ↳ Sub-Alias: {sub_uid} -> {len(aliases)} items")
 
                 for alias_id in aliases:
                     if alias_id == sub_uid: continue
                     
+                    alias_acronym = ""
                     try:
-                        a_num = int(alias_id[len(p_prefix):])
+                        num_part = alias_id[len(p_prefix):]
                         base_acronym = sub_acronym if sub_acronym else parent_acronym
-                        alias_acronym = _generate_smart_acronym(base_acronym, p_start, p_end, a_num)
-                    except ValueError:
-                        alias_acronym = ""
+                        alias_acronym = _generate_smart_acronym(base_acronym, p_start, p_end, num_part)
+                    except Exception:
+                        pass
 
                     result_meta[alias_id] = {
                         "type": "alias",
