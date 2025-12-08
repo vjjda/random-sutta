@@ -3,26 +3,31 @@ from typing import Dict, Optional, Any
 
 def resolve_chunk_idx(uid: str, current_chunk_map: Dict[str, int], full_meta: Dict[str, Any]) -> Optional[int]:
     """
-    Helper tìm Chunk Index.
+    Helper chuyên biệt để tìm Chunk Index cho một UID.
+    Nó có khả năng 'leo' qua Parent hoặc Target để tìm content thực sự.
     """
-    # 1. Direct Hit
-    if uid in current_chunk_map: return current_chunk_map[uid]
+    # 1. Direct Hit (UID có nội dung trực tiếp - Leaf/Container)
+    if uid in current_chunk_map: 
+        return current_chunk_map[uid]
     
+    # 2. Indirect Hit (Subleaf / Alias)
     info = full_meta.get(uid, {})
     m_type = info.get("type")
     
-    # 2. Alias: Dùng target_uid
-    if m_type == "alias":
+    if m_type in ["alias", "subleaf"]:
+        # [NEW] Ưu tiên Target UID (Chuẩn mới từ Staging)
         target = info.get("target_uid")
         if target and target in current_chunk_map:
             return current_chunk_map[target]
-            
-    # 3. Subleaf: Dùng parent_uid hoặc extract_id
-    if m_type == "subleaf":
+
+        # Ưu tiên Parent (Container File)
         parent = info.get("parent_uid")
-        if parent and parent in current_chunk_map: return current_chunk_map[parent]
+        if parent and parent in current_chunk_map: 
+            return current_chunk_map[parent]
         
+        # Fallback: Extract ID (Chuẩn cũ, giữ lại để tương thích ngược nếu cần)
         extract = info.get("extract_id")
-        if extract and extract in current_chunk_map: return current_chunk_map[extract]
+        if extract and extract in current_chunk_map: 
+            return current_chunk_map[extract]
             
     return None
