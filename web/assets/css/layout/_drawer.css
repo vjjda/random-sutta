@@ -191,23 +191,32 @@
 #offline-wrapper.ready {
   background-color: transparent;
 }
+
 #offline-wrapper.ready .offline-btn {
-  color: #4caf50; /* Màu xanh lá nhẹ hoặc giữ text-muted tùy bạn, ở đây để xanh cho tín hiệu tốt */
-  font-weight: 600;
-  cursor: help; /* Con trỏ ? để gợi ý bấm vào xem info */
+  color: var(--text-muted); /* [CHANGED] Màu chữ chìm (low profile) */
+  font-weight: 400;         /* [CHANGED] Nét mảnh */
+  cursor: help;
+  transition: all 0.2s ease;
 }
+
 #offline-wrapper.ready .offline-btn:hover {
-    background-color: rgba(76, 175, 80, 0.05);
+  background-color: rgba(139, 69, 19, 0.08); /* [CHANGED] Hover nền nâu nhạt (theo theme) */
+  color: var(--primary-color);               /* Hover chữ chuyển nâu đậm */
 }
+
 #offline-wrapper.ready .offline-btn svg {
-  stroke: #4caf50;
+  stroke: #4caf50; /* [KEEP] Chỉ giữ dấu tích màu xanh */
+  opacity: 0.8;    /* Giảm độ chói một chút cho hài hòa */
 }
+
 #offline-wrapper.ready #offline-progress-bar {
   display: none;
 }
-/* Hiện nút update khi ready */
+
 #offline-wrapper.ready #btn-update-offline {
     display: flex;
+    /* [NEW] Chỉnh lại nút update nhỏ cho khớp style mới */
+    border-left: 1px solid rgba(139, 69, 19, 0.1); 
 }
 
 
