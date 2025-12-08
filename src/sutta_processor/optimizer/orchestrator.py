@@ -10,7 +10,6 @@ from ..shared.app_config import STAGE_PROCESSED_DIR
 from .io_manager import IOManager
 from .pool_manager import PoolManager
 from .worker import process_book_task
-# [REMOVED] generate_depth_navigation (Không cần import nữa)
 
 logger = logging.getLogger("Optimizer.Main")
 
@@ -24,7 +23,7 @@ class DBOrchestrator:
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6.4 - Staging Nav): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v6.5 - Constants Pools): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -43,10 +42,7 @@ class DBOrchestrator:
             
             for f in book_files:
                 book_id_guess = f.name.replace("_book.json", "")
-                
-                # [KEEP] Vẫn lấy nav từ map để truyền xuống worker
                 ext_nav = self.super_nav_map.get(book_id_guess)
-                
                 futures[executor.submit(process_book_task, f, self.dry_run, ext_nav)] = f.name
 
             for future in as_completed(futures):
@@ -67,6 +63,10 @@ class DBOrchestrator:
                                 res["book_id"], 
                                 res["sub_books_list"]
                             )
+                        
+                        # [NEW] Chuyển data pool cho Manager
+                        if res.get("pool_data"):
+                            self.pool_manager.register_pools(res["pool_data"])
                             
                         logger.info(f"   ✅ Processed: {fname}")
                     else:
@@ -79,7 +79,6 @@ class DBOrchestrator:
 
         logger.info("✨ Optimization Completed.")
 
-    # ... (Hàm _extract_sutta_books giữ nguyên) ...
     def _extract_sutta_books(self, structure: Any) -> List[str]:
         sutta_books: Set[str] = set()
         def _find_sutta_root(node):
@@ -120,22 +119,15 @@ class DBOrchestrator:
 
             meta = data.get("meta", {})
             
-            # [UPDATED] Không tính toán lại nữa. 
-            # Đọc Nav Map trực tiếp từ file (đã được Staging tính toán)
-            
-            # Populate self.super_nav_map từ meta để dùng cho các sách con
             for uid, info in meta.items():
                 if "nav" in info:
                     self.super_nav_map[uid] = info["nav"]
             
-            # Inject Nav vào Locator (nếu cần)
             for uid in meta.keys():
                 self.global_locator[uid] = ["tpk", None]
 
             self.pool_manager.register_book_count("tpk", 0)
 
-            # Save Output (Meta Pack cho TPK)
-            # Vì Staging đã có Nav, ta chỉ việc bê sang
             meta_pack = {
                 "id": "tpk",
                 "title": data.get("title"),
@@ -153,7 +145,3 @@ class DBOrchestrator:
 
     def _save_uid_index(self) -> None:
         self.io.save_category("root", "uid_index.json", self.global_locator)
-
-def run_optimizer(dry_run: bool = False):
-    orchestrator = DBOrchestrator(dry_run)
-    orchestrator.run()

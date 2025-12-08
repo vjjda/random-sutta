@@ -19,7 +19,6 @@ def execute_normal_book_strategy(
 ) -> None:
     """
     Chiến lược xử lý cho các sách thường (MN, DN...).
-    Nhiệm vụ: Chunking toàn bộ content, tạo 1 file Meta duy nhất.
     """
     # 1. Content Chunking
     normal_chunk_map = {}
@@ -58,3 +57,8 @@ def execute_normal_book_strategy(
     io.save_category("meta", f"{book_id}.json", payload)
     
     result["valid_count"] = len(linear_uids)
+    
+    # [NEW] Gửi danh sách UIDs về để ghi vào constants.js
+    result["pool_data"] = {
+        book_id: linear_uids
+    }

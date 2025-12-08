@@ -22,7 +22,7 @@ logger = logging.getLogger("Optimizer.Worker")
 def process_book_task(
     file_path: Path, 
     dry_run: bool, 
-    external_nav: Optional[Dict[str, str]] = None # [NEW] Nhận nav từ bên ngoài
+    external_nav: Optional[Dict[str, str]] = None 
 ) -> Dict[str, Any]:
     """
     Workflow chính điều phối việc xử lý một cuốn sách.
@@ -34,7 +34,8 @@ def process_book_task(
         "valid_count": 0, 
         "locator_map": {}, 
         "sub_counts": {},
-        "sub_books_list": []
+        "sub_books_list": [],
+        "pool_data": {} # [NEW] Nơi chứa danh sách pool
     }
 
     try:
@@ -48,18 +49,13 @@ def process_book_task(
         structure = data.get("structure", {})
         
         # 1. Nav Calculation (Internal)
-        # Tính toán Nav nội bộ như bình thường
         nav_sequence = extract_nav_sequence(structure, full_meta)
         linear_uids = generate_random_pool(nav_sequence)
         reading_nav_map = generate_navigation_map(nav_sequence)
         branch_nav_map = generate_depth_navigation(structure, full_meta)
         
-        # Merge Nav
         full_nav_map = {**branch_nav_map, **reading_nav_map}
         
-        # [NEW] Inject External Nav (Thừa kế từ Super Book)
-        # Nếu Orchestrator truyền nav cho sách này (ví dụ mn: {prev: dn, next: sn})
-        # Gán đè vào map. Điều này giúp node gốc "mn" biết đường đi ra ngoài.
         if external_nav:
             full_nav_map[book_id] = external_nav
 

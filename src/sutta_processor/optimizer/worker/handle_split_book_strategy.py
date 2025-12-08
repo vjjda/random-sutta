@@ -19,7 +19,6 @@ def execute_split_book_strategy(
 ) -> None:
     """
     Chiến lược xử lý cho các sách Super Book (AN, SN).
-    Nhiệm vụ: Tách thành các Sub-Book, tạo Meta/Content riêng cho từng con.
     """
     sub_books = extract_sub_books(book_id, structure, full_meta)
     sub_book_ids = []
@@ -32,6 +31,9 @@ def execute_split_book_strategy(
         super_meta_map[book_id] = build_meta_entry(book_id, full_meta, nav_map, None)
 
     total_valid_count = 0
+    
+    # [NEW] Dict để gom pool
+    collected_pools = {}
 
     for sub_id, all_sub_keys, sub_struct in sub_books:
         # 1. Content Chunking cho Sách Con
@@ -92,6 +94,9 @@ def execute_split_book_strategy(
         count = len(sub_leaves_check)
         result["sub_counts"][sub_id] = count
         total_valid_count += count
+        
+        # [NEW] Gom pool
+        collected_pools[sub_id] = sub_leaves_check
 
     # Save Super-Book
     result["locator_map"][book_id] = [book_id, None]
@@ -110,3 +115,6 @@ def execute_split_book_strategy(
     
     result["valid_count"] = total_valid_count
     result["sub_books_list"] = sub_book_ids
+    
+    # [NEW] Trả về danh sách pool
+    result["pool_data"] = collected_pools

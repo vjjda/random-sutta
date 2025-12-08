@@ -1,16 +1,15 @@
 // Path: web/assets/modules/services/random_helper.js
-import { PRIMARY_BOOKS, SUB_BOOKS, SUTTA_COUNTS } from '../data/constants.js';
-import { SuttaRepository } from '../data/sutta_repository.js';
+import { PRIMARY_BOOKS, SUB_BOOKS, SUTTA_COUNTS, RANDOM_POOLS } from '../data/constants.js'; 
 import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("RandomHelper");
 
-// --- INTERNAL STATE (RAM CACHE) ---
+// --- INTERNAL STATE ---
 let _cachedWeightedMap = null;
 let _lastFiltersHash = "";
-const _poolRamCache = new Map();
 
 export const RandomHelper = {
+    // Không cần init async nữa, nhưng giữ hàm để tương thích interface
     init() {
         this._getOrBuildWeightedMap([]);
     },
@@ -22,7 +21,6 @@ export const RandomHelper = {
 
     _getOrBuildWeightedMap(activeFilters) {
         const currentHash = this._getFiltersHash(activeFilters);
-        
         if (_cachedWeightedMap && _lastFiltersHash === currentHash) {
             return _cachedWeightedMap;
         }
@@ -54,38 +52,11 @@ export const RandomHelper = {
 
         _cachedWeightedMap = { totalWeight, weightedCandidates };
         _lastFiltersHash = currentHash;
-        
         return _cachedWeightedMap;
     },
 
-    // [FIXED] Logic này giờ sẽ lấy từ META thay vì POOL file
-    async _getPoolForBook(bookId) {
-        // 1. Kiểm tra RAM trước (Siêu nhanh)
-        if (_poolRamCache.has(bookId)) {
-            return _poolRamCache.get(bookId);
-        }
-
-        try {
-            // 2. Tải Meta File (Chứa cả pool lẫn title/nav)
-            // SuttaRepository sẽ lo việc cache file này dưới Disk/SW
-            const bookMeta = await SuttaRepository.fetchMeta(bookId);
-            
-            if (bookMeta && bookMeta.random_pool) {
-                const poolData = bookMeta.random_pool;
-                
-                // 3. Cache mảng ID vào RAM để lần sau không phải parse JSON nữa
-                _poolRamCache.set(bookId, poolData);
-                return poolData;
-            }
-            
-            return [];
-        } catch (e) {
-            logger.error("_getPoolForBook", `Failed to load meta for ${bookId}`, e);
-            return [];
-        }
-    },
-
-    async getRandomPayload(activeFilters) {
+    // Hàm đồng bộ hoàn toàn (Synchronous)
+    getRandomPayloadSync(activeFilters) {
         const { totalWeight, weightedCandidates } = this._getOrBuildWeightedMap(activeFilters);
 
         if (totalWeight === 0) return null;
@@ -101,12 +72,13 @@ export const RandomHelper = {
             randomVal -= item.weight;
         }
 
-        logger.info("getRandomPayload", `Selected Book: ${targetBook}`);
+        logger.info("Random", `Selected Book: ${targetBook}`);
 
-        const randomPool = await this._getPoolForBook(targetBook);
+        // [OPTIMIZATION] Lấy trực tiếp từ constants.js
+        const randomPool = RANDOM_POOLS[targetBook];
         
         if (!randomPool || randomPool.length === 0) {
-            logger.warn("getRandomPayload", `Book ${targetBook} has empty pool.`);
+            logger.warn("Random", `Book ${targetBook} has empty pool in constants.`);
             return null;
         }
 
@@ -117,5 +89,10 @@ export const RandomHelper = {
             uid: targetUid,
             book_id: targetBook
         };
+    },
+
+    // Giữ API cũ (async) để tương thích với SuttaService
+    async getRandomPayload(activeFilters) {
+        return this.getRandomPayloadSync(activeFilters);
     }
 };
