@@ -30,7 +30,9 @@ export const SuttaController = {
 
     const performRender = async () => {
         // [UPDATED] Gọi Service với input đa năng
+        console.time('⏱️ Data Fetch');
         const result = await SuttaService.loadSutta(input);
+        console.timeEnd('⏱️ Data Fetch');
         
         if (!result) {
             renderSutta(suttaId, null, null, options);
@@ -46,7 +48,9 @@ export const SuttaController = {
         }
         
         // Render
+        console.time('⏱️ Render');
         const success = await renderSutta(suttaId, result, options);
+        console.timeEnd('⏱️ Render');
         
         if (success && shouldUpdateUrl) {
              Router.updateURL(suttaId, null, false, null, window.scrollY);
@@ -63,20 +67,25 @@ export const SuttaController = {
   },
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
+    console.time('🚀 Total Random Process');
     hideComment();
     const filters = getActiveFilters();
     
     // [UPDATED] Nhận Rich Payload
+    console.time('🎲 Selection');
     const payload = await SuttaService.getRandomPayload(filters);
+    console.timeEnd('🎲 Selection');
     
     if (!payload) {
       alert("Database loading or no suttas found.");
+      console.timeEnd('🚀 Total Random Process');
       return;
     }
     
     logger.info('loadRandom', `Selected: ${payload.uid} (Fast Path Active)`);
     
     // Truyền cả payload vào loadSutta để kích hoạt Fast Path
-    this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
+    await this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
+    console.timeEnd('🚀 Total Random Process');
   }
 };
