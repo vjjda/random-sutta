@@ -2,6 +2,7 @@
 import logging
 import re
 import json
+import os # [NEW]
 from pathlib import Path
 from ..release_config import VERSION_PLACEHOLDER
 
@@ -175,3 +176,22 @@ def patch_offline_html(build_dir: Path, version_tag: str) -> bool:
     logger.info("📝 Patching index.html (Offline Mode)...")
     index_path = build_dir / "index.html"
     return _patch_html_assets(index_path, version_tag, is_offline=True)
+
+
+def remove_db_bundle(build_dir: Path) -> bool:
+    """
+    Xóa file db_bundle.zip khỏi thư mục build.
+    Dùng cho bản Offline vì bản này dùng file .js rời, không cần zip.
+    """
+    zip_path = build_dir / "assets" / "db" / "db_bundle.zip"
+    
+    if zip_path.exists():
+        try:
+            zip_path.unlink()
+            logger.info(f"   🧹 Removed redundant db_bundle.zip from {build_dir.name}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to remove db_bundle.zip: {e}")
+            return False
+            
+    return True

@@ -46,7 +46,7 @@ def run_release_process(
 
     try:
         # =========================================================
-        # PHASE 1: ONLINE BUILD (ESM JS + Bundle CSS)
+        # PHASE 1: ONLINE BUILD
         # =========================================================
         if not build_preparer.prepare_build_directory(BUILD_ONLINE_DIR):
              raise Exception("Failed to prepare Online Build.")
@@ -86,24 +86,22 @@ def run_release_process(
         if not web_content_modifier.inject_version_into_sw(BUILD_OFFLINE_DIR, version_tag):
              raise Exception("Failed to inject version into SW (Offline).")
 
-        # [NEW] 2. Inject App Version (TRƯỚC khi bundle JS)
+        # 2. Inject App Version
         web_content_modifier.inject_version_into_app_js(BUILD_OFFLINE_DIR, version_tag)
         web_content_modifier.inject_version_into_offline_manager(BUILD_OFFLINE_DIR, version_tag)
 
-        # 3. Bundle JS (Offline Only)
+        # 3. Bundle JS
         if not js_bundler.bundle_javascript(BUILD_OFFLINE_DIR):
              raise Exception("JS Bundling failed.")
             
-        # Patch SW Assets List (Module -> Bundle)
         if not web_content_modifier.patch_sw_assets_for_offline(BUILD_OFFLINE_DIR):
-             logger.warning("⚠️ Could not patch SW asset list (Check regex)")
+             logger.warning("⚠️ Could not patch SW asset list")
 
-        # 4. Bundle CSS (Offline)
+        # 4. Bundle CSS
         if not css_bundler.bundle_css(BUILD_OFFLINE_DIR):
             raise Exception("Offline CSS Bundling failed.")
 
-        # [NEW] 5. Patch SW Assets (Replace style.css -> style.bundle.css)
-        # Phải gọi sau khi bundle css xong
+        # 5. Patch SW Style
         web_content_modifier.patch_sw_style_bundle(BUILD_OFFLINE_DIR)
 
         # 6. Patch HTML
@@ -120,7 +118,11 @@ def run_release_process(
         if not web_content_modifier.inject_offline_index_script(BUILD_OFFLINE_DIR):
              logger.warning("⚠️ Failed to inject offline index script")
 
-        # Create Zip
+        # [NEW] 8. Remove redundant Zip
+        # Bản Offline không dùng tính năng "Download All" (vì đã có sẵn data), nên xóa zip đi cho nhẹ
+        web_content_modifier.remove_db_bundle(BUILD_OFFLINE_DIR)
+
+        # Create Zip Artifact (Final Output)
         if create_zip:
             if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):
                  logger.info("✨ Offline Artifacts Created.")
