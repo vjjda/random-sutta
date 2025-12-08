@@ -145,3 +145,8 @@ class DBOrchestrator:
 
     def _save_uid_index(self) -> None:
         self.io.save_category("root", "uid_index.json", self.global_locator)
+
+# [FIX] Thêm hàm này để làm entry point cho module
+def run_optimizer(dry_run: bool = False):
+    orchestrator = DBOrchestrator(dry_run)
+    orchestrator.run()
