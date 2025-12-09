@@ -62,6 +62,30 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
 
+  // [STRATEGY] App Shell for Navigation
+  // Nếu là yêu cầu tải trang (HTML), luôn trả về index.html từ cache.
+  // Điều này giúp App chạy Offline kể cả khi URL có query params (/?q=...)
+  // hoặc khi người dùng refresh trang.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const cache = await caches.open(CACHE_NAME);
+          const cachedResponse = await cache.match("./index.html");
+          if (cachedResponse) return cachedResponse;
+          
+          // Fallback nếu chưa cache index.html (lần đầu truy cập)
+          return await fetch(request);
+        } catch (e) {
+          // Fallback cuối cùng nếu cả cache và mạng đều lỗi
+          return new Response("Offline", { status: 408 });
+        }
+      })()
+    );
+    return;
+  }
+
+  // [STRATEGY] Stale-While-Revalidate / Cache First for Assets
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
@@ -70,12 +94,12 @@ self.addEventListener("fetch", (event) => {
 
       try {
         const networkResponse = await fetch(request);
+        // Chỉ cache các request hợp lệ (http/https), bỏ qua chrome-extension://...
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             cache.put(request, networkResponse.clone());
         }
         return networkResponse;
       } catch (error) {
-        if (request.mode === "navigate") return cache.match("./index.html");
         return new Response("Offline", { status: 408 });
       }
     })()
