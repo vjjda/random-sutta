@@ -1,6 +1,5 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_trigger_buttons.css */
 
-/* Style chung cho các nút tròn (List icon & Chevron icon) */
 .magic-btn {
     width: 32px;
     height: 32px;
@@ -13,7 +12,11 @@
     cursor: pointer;
     transition: all 0.2s ease;
     color: var(--text-light);
-    z-index: 1102; /* Nổi lên trên thanh Breadcrumb Bar */
+    
+    /* [FIX] Thêm position relative để z-index có tác dụng */
+    position: relative; 
+    z-index: 1105; /* Cao hơn thanh Bar (1101) */
+    
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
 }
