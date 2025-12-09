@@ -5,7 +5,8 @@ export const UIManager = {
     init() {
         this.elements = {
             wrapper: document.getElementById("magic-nav-wrapper"),
-            dot: document.getElementById("magic-nav-dot"),
+            // [CHANGED] Đổi tên tham chiếu
+            corner: document.getElementById("magic-nav-corner"), 
             btnBreadcrumb: document.getElementById("btn-magic-breadcrumb"),
             btnToc: document.getElementById("btn-magic-toc"),
             bar: document.getElementById("magic-breadcrumb-bar"),
@@ -16,17 +17,18 @@ export const UIManager = {
 
         if (this.elements.wrapper) {
             this.elements.wrapper.addEventListener("click", (e) => {
+                // Logic: Nếu đang đóng -> Click vào wrapper để mở
                 if (this.elements.wrapper.classList.contains("collapsed")) {
                     this.openWrapper();
                     e.stopPropagation();
                 } 
-                else if (e.target === this.elements.dot || e.target === this.elements.wrapper) {
+                // Logic: Nếu đang mở -> Click vào corner (chữ x) hoặc vùng trống của wrapper để đóng
+                else if (e.target === this.elements.corner || this.elements.corner?.contains(e.target) || e.target === this.elements.wrapper) {
                     this.closeAll();
                     e.stopPropagation();
                 }
             });
-            
-            // [NEW] Kích hoạt chế độ kéo thả thủ công
+
             if (this.elements.bar) {
                 this._enableDragScroll(this.elements.bar);
             }
@@ -39,14 +41,13 @@ export const UIManager = {
         return this.elements;
     },
 
-    // ... (Giữ nguyên setHidden, updateContent) ...
     setHidden(isHidden) {
         if (this.elements.wrapper) {
             if (isHidden) {
                 this.elements.wrapper.classList.add("hidden");
             } else {
                 this.elements.wrapper.classList.remove("hidden");
-                this.elements.wrapper.classList.add("collapsed"); 
+                this.elements.wrapper.classList.add("collapsed");
             }
         }
     },
@@ -56,13 +57,11 @@ export const UIManager = {
         if (this.elements.tocContent) this.elements.tocContent.innerHTML = tocHtml;
     },
 
-    // [NEW] Logic Kéo Thả (Drag-to-Scroll) Siêu Mượt
     _enableDragScroll(slider) {
         let isDown = false;
         let startX;
         let scrollLeft;
 
-        // 1. Mouse Events (Desktop)
         slider.addEventListener('mousedown', (e) => {
             isDown = true;
             slider.classList.add('active');
@@ -75,31 +74,24 @@ export const UIManager = {
             if (!isDown) return;
             e.preventDefault();
             const x = e.pageX - slider.offsetLeft;
-            const walk = (x - startX) * 2; // Tốc độ cuộn (nhân 2 cho nhanh)
+            const walk = (x - startX) * 2; 
             slider.scrollLeft = scrollLeft - walk;
         });
 
-        // 2. Touch Events (Mobile) - "Manual Override"
         slider.addEventListener('touchstart', (e) => {
             isDown = true;
             startX = e.touches[0].pageX - slider.offsetLeft;
             scrollLeft = slider.scrollLeft;
         }, { passive: true });
-
         slider.addEventListener('touchend', () => { isDown = false; });
 
         slider.addEventListener('touchmove', (e) => {
             if (!isDown) return;
-            // Không dùng preventDefault ở đây để giữ passive, 
-            // nhưng ta sẽ tự tính toán scroll
             const x = e.touches[0].pageX - slider.offsetLeft;
-            const walk = (x - startX) * 1.5; // Tinh chỉnh tốc độ vuốt cho mobile
-            
-            // Trực tiếp cập nhật vị trí scroll
+            const walk = (x - startX) * 1.5; 
             slider.scrollLeft = scrollLeft - walk;
         }, { passive: true });
 
-        // 3. Wheel Event (Shift + Scroll)
         slider.addEventListener("wheel", (e) => {
             if (e.shiftKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                 if (slider.scrollWidth > slider.clientWidth) {
@@ -187,7 +179,6 @@ export const UIManager = {
     _scrollBreadcrumbToEnd() {
         const endMarker = document.getElementById("magic-bc-end");
         if (endMarker) {
-            // [UPDATED] Scroll tới marker với khoảng cách an toàn
             endMarker.scrollIntoView({ behavior: "instant", inline: "end" });
         } else {
             setTimeout(() => {
