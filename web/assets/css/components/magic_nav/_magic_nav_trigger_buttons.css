@@ -2,8 +2,8 @@
 
 /* [NEW] The Ghost Dot */
 #magic-nav-dot {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   background-color: var(--text-main);
   border-radius: 50%;
   
@@ -24,7 +24,7 @@
 
 /* 2. Khi mở: Dot hiện lên làm nút đóng */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-dot {
-  opacity: 0.3; /* Hiện nhẹ nhàng */
+  opacity: 0.2; /* Hiện nhẹ nhàng */
   cursor: pointer;
   pointer-events: auto; /* Cho phép click để đóng */
 }
@@ -58,9 +58,9 @@
 
 .magic-btn.active {
   background-color: var(--bg-card);
-  border-color: var(--border-light);
+  /* border-color: var(--border-light); */
   color: var(--primary-color);
-  box-shadow: var(--shadow-soft);
+  /* box-shadow: var(--shadow-soft); */
 }
 
 #btn-magic-breadcrumb svg {

@@ -34,7 +34,7 @@
   margin-left: 5px; /* Cách nút Chevron một chút */
 
   opacity: 1;
-  border-width: 1px;
+  /* border-width: 1px; */
   box-shadow: var(--shadow-soft);
 }
 
