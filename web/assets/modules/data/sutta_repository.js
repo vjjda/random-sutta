@@ -57,15 +57,19 @@ export const SuttaRepository = {
         if (_indexCache.has(bucketId)) return true;
 
         try {
+            console.time(`Index Load ${bucketId}`);
             const resp = await fetch(`./assets/db/index/${bucketId}.json`);
             if (!resp.ok) {
                 _indexCache.set(bucketId, {}); 
+                console.timeEnd(`Index Load ${bucketId}`);
                 return false;
             }
             const data = await resp.json();
             _indexCache.set(bucketId, data);
+            console.timeEnd(`Index Load ${bucketId}`);
             return true;
         } catch (e) {
+            console.timeEnd(`Index Load ${bucketId}`);
             return false;
         }
     },
@@ -188,9 +192,12 @@ export const SuttaRepository = {
         // 2. Fetch from Disk/Network
         try {
             const fileName = `${bookId}_chunk_${chunkIdx}`;
+            
+            console.time(`Content Load ${fileName}`);
             // [UPDATED] Use AssetLoader
             // Key must match the one in .js file (fileName)
             const data = await AssetLoader.load(fileName, `content/${fileName}`);
+            console.timeEnd(`Content Load ${fileName}`);
             
             if (!data) throw new Error(`Chunk missing: ${fileName}`);
             
@@ -199,6 +206,7 @@ export const SuttaRepository = {
             
             return data;
         } catch (e) {
+            console.timeEnd(`Content Load ${fileName}`); // Ensure timer ends on error
             logger.error("fetchContent", `Failed ${cacheKey}`, e);
             return null;
         }
