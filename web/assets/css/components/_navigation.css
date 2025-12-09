@@ -17,6 +17,9 @@
   flex-basis: 0;
   min-width: 0;
   max-width: 42%;
+  /* Đảm bảo nút Nav nằm trên layer của nút random tàng hình */
+  position: relative;
+  z-index: 10;
 }
 
 .sutta-nav button.nav-btn {
@@ -72,39 +75,32 @@
   text-align: inherit;
 }
 
-/* Random Icon */
-.nav-random-icon {
+/* [UPDATED] Invisible Random Bottom Feature 
+   Thay thế cho .nav-random-icon cũ.
+   Đây là một vùng trong suốt nằm giữa thanh điều hướng.
+*/
+.nav-invisible-random {
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  width: 60px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 5; /* Thấp hơn nav-btn (10) để không che nút Prev/Next nếu text dài */
+  
+  width: 34%; /* Khoảng 1/3 màn hình */
+  height: 100%;
+  
+  background: transparent;
   border: none;
-  color: var(--text-main);
-  opacity: 0.15;
-  cursor: pointer;
-  border-radius: 50%;
-  transition: all 0.3s ease;
+  cursor: pointer; /* Vẫn hiện con trỏ để người dùng PC biết có thể click */
+  
+  /* Loại bỏ highlight khi tap trên mobile để giữ tính "tàng hình" */
   -webkit-tap-highlight-color: transparent;
-  background-color: var(--bg-card);
+  outline: none;
 }
 
-@media (hover: hover) {
-  .nav-random-icon:hover {
-    color: var(--primary-color);
-    opacity: 1;
-    background-color: rgba(0, 0, 0, 0.03);
-  }
-}
-.nav-random-icon:active {
-  color: var(--primary-color);
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.05);
-  transform: translate(-50%, -50%) scale(0.9);
-}
+/* Debug: Uncomment để nhìn thấy vùng bấm khi phát triển */
+/* .nav-invisible-random {
+  background-color: rgba(255, 0, 0, 0.1); 
+} 
+*/

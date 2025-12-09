@@ -22,7 +22,6 @@ export const UIFactory = {
   createNavButton: function (suttaId, direction, metaMap) {
     // Nếu ID là null/undefined -> Spacer rỗng
     if (!suttaId) return `<div class="nav-spacer"></div>`;
-
     let title = suttaId.toUpperCase();
     let subtitle = "";
 
@@ -31,7 +30,6 @@ export const UIFactory = {
         const info = metaMap[suttaId];
         // 1. Dòng chính: Acronym (ngắn gọn)
         if (info.acronym) title = info.acronym;
-        
         // 2. Dòng phụ: Tên tiếng Anh -> hoặc Tên Pali
         if (info.translated_title) subtitle = info.translated_title;
         else if (info.original_title) subtitle = info.original_title;
@@ -42,11 +40,10 @@ export const UIFactory = {
     const arrowIcon = direction === 'left'
         ? getChevronSvg(-90, "nav-icon-inline left")
         : getChevronSvg(90, "nav-icon-inline right");
-
     const content = direction === 'left' 
         ? `${arrowIcon}<span>${title}</span>`
         : `<span>${title}</span>${arrowIcon}`;
-
+    
     return `<button onclick="window.loadSutta('${suttaId}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
             <span class="nav-main-text">
                 ${content}
@@ -57,14 +54,22 @@ export const UIFactory = {
 
   createBottomNavHtml: function (prevId, nextId, metaMap) {
     let html = '<div class="sutta-nav">';
+    
+    // Nút Previous
     html += this.createNavButton(prevId, 'left', metaMap);
+    
+    // [UPDATED] Invisible Random Bottom Trigger
+    // Thay thế nút icon cũ bằng nút tàng hình chiếm 1/3 giữa
     html += `
-      <button onclick="window.triggerRandomSutta()" class="nav-random-icon" title="Random Sutta">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-           <circle cx="12" cy="12" r="1.5"></circle>
-        </svg>
+      <button 
+        onclick="window.triggerRandomSutta()" 
+        class="nav-invisible-random" 
+        title="Tap here for Random Sutta"
+        aria-label="Random Sutta">
       </button>
     `;
+    
+    // Nút Next
     html += this.createNavButton(nextId, 'right', metaMap);
     
     html += "</div>";
