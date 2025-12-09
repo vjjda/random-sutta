@@ -1,13 +1,12 @@
-// Path: web/assets/modules/ui/components/toh/toh_renderer.js
+// Path: web/assets/modules/ui/components/toh/dom_renderer.js
 import { Scroller } from '../../common/scroller.js';
 
-export const TohRenderer = {
+export const DomRenderer = {
     renderList(items, listElement, callbacks) {
         listElement.innerHTML = "";
         
         items.forEach(item => {
-            // Tự tạo ID nếu thiếu (đặc biệt cho Heading)
-            if (!item.id) return; // Skip if no ID possible
+            if (!item.id) return; 
 
             const li = document.createElement("li");
             li.className = `toh-item ${item.levelClass}`;

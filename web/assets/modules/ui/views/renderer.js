@@ -1,8 +1,8 @@
 // Path: web/assets/modules/ui/views/renderer.js
 import { LeafRenderer } from "./renderers/leaf_renderer.js";
 import { BranchRenderer } from "./renderers/branch_renderer.js";
-// [UPDATED] Import from new module folder (tự động trỏ vào index.js)
-import { setupTableOfHeadings } from "../components/toh/index.js";
+// [UPDATED] Import từ Controller tường minh
+import { setupTableOfHeadings } from "../components/toh/toh_controller.js";
 import { UIFactory } from "../common/ui_factory.js";
 import { HeaderView } from "./header_view.js";
 import { MagicNav } from "../components/magic_nav/magic_nav_controller.js";
@@ -42,7 +42,6 @@ export async function renderSutta(suttaId, data, options = {}) {
 
     HeaderView.update(renderResult.displayInfo, nav.prev, nav.next, data.navMeta);
 
-    // [UPDATED] Truyền thêm data.superTree và data.superMeta
     const combinedMeta = { ...data.contextMeta, ...data.navMeta };
     if (data.meta) combinedMeta[data.uid] = data.meta;
 
@@ -55,6 +54,7 @@ export async function renderSutta(suttaId, data, options = {}) {
     );
 
     if (isLeaf) {
+        // [UPDATED] Gọi controller mới
         if (!tohInstance) tohInstance = setupTableOfHeadings();
         tohInstance.generate();
     }

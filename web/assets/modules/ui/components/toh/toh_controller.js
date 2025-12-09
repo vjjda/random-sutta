@@ -1,6 +1,6 @@
-// Path: web/assets/modules/ui/components/toh/index.js
-import { TohScanner } from './toh_scanner.js';
-import { TohRenderer } from './toh_renderer.js';
+// Path: web/assets/modules/ui/components/toh/toh_controller.js
+import { ContentScanner } from './content_scanner.js';
+import { DomRenderer } from './dom_renderer.js';
 
 export function setupTableOfHeadings() {
     const els = {
@@ -31,6 +31,7 @@ export function setupTableOfHeadings() {
     // Binding Events
     els.fab.onclick = toggleMenu;
     
+    // Click outside to close
     document.addEventListener("click", (e) => {
         if (!els.menu.classList.contains("hidden") && !els.wrapper.contains(e.target)) {
             closeMenu();
@@ -43,15 +44,15 @@ export function setupTableOfHeadings() {
         els.list.innerHTML = "";
         closeMenu();
 
-        // 1. Scan Data
-        const scanResult = TohScanner.scan(els.container);
+        // 1. Scan Data (Sử dụng ContentScanner)
+        const scanResult = ContentScanner.scan(els.container);
 
-        // 2. Render & Display
+        // 2. Render & Display (Sử dụng DomRenderer)
         if (scanResult.mode === 'none') {
             els.wrapper.classList.add("hidden");
         } else {
-            TohRenderer.updateHeader(scanResult.mode, els.header);
-            TohRenderer.renderList(scanResult.items, els.list, {
+            DomRenderer.updateHeader(scanResult.mode, els.header);
+            DomRenderer.renderList(scanResult.items, els.list, {
                 onItemClick: closeMenu
             });
             els.wrapper.classList.remove("hidden");

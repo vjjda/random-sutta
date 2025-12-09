@@ -1,7 +1,7 @@
-// Path: web/assets/modules/ui/components/toh/toh_scanner.js
-import { extractParagraphNumber } from './toh_utils.js';
+// Path: web/assets/modules/ui/components/toh/content_scanner.js
+import { extractParagraphNumber, getCleanTextContent } from './text_utils.js';
 
-export const TohScanner = {
+export const ContentScanner = {
     /**
      * Quét container để tìm dữ liệu cho mục lục.
      * @param {HTMLElement} container 
@@ -14,7 +14,6 @@ export const TohScanner = {
         if (headings.length >= 2) {
             return {
                 mode: 'headings',
-                // Truyền thêm index để tạo ID duy nhất nếu thiếu
                 items: Array.from(headings).map((h, index) => this._parseHeading(h, index))
             };
         }
@@ -26,6 +25,7 @@ export const TohScanner = {
         paragraphs.forEach(p => {
             const firstSeg = p.querySelector(".segment");
             if (firstSeg && firstSeg.id) {
+                // Kiểm tra text rỗng
                 if (firstSeg.textContent.trim().length > 0) {
                     validItems.push(this._parseParagraph(firstSeg));
                 }
@@ -39,28 +39,15 @@ export const TohScanner = {
         return { mode: 'none', items: [] };
     },
 
-    _getTextContent(element) {
-        let text = element.textContent;
-        const engNode = element.querySelector(".eng");
-        const pliNode = element.querySelector(".pli");
-
-        if (engNode && engNode.textContent.trim()) {
-            text = engNode.textContent.trim();
-        } else if (pliNode && pliNode.textContent.trim()) {
-            text = pliNode.textContent.trim();
-        }
-        return text.replace(/\s+/g, ' ').trim();
-    },
-
     _parseHeading(heading, index) {
-        // [FIX] Nếu heading chưa có ID, tự tạo ID để click scroll được
+        // [IMPORTANT] Tự động gán ID nếu thiếu để Scroll hoạt động
         if (!heading.id) {
             heading.id = `toh-heading-${index}`;
         }
 
         return {
             id: heading.id,
-            text: this._getTextContent(heading),
+            text: getCleanTextContent(heading),
             levelClass: `toh-${heading.tagName.toLowerCase()}`, 
             prefix: null
         };
@@ -75,7 +62,7 @@ export const TohScanner = {
         }
 
         let text = "Paragraph";
-        const rawText = this._getTextContent(segment);
+        const rawText = getCleanTextContent(segment);
         if (rawText) text = rawText;
 
         // Cắt ngắn nếu quá dài
@@ -86,7 +73,7 @@ export const TohScanner = {
         return {
             id: segment.id,
             text: text,
-            levelClass: "toh-h3", 
+            levelClass: "toh-h3", // Style giả lập H3
             prefix: paraNum
         };
     }
