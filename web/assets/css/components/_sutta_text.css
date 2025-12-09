@@ -162,67 +162,52 @@ span.highlight,
 /* [NEW] Context Bar Styles */
 .sutta-context-bar {
   display: flex;
-  align-items: center;
-  justify-content: center; /* Canh giữa cho cân đối với Title */
-  gap: 8px;
+  justify-content: flex-end; /* Căn toàn bộ sang PHẢI */
+  align-items: baseline;     /* Căn chân chữ */
+  gap: 6px;
   
-  margin: -10px auto 30px auto; /* Kéo lên gần Header hơn, đẩy nội dung xuống */
-  padding: 8px 16px;
+  margin-top: 40px;
+  margin-bottom: 10px;
+  padding-top: 15px;
   
-  background-color: rgba(139, 69, 19, 0.05); /* Màu nâu rất nhạt (Alpha 0.05) */
-  border-radius: 20px;
-  width: fit-content;
-  max-width: 100%;
+  border-top: 1px dashed var(--border-light);
   
+  font-family: var(--font-main);
   font-size: 0.9rem;
-  color: var(--text-muted);
-  
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
 }
 
-.sutta-context-bar:hover {
-  background-color: rgba(139, 69, 19, 0.1);
-  border-color: rgba(139, 69, 19, 0.15);
-}
-
-.ctx-icon {
-  display: flex;
-  align-items: center;
-  color: var(--primary-color);
-  opacity: 0.7;
-}
-
-.ctx-label {
+.sutta-context-footer .ctx-label {
   font-style: italic;
   font-size: 0.85rem;
+  color: var(--primary-color); /* Màu theme */
+  opacity: 0.7; /* Mờ nhẹ để không tranh chấp */
 }
 
-.ctx-link {
+.sutta-context-footer .ctx-link {
   background: none;
   border: none;
   padding: 0;
+  margin: 0;
   
-  font-family: var(--font-main);
-  font-weight: 600;
-  color: var(--primary-color);
+  font-family: inherit;
+  font-weight: 600; /* Đậm hơn label một chút */
+  color: var(--primary-color); /* Màu theme */
   
   cursor: pointer;
-  text-decoration: none;
-  border-bottom: 1px dashed transparent;
-  transition: all 0.2s;
+  text-align: right;
+  transition: opacity 0.2s ease;
 }
 
-.ctx-link:hover {
-  border-bottom-color: var(--primary-color);
-  transform: translateY(-1px);
+.sutta-context-footer .ctx-link:hover {
+  opacity: 0.8; /* Hover thì mờ đi chút thay vì đổi màu */
+  text-decoration: underline;
 }
 
-/* Responsive: Trên mobile cho phép xuống dòng nếu tên Parent quá dài */
-@media (max-width: 600px) {
-  .sutta-context-bar {
-    flex-wrap: wrap;
-    border-radius: 8px;
-    text-align: center;
+/* Responsive: Trên mobile vẫn giữ căn phải */
+@media (max-width: 400px) {
+  .sutta-context-footer {
+    flex-direction: column;
+    align-items: flex-end; /* Mobile vẫn căn phải */
+    gap: 2px;
   }
 }
