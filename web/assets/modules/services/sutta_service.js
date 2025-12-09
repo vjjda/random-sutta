@@ -87,13 +87,8 @@ export const SuttaService = {
 
         // 1. Locate
         if (hintBook === null || hintChunk === null) {
-            let loc = SuttaRepository.getLocation(uid);
+            let loc = await SuttaRepository.resolveLocation(uid);
             
-            if (!loc) {
-                await SuttaRepository.ensureIndex();
-                loc = SuttaRepository.getLocation(uid);
-            }
-
             if (!loc) {
                 logger.warn("loadSutta", `UID not found in index: ${uid}`);
                 return null;

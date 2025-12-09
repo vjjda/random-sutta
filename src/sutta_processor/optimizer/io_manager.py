@@ -63,6 +63,9 @@ class IOManager:
 
         # 1. Write Mirror
         try:
+            if not mirror_target.parent.exists():
+                mirror_target.parent.mkdir(parents=True, exist_ok=True)
+                
             with open(mirror_target, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception as e:
@@ -71,6 +74,9 @@ class IOManager:
         # 2. Write Web (Prod)
         if not self.dry_run and web_target:
             try:
+                if not web_target.parent.exists():
+                    web_target.parent.mkdir(parents=True, exist_ok=True)
+                    
                 with open(web_target, "w", encoding="utf-8") as f:
                     # Content nén dòng, Meta giữ indent=0 hoặc nén tùy ý
                     separators = (',', ':') if category == "content" else None

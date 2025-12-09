@@ -22,8 +22,8 @@ def create_db_bundle() -> None:
     
     try:
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            # Duyệt qua meta và content
-            for subdir in ["meta", "content"]:
+            # Duyệt qua meta, content và index
+            for subdir in ["meta", "content", "index"]:
                 target_dir = DIST_DB_DIR / subdir
                 if not target_dir.exists(): continue
                 

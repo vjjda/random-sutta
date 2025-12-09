@@ -11,13 +11,13 @@ const logger = getLogger("SuttaRepo");
 const _chunkCache = new Map();
 // Key: "bookId"
 const _metaCache = new Map();
-// Key: "uid"
-let _uidIndex = null; // Stored locator map
+// Key: "char" -> Map<uid, loc>
+const _indexCache = new Map(); // [NEW] Split Index Cache
 
 export const SuttaRepository = {
     
     async init() {
-        await this.ensureIndex();
+        // [UPDATED] Lazy index loading, no initial fetch
         
         // Kích hoạt tải ngầm thông minh sau 3 giây
         setTimeout(() => {
@@ -25,20 +25,53 @@ export const SuttaRepository = {
         }, 3000);
     },
 
-    // --- Index Management ---
-    async ensureIndex() {
-        if (_uidIndex) return;
+    // [NEW] Load index part by character
+    async _ensureIndexPart(char) {
+        if (!char) return false;
+        char = char.toLowerCase();
+        if (!/[a-z0-9]/.test(char)) char = '_';
+
+        if (_indexCache.has(char)) return true;
+
         try {
-            const resp = await fetch('./assets/db/uid_index.json');
-            _uidIndex = await resp.json();
+            const resp = await fetch(`./assets/db/index/${char}.json`);
+            if (!resp.ok) {
+                _indexCache.set(char, {}); // Mark as loaded but empty
+                return false;
+            }
+            const data = await resp.json();
+            _indexCache.set(char, data);
+            return true;
         } catch (e) {
-            logger.error("init", "Failed to load UID Index", e);
+            return false;
         }
     },
 
+    // [NEW] Async Locator (Network-aware)
+    async resolveLocation(uid) {
+        if (!uid) return null;
+        
+        // 1. Try sync lookup
+        const loc = this.getLocation(uid);
+        if (loc) return loc;
+
+        // 2. Load Index
+        await this._ensureIndexPart(uid[0]);
+        
+        // 3. Retry lookup
+        return this.getLocation(uid);
+    },
+
+    // Sync Locator (Cache-only)
     getLocation(uid) {
-        if (!_uidIndex) return null;
-        return _uidIndex[uid]; // Trả về [book_id, chunk_idx]
+        if (!uid) return null;
+        const char = uid[0].toLowerCase();
+        const bucket = /[a-z0-9]/.test(char) ? char : '_';
+        
+        const indexPart = _indexCache.get(bucket);
+        if (!indexPart) return null;
+        
+        return indexPart[uid];
     },
     
     // --- Preload Logic ---
@@ -96,15 +129,19 @@ export const SuttaRepository = {
 
     async fetchMetaList(bookIds) {
         const results = {};
-        const uniqueBooks = [...new Set(bookIds.map(uid => {
-            const loc = this.getLocation(uid);
-            return loc ? loc[0] : null;
-        }).filter(b => b))];
+        
+        // [UPDATED] Async resolution for all UIDs
+        const locations = await Promise.all(bookIds.map(uid => this.resolveLocation(uid)));
+        
+        const uniqueBooks = new Set();
+        locations.forEach(loc => {
+            if (loc) uniqueBooks.add(loc[0]);
+        });
 
-        await Promise.all(uniqueBooks.map(b => this.fetchMeta(b)));
+        await Promise.all([...uniqueBooks].map(b => this.fetchMeta(b)));
 
-        bookIds.forEach(uid => {
-            const loc = this.getLocation(uid);
+        bookIds.forEach((uid, idx) => {
+            const loc = locations[idx];
             if (loc) {
                 const bookId = loc[0];
                 const metaBook = _metaCache.get(bookId);
@@ -145,7 +182,7 @@ export const SuttaRepository = {
 
     // [UPDATED] Real Download Logic using Zip Bundle
     async downloadAll(onProgress) {
-        await this.ensureIndex();
+        // No index check needed for Zip
         logger.info("DownloadAll", "Starting optimized zip download...");
         
         try {

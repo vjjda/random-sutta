@@ -73,6 +73,8 @@ class DBOrchestrator:
                 except Exception as e:
                     logger.error(f"   ❌ Exception: {e}")
 
+        # [UPDATED] Save BOTH Split Index (for Online Lazy Load) AND Monolithic Index (for Offline Build)
+        self._save_split_indexes()
         self._save_uid_index()
         self.pool_manager.generate_js_constants() 
 
@@ -143,7 +145,40 @@ class DBOrchestrator:
             traceback.print_exc()
 
     def _save_uid_index(self) -> None:
+        """Lưu index tổng (cho Offline Build legacy support)."""
         self.io.save_category("root", "uid_index.json", self.global_locator)
+
+    def _save_split_indexes(self) -> None:
+        """
+        [NEW] Chia nhỏ UID Index thành các file theo ký tự đầu (a-z, 0-9).
+        Giúp load nhanh (Lazy Loading) thay vì tải 1 file index khổng lồ.
+        """
+        buckets: Dict[str, Dict[str, Any]] = {}
+        
+        # 1. Grouping
+        for uid, loc in self.global_locator.items():
+            if not uid: continue
+            
+            first_char = uid[0].lower()
+            
+            # Validate char (chỉ chấp nhận a-z, 0-9, còn lại vào '_')
+            if not (first_char.isalnum()):
+                first_char = '_'
+            
+            if first_char not in buckets:
+                buckets[first_char] = {}
+            
+            buckets[first_char][uid] = loc
+
+        # 2. Saving
+        # Lưu vào assets/db/index/{char}.json
+        # Lưu ý: Cần đảm bảo IOManager xử lý được path con
+        for char, data in buckets.items():
+            # Sử dụng category 'root' nhưng thêm prefix 'index/' vào tên file
+            # IOManager sẽ nối: assets/db/ + index/a.json -> assets/db/index/a.json
+            self.io.save_category("root", f"index/{char}.json", data)
+            
+        logger.info(f"   📦 Split Index created: {len(buckets)} files.")
 
 def run_optimizer(dry_run: bool = False):
     orchestrator = DBOrchestrator(dry_run)
