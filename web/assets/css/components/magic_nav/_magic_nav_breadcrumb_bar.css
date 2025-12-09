@@ -1,6 +1,5 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_breadcrumb_bar.css */
 
-/* Thanh hiển thị đường dẫn nằm ngang */
 #magic-breadcrumb-bar {
     position: absolute;
     left: 0; 
@@ -10,8 +9,8 @@
     border: 1px solid var(--border-light);
     border-radius: 20px;
     
-    /* Padding trái lớn (40px) để không che khuất nút Chevron */
-    padding-left: 40px; 
+    /* [FIX] Tăng padding lên 48px (32px nút + 16px khoảng cách) để text không bị nút che */
+    padding-left: 48px; 
     padding-right: 15px;
     
     display: flex;
@@ -20,11 +19,11 @@
     
     opacity: 0;
     visibility: hidden;
-    width: 32px; /* Thu gọn bằng kích thước nút */
+    width: 32px;
     overflow: hidden;
     
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    z-index: 1101; /* Nằm dưới nút Trigger */
+    z-index: 1101; /* Thấp hơn nút bấm (1105) */
 }
 
 #magic-breadcrumb-bar.expanded {
@@ -32,16 +31,14 @@
     visibility: visible;
     width: auto;
     min-width: 150px;
-    max-width: 80vw;
     box-shadow: var(--shadow-soft);
 }
 
-/* Nội dung danh sách bên trong */
 #magic-breadcrumb-bar ol {
     list-style: none; margin: 0; padding: 0; 
     display: flex; font-size: 0.85rem; color: var(--text-light);
 }
-#magic-breadcrumb-bar .bc-sep { margin: 0 5px; color: #ddd; font-size: 0.8em; }
+#magic-breadcrumb-bar .bc-sep { margin: 0 6px; color: #ddd; font-size: 0.8em; }
 #magic-breadcrumb-bar .bc-link { 
     background: none; border: none; color: var(--text-muted); 
     cursor: pointer; padding: 0; font-weight: 400;

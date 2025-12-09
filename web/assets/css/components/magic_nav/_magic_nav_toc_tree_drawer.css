@@ -1,6 +1,5 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_toc_tree_drawer.css */
 
-/* Khung Drawer chứa mục lục dọc */
 #magic-toc-drawer {
   position: fixed;
   top: 55px;
@@ -18,127 +17,112 @@
   transition: opacity 0.2s ease, transform 0.2s ease;
   scrollbar-width: thin;
 }
-
 #magic-toc-drawer.open {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }
-
 #magic-toc-content {
-  padding: 10px 0;
+  padding: 8px 0;
 }
 
-/* Scrollbar styling */
-#magic-toc-drawer::-webkit-scrollbar {
-  width: 6px;
-}
-#magic-toc-drawer::-webkit-scrollbar-track {
-  background: transparent;
-}
-#magic-toc-drawer::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-}
-
-/* --- TREE STYLING --- */
-
-/* 1. Branch Header */
+/* --- HEADER (BRANCH) --- */
 .toc-header {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--text-light); /* Nhạt hơn chút để không tranh chấp với Leaf */
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding-top: 12px; 
-    padding-bottom: 4px;
-    padding-right: 10px;
-    /* padding-left inline */
-    border-bottom: 1px solid rgba(0,0,0,0.03);
-    background-color: rgba(0,0,0,0.01);
-    line-height: 1.3;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  /* Padding-left inline */
+  padding-top: 10px;
+  padding-bottom: 5px;
+  padding-right: 15px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  line-height: 1.3;
 }
-.toc-header.clickable:hover { color: var(--primary-color); background-color: rgba(0,0,0,0.04); cursor: pointer; }
+.toc-header.clickable:hover {
+  color: var(--primary-color);
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Active Header */
 .toc-header.active {
-    background-color: var(--highlight-color-background);
-    border-left: 3px solid var(--primary-color);
-    color: var(--text-main);
+  background-color: var(--highlight-color-background);
+  color: var(--text-main);
+  /* [FIX] Border nằm sát trái container */
+  border-left: 3px solid var(--primary-color);
 }
 
-/* 2. Leaf Item (Bài kinh chính) */
+/* --- LEAF ITEM (Bài kinh chính) --- */
 .toc-item.leaf {
-    padding-top: 8px; 
-    padding-bottom: 8px;
-    padding-right: 10px;
-    border-bottom: 1px solid rgba(0,0,0,0.04); /* Border rõ hơn chút */
-    cursor: pointer;
-    transition: background 0.1s;
-    
-    /* Layout 2 dòng */
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  /* Padding-left inline */
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-right: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  transition: background 0.1s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toc-item.leaf .toc-row-main {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+.toc-item.leaf .toc-row-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.toc-item.leaf .toc-row-main { 
-    font-size: 0.95rem; /* To rõ */
-    color: var(--text-main); 
-    font-weight: 600;
-    line-height: 1.2;
-}
-
-.toc-item.leaf .toc-row-sub { 
-    font-size: 0.8rem; 
-    color: var(--text-muted); /* Màu xám trung bình */
-    line-height: 1.2;
-    
-    /* Cắt bớt nếu title quá dài */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-/* 3. Subleaf Item (Đoạn kinh con) - Low Profile */
+/* --- SUBLEAF ITEM (Low Profile) --- */
 .toc-item.subleaf {
-    padding-top: 3px; 
-    padding-bottom: 3px;
-    padding-right: 10px;
-    border-bottom: none; /* Liền mạch */
-    cursor: pointer;
-    line-height: 1.4;
+  /* Padding-left inline */
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-right: 10px;
+  border-bottom: none;
+  cursor: pointer;
 }
-
 .toc-item.subleaf .toc-subleaf-label {
-    font-size: 0.85rem; /* Nhỏ hơn leaf */
-    color: var(--text-light); /* Màu rất nhạt */
-    font-family: monospace; /* Tùy chọn: Font mono để thẳng hàng số */
+  font-size: 0.85rem;
+  color: var(--text-light);
 }
 
-/* States */
-.toc-item:hover { background-color: rgba(0,0,0,0.03); }
-
-/* Active cho Leaf */
-.toc-item.leaf.active { 
-    background-color: var(--highlight-color-background);
-    border-left: 4px solid var(--primary-color); /* Vạch to */
-    padding-left: calc(var(--padding-left) - 4px) !important; /* Hack nhẹ nếu cần, hoặc dùng position absolute */
+/* --- ACTIVE STATES (FIXED) --- */
+.toc-item:hover {
+  background-color: rgba(0, 0, 0, 0.03);
 }
-/* Vì padding-left là inline style, nên ta dùng ::before để làm vạch màu đè lên mà không ảnh hưởng layout */
+
+/* Leaf Active: Nền màu, vạch màu */
+.toc-item.leaf.active {
+  background-color: var(--highlight-color-background);
+  position: relative;
+}
 .toc-item.leaf.active::before {
-    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background-color: var(--primary-color);
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--primary-color);
 }
 
-/* Active cho Subleaf (Nhẹ nhàng hơn) */
+/* Subleaf Active: Chỉ đổi màu chữ, không vạch to */
 .toc-item.subleaf.active {
-    background-color: rgba(0,0,0,0.03);
-    font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.02);
 }
 .toc-item.subleaf.active .toc-subleaf-label {
-    color: var(--primary-color);
-}
-/* Subleaf active chỉ cần vạch nhỏ hoặc đổi màu chữ, không cần vạch to */
-.toc-item.subleaf.active::before {
-    content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 2px; background-color: var(--primary-color); opacity: 0.5;
+  color: var(--primary-color);
+  font-weight: 600;
 }
