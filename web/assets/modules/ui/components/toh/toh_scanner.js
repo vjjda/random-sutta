@@ -10,10 +10,12 @@ export const TohScanner = {
     scan(container) {
         // 1. Chiến lược A: Tìm Heading cấu trúc (h2 trở lên)
         const headings = container.querySelectorAll("h2, h3, h4, h5");
+        
         if (headings.length >= 2) {
             return {
                 mode: 'headings',
-                items: Array.from(headings).map(h => this._parseHeading(h))
+                // Truyền thêm index để tạo ID duy nhất nếu thiếu
+                items: Array.from(headings).map((h, index) => this._parseHeading(h, index))
             };
         }
 
@@ -24,7 +26,6 @@ export const TohScanner = {
         paragraphs.forEach(p => {
             const firstSeg = p.querySelector(".segment");
             if (firstSeg && firstSeg.id) {
-                // Kiểm tra text rỗng
                 if (firstSeg.textContent.trim().length > 0) {
                     validItems.push(this._parseParagraph(firstSeg));
                 }
@@ -51,11 +52,16 @@ export const TohScanner = {
         return text.replace(/\s+/g, ' ').trim();
     },
 
-    _parseHeading(heading) {
+    _parseHeading(heading, index) {
+        // [FIX] Nếu heading chưa có ID, tự tạo ID để click scroll được
+        if (!heading.id) {
+            heading.id = `toh-heading-${index}`;
+        }
+
         return {
-            id: heading.id || '',
+            id: heading.id,
             text: this._getTextContent(heading),
-            levelClass: `toh-${heading.tagName.toLowerCase()}`, // toh-h2, toh-h3...
+            levelClass: `toh-${heading.tagName.toLowerCase()}`, 
             prefix: null
         };
     },
@@ -80,7 +86,7 @@ export const TohScanner = {
         return {
             id: segment.id,
             text: text,
-            levelClass: "toh-h3", // Style giả lập H3
+            levelClass: "toh-h3", 
             prefix: paraNum
         };
     }
