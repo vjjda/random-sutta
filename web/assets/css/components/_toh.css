@@ -43,9 +43,10 @@
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
+  
+  /* Giữ padding cho khung, nhưng item con sẽ dùng margin âm để tràn ra */
   padding: 15px;
   
-  /* Width rộng hơn cho dễ đọc */
   width: 320px;
   max-height: 60vh;
   overflow-y: auto;
@@ -68,56 +69,72 @@
   text-transform: uppercase;
   letter-spacing: 1px;
 }
+
 #toh-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
+
 .toh-item {
-  margin-bottom: 6px;
-  font-size: 0.9rem;
-  line-height: 1.3;
+  /* Loại bỏ margin cũ để các dòng khít nhau hơn */
+  margin-bottom: 2px;
 }
 
-/* [UPDATED] Style Link đồng bộ với TOC */
+/* [FULL WIDTH HOVER] */
 .toh-link {
   display: block;
-  padding: 6px 10px; /* Tăng padding chút cho thoáng giống TOC */
-  border-radius: 4px;
+  
+  /* Kỹ thuật Margin Âm: Kéo link tràn ra khỏi padding:15px của cha */
+  margin-left: -15px;
+  margin-right: -15px;
+  
+  /* Bù lại padding để nội dung văn bản không bị dính sát lề */
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-right: 15px;
+  /* padding-left sẽ được set riêng theo từng cấp độ heading bên dưới */
+  
   cursor: pointer;
   color: var(--text-main);
-  transition: background-color 0.2s ease; /* Thêm transition mượt */
+  transition: background-color 0.1s ease;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
-/* [UPDATED] Hover Style: Subtle gray background, giữ nguyên màu chữ */
 .toh-link:hover {
-  background-color: rgba(0, 0, 0, 0.03); /* Đồng bộ với .toc-item:hover */
+  background-color: rgba(0, 0, 0, 0.04); /* Màu nền xám nhẹ full chiều rộng */
   color: var(--text-main);
 }
 
-.toh-h1 {
-  margin-left: 0;
-  font-size: 0.95rem;
-  font-weight: 550;
+/* [INDENTATION VIA PADDING] */
+/* Thay vì margin thẻ li, ta tăng padding-left của thẻ link */
+/* Base padding = 15px (bằng với padding của menu cha) */
+
+.toh-h1 .toh-link {
+  padding-left: 15px;
+  font-weight: 600;
   color: var(--primary-color);
-  margin-bottom: 8px;
-  padding-bottom: 4px;
+  background-color: rgba(0, 0, 0, 0.02); /* H1 có nền nhẹ mặc định để phân cách */
 }
-.toh-h2 {
-  margin-left: 0;
+
+.toh-h2 .toh-link {
+  padding-left: 15px; /* Cấp 1: Sát lề chuẩn */
 }
-.toh-h3 {
-  margin-left: 12px;
+
+.toh-h3 .toh-link {
+  padding-left: 30px; /* Cấp 2: Thụt vào 15px */
+}
+
+.toh-h4 .toh-link {
+  padding-left: 45px; /* Cấp 3: Thụt thêm */
   font-size: 0.85rem;
-}
-.toh-h4 {
-  margin-left: 24px;
-  font-size: 0.8rem;
   color: var(--text-muted);
 }
-.toh-h5 {
-  margin-left: 36px;
-  font-size: 0.75rem;
+
+.toh-h5 .toh-link {
+  padding-left: 60px; /* Cấp 4 */
+  font-size: 0.8rem;
   color: var(--text-light);
   font-style: italic;
 }
