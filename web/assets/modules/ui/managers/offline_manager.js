@@ -83,6 +83,11 @@ export const OfflineManager = {
     },
 
     async runSmartBackgroundDownload() {
+        // [NEW] Skip download in hard offline mode (Data already injected)
+        if (window.__DB_INDEX__ || window.location.protocol === 'file:') {
+            return;
+        }
+
         const storedVersion = localStorage.getItem('sutta_offline_version');
         const btnOffline = document.getElementById("btn-download-offline");
         const btnUpdate = document.getElementById("btn-update-offline");
