@@ -6,6 +6,7 @@ import { getLogger } from '../utils/logger.js';
 const logger = getLogger("Repository");
 
 export const SuttaRepository = {
+    // ... (Giữ nguyên init, resolveLocation, fetchMeta, fetchContentChunk) ...
     async init() {
         await DbAdapter.init();
     },
@@ -29,50 +30,35 @@ export const SuttaRepository = {
         return this._loadData('content', key);
     },
 
-    /**
-     * Transport Layer thông minh
-     * [FIXED] Xử lý lỗi script loading (Offline) để trả về null thay vì throw Error
-     */
+    // ... (Giữ nguyên _loadData và _loadJsZip) ...
     async _loadData(category, filenameKey) {
         const isFileProtocol = window.location.protocol === 'file:';
         const path = `assets/db/${category}/${filenameKey}`;
 
         if (isFileProtocol) {
-            // --- Strategy A: JSON-P Injection (Offline Build) ---
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
                 script.src = `${path}.js`;
-                
                 script.onload = async () => {
                     const data = await DbAdapter.get(category, filenameKey);
-                    // Nếu load script thành công mà không có data trong Adapter -> trả null
                     resolve(data || null);
                     script.remove();
                 };
-                
                 script.onerror = () => {
-                    // [CHANGE] Thay vì reject(new Error...), ta log warning và trả về null
-                    // Điều này giúp app không bị crash khi thiếu file phụ (như kn.js)
                     logger.warn("_loadData", `Offline resource not found: ${path}`);
                     resolve(null); 
                     script.remove();
                 };
-                
                 document.head.appendChild(script);
             });
-
         } else {
-            // --- Strategy B: Fetch (Online / Server) ---
             try {
                 const res = await fetch(`${path}.json`);
                 if (!res.ok) {
-                    // 404 hoặc lỗi mạng -> trả null
                     logger.warn("_loadData", `Fetch 404: ${path}`);
                     return null;
                 }
                 const data = await res.json();
-                
-                // Lưu cache background
                 DbAdapter.set(category, filenameKey, data).catch(() => {});
                 return data;
             } catch (e) {
@@ -80,16 +66,6 @@ export const SuttaRepository = {
                 return null;
             }
         }
-    },
-
-    async fetchMetaList(bookIds) {
-        const results = {};
-        const uniqueIds = [...new Set(bookIds)];
-        await Promise.all(uniqueIds.map(async (bid) => {
-            const data = await this.fetchMeta(bid);
-            if (data && data.meta) Object.assign(results, data.meta);
-        }));
-        return results;
     },
 
     async _loadJsZip() {
@@ -103,8 +79,39 @@ export const SuttaRepository = {
         });
     },
 
+    /**
+     * [REFACTORED] Resolve ID -> Book ID trước khi fetch
+     * Sửa lỗi fetch nhầm node ID làm filename (ví dụ an4.304-783.json)
+     */
+    async fetchMetaList(ids) {
+        const results = {};
+        const booksToFetch = new Set();
+
+        // 1. Resolve Location cho từng ID để tìm Book ID thực sự
+        await Promise.all(ids.map(async (uid) => {
+            // IndexResolver đủ thông minh để biết uid thuộc về sách nào
+            const loc = await this.resolveLocation(uid); // [bookId, chunkIdx]
+            if (loc && loc[0]) {
+                booksToFetch.add(loc[0]);
+            } else {
+                // Nếu không resolve được (ví dụ ID rác), ta bỏ qua, không fetch bừa
+                // logger.debug("fetchMetaList", `Cannot resolve book for ${uid}`);
+            }
+        }));
+
+        // 2. Fetch Metadata của các sách đã tìm được
+        await Promise.all(Array.from(booksToFetch).map(async (bid) => {
+            const data = await this.fetchMeta(bid);
+            if (data && data.meta) {
+                Object.assign(results, data.meta);
+            }
+        }));
+        
+        return results;
+    },
+
+    // ... (Giữ nguyên downloadAll) ...
     async downloadAll(progressCallback) {
-        // [FIX] Không chạy download nếu đang ở chế độ file:// (Offline Build đã có sẵn file)
         if (window.location.protocol === 'file:') {
             logger.info("Sync", "Skipping download in File Protocol mode.");
             if (progressCallback) progressCallback(100, 100);
