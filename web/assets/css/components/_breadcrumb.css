@@ -1,11 +1,12 @@
 /* Path: web/assets/css/components/_breadcrumb.css */
 .breadcrumb {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-bottom: 15px;
+    font-size: 0.85rem; /* [LOW-PROFILE] Giảm size chữ xuống một chút */
+    color: var(--text-light);
+    margin-bottom: 10px; /* Thu gọn khoảng cách */
     padding: 0 5px;
-    overflow-x: auto; /* Cho phép cuộn ngang trên mobile nếu dài */
+    overflow-x: auto;
     white-space: nowrap;
+    opacity: 0.9;
 }
 
 .breadcrumb ol {
@@ -24,30 +25,34 @@
 .bc-link {
     background: none;
     border: none;
-    color: var(--primary-color);
+    /* [LOW-PROFILE] Dùng màu xám nhạt thay vì màu cam chính */
+    color: var(--text-muted); 
     cursor: pointer;
-    padding: 2px 4px;
+    padding: 0 2px; /* Giảm padding để gọn hơn */
     border-radius: 4px;
     font-size: inherit;
-    font-weight: 500;
-    transition: background 0.2s;
+    font-weight: 400; /* Font thường, không đậm */
+    transition: color 0.2s;
     text-decoration: none;
 }
 
 .bc-link:hover {
-    background-color: rgba(139, 69, 19, 0.1);
+    /* Chỉ hiện màu cam khi hover */
+    color: var(--primary-color);
     text-decoration: underline;
 }
 
 .bc-separator {
     margin: 0 6px;
-    color: #ccc;
+    color: var(--border-color); /* Màu nhạt nhất cho dấu gạch chéo */
     font-size: 0.8em;
 }
 
 .bc-item.active {
+    /* Item cuối cùng đậm hơn một chút nhưng vẫn hòa hợp */
     color: var(--text-main);
-    font-weight: 600;
-    padding: 2px 4px;
+    font-weight: 500;
+    padding: 0 2px;
     pointer-events: none;
+    opacity: 0.8;
 }

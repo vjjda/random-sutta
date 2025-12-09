@@ -4,16 +4,11 @@ import { getLogger } from '../../utils/logger.js';
 const logger = getLogger("Breadcrumb");
 
 export const Breadcrumb = {
-    /**
-     * Tìm đường dẫn từ gốc cây đến targetUid
-     */
+    // ... (Giữ nguyên hàm _findPath) ...
     _findPath(structure, targetUid, currentPath = []) {
-        // 1. Kiểm tra Node hiện tại (String = Leaf)
         if (typeof structure === 'string') {
             return structure === targetUid ? [...currentPath, structure] : null;
         }
-
-        // 2. Kiểm tra Array (Container)
         if (Array.isArray(structure)) {
             for (const child of structure) {
                 const result = this._findPath(child, targetUid, currentPath);
@@ -21,8 +16,6 @@ export const Breadcrumb = {
             }
             return null;
         }
-
-        // 3. Kiểm tra Object (Branch/Group)
         if (typeof structure === 'object' && structure !== null) {
             for (const key in structure) {
                 const newPath = [...currentPath, key];
@@ -30,7 +23,6 @@ export const Breadcrumb = {
                 if (result) return result;
             }
         }
-
         return null;
     },
 
@@ -42,16 +34,12 @@ export const Breadcrumb = {
 
         let html = `<nav class="breadcrumb" aria-label="Breadcrumb"><ol>`;
         
-        // [REMOVED] Đã xóa nút Home theo yêu cầu
-        // html += `<li><button onclick="..." class="bc-link">Home</button></li>`;
-        
         path.forEach((uid, index) => {
             const isLast = index === path.length - 1;
             const meta = metaMap[uid] || {};
             
-            // [CHANGED] Chỉ lấy Acronym hoặc UID viết hoa
-            // Bỏ qua translated_title để giữ breadcrumb ngắn gọn
-            let label = meta.acronym || uid.toUpperCase();
+            // [CHANGED] Thứ tự ưu tiên: Acronym > Original Title > UID
+            let label = meta.acronym || meta.original_title || uid.toUpperCase();
             
             // Thêm dấu ngăn cách nếu không phải item đầu tiên
             if (index > 0) {
@@ -69,9 +57,7 @@ export const Breadcrumb = {
         return html;
     },
 
-    /**
-     * Render vào DOM
-     */
+    // ... (Giữ nguyên hàm render) ...
     render(containerId, bookStructure, currentUid, contextMeta) {
         const container = document.getElementById(containerId);
         if (!container) return;
