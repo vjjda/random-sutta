@@ -2,7 +2,8 @@
 import { getLogger } from '../utils/logger.js';
 // [NOTE] Cần đảm bảo constants.js export PRIMARY_BOOKS
 import { PRIMARY_BOOKS } from './constants.js';
-import { ZipImporter } from './loader/zip_importer.js'; // [NEW]
+import { ZipImporter } from './loader/zip_importer.js';
+import { AssetLoader } from './loader/asset_loader.js'; // [NEW]
 
 const logger = getLogger("SuttaRepo");
 
@@ -17,12 +18,29 @@ const _indexCache = new Map(); // [NEW] Split Index Cache
 export const SuttaRepository = {
     
     async init() {
-        // [UPDATED] Lazy index loading, no initial fetch
+        // [UPDATED] Check Offline Global Index
+        if (window.__DB_INDEX__) {
+            this._hydrateOfflineIndex(window.__DB_INDEX__);
+        }
         
         // Kích hoạt tải ngầm thông minh sau 3 giây
         setTimeout(() => {
             this.startSmartPreload();
         }, 3000);
+    },
+
+    _hydrateOfflineIndex(fullIndex) {
+        for (const [uid, loc] of Object.entries(fullIndex)) {
+            if (!uid) continue;
+            const char = uid[0].toLowerCase();
+            const bucket = /[a-z0-9]/.test(char) ? char : '_';
+            
+            if (!_indexCache.has(bucket)) {
+                _indexCache.set(bucket, {});
+            }
+            _indexCache.get(bucket)[uid] = loc;
+        }
+        logger.info("Offline", "Hydrated index from Global Variable.");
     },
 
     // [NEW] Load index part by character
@@ -115,10 +133,10 @@ export const SuttaRepository = {
         }
 
         try {
-            const resp = await fetch(`./assets/db/meta/${bookId}.json`);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            // [UPDATED] Use AssetLoader
+            const data = await AssetLoader.load(`meta_${bookId}`, `meta/${bookId}`);
+            if (!data) throw new Error(`Meta missing: ${bookId}`);
             
-            const data = await resp.json();
             _metaCache.set(bookId, data); // Lưu vào RAM
             return data;
         } catch (e) {
@@ -163,12 +181,11 @@ export const SuttaRepository = {
 
         // 2. Fetch from Disk/Network
         try {
-            const fileName = `${bookId}_chunk_${chunkIdx}.json`;
-            const resp = await fetch(`./assets/db/content/${fileName}`);
+            const fileName = `${bookId}_chunk_${chunkIdx}`;
+            // [UPDATED] Use AssetLoader
+            const data = await AssetLoader.load(cacheKey, `content/${fileName}`);
             
-            if (!resp.ok) throw new Error(`Chunk missing: ${fileName}`);
-            
-            const data = await resp.json();
+            if (!data) throw new Error(`Chunk missing: ${fileName}`);
             
             // 3. Store in RAM Cache (Quan trọng)
             _chunkCache.set(cacheKey, data);
