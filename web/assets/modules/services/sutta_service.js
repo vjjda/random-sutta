@@ -12,11 +12,6 @@ export const SuttaService = {
         RandomHelper.init(); 
     },
 
-    /**
-     * Load nội dung chi tiết của một bài kinh
-     * @param {string|object} input - UID string hoặc object {uid, chunk, book_id}
-     * @param {object} options - Options (e.g., prefetchNav)
-     */
     async loadSutta(input, options = { prefetchNav: true }) {
         let uid, hintChunk = null, hintBook = null;
         if (typeof input === 'object') {
@@ -37,18 +32,29 @@ export const SuttaService = {
             [hintBook, hintChunk] = loc;
         }
 
-        // 2. Fetch Data
-        const promises = [SuttaRepository.fetchMeta(hintBook)];
+        // 2. Fetch Data (Parallel: Book Meta, Content, [NEW] Super Meta)
+        // Fetch 'tpk' để lấy cấu trúc tổng thể (Tipitaka > Sutta > Nikaya)
+        const promises = [
+            SuttaRepository.fetchMeta(hintBook),
+            SuttaRepository.fetchMeta('tpk') 
+        ];
+        
         if (hintChunk !== null) {
             promises.push(SuttaRepository.fetchContentChunk(hintBook, hintChunk));
         }
 
-        const [bookMeta, contentChunk] = await Promise.all(promises);
+        // Resolve Promises
+        // [NOTE] Promise.all thứ tự trả về khớp thứ tự mảng promises
+        const results = await Promise.all(promises);
+        const bookMeta = results[0];
+        const superMeta = results[1]; // tpk data
+        const contentChunk = hintChunk !== null ? results[2] : null;
+
         if (!bookMeta) return null;
         const metaEntry = bookMeta.meta[uid];
         if (!metaEntry) return null;
 
-        // 3. Alias Redirect Handling
+        // 3. Alias Redirect
         if (metaEntry.type === 'alias') {
             return { isAlias: true, targetUid: metaEntry.target_uid };
         }
@@ -66,7 +72,7 @@ export const SuttaService = {
             }
         }
 
-        // 5. Navigation Logic & Meta
+        // 5. Navigation Logic
         const nav = metaEntry.nav || {};
         const navMeta = {};
         const neighborsToFetch = [];
@@ -83,12 +89,10 @@ export const SuttaService = {
         checkAndAdd(nav.prev);
         checkAndAdd(nav.next);
 
-        // Fetch external neighbors meta
         if (neighborsToFetch.length > 0) {
             const extraMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
             Object.assign(navMeta, extraMeta);
             
-            // Smart Prefetch for Neighbors (External chunks)
             if (options.prefetchNav) {
                 neighborsToFetch.forEach(neighborUid => {
                      this.loadSutta(neighborUid, { prefetchNav: false })
@@ -97,7 +101,6 @@ export const SuttaService = {
             }
         }
         
-        // Prefetch for internal neighbors
         if (options.prefetchNav) {
              [nav.prev, nav.next].forEach(nid => {
                  if (nid && bookMeta.meta[nid]) { 
@@ -115,6 +118,10 @@ export const SuttaService = {
             tree: bookMeta.tree,
             bookStructure: bookMeta.tree,
             contextMeta: bookMeta.meta,
+            // [NEW] Truyền dữ liệu Super (TPK) ra ngoài
+            superTree: superMeta ? superMeta.tree : null,
+            superMeta: superMeta ? superMeta.meta : null,
+            
             nav: nav,
             navMeta: navMeta
         };

@@ -4,7 +4,7 @@ import { BranchRenderer } from "./renderers/branch_renderer.js";
 import { setupTableOfHeadings } from "../components/toh.js";
 import { UIFactory } from "../common/ui_factory.js";
 import { HeaderView } from "./header_view.js";
-import { Breadcrumb } from "../components/breadcrumb.js"; // [NEW]
+import { Breadcrumb } from "../components/breadcrumb.js";
 
 let tohInstance = null;
 
@@ -12,7 +12,6 @@ export async function renderSutta(suttaId, data, options = {}) {
     const container = document.getElementById("sutta-container");
     if (!data) {
         container.innerHTML = UIFactory.createErrorHtml(suttaId);
-        // Ẩn breadcrumb khi lỗi
         document.getElementById("breadcrumb-container")?.classList.add("hidden");
         return false;
     }
@@ -36,16 +35,17 @@ export async function renderSutta(suttaId, data, options = {}) {
 
     HeaderView.update(renderResult.displayInfo, nav.prev, nav.next, data.navMeta);
 
-    // [NEW] Render Breadcrumb
-    // Gom tất cả meta lại để tra cứu tên hiển thị
+    // [UPDATED] Truyền thêm data.superTree và data.superMeta
     const combinedMeta = { ...data.contextMeta, ...data.navMeta };
     if (data.meta) combinedMeta[data.uid] = data.meta;
 
     Breadcrumb.render(
         "breadcrumb-container", 
-        data.tree, // Structure tree lấy từ Service
+        data.tree, 
         data.uid, 
-        combinedMeta
+        combinedMeta,
+        data.superTree, // [NEW]
+        data.superMeta  // [NEW]
     );
 
     if (isLeaf) {
