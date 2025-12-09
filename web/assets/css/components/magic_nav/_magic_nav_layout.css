@@ -67,18 +67,19 @@
   overflow-x: auto; 
   white-space: nowrap;
   
+  /* Ẩn scrollbar */
   scrollbar-width: none;
   -ms-overflow-style: none;
   
-  /* [QUAN TRỌNG] Chỉ cho phép trình duyệt can thiệp vuốt dọc (pan-y) */
-  /* Điều này đồng nghĩa vuốt ngang (pan-x) sẽ do element tự xử lý */
-  touch-action: pan-y;
-  
-  /* Smooth touch trên iOS */
-  -webkit-overflow-scrolling: touch;
-  
-  /* Đệm trái/phải */
+  /* [UPDATED] Reset padding phải về 0. Marker sẽ lo việc đệm. */
   padding: 0 0 0 15px; 
+  
+  /* [QUAN TRỌNG] Ngăn bôi đen văn bản để vuốt mượt hơn */
+  user-select: none;
+  -webkit-user-select: none;
+  
+  /* Con trỏ dạng nắm kéo để người dùng biết có thể vuốt */
+  cursor: grab;
   
   flex-grow: 1;
   max-width: 100%;
@@ -87,14 +88,18 @@
   -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
 }
 
+#magic-breadcrumb-bar:active {
+  cursor: grabbing;
+}
+
 #magic-breadcrumb-bar > * {
   flex-shrink: 0;
 }
 
-/* [NEW] Marker cuối cùng: Đóng vai trò là miếng đệm (Spacer) */
+/* [UPDATED] Marker chịu trách nhiệm tạo khoảng trống cuối cùng */
 #magic-bc-end {
   display: inline-block;
-  min-width: 40px; /* Độ rộng của khoảng đệm phía sau text cuối */
+  min-width: 60px; /* Spacer đủ rộng để text không bị che */
   height: 1px;
   opacity: 0;
   pointer-events: none;

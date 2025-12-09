@@ -26,32 +26,9 @@ export const UIManager = {
                 }
             });
             
+            // [NEW] Kích hoạt chế độ kéo thả thủ công
             if (this.elements.bar) {
-                // [FIX 1] Nhóm Passive: Cho phép trình duyệt xử lý cuộn mượt mà không cần chờ JS
-                const passiveEvents = ['touchstart', 'touchmove', 'touchend', 'scroll'];
-                passiveEvents.forEach(evt => {
-                    this.elements.bar.addEventListener(evt, () => {
-                        // Logic reset timer đã bị bỏ ở bước trước theo yêu cầu, 
-                        // nhưng nếu sau này cần dùng lại thì phải để passive: true
-                    }, { passive: true });
-                });
-
-                // [FIX 2] Nhóm Non-Passive: Dành riêng cho Wheel để chặn cuộn dọc, ép sang cuộn ngang
-                this.elements.bar.addEventListener("wheel", (e) => {
-                    // Ưu tiên 1: Shift + Lăn chuột (Chuẩn UX)
-                    if (e.shiftKey) {
-                        e.preventDefault();
-                        this.elements.bar.scrollLeft += e.deltaY;
-                    } 
-                    // Ưu tiên 2: Lăn chuột dọc thông thường (Tiện lợi)
-                    // Chỉ chặn nếu thanh bar thực sự có thể cuộn được
-                    else if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                        if (this.elements.bar.scrollWidth > this.elements.bar.clientWidth) {
-                            e.preventDefault();
-                            this.elements.bar.scrollLeft += e.deltaY;
-                        }
-                    }
-                }, { passive: false });
+                this._enableDragScroll(this.elements.bar);
             }
         }
 
@@ -62,6 +39,7 @@ export const UIManager = {
         return this.elements;
     },
 
+    // ... (Giữ nguyên setHidden, updateContent) ...
     setHidden(isHidden) {
         if (this.elements.wrapper) {
             if (isHidden) {
@@ -76,6 +54,60 @@ export const UIManager = {
     updateContent(bcHtml, tocHtml) {
         if (this.elements.bar) this.elements.bar.innerHTML = bcHtml;
         if (this.elements.tocContent) this.elements.tocContent.innerHTML = tocHtml;
+    },
+
+    // [NEW] Logic Kéo Thả (Drag-to-Scroll) Siêu Mượt
+    _enableDragScroll(slider) {
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        // 1. Mouse Events (Desktop)
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.classList.add('active');
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+        });
+        slider.addEventListener('mouseleave', () => { isDown = false; slider.classList.remove('active'); });
+        slider.addEventListener('mouseup', () => { isDown = false; slider.classList.remove('active'); });
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX) * 2; // Tốc độ cuộn (nhân 2 cho nhanh)
+            slider.scrollLeft = scrollLeft - walk;
+        });
+
+        // 2. Touch Events (Mobile) - "Manual Override"
+        slider.addEventListener('touchstart', (e) => {
+            isDown = true;
+            startX = e.touches[0].pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+        }, { passive: true });
+
+        slider.addEventListener('touchend', () => { isDown = false; });
+
+        slider.addEventListener('touchmove', (e) => {
+            if (!isDown) return;
+            // Không dùng preventDefault ở đây để giữ passive, 
+            // nhưng ta sẽ tự tính toán scroll
+            const x = e.touches[0].pageX - slider.offsetLeft;
+            const walk = (x - startX) * 1.5; // Tinh chỉnh tốc độ vuốt cho mobile
+            
+            // Trực tiếp cập nhật vị trí scroll
+            slider.scrollLeft = scrollLeft - walk;
+        }, { passive: true });
+
+        // 3. Wheel Event (Shift + Scroll)
+        slider.addEventListener("wheel", (e) => {
+            if (e.shiftKey || Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                if (slider.scrollWidth > slider.clientWidth) {
+                    e.preventDefault();
+                    slider.scrollLeft += e.deltaY;
+                }
+            }
+        }, { passive: false });
     },
 
     openWrapper() {
@@ -155,6 +187,7 @@ export const UIManager = {
     _scrollBreadcrumbToEnd() {
         const endMarker = document.getElementById("magic-bc-end");
         if (endMarker) {
+            // [UPDATED] Scroll tới marker với khoảng cách an toàn
             endMarker.scrollIntoView({ behavior: "instant", inline: "end" });
         } else {
             setTimeout(() => {
