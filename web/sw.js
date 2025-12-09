@@ -25,7 +25,6 @@ const SHELL_ASSETS = [
   "./assets/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf",
 
   // Data
-  "./assets/db/uid_index.json",
   "./assets/modules/data/constants.js"
 ];
 
