@@ -18,16 +18,7 @@ export const SuttaRepository = {
         const cached = await DbAdapter.get("meta", bookId);
         if (cached) return cached;
 
-        try {
-            const res = await fetch(`assets/db/meta/${bookId}.json`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            DbAdapter.set("meta", bookId, data).catch(e => logger.warn("Cache", "Save meta failed", e));
-            return data;
-        } catch (e) {
-            logger.error("fetchMeta", `Failed to load ${bookId}`, e);
-            return null;
-        }
+        return this._loadData('meta', bookId);
     },
 
     async fetchContentChunk(bookId, chunkIdx) {
@@ -35,16 +26,53 @@ export const SuttaRepository = {
         const cached = await DbAdapter.get("content", key);
         if (cached) return cached;
 
-        try {
-            const fname = `${bookId}_chunk_${chunkIdx}.json`;
-            const res = await fetch(`assets/db/content/${fname}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            DbAdapter.set("content", key, data).catch(e => logger.warn("Cache", "Save content failed", e));
-            return data;
-        } catch (e) {
-            logger.error("fetchContent", `Failed to load ${key}`, e);
-            return null;
+        return this._loadData('content', key);
+    },
+
+    /**
+     * [NEW] Transport Layer thông minh
+     * Tự động chọn fetch (Online) hoặc JSON-P Script (Offline/File)
+     */
+    async _loadData(category, filenameKey) {
+        const isFileProtocol = window.location.protocol === 'file:';
+        // Python Converter đổi tên file: meta/mn.json -> meta/mn.js
+        // category: 'meta' hoặc 'content'
+        
+        const path = `assets/db/${category}/${filenameKey}`;
+
+        if (isFileProtocol) {
+            // --- Strategy A: JSON-P Injection (Offline Build) ---
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = `${path}.js`; // Đuôi .js
+                
+                script.onload = async () => {
+                    // Script chạy xong sẽ gọi window.__DB_LOADER__.receive()
+                    // Dữ liệu đã vào DbAdapter memory, giờ ta lấy ra
+                    const data = await DbAdapter.get(category, filenameKey);
+                    if (data) resolve(data);
+                    else reject(new Error(`Data not found in adapter after loading ${path}`));
+                    script.remove(); // Dọn dẹp
+                };
+                
+                script.onerror = () => reject(new Error(`Failed to load script ${path}`));
+                document.head.appendChild(script);
+            });
+
+        } else {
+            // --- Strategy B: Fetch (Online / Server) ---
+            try {
+                const res = await fetch(`${path}.json`); // Đuôi .json
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                
+                // Lưu cache background
+                DbAdapter.set(category, filenameKey, data).catch(() => {});
+                return data;
+            } catch (e) {
+                logger.error("_loadData", `Fetch failed: ${path}`, e);
+                return null;
+            }
         }
     },
 
@@ -53,53 +81,44 @@ export const SuttaRepository = {
         const uniqueIds = [...new Set(bookIds)];
         await Promise.all(uniqueIds.map(async (bid) => {
             const data = await this.fetchMeta(bid);
-            if (data && data.meta) {
-                Object.assign(results, data.meta);
-            }
+            if (data && data.meta) Object.assign(results, data.meta);
         }));
         return results;
     },
 
-    /**
-     * [NEW] Helper tải thư viện động
-     */
     async _loadJsZip() {
-        if (window.JSZip) return window.JSZip; // Đã tải rồi thì dùng luôn
-
-        logger.info("Loader", "Loading JSZip library on-demand...");
+        if (window.JSZip) return window.JSZip;
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'assets/libs/jszip.min.js';
-            script.onload = () => {
-                logger.info("Loader", "JSZip loaded.");
-                resolve(window.JSZip);
-            };
-            script.onerror = () => reject(new Error("Failed to load JSZip script"));
+            script.onload = () => resolve(window.JSZip);
+            script.onerror = () => reject(new Error("Failed to load JSZip"));
             document.head.appendChild(script);
         });
     },
 
     async downloadAll(progressCallback) {
-        logger.info("Sync", "Starting full download via Zip Bundle...");
-        
-        // 1. Tải thư viện động (Chỉ khi cần download mới tải lib này)
-        const JSZip = await this._loadJsZip();
-        if (!JSZip) throw new Error("JSZip library not loaded");
+        // [FIX] Không chạy download nếu đang ở chế độ file:// (Offline Build đã có sẵn file)
+        if (window.location.protocol === 'file:') {
+            logger.info("Sync", "Skipping download in File Protocol mode.");
+            if (progressCallback) progressCallback(100, 100);
+            return;
+        }
 
-        // 2. Fetch Bundle
+        logger.info("Sync", "Starting full download via Zip Bundle...");
+        const JSZip = await this._loadJsZip();
+        
         const res = await fetch('assets/db/db_bundle.zip');
         if (!res.ok) throw new Error("Bundle not found");
         
         const blob = await res.blob();
         const zip = await JSZip.loadAsync(blob);
-        
         const files = Object.keys(zip.files);
         let count = 0;
         const total = files.length;
 
         for (const filename of files) {
             if (zip.files[filename].dir) continue;
-
             const contentStr = await zip.files[filename].async("string");
             const data = JSON.parse(contentStr);
             
@@ -111,13 +130,9 @@ export const SuttaRepository = {
                 const key = filename.split("/")[1].replace(".json", "");
                 await DbAdapter.set("content", key, data);
             }
-
             count++;
-            if (progressCallback && count % 20 === 0) { // Giảm tần suất update UI để tăng tốc
-                progressCallback(count, total);
-            }
+            if (progressCallback && count % 20 === 0) progressCallback(count, total);
         }
-        
         if (progressCallback) progressCallback(total, total);
         logger.info("Sync", "Full download completed.");
     }
