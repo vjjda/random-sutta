@@ -26,76 +26,86 @@
   padding: 8px 0;
 }
 
-/* --- HEADER (BRANCH) --- */
+/* --- NODE WRAPPER (Để quản lý collapse) --- */
+.toc-node-wrapper {
+    display: block;
+}
+
+/* Header Row: Flex để chứa Text + Icon Toggle */
+.toc-header-row {
+    display: flex;
+    align-items: center; /* Căn giữa dọc */
+    padding-right: 5px; /* Chừa chỗ bên phải */
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    background-color: rgba(0,0,0,0.01);
+}
+
+.toc-header-row:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+
+/* Header Text */
 .toc-header {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-light);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  /* Padding-left inline */
-  padding-top: 10px;
-  padding-bottom: 5px;
-  padding-right: 15px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
-  line-height: 1.3;
-}
-.toc-header.clickable:hover {
-  color: var(--primary-color);
-  cursor: pointer;
-  background-color: rgba(0, 0, 0, 0.02);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-top: 10px; 
+    padding-bottom: 5px; 
+    padding-right: 10px; 
+    line-height: 1.3;
+    /* Bỏ border-bottom ở đây vì đã chuyển lên row */
+    border-bottom: none; 
+    background: none;
 }
 
-/* Active Header */
+.toc-header.clickable:hover { color: var(--primary-color); }
 .toc-header.active {
-  background-color: var(--highlight-color-background);
-  color: var(--text-main);
-  /* [FIX] Border nằm sát trái container */
-  border-left: 3px solid var(--primary-color);
+    color: var(--text-main);
+    /* Border left highlight */
+    border-left: 3px solid var(--primary-color);
 }
 
-/* --- LEAF ITEM (Bài kinh chính) --- */
-.toc-item.leaf {
-  /* Padding-left inline */
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-right: 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
-  cursor: pointer;
-  transition: background 0.1s;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.toc-item.leaf .toc-row-main {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-main);
-  line-height: 1.2;
-}
-.toc-item.leaf .toc-row-sub {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* --- TOGGLE ICON --- */
+.toc-toggle-icon {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: color 0.2s, transform 0.3s ease;
+    border-radius: 50%;
 }
 
-/* --- SUBLEAF ITEM (Low Profile) --- */
-.toc-item.subleaf {
-  /* Padding-left inline */
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-right: 10px;
-  border-bottom: none;
-  cursor: pointer;
+.toc-toggle-icon:hover {
+    background-color: rgba(0,0,0,0.05);
+    color: var(--primary-color);
 }
-.toc-item.subleaf .toc-subleaf-label {
-  font-size: 0.85rem;
-  color: var(--text-light);
+
+.toc-toggle-icon svg {
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+/* Mặc định (Expanded): Mũi tên trỏ xuống */
+/* Khi Collapsed: Mũi tên trỏ sang trái (hoặc xoay -90 độ) */
+.toc-node-wrapper.collapsed .toc-toggle-icon svg {
+    transform: rotate(-90deg);
+}
+
+/* --- CHILDREN CONTAINER --- */
+.toc-children {
+    display: block;
+    overflow: hidden;
+    /* Animation height hơi phức tạp với auto height, dùng display toggle cho đơn giản và performant */
+}
+
+/* Ẩn con khi collapsed */
+.toc-node-wrapper.collapsed > .toc-children {
+    display: none;
 }
 
 /* --- ACTIVE STATES (FIXED) --- */

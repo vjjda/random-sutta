@@ -7,38 +7,24 @@ export const MagicNav = {
     _closeTimer: null,
 
     init() {
-        // Init UI Manager để lấy các element đã cache
         const els = UIManager.init();
-
         if (!els.wrapper) return;
 
-        // --- BIND EVENTS ---
-
-        // 1. Breadcrumb Button
+        // ... (Giữ nguyên các event listeners cũ) ...
         els.btnBreadcrumb.addEventListener("click", (e) => {
             e.stopPropagation();
             UIManager.toggleBreadcrumb();
         });
-
-        // 2. TOC Button
         els.btnToc.addEventListener("click", (e) => {
             e.stopPropagation();
             UIManager.toggleTOC();
         });
-
-        // 3. Close on Backdrop
         els.backdrop.addEventListener("click", () => UIManager.closeAll());
-
-        // 4. Auto-collapse Logic (Mouse Leave)
         els.bar.addEventListener("mouseleave", () => {
             if (UIManager.isBreadcrumbExpanded()) {
-                this._closeTimer = setTimeout(() => {
-                    UIManager.closeAll();
-                }, 2000); 
+                this._closeTimer = setTimeout(() => UIManager.closeAll(), 2000); 
             }
         });
-
-        // 5. Cancel Collapse (Mouse Enter)
         els.bar.addEventListener("mouseenter", () => {
             if (this._closeTimer) {
                 clearTimeout(this._closeTimer);
@@ -47,16 +33,27 @@ export const MagicNav = {
         });
     },
 
-    // Public method gọi từ bên ngoài (ví dụ khi click link trong TOC)
-    toggleTOC() {
-        UIManager.toggleTOC();
+    toggleTOC() { UIManager.toggleTOC(); },
+
+    // [NEW] Hàm xử lý Toggle Collapse/Expand cho TOC Node
+    toggleNode(element) {
+        // Tìm wrapper cha gần nhất (toc-node-wrapper)
+        const wrapper = element.closest('.toc-node-wrapper');
+        if (wrapper) {
+            // Toggle class 'collapsed'
+            wrapper.classList.toggle('collapsed');
+            
+            // Xoay icon (nếu có)
+            const icon = wrapper.querySelector('.toc-toggle-icon svg');
+            if (icon) {
+                // Logic xoay sẽ được CSS xử lý dựa trên class .collapsed của wrapper
+            }
+        }
     },
 
     render(localTree, currentUid, contextMeta, superTree, superMeta) {
-        // 1. Calculate Path
+        // ... (Giữ nguyên logic tính toán path) ...
         let fullPath = BreadcrumbRenderer.findPath(localTree, currentUid);
-        
-        // Merge Super Tree if needed
         if (fullPath && superTree && fullPath.length > 0) {
             const rootBookId = fullPath[0]; 
             if (currentUid === rootBookId) {
@@ -67,18 +64,16 @@ export const MagicNav = {
                 }
             }
         }
-
         const finalMeta = { ...superMeta, ...contextMeta };
 
-        // 2. Generate HTML
         const bcHtml = fullPath ? BreadcrumbRenderer.generateHtml(fullPath, finalMeta) : "";
+        
+        // [UPDATED] Render TOC với logic collapse mới
         const tocHtml = TocRenderer.render(localTree, currentUid, finalMeta, 0);
 
-        // 3. Update UI
         UIManager.updateContent(bcHtml, tocHtml);
-        UIManager.setHidden(!fullPath); // Ẩn wrapper nếu không tìm thấy path
+        UIManager.setHidden(!fullPath);
     }
 };
 
-// Expose global
 window.MagicNav = MagicNav;
