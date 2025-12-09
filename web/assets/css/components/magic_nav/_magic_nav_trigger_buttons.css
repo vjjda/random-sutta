@@ -2,15 +2,38 @@
 
 /* [NEW] The Ghost Dot */
 #magic-nav-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;  /* Nhỏ tí xíu */
+  height: 6px;
   background-color: var(--text-main);
   border-radius: 50%;
-  margin: auto; /* Căn giữa trong wrapper */
-  pointer-events: none; /* Click xuyên qua wrapper bắt sự kiện */
+  
+  /* Căn giữa trong wrapper khi collapsed */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  opacity: 0.1; /* Rất mờ */
+  transition: all 0.3s ease;
+  pointer-events: none; /* Để click xuyên qua wrapper xử lý */
 }
 
-/* Buttons style (cập nhật để low-profile hơn) */
+/* Khi Expanded: Dot biến thành nút đóng (đậm hơn, vị trí tĩnh) */
+#magic-nav-wrapper:not(.collapsed) #magic-nav-dot {
+  position: static;
+  transform: none;
+  opacity: 0.4; /* Hiện rõ hơn để biết là có thể bấm */
+  cursor: pointer;
+  flex-shrink: 0; /* Không bị co lại */
+}
+
+#magic-nav-wrapper:not(.collapsed) #magic-nav-dot:hover {
+  opacity: 1;
+  color: var(--primary-color);
+  background-color: var(--primary-color); /* Đổi màu khi hover */
+}
+
+/* Buttons style */
 .magic-btn {
   width: 32px;
   height: 32px;
@@ -22,7 +45,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--text-light); /* Màu nhạt mặc định */
+  color: var(--text-light);
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
@@ -39,7 +62,6 @@
   box-shadow: var(--shadow-soft);
 }
 
-/* Xoay icon path */
 #btn-magic-breadcrumb svg {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
