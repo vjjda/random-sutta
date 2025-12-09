@@ -1,245 +1,137 @@
 // Path: web/assets/modules/data/sutta_repository.js
+import { DbAdapter } from './db_adapter.js';
+import { IndexResolver } from './index_resolver.js';
 import { getLogger } from '../utils/logger.js';
-// [NOTE] Cần đảm bảo constants.js export PRIMARY_BOOKS
-import { PRIMARY_BOOKS } from './constants.js';
-import { ZipImporter } from './loader/zip_importer.js';
-import { AssetLoader } from './loader/asset_loader.js'; 
-import { AppConfig } from '../core/app_config.js'; // [NEW]
 
-const logger = getLogger("SuttaRepo");
-
-// --- INTERNAL STATE (RAM CACHE) ---
-// Key: "bookId_chunkIdx" (ví dụ: "mn_0")
-const _chunkCache = new Map();
-// Key: "bookId"
-const _metaCache = new Map();
-// Key: "char" -> Map<uid, loc>
-const _indexCache = new Map(); // [NEW] Split Index Cache
-const _pendingIndexRequests = new Map(); // [NEW] Deduplication for index loading
+const logger = getLogger("Repository");
 
 export const SuttaRepository = {
-    
     async init() {
-        // [UPDATED] Lazy index loading, no initial fetch
-        
-        // Check Offline Global Index
-        if (window.__DB_INDEX__) {
-            this._hydrateOfflineIndex(window.__DB_INDEX__);
-        }
-        
-        // Kích hoạt tải ngầm thông minh sau delay
-        setTimeout(() => {
-            this.startSmartPreload();
-        }, AppConfig.INITIAL_PRELOAD_DELAY);
+        await DbAdapter.init();
     },
 
-    _hydrateOfflineIndex(fullIndex) {
-        for (const [uid, loc] of Object.entries(fullIndex)) {
-            if (!uid) continue;
-            const bucket = this._getBucketId(uid);
-            
-            if (!_indexCache.has(bucket)) {
-                _indexCache.set(bucket, {});
-            }
-            _indexCache.get(bucket)[uid] = loc;
-        }
-        logger.info("Offline", "Hydrated index from Global Variable.");
-    },
-
-    // [NEW] Consistent Hash (DJB2) for Bucketing
-    _getBucketId(uid) {
-        let hash = 5381;
-        for (let i = 0; i < uid.length; i++) {
-            hash = ((hash << 5) + hash) + uid.charCodeAt(i);
-            hash = hash >>> 0; // Ensure 32-bit unsigned
-        }
-        return (hash % 20).toString();
-    },
-
-    // [NEW] Load index part by Bucket ID (With Deduplication)
-    async _ensureIndexPart(bucketId) {
-        if (_indexCache.has(bucketId)) return true;
-        
-        // Deduplication: If already loading, return the pending promise
-        if (_pendingIndexRequests.has(bucketId)) {
-            return _pendingIndexRequests.get(bucketId);
-        }
-
-        const loadPromise = (async () => {
-            try {
-                console.time(`Index Load ${bucketId}`);
-                const resp = await fetch(`./assets/db/index/${bucketId}.json`);
-                if (!resp.ok) {
-                    _indexCache.set(bucketId, {}); 
-                    console.timeEnd(`Index Load ${bucketId}`);
-                    return false;
-                }
-                const data = await resp.json();
-                _indexCache.set(bucketId, data);
-                console.timeEnd(`Index Load ${bucketId}`);
-                return true;
-            } catch (e) {
-                console.timeEnd(`Index Load ${bucketId}`);
-                return false;
-            } finally {
-                _pendingIndexRequests.delete(bucketId);
-            }
-        })();
-
-        _pendingIndexRequests.set(bucketId, loadPromise);
-        return loadPromise;
-    },
-
-    // [NEW] Async Locator (Network-aware)
+    // Delegate cho Resolver
     async resolveLocation(uid) {
-        if (!uid) return null;
-        
-        // 1. Try sync lookup
-        const loc = this.getLocation(uid);
-        if (loc) return loc;
-
-        // 2. Load Index
-        const bucket = this._getBucketId(uid);
-        await this._ensureIndexPart(bucket);
-        
-        // 3. Retry lookup
-        return this.getLocation(uid);
+        return await IndexResolver.resolve(uid);
     },
 
-    // Sync Locator (Cache-only)
-    getLocation(uid) {
-        if (!uid) return null;
-        const bucket = this._getBucketId(uid);
-        
-        const indexPart = _indexCache.get(bucket);
-        if (!indexPart) return null;
-        
-        return indexPart[uid];
-    },
-    
-    // --- Preload Logic ---
-    startSmartPreload() {
-        if ('requestIdleCallback' in window) {
-            // Chỉ tải khi trình duyệt rảnh (không làm đơ UI)
-            requestIdleCallback(() => this._preloadPrimaryBooks(), { timeout: AppConfig.IDLE_CALLBACK_TIMEOUT });
-        } else {
-            // Fallback
-            setTimeout(() => this._preloadPrimaryBooks(), 1000);
-        }
-    },
-
-    async _preloadPrimaryBooks() {
-        logger.info("Preload", "Starting background preload of Primary Books...");
-        
-        // 1. Preload Meta của các sách chính
-        for (const bookId of PRIMARY_BOOKS) {
-            if (!_metaCache.has(bookId)) {
-                await this.fetchMeta(bookId);
-                // Yield để main thread mượt mà
-                await new Promise(r => setTimeout(r, 100)); 
-            }
-        }
-        
-        // 2. Preload Content của các sách nhỏ (thường chỉ 1 chunk 0)
-        // Đây là ví dụ cho các sách thường được chọn (small books)
-        const smallBooks = ['kp', 'dhp', 'ud', 'iti', 'snp'];
-        for (const bookId of smallBooks) {
-             await this.fetchContentChunk(bookId, 0); 
-        }
-        
-        logger.info("Preload", "Background preload completed.");
-    },
-
-    // --- Fetchers (RAM Cache Included) ---
+    /**
+     * Lấy Metadata sách (ưu tiên Cache DB -> Network)
+     */
     async fetchMeta(bookId) {
-        // 1. Check RAM Cache
-        if (_metaCache.has(bookId)) {
-            return _metaCache.get(bookId);
-        }
+        // 1. Try DB
+        const cached = await DbAdapter.get("meta", bookId);
+        if (cached) return cached;
 
+        // 2. Fetch Network
         try {
-            // [UPDATED] Use AssetLoader
-            // Key must match the one in .js file (which is the filename stem)
-            const data = await AssetLoader.load(bookId, `meta/${bookId}`);
-            if (!data) throw new Error(`Meta missing: ${bookId}`);
+            const res = await fetch(`assets/db/meta/${bookId}.json`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
             
-            _metaCache.set(bookId, data); // Lưu vào RAM
+            // 3. Save DB (Background)
+            DbAdapter.set("meta", bookId, data).catch(e => logger.warn("Cache", "Save meta failed", e));
+            
             return data;
         } catch (e) {
-            logger.error("fetchMeta", `Failed ${bookId}`, e);
+            logger.error("fetchMeta", `Failed to load ${bookId}`, e);
             return null;
         }
     },
 
+    /**
+     * Lấy Content Chunk (ưu tiên Cache DB -> Network)
+     */
+    async fetchContentChunk(bookId, chunkIdx) {
+        // Key quy ước: {bookId}_chunk_{idx}
+        const key = `${bookId}_chunk_${chunkIdx}`;
+        
+        // 1. Try DB
+        const cached = await DbAdapter.get("content", key);
+        if (cached) return cached;
+
+        // 2. Fetch Network
+        try {
+            // Filename quy ước: {bookId}_chunk_{idx}.json
+            const fname = `${bookId}_chunk_${chunkIdx}.json`;
+            const res = await fetch(`assets/db/content/${fname}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            // 3. Save DB (Background)
+            DbAdapter.set("content", key, data).catch(e => logger.warn("Cache", "Save content failed", e));
+
+            return data;
+        } catch (e) {
+            logger.error("fetchContent", `Failed to load ${key}`, e);
+            return null;
+        }
+    },
+
+    /**
+     * Prefetch nhiều meta cùng lúc (Dùng cho Navigation)
+     */
     async fetchMetaList(bookIds) {
         const results = {};
+        const uniqueIds = [...new Set(bookIds)];
         
-        // [UPDATED] Async resolution for all UIDs
-        const locations = await Promise.all(bookIds.map(uid => this.resolveLocation(uid)));
-        
-        const uniqueBooks = new Set();
-        locations.forEach(loc => {
-            if (loc) uniqueBooks.add(loc[0]);
-        });
-
-        await Promise.all([...uniqueBooks].map(b => this.fetchMeta(b)));
-
-        bookIds.forEach((uid, idx) => {
-            const loc = locations[idx];
-            if (loc) {
-                const bookId = loc[0];
-                const metaBook = _metaCache.get(bookId);
-                if (metaBook && metaBook.meta && metaBook.meta[uid]) {
-                    results[uid] = metaBook.meta[uid];
-                }
+        await Promise.all(uniqueIds.map(async (bid) => {
+            const data = await this.fetchMeta(bid);
+            if (data && data.meta) {
+                Object.assign(results, data.meta);
             }
-        });
+        }));
+        
         return results;
     },
 
-    async fetchContentChunk(bookId, chunkIdx) {
-        const cacheKey = `${bookId}_${chunkIdx}`;
-
-        // 1. Check RAM Cache (Zero latency)
-        if (_chunkCache.has(cacheKey)) {
-            return _chunkCache.get(cacheKey);
-        }
-
-        // 2. Fetch from Disk/Network
-        try {
-            const fileName = `${bookId}_chunk_${chunkIdx}`;
-            
-            console.time(`Content Load ${fileName}`);
-            // [UPDATED] Use AssetLoader
-            // Key must match the one in .js file (fileName)
-            const data = await AssetLoader.load(fileName, `content/${fileName}`);
-            console.timeEnd(`Content Load ${fileName}`);
-            
-            if (!data) throw new Error(`Chunk missing: ${fileName}`);
-            
-            // 3. Store in RAM Cache (Quan trọng)
-            _chunkCache.set(cacheKey, data);
-            
-            return data;
-        } catch (e) {
-            console.timeEnd(`Content Load ${fileName}`); // Ensure timer ends on error
-            logger.error("fetchContent", `Failed ${cacheKey}`, e);
-            return null;
-        }
-    },
-
-    // [UPDATED] Real Download Logic using Zip Bundle
-    async downloadAll(onProgress) {
-        // No index check needed for Zip
-        logger.info("DownloadAll", "Starting optimized zip download...");
+    /**
+     * Download toàn bộ dữ liệu Offline (Sử dụng Zip Bundle)
+     * [OPTIMIZED] 1 Request thay vì hàng nghìn request
+     */
+    async downloadAll(progressCallback) {
+        logger.info("Sync", "Starting full download via Zip Bundle...");
         
-        try {
-            // Delegate to ZipImporter to download, unzip and cache everything
-            await ZipImporter.run(onProgress);
-            logger.info("DownloadAll", "Full download completed via Zip.");
-        } catch (e) {
-            logger.error("DownloadAll", "Zip download failed", e);
-            throw e; // Re-throw to let UI handle error state
+        const JSZip = window.JSZip;
+        if (!JSZip) throw new Error("JSZip library not loaded");
+
+        // 1. Tải file zip cục gạch (~30MB)
+        const res = await fetch('assets/db/db_bundle.zip');
+        if (!res.ok) throw new Error("Bundle not found");
+        
+        const blob = await res.blob();
+        
+        // 2. Giải nén
+        const zip = await JSZip.loadAsync(blob);
+        const files = Object.keys(zip.files);
+        let count = 0;
+        const total = files.length;
+
+        // 3. Import vào DB
+        for (const filename of files) {
+            if (zip.files[filename].dir) continue;
+
+            const contentStr = await zip.files[filename].async("string");
+            const data = JSON.parse(contentStr);
+            
+            // Routing dựa trên folder trong zip (meta/..., content/...)
+            if (filename.startsWith("meta/")) {
+                const bookId = filename.split("/")[1].replace(".json", "");
+                await DbAdapter.set("meta", bookId, data);
+            } 
+            else if (filename.startsWith("content/")) {
+                // filename: content/mn_chunk_0.json -> key: mn_chunk_0
+                const key = filename.split("/")[1].replace(".json", "");
+                await DbAdapter.set("content", key, data);
+            }
+
+            count++;
+            if (progressCallback && count % 10 === 0) { // Update UI mỗi 10 file
+                progressCallback(count, total);
+            }
         }
+        
+        if (progressCallback) progressCallback(total, total);
+        logger.info("Sync", "Full download completed.");
     }
 };
