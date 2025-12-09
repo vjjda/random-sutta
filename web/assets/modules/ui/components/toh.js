@@ -108,8 +108,15 @@ export function setupTableOfHeadings() {
 
         segments.forEach(seg => {
             const id = seg.id;
-            const paraNum = extractParagraphNumber(id);
+            // Sử dụng let để có thể chỉnh sửa nếu gặp trường hợp Evam
+            let paraNum = extractParagraphNumber(id);
             
+            // [CHECK EVAM] Kiểm tra class 'evam'. 
+            // Nếu tìm thấy (bên trong segment hoặc là cha của segment), xoá số thứ tự.
+            if (seg.querySelector('.evam') || seg.closest('.evam')) {
+                paraNum = "";
+            }
+
             let labelText = "Paragraph";
             const engNode = seg.querySelector(".eng");
             const pliNode = seg.querySelector(".pli");
