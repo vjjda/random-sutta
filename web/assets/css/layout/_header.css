@@ -32,7 +32,7 @@ header {
   background: none;
   border: none;
   color: var(--primary-color);
-  width: 48px; 
+  width: 48px;
   height: 48px;
   flex-shrink: 0;
   display: flex;
@@ -51,7 +51,7 @@ header {
 }
 
 .nav-arrow:hover:not(:disabled) {
-  background-color: rgba(0,0,0,0.05);
+  background-color: rgba(0, 0, 0, 0.05);
   transform: none;
   opacity: 1;
 }

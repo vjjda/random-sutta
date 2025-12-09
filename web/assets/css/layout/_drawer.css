@@ -59,12 +59,12 @@
   background-color: #e8e0d9;
   color: #5d4037;
   /* Giữ border trong suốt để chiếm chỗ sẵn, tránh nhảy khi hover/active nếu có border màu */
-  border: 1px solid transparent; 
+  border: 1px solid transparent;
   padding: 6px 14px;
   font-size: 0.9rem;
   border-radius: var(--radius-sm);
   /* [QUAN TRỌNG] Đặt font-weight cố định */
-  font-weight: 500; 
+  font-weight: 500;
   transition: background-color 0.2s, color 0.2s;
 }
 
@@ -130,36 +130,36 @@
 
 /* [NEW] Style cho nút Update nhỏ */
 #btn-update-offline {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 44px; /* Vuông góc phải */
-    background: transparent;
-    border: none;
-    border-left: 1px solid rgba(0,0,0,0.05); /* Ngăn cách nhẹ */
-    color: var(--text-light);
-    cursor: pointer;
-    z-index: 3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 44px; /* Vuông góc phải */
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(0, 0, 0, 0.05); /* Ngăn cách nhẹ */
+  color: var(--text-light);
+  cursor: pointer;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
 #btn-update-offline:hover {
-    background-color: rgba(0,0,0,0.05);
-    color: var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--primary-color);
 }
 
 #btn-update-offline svg {
-    opacity: 0.6;
-    transition: transform 0.3s ease;
+  opacity: 0.6;
+  transition: transform 0.3s ease;
 }
 
 #btn-update-offline:hover svg {
-    opacity: 1;
-    transform: rotate(180deg);
+  opacity: 1;
+  transform: rotate(180deg);
 }
 
 /* --- STATES --- */
@@ -174,7 +174,7 @@
 }
 /* Ẩn nút update khi đang sync */
 #offline-wrapper.syncing #btn-update-offline {
-    display: none; 
+  display: none;
 }
 
 /* Progress Bar (Nền chạy) */
@@ -184,10 +184,15 @@
   left: 0;
   bottom: 0;
   width: 0%;
-  background-color: rgba(139, 69, 19, 0.15); /* Tăng đậm lên chút (0.1 -> 0.15) cho dễ nhìn */
+  background-color: rgba(
+    139,
+    69,
+    19,
+    0.15
+  ); /* Tăng đậm lên chút (0.1 -> 0.15) cho dễ nhìn */
   z-index: 1;
   /* [CHANGED] Dùng linear để chạy đều, giảm thời gian xuống 0.2s cho phản hồi nhanh */
-  transition: width 0.2s linear; 
+  transition: width 0.2s linear;
 }
 
 /* 2. Ready */
@@ -197,19 +202,24 @@
 
 #offline-wrapper.ready .offline-btn {
   color: var(--text-muted); /* [CHANGED] Màu chữ chìm (low profile) */
-  font-weight: 400;         /* [CHANGED] Nét mảnh */
+  font-weight: 400; /* [CHANGED] Nét mảnh */
   cursor: help;
   transition: all 0.2s ease;
 }
 
 #offline-wrapper.ready .offline-btn:hover {
-  background-color: rgba(139, 69, 19, 0.08); /* [CHANGED] Hover nền nâu nhạt (theo theme) */
-  color: var(--primary-color);               /* Hover chữ chuyển nâu đậm */
+  background-color: rgba(
+    139,
+    69,
+    19,
+    0.08
+  ); /* [CHANGED] Hover nền nâu nhạt (theo theme) */
+  color: var(--primary-color); /* Hover chữ chuyển nâu đậm */
 }
 
 #offline-wrapper.ready .offline-btn svg {
   stroke: #4caf50; /* [KEEP] Chỉ giữ dấu tích màu xanh */
-  opacity: 0.8;    /* Giảm độ chói một chút cho hài hòa */
+  opacity: 0.8; /* Giảm độ chói một chút cho hài hòa */
 }
 
 #offline-wrapper.ready #offline-progress-bar {
@@ -217,26 +227,29 @@
 }
 
 #offline-wrapper.ready #btn-update-offline {
-    display: flex;
-    /* [NEW] Chỉnh lại nút update nhỏ cho khớp style mới */
-    border-left: 1px solid rgba(139, 69, 19, 0.1); 
+  display: flex;
+  /* [NEW] Chỉnh lại nút update nhỏ cho khớp style mới */
+  border-left: 1px solid rgba(139, 69, 19, 0.1);
 }
-
 
 /* 3. Error */
 #offline-wrapper.error .offline-btn {
   color: #d32f2f;
 }
 #offline-wrapper.error #btn-update-offline {
-    display: none;
+  display: none;
 }
 
 /* Ẩn mặc định */
 .icon-only-btn.hidden {
-    display: none !important;
+  display: none !important;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

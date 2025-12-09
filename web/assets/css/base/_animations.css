@@ -12,14 +12,14 @@
 
 .static-fade-out {
   /* Luôn hiện để tránh ẩn nội dung do lỗi logic JS */
-  opacity: 1 !important; 
+  opacity: 1 !important;
 }
 
 /* Vô hiệu hóa các class transition cũ trong JS (nếu còn sót lại) */
 .nav-transitioning,
 .exit-up,
-.enter-from-bottom, 
-.exit-down, 
+.enter-from-bottom,
+.exit-down,
 .enter-from-top {
   transition: none !important;
   transform: none !important;
@@ -27,6 +27,7 @@
 }
 
 /* Đảm bảo đè lên các animation slideDown của Drawer/Menu */
-#filter-drawer, #toh-menu {
-    animation: none !important;
+#filter-drawer,
+#toh-menu {
+  animation: none !important;
 }

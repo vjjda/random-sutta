@@ -1,24 +1,29 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_layout.css */
 #magic-nav-wrapper {
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 1100;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Wrapper mới cho cụm Breadcrumb */
 #magic-breadcrumb-wrapper {
-    display: flex;
-    align-items: center;
-    /* position: relative;
+  display: flex;
+  align-items: center;
+  /* position: relative;
     height: 32px; */
 }
 
-#magic-backdrop { 
-    position: fixed; inset: 0; background: rgba(0,0,0,0.1); 
-    backdrop-filter: blur(1px); z-index: 1099; 
+#magic-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(1px);
+  z-index: 1099;
 }
-#magic-backdrop.hidden { display: none; }
+#magic-backdrop.hidden {
+  display: none;
+}

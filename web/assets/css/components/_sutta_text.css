@@ -119,7 +119,7 @@ p {
 }
 
 .segment:target {
-    animation: none;
+  animation: none;
 }
 
 .segment.highlight {
@@ -138,23 +138,23 @@ span.highlight,
   /* Reset border của block highlight */
   border-left: none;
   margin-left: 0;
-  
+
   padding: 4px 10px;
   margin: 2px -10px;
-  
+
   /* Style Highlight */
   background-color: var(--highlight-color-segment);
   box-shadow: 0 0 0 1px var(--highlight-color-segment); /* Viền nhẹ thay vì shadow loè */
   /* border-radius: 6px; */
-  
-  display: inline-block; 
+
+  display: inline-block;
   width: 100%; /* Chiếm hết chiều ngang cho đẹp đội hình */
   box-sizing: border-box; /* Để padding không làm vỡ width */
-  
+
   text-decoration: none;
 }
 
 /* Tinh chỉnh nhỏ cho Pali bên trong đoạn highlight để không bị vỡ lề */
 .segment-text.highlight .pli {
-    margin-bottom: 2px; /* Giảm khoảng cách giữa Pali/Eng khi đang highlight */
+  margin-bottom: 2px; /* Giảm khoảng cách giữa Pali/Eng khi đang highlight */
 }
