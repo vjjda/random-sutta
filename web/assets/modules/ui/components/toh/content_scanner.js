@@ -40,16 +40,25 @@ export const ContentScanner = {
     },
 
     _parseHeading(heading, index) {
-        // [IMPORTANT] Tự động gán ID nếu thiếu để Scroll hoạt động
+        // Tự động gán ID nếu thiếu để chức năng cuộn hoạt động
         if (!heading.id) {
             heading.id = `toh-heading-${index}`;
+        }
+
+        let prefix = null;
+
+        // [UPDATED] Kiểm tra thẻ cha trực tiếp.
+        // Nếu heading nằm ngay dưới <article id="..."> (ví dụ: Dhp), lấy ID đó làm số thứ tự.
+        const parent = heading.parentElement;
+        if (parent && parent.tagName === 'ARTICLE' && parent.id) {
+            prefix = parent.id;
         }
 
         return {
             id: heading.id,
             text: getCleanTextContent(heading),
             levelClass: `toh-${heading.tagName.toLowerCase()}`, 
-            prefix: null
+            prefix: prefix
         };
     },
 
@@ -73,7 +82,7 @@ export const ContentScanner = {
         return {
             id: segment.id,
             text: text,
-            levelClass: "toh-h3", // Style giả lập H3
+            levelClass: "toh-h3", 
             prefix: paraNum
         };
     }
