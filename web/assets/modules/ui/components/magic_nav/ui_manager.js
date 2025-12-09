@@ -26,25 +26,17 @@ export const UIManager = {
                 }
             });
             
-            // [NEW] Xử lý sự kiện lăn chuột (Wheel) cho Breadcrumb Bar
             if (this.elements.bar) {
                 this.elements.bar.addEventListener("wheel", (e) => {
-                    // Nếu giữ Shift -> Lăn ngang (Hỗ trợ laptop)
-                    if (e.shiftKey) {
-                        e.preventDefault();
-                        this.elements.bar.scrollLeft += e.deltaY;
-                    } 
-                    // [Optional] Nếu muốn lăn chuột dọc bình thường cũng cuộn ngang (tiện hơn)
-                    // thì bỏ comment phần else if dưới đây:
-                    /*
-                    else if (e.deltaY !== 0) {
-                        // Chỉ cuộn ngang nếu nội dung thực sự bị tràn
+                    // Shift + Wheel hoặc Wheel dọc -> Scroll ngang
+                    if (e.shiftKey || e.deltaY !== 0) {
+                        // Chỉ can thiệp nếu nội dung thực sự bị tràn
                         if (this.elements.bar.scrollWidth > this.elements.bar.clientWidth) {
                             e.preventDefault();
+                            // Ưu tiên deltaY (lăn chuột dọc) để cuộn ngang cho tiện tay
                             this.elements.bar.scrollLeft += e.deltaY;
                         }
                     }
-                    */
                 }, { passive: false });
             }
         }
@@ -146,15 +138,20 @@ export const UIManager = {
         }, 0); 
     },
 
+    // [UPDATED] Scroll bằng Marker
     _scrollBreadcrumbToEnd() {
-        setTimeout(() => {
-            const bar = this.elements.bar;
-            if (bar) {
-                bar.scrollTo({
-                    left: bar.scrollWidth, 
-                    behavior: 'instant'
-                });
-            }
-        }, 0);
+        // Tìm marker cuối cùng
+        const endMarker = document.getElementById("magic-bc-end");
+        if (endMarker) {
+            // instant: nhảy ngay lập tức
+            // inline: "end" -> căn phần tử về mép phải của container
+            endMarker.scrollIntoView({ behavior: "instant", inline: "end" });
+        } else {
+            // Fallback nếu chưa render xong
+            setTimeout(() => {
+                const bar = this.elements.bar;
+                if (bar) bar.scrollLeft = bar.scrollWidth;
+            }, 0);
+        }
     }
 };

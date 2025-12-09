@@ -72,22 +72,35 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   
-  /* [FIX] pan-y: Cho phép cuộn trang dọc, NHƯNG giữ lại sự kiện vuốt ngang cho element này */
+  /* [CRITICAL FIX FOR IPHONE] */
+  /* pan-y: Chỉ cho phép trình duyệt can thiệp vuốt dọc, nhường vuốt ngang cho element */
   touch-action: pan-y;
+  /* contain: Ngăn hiệu ứng "bounce" hoặc Back/Forward trang của Safari khi vuốt kịch */
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   
-  /* Padding phải cực lớn để text cuối thoát hẳn ra ngoài mép phải */
-  padding: 0 60px 0 10px; 
+  /* [UPDATED] Reset padding phải, dùng Marker để đệm */
+  padding: 0 0 0 15px; 
   
   flex-grow: 1;
   max-width: 100%;
   
-  /* Smooth touch scrolling */
-  -webkit-overflow-scrolling: touch;
+  /* Mask mờ bên trái, bên phải để rõ hoàn toàn */
+  mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
 }
 
-/* [NEW] Đảm bảo nội dung con (thẻ ol) không bị co lại, gây mất chữ */
 #magic-breadcrumb-bar > * {
   flex-shrink: 0;
+}
+
+/* [NEW] Marker cuối cùng: Đóng vai trò là miếng đệm (Spacer) */
+#magic-bc-end {
+  display: inline-block;
+  min-width: 40px; /* Độ rộng của khoảng đệm phía sau text cuối */
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 #magic-breadcrumb-bar::-webkit-scrollbar {

@@ -38,6 +38,10 @@ export const BreadcrumbRenderer = {
                 html += `<li><button onclick="window.loadSutta('${uid}')" class="bc-link">${label}</button></li>`;
             }
         });
+        
+        // [NEW] Thêm phần tử Spacer Marker vào cuối danh sách
+        html += `<li id="magic-bc-end"></li>`;
+        
         html += `</ol>`;
         return html;
     }
