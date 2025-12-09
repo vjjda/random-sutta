@@ -18,12 +18,10 @@ export const UIManager = {
 
         if (this.elements.wrapper) {
             this.elements.wrapper.addEventListener("click", (e) => {
-                // Mở
                 if (this.elements.wrapper.classList.contains("collapsed")) {
                     this.openWrapper();
                     e.stopPropagation();
                 } 
-                // Đóng (Click vào Dot hoặc vùng trống wrapper khi đã mở)
                 else if (e.target === this.elements.dot || e.target === this.elements.wrapper) {
                     this.closeAll();
                     e.stopPropagation();
@@ -31,12 +29,19 @@ export const UIManager = {
                 this.resetAutoCollapse();
             });
 
+            // Reset timer trên PC
             this.elements.wrapper.addEventListener("mouseenter", () => this.clearAutoCollapse());
             this.elements.wrapper.addEventListener("mouseleave", () => this.startAutoCollapse());
+            
+            // [UPDATED] Reset timer trên Mobile khi chạm vào wrapper chung
             this.elements.wrapper.addEventListener("touchstart", () => this.resetAutoCollapse());
             
+            // [UPDATED] Xử lý riêng cho thanh Breadcrumb để vuốt mượt mà không bị đóng
             if (this.elements.bar) {
-                this.elements.bar.addEventListener("scroll", () => this.resetAutoCollapse());
+                // Lắng nghe mọi cử động vuốt, lăn chuột trên thanh bar
+                ['scroll', 'touchstart', 'touchmove', 'touchend', 'mousedown'].forEach(evt => {
+                    this.elements.bar.addEventListener(evt, () => this.resetAutoCollapse());
+                });
             }
         }
 
@@ -87,7 +92,6 @@ export const UIManager = {
         this.elements.wrapper.classList.remove("collapsed");
         this.startAutoCollapse();
         
-        // Scroll ngay lập tức khi mở
         if (this.elements.bar && this.elements.bar.innerHTML) {
              this._scrollBreadcrumbToEnd();
         }
@@ -161,18 +165,17 @@ export const UIManager = {
             if (activeItem) {
                 activeItem.scrollIntoView({ block: "center", behavior: "instant" });
             }
-        }, 0); // Giảm delay xuống 0 cho instant feel
+        }, 0);
     },
 
-    // [UPDATED] Instant Scroll
     _scrollBreadcrumbToEnd() {
-        // Cần setTimeout nhỏ để đảm bảo render xong (dù là instant cũng cần DOM có width)
         setTimeout(() => {
             const bar = this.elements.bar;
             if (bar) {
+                // Scroll tới tận cùng bên phải (bao gồm cả padding)
                 bar.scrollTo({
                     left: bar.scrollWidth,
-                    behavior: 'instant' // [UPDATED] Không dùng smooth
+                    behavior: 'instant'
                 });
             }
         }, 0);

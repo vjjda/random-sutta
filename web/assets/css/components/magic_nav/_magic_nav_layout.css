@@ -8,25 +8,26 @@
   align-items: center;
   gap: 8px;
   
-  /* [UPDATED] Padding cố định cho cả 2 trạng thái để Dot không nhảy */
-  padding: 6px; 
+  padding: 6px;
   border-radius: 20px;
   
-  /* [UPDATED] Xóa transition để snappy */
   transition: none; 
   background-color: transparent;
   
+  /* [UPDATED] Giới hạn chiều rộng để Breadcrumb có thể cuộn được */
   width: auto;
-  max-width: 90vw;
+  max-width: calc(100vw - 30px); /* Chừa lề 2 bên */
 }
 
 /* --- STATE: COLLAPSED --- */
 #magic-nav-wrapper.collapsed {
-  /* Không set width cố định, để nó tự co theo content (chỉ còn mỗi Dot) */
   cursor: pointer;
   background-color: transparent;
-  border: 1px solid transparent; /* Giữ border transparent để chiếm chỗ, tránh nhảy layout */
+  border: 1px solid transparent;
   box-shadow: none;
+  /* Thu gọn về kích thước tối thiểu của dot */
+  padding: 10px; /* Tăng vùng bấm ảo xung quanh dot cho dễ tap */
+  margin: -4px; /* Bù lại padding để vị trí dot không đổi */
 }
 
 #magic-nav-wrapper.collapsed #magic-group {
@@ -45,10 +46,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  /* [UPDATED] Bỏ animation fadeIn */
   animation: none; 
   flex: 1;
-  min-width: 0;
+  min-width: 0; /* Quan trọng để flex item co lại */
   overflow: hidden;
 }
 
@@ -66,38 +66,37 @@
   align-items: center;
   overflow-x: auto; 
   white-space: nowrap;
-  
-  /* Ẩn thanh cuộn */
-  scrollbar-width: none; 
+  scrollbar-width: none;
   -ms-overflow-style: none;
   
-  /* [UPDATED] Mask chỉ làm mờ bên trái, bên phải hiển thị full */
+  /* Mask mờ bên trái, bên phải rõ hoàn toàn */
   mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
   -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
   
-  /* [UPDATED] Padding phải đủ rộng để chữ không dính sát mép màn hình */
-  padding: 0 20px 0 15px; 
+  /* [UPDATED] Padding phải cực lớn để text cuối "thoát" khỏi mép màn hình */
+  padding: 0 50px 0 15px; 
   max-width: 100%;
+  
+  /* Cho phép thao tác chạm mượt mà */
+  -webkit-overflow-scrolling: touch; 
+  cursor: grab;
+}
+
+#magic-breadcrumb-bar:active {
+  cursor: grabbing;
 }
 
 #magic-breadcrumb-bar::-webkit-scrollbar {
   display: none;
 }
 
-/* [UPDATED] Backdrop vô hình (như TOH) */
 #magic-backdrop {
   position: fixed;
   inset: 0;
-  /* Loại bỏ màu nền và blur */
-  background: transparent; 
+  background: transparent;
   backdrop-filter: none;
   z-index: 1099;
 }
 #magic-backdrop.hidden {
   display: none;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }

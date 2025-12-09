@@ -2,39 +2,40 @@
 
 /* [NEW] The Ghost Dot */
 #magic-nav-dot {
-  width: 6px;
-  height: 6px;
+  /* [UPDATED] Siêu nhỏ */
+  width: 4px;
+  height: 4px;
   background-color: var(--text-main);
   border-radius: 50%;
   
-  /* [UPDATED] Luôn là static để không bị nhảy vị trí khi parent thay đổi layout */
   position: static;
   flex-shrink: 0;
-  margin: 0 4px; /* Căn chỉnh vị trí Dot một chút */
+  /* Căn chỉnh margin để Dot nằm giữa vùng padding */
+  margin: 0 4px; 
   
-  opacity: 0.1;
-  /* [UPDATED] Bỏ transition */
-  transition: none; 
+  /* Mặc định rất mờ */
+  opacity: 0.15;
+  transition: opacity 0.2s ease, background-color 0.2s ease; /* Chỉ transition màu/độ mờ */
   pointer-events: none;
 }
 
-/* Hover effect cho Wrapper collapsed (làm đậm Dot) */
+/* Hover effect cho Wrapper collapsed */
 #magic-nav-wrapper.collapsed:hover #magic-nav-dot {
-  opacity: 0.6;
-  transform: scale(1.5);
+  opacity: 0.8;
+  /* [UPDATED] KHÔNG SCALE, giữ nguyên kích thước */
+  transform: none; 
 }
 
 /* Khi Expanded: Dot biến thành nút đóng */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-dot {
   opacity: 0.4;
   cursor: pointer;
-  pointer-events: auto; /* Cho phép click để đóng */
+  pointer-events: auto;
 }
 
 #magic-nav-wrapper:not(.collapsed) #magic-nav-dot:hover {
   opacity: 1;
-  color: var(--primary-color);
-  background-color: var(--primary-color);
+  background-color: var(--primary-color); /* Highlight màu cam */
 }
 
 /* Buttons style */
@@ -48,7 +49,6 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  /* [UPDATED] Bỏ transition */
   transition: none;
   color: var(--text-light);
   flex-shrink: 0;
@@ -67,7 +67,6 @@
   box-shadow: var(--shadow-soft);
 }
 
-/* Xoay icon - Giữ lại transition xoay nhẹ cho tinh tế, hoặc bỏ nếu muốn */
 #btn-magic-breadcrumb svg {
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
