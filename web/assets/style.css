@@ -20,7 +20,7 @@
 @import "css/components/_popup.css";
 @import "css/components/_toh.css";
 
-/* [REPLACED] Magic Nav Split Modules */
+/* [NEW] Magic Nav Split Modules */
 @import "css/components/magic_nav/_layout.css";
 @import "css/components/magic_nav/_buttons.css";
 @import "css/components/magic_nav/_bar.css";

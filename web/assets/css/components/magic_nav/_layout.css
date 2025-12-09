@@ -6,7 +6,16 @@
     z-index: 1100;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px; /* Khoảng cách giữa 2 nút */
+}
+
+/* Group để gom Bar và Button Breadcrumb lại */
+.magic-bc-group {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
 }
 
 #magic-backdrop { 

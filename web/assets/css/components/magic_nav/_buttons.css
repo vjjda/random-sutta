@@ -11,7 +11,9 @@
     cursor: pointer;
     transition: all 0.2s ease;
     color: var(--text-light);
-    z-index: 1102;
+    
+    /* [FIX] Z-index cao hơn Bar để luôn nổi lên trên */
+    z-index: 1105; 
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
 }
@@ -28,12 +30,13 @@
     box-shadow: var(--shadow-soft);
 }
 
-/* Xoay icon Chevron */
+/* Animation Xoay */
 #btn-magic-breadcrumb svg {
     transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transform-origin: center;
 }
 
-/* [FIXED] Class 'open' sẽ được JS toggle để xoay icon */
-#btn-magic-breadcrumb.open svg {
+/* [REQ] Mặc định hướng phải (>). Khi mở (active/open) xoay sang trái (<) */
+#btn-magic-breadcrumb.active svg {
     transform: rotate(180deg);
 }
