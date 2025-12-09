@@ -3,47 +3,53 @@ export const TocRenderer = {
     render(node, currentUid, metaMap, level = 0) {
         let html = ``;
         
-        // 1. Render Leaf Item (Bài kinh)
+        // 1. Render Item (Leaf/Subleaf)
         const createItem = (id) => {
             const meta = metaMap[id] || {};
-            // Ưu tiên hiển thị ngắn gọn
+            // Xác định loại node dựa trên meta, nếu thiếu thì đoán qua level
+            const type = meta.type || (level === 0 ? 'leaf' : 'subleaf');
+            
             const acronym = meta.acronym || id.toUpperCase();
             const title = meta.translated_title || meta.original_title || "";
             
             const isActive = id === currentUid ? "active" : "";
-            // Đóng TOC sau khi click
             const action = isActive ? "" : `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"`;
             
-            // Tính toán thụt lề: Cấp càng sâu càng thụt vào
-            const paddingLeft = 15 + (level * 10); 
+            // Tính toán thụt lề
+            const paddingLeft = 15 + (level * 12); 
             
-            // Logic hiển thị Text:
-            // - Leaf (Level 0/1): Acronym đậm + Title nhạt
-            // - Subleaf: Acronym nhỏ
-            let contentHtml = `<span class="toc-label">${acronym}</span>`;
-            if (title) {
-                contentHtml += `<span class="toc-sub">${title}</span>`;
+            let contentHtml = "";
+
+            if (type === 'leaf') {
+                // [LEAF] 2 dòng: Acronym + Title
+                contentHtml = `
+                    <div class="toc-row-main">${acronym}</div>
+                    ${title ? `<div class="toc-row-sub">${title}</div>` : ''}
+                `;
+            } else {
+                // [SUBLEAF] 1 dòng: Chỉ Acronym (Low profile)
+                // Nếu muốn hiện thêm title khi hover thì dùng title attribute
+                contentHtml = `<span class="toc-subleaf-label" title="${title}">${acronym}</span>`;
             }
 
-            return `<div class="toc-item leaf ${isActive}" ${action} style="padding-left: ${paddingLeft}px">
+            return `<div class="toc-item ${type} ${isActive}" ${action} style="padding-left: ${paddingLeft}px">
                         ${contentHtml}
                     </div>`;
         };
 
-        // 2. Render Branch Header (Tên nhóm/Vagga)
+        // 2. Render Branch Header (Nhóm/Chương)
         const createBranchHeader = (id, childrenHtml, currentLevel) => {
             const meta = metaMap[id] || {};
-            // Nếu không có meta (ví dụ key 'kn'), dùng ID viết hoa
-            const label = meta.translated_title || meta.acronym || id.toUpperCase();
             
-            // Header thụt lề ít hơn item con 1 chút
+            // [REQ] Ưu tiên Translated > Original > ID
+            const label = meta.translated_title || meta.original_title || meta.acronym || id.toUpperCase();
+            
             const paddingLeft = 15 + (currentLevel * 10);
-            
-            // [LOGIC MỚI] Header cũng có thể active nếu đang xem chính nó (trang danh sách)
             const isActive = id === currentUid ? "active" : "";
-            const isClickable = !!metaMap[id];
+            const isClickable = !!metaMap[id]; // Branch có thể click nếu nó là 1 entity (như kn)
             const action = (isClickable && !isActive) ? `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"` : "";
-            const classes = `toc-header level-${currentLevel} ${isClickable ? 'clickable' : ''} ${isActive}`;
+            
+            const classes = `toc-header ${isClickable ? 'clickable' : ''} ${isActive}`;
 
             return `<div class="toc-branch-wrapper">
                         <div class="${classes}" ${action} style="padding-left: ${paddingLeft}px">
@@ -53,23 +59,21 @@ export const TocRenderer = {
                     </div>`;
         };
 
-        // --- Recursive Logic ---
+        // --- Recursive Traversal ---
         
         if (typeof node === 'string') {
             return createItem(node);
         } 
         else if (Array.isArray(node)) {
-            // Array chỉ là wrapper, duyệt tiếp, KHÔNG tăng level
             node.forEach(child => {
                 html += this.render(child, currentUid, metaMap, level);
             });
         } 
         else if (typeof node === 'object' && node !== null) {
             for (const key in node) {
-                // Đệ quy xuống con (Tăng level)
+                // Đệ quy
                 const childrenHtml = this.render(node[key], currentUid, metaMap, level + 1);
-                
-                // [FIXED] Luôn render Header cho Object Key
+                // Header
                 html += createBranchHeader(key, childrenHtml, level);
             }
         }
