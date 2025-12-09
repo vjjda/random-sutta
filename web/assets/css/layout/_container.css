@@ -2,13 +2,14 @@
 #sutta-container {
   background: var(--bg-card);
   padding: 20px 40px 40px 40px;
-  border-radius: 8px;
+  /* border-radius: 8px; */
   /* box-shadow: var(--shadow-soft); */
   min-height: 300px;
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
   max-width: 100%;
+  border-top: 0.5px solid var(--border-color);
 }
 
 #sutta-container img,

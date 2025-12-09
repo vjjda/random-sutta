@@ -101,7 +101,7 @@
   display: inline-block;
   
   /* Mặc định (Mobile): Đệm dày để dễ vuốt kịch kim mà không bị che */
-  min-width: 60px; 
+  min-width: 20px; 
   
   height: 1px;
   opacity: 0;
@@ -112,7 +112,7 @@
 @media (min-width: 600px) {
   #magic-bc-end {
     /* Giảm đệm xuống tối thiểu để bar ôm sát text hơn */
-    min-width: 20px; 
+    min-width: 10px; 
   }
 }
 
