@@ -128,32 +128,42 @@ export const SuttaService = {
 
         // 5. Nav
         const nav = metaEntry.nav || {};
+        const navMeta = {};
         const neighborsToFetch = [];
-        if (nav.prev) neighborsToFetch.push(nav.prev);
-        if (nav.next) neighborsToFetch.push(nav.next);
 
-        let navMeta = {};
+        const checkAndAdd = (nid) => {
+            if (!nid) return;
+            if (bookMeta.meta[nid]) {
+                navMeta[nid] = bookMeta.meta[nid];
+            } else {
+                neighborsToFetch.push(nid);
+            }
+        };
+
+        checkAndAdd(nav.prev);
+        checkAndAdd(nav.next);
+
         if (neighborsToFetch.length > 0) {
-            navMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
+            const extraMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
+            Object.assign(navMeta, extraMeta);
             
-            // [NEW] Smart Prefetch for Neighbors
+            // [NEW] Smart Prefetch for Neighbors (External)
             if (options.prefetchNav) {
                 neighborsToFetch.forEach(neighborUid => {
-                    // Optimization: Check if neighbor is in the same chunk
-                    const loc = SuttaRepository.getLocation(neighborUid);
-                    if (loc) {
-                        const [nBook, nChunk] = loc;
-                        // Nếu cùng Book và cùng Chunk với bài hiện tại -> Bỏ qua (vì đã có trong RAM)
-                        if (nBook === hintBook && nChunk === hintChunk) {
-                            return; 
-                        }
-                    }
-
-                    // Fire-and-forget load to warm up cache for NEW chunks
-                    this.loadSutta(neighborUid, { prefetchNav: false })
+                     this.loadSutta(neighborUid, { prefetchNav: false })
                         .catch(e => logger.warn("Prefetch", `Failed to prefetch ${neighborUid}`));
                 });
             }
+        }
+        
+        // Prefetch for internal neighbors (already in meta, but content might need fetching)
+        if (options.prefetchNav) {
+             [nav.prev, nav.next].forEach(nid => {
+                 if (nid && bookMeta.meta[nid]) { // Only if it was internal
+                     // Internal check optimization logic handles same-chunk skip inside loadSutta
+                     this.loadSutta(nid, { prefetchNav: false }).catch(() => {});
+                 }
+             });
         }
 
         return {
