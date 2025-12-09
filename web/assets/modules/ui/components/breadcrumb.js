@@ -7,7 +7,6 @@ export const Breadcrumb = {
     // ... (Giữ nguyên hàm _findPath) ...
     _findPath(structure, targetUid, currentPath = []) {
         if (!structure) return null;
-        
         if (typeof structure === 'string') {
             return structure === targetUid ? [...currentPath, structure] : null;
         }
@@ -21,9 +20,7 @@ export const Breadcrumb = {
         if (typeof structure === 'object' && structure !== null) {
             for (const key in structure) {
                 const newPath = [...currentPath, key];
-                // Nếu chính Key là target (trường hợp Branch/Folder), trả về luôn
                 if (key === targetUid) return newPath;
-                
                 const result = this._findPath(structure[key], targetUid, newPath);
                 if (result) return result;
             }
@@ -31,9 +28,7 @@ export const Breadcrumb = {
         return null;
     },
 
-    /**
-     * Tạo HTML cho Breadcrumb
-     */
+    // ... (Giữ nguyên hàm generateHtml) ...
     generateHtml(path, metaMap) {
         if (!path || path.length === 0) return "";
 
@@ -42,10 +37,6 @@ export const Breadcrumb = {
         path.forEach((uid, index) => {
             const isLast = index === path.length - 1;
             const meta = metaMap[uid] || {};
-            
-            // Priority: Acronym > Original Title > UID
-            // [NOTE] Loại bỏ chữ "Tipitaka" (tpk) nếu muốn gọn hơn, hoặc giữ lại tùy ý.
-            // Ở đây tôi giữ lại để người dùng biết gốc rễ.
             let label = meta.acronym || meta.original_title || uid.toUpperCase();
             
             if (index > 0) {
@@ -64,7 +55,7 @@ export const Breadcrumb = {
     },
 
     /**
-     * [UPDATED] Hỗ trợ Super Tree (Tipitaka Context)
+     * Render với logic hiển thị thông minh
      */
     render(containerId, localTree, currentUid, contextMeta, superTree = null, superMeta = null) {
         const container = document.getElementById(containerId);
@@ -74,32 +65,27 @@ export const Breadcrumb = {
         // Ví dụ: MN -> MN 1
         let fullPath = this._findPath(localTree, currentUid);
         
-        // 2. Nếu có Super Tree, tìm đường dẫn từ gốc Tipitaka đến sách hiện tại
-        if (fullPath && superTree && fullPath.length > 0) {
-            const rootBookId = fullPath[0]; // Node đầu tiên của local tree (ví dụ: 'mn')
-            
-            // Tìm 'mn' nằm ở đâu trong 'tpk'
-            // Ví dụ: ['tpk', 'sutta', 'mn']
-            const superPath = this._findPath(superTree, rootBookId);
-            
-            if (superPath) {
-                // Nối 2 đường dẫn lại
-                // Super: [tpk, sutta, mn]
-                // Local: [mn, mn1]
-                // Kết quả: [tpk, sutta, mn, mn1] (Cần loại bỏ phần tử trùng ở khớp nối)
-                
-                // Loại bỏ node cuối của superPath vì nó trùng với node đầu của fullPath
-                superPath.pop(); 
-                fullPath = [...superPath, ...fullPath];
-            }
-        }
-
-        if (!fullPath) {
+        if (!fullPath || fullPath.length === 0) {
             container.innerHTML = "";
             return;
         }
 
-        // 3. Merge Meta để hiển thị tên đúng
+        // [LOGIC CHANGE] Chỉ nối với Super Tree (Tipitaka) nếu UID hiện tại là Gốc (Root) của sách
+        // - Nếu xem 'mn' (Root) -> fullPath=['mn'] -> Nối -> Tipitaka > Sutta > MN
+        // - Nếu xem 'mn1' (Node) -> fullPath=['mn', 'mn1'] -> Không nối -> MN > MN 1
+        
+        const rootBookId = fullPath[0]; // Node gốc của cây hiện tại
+        
+        if (currentUid === rootBookId && superTree) {
+            const superPath = this._findPath(superTree, rootBookId);
+            
+            if (superPath) {
+                superPath.pop(); // Bỏ node trùng
+                fullPath = [...superPath, ...fullPath];
+            }
+        }
+
+        // 3. Merge Meta
         const finalMeta = { ...superMeta, ...contextMeta };
 
         const html = this.generateHtml(fullPath, finalMeta);
