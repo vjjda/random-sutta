@@ -1,45 +1,48 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_trigger_buttons.css */
 
-/* [CHANGED] Renamed & Restyled: The Corner Trigger / Close Button */
+/* [UPDATED] The Corner Trigger (Chevron Left) */
 #magic-nav-corner {
   display: flex;
   align-items: center;
   justify-content: center;
   
-  /* Kích thước vừa đủ để dễ bấm nhưng không chiếm chỗ */
-  width: 24px; 
-  height: 100%;
+  /* Tăng kích thước vùng bấm lên 32px cho bằng với các nút khác */
+  width: 32px; 
+  height: 32px;
   
-  /* Vị trí */
-  margin-right: 4px;
+  /* Căn chỉnh lại margin để cân đối */
+  margin-right: 2px;
   flex-shrink: 0;
+  border-radius: 50%; /* Bo tròn để hover đẹp hơn */
   
   /* Style mặc định */
-  color: var(--text-muted);
+  color: var(--text-light); /* Màu xám nhạt giống trạng thái nghỉ của các nút khác */
   cursor: pointer;
   pointer-events: auto;
-  transition: opacity 0.2s ease, color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-/* 1. Khi đóng (Collapsed): */
+/* 1. Khi đóng (Collapsed): Ẩn đi */
 #magic-nav-wrapper.collapsed #magic-nav-corner {
-  /* Ẩn hoàn toàn chữ X đi */
   display: none; 
 }
 
-/* 2. Khi mở (Expanded): Hiện chữ X mờ (Low profile) */
+/* 2. Khi mở (Expanded): Hiện mờ */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-corner {
   display: flex;
-  opacity: 0.3; /* Mờ, không gây chú ý */
+  opacity: 0.5; /* Rõ hơn một chút so với dot cũ để thấy hình dạng chevron */
 }
 
-/* Hover vào chữ X thì sáng lên để biết là bấm được */
+/* Hover: Sáng lên và nền nhẹ */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-corner:hover {
   opacity: 1;
-  color: var(--text-main); /* Hoặc --primary-color nếu muốn nổi hơn */
+  color: var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: translateX(-1px); /* Hiệu ứng đẩy nhẹ sang trái biểu thị hành động đóng */
 }
 
-/* Buttons style (Giữ nguyên phần dưới) */
+/* --- Giữ nguyên các phần dưới --- */
+
 .magic-btn {
   width: 32px;
   height: 32px;
