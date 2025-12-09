@@ -7,7 +7,7 @@
   background: transparent;
   border: none;
   color: var(--text-light);
-  padding: 0 15px 10px 15px;
+  padding: 5px 15px 5px 15px;
   opacity: 0.2;
   display: inline-flex;
   justify-content: center;
@@ -22,7 +22,7 @@
 
 .icon-trigger.open {
   transform: rotate(180deg);
-  padding: 10px 15px 0 15px;
+  padding: 5px 15px 5px 15px;
 }
 
 .icon-trigger svg {
