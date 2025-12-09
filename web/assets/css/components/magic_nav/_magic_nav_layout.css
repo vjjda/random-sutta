@@ -64,28 +64,25 @@
   display: flex;
   align-items: center;
   
-  /* Scroll ngang */
   overflow-x: auto; 
   white-space: nowrap;
   
-  /* Ẩn scrollbar */
   scrollbar-width: none;
   -ms-overflow-style: none;
   
-  /* [CRITICAL FIX FOR IPHONE] */
-  /* pan-y: Chỉ cho phép trình duyệt can thiệp vuốt dọc, nhường vuốt ngang cho element */
+  /* [QUAN TRỌNG] Chỉ cho phép trình duyệt can thiệp vuốt dọc (pan-y) */
+  /* Điều này đồng nghĩa vuốt ngang (pan-x) sẽ do element tự xử lý */
   touch-action: pan-y;
-  /* contain: Ngăn hiệu ứng "bounce" hoặc Back/Forward trang của Safari khi vuốt kịch */
-  overscroll-behavior-x: contain;
+  
+  /* Smooth touch trên iOS */
   -webkit-overflow-scrolling: touch;
   
-  /* [UPDATED] Reset padding phải, dùng Marker để đệm */
+  /* Đệm trái/phải */
   padding: 0 0 0 15px; 
   
   flex-grow: 1;
   max-width: 100%;
   
-  /* Mask mờ bên trái, bên phải để rõ hoàn toàn */
   mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
   -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
 }

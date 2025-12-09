@@ -27,13 +27,27 @@ export const UIManager = {
             });
             
             if (this.elements.bar) {
+                // [FIX 1] Nhóm Passive: Cho phép trình duyệt xử lý cuộn mượt mà không cần chờ JS
+                const passiveEvents = ['touchstart', 'touchmove', 'touchend', 'scroll'];
+                passiveEvents.forEach(evt => {
+                    this.elements.bar.addEventListener(evt, () => {
+                        // Logic reset timer đã bị bỏ ở bước trước theo yêu cầu, 
+                        // nhưng nếu sau này cần dùng lại thì phải để passive: true
+                    }, { passive: true });
+                });
+
+                // [FIX 2] Nhóm Non-Passive: Dành riêng cho Wheel để chặn cuộn dọc, ép sang cuộn ngang
                 this.elements.bar.addEventListener("wheel", (e) => {
-                    // Shift + Wheel hoặc Wheel dọc -> Scroll ngang
-                    if (e.shiftKey || e.deltaY !== 0) {
-                        // Chỉ can thiệp nếu nội dung thực sự bị tràn
+                    // Ưu tiên 1: Shift + Lăn chuột (Chuẩn UX)
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        this.elements.bar.scrollLeft += e.deltaY;
+                    } 
+                    // Ưu tiên 2: Lăn chuột dọc thông thường (Tiện lợi)
+                    // Chỉ chặn nếu thanh bar thực sự có thể cuộn được
+                    else if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                         if (this.elements.bar.scrollWidth > this.elements.bar.clientWidth) {
                             e.preventDefault();
-                            // Ưu tiên deltaY (lăn chuột dọc) để cuộn ngang cho tiện tay
                             this.elements.bar.scrollLeft += e.deltaY;
                         }
                     }
@@ -138,16 +152,11 @@ export const UIManager = {
         }, 0); 
     },
 
-    // [UPDATED] Scroll bằng Marker
     _scrollBreadcrumbToEnd() {
-        // Tìm marker cuối cùng
         const endMarker = document.getElementById("magic-bc-end");
         if (endMarker) {
-            // instant: nhảy ngay lập tức
-            // inline: "end" -> căn phần tử về mép phải của container
             endMarker.scrollIntoView({ behavior: "instant", inline: "end" });
         } else {
-            // Fallback nếu chưa render xong
             setTimeout(() => {
                 const bar = this.elements.bar;
                 if (bar) bar.scrollLeft = bar.scrollWidth;
