@@ -9,12 +9,12 @@
     gap: 8px;
 }
 
-/* Wrapper riêng cho cụm Breadcrumb để xử lý animation */
+/* Wrapper mới cho cụm Breadcrumb */
 #magic-breadcrumb-wrapper {
     display: flex;
     align-items: center;
-    position: relative;
-    height: 32px;
+    /* position: relative;
+    height: 32px; */
 }
 
 #magic-backdrop { 

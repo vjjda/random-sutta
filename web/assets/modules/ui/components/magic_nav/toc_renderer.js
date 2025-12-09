@@ -3,9 +3,10 @@ export const TocRenderer = {
     render(node, currentUid, metaMap, level = 0) {
         let html = ``;
         
+        // 1. Helper: Render Leaf/Subleaf Item
         const createItem = (id) => {
             const meta = metaMap[id] || {};
-            // [FIX] Ưu tiên meta.type. Nếu là leaf thì luôn render kiểu leaf (bất kể level)
+            // Ưu tiên type từ meta, nếu không có thì đoán qua level
             const type = meta.type || (level === 0 ? 'leaf' : 'subleaf');
             
             const acronym = meta.acronym || id.toUpperCase();
@@ -14,19 +15,20 @@ export const TocRenderer = {
             const isActive = id === currentUid ? "active" : "";
             const action = isActive ? "" : `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"`;
             
-            // Padding vẫn tăng theo level để thụt lề đúng cấu trúc cây
+            // Tính toán thụt lề
             const paddingLeft = 15 + (level * 16); 
             
             let contentHtml = "";
 
+            // [LEAF STYLE] Luôn hiện đầy đủ: Acronym + Title
             if (type === 'leaf') {
-                // [LEAF STYLE] Luôn hiện đầy đủ: Acronym + Title
                 contentHtml = `
                     <div class="toc-row-main">${acronym}</div>
                     ${title ? `<div class="toc-row-sub">${title}</div>` : ''}
                 `;
             } else {
                 // [SUBLEAF STYLE] Chỉ hiện Acronym hoặc Title ngắn gọn
+                // Nếu subleaf ko có acronym (hiếm), dùng id
                 contentHtml = `<span class="toc-subleaf-label" title="${title}">${acronym}</span>`;
             }
 
@@ -35,13 +37,12 @@ export const TocRenderer = {
                     </div>`;
         };
 
+        // 2. Helper: Render Branch Header (Chỉ dùng cho Group/Branch thật sự)
         const createBranchHeader = (id, childrenHtml, currentLevel) => {
             const meta = metaMap[id] || {};
-            const label = meta.translated_title || meta.acronym || id.toUpperCase();
+            const label = meta.translated_title || meta.original_title || meta.acronym || id.toUpperCase();
             
-            // Header thụt lề ít hơn con 1 chút
             const paddingLeft = 15 + (currentLevel * 10);
-            
             const isActive = id === currentUid ? "active" : "";
             const isClickable = !!metaMap[id];
             const action = (isClickable && !isActive) ? `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"` : "";
@@ -55,14 +56,33 @@ export const TocRenderer = {
                     </div>`;
         };
 
+        // --- Recursive Logic ---
+        
         if (typeof node === 'string') {
             return createItem(node);
-        } else if (Array.isArray(node)) {
+        } 
+        else if (Array.isArray(node)) {
             node.forEach(child => html += this.render(child, currentUid, metaMap, level));
-        } else if (typeof node === 'object' && node !== null) {
+        } 
+        else if (typeof node === 'object' && node !== null) {
             for (const key in node) {
+                // Lấy meta của Key để kiểm tra Type
+                const keyMeta = metaMap[key] || {};
+                
+                // Đệ quy lấy nội dung con trước (luôn tăng level)
                 const childrenHtml = this.render(node[key], currentUid, metaMap, level + 1);
-                html += createBranchHeader(key, childrenHtml, level);
+                
+                // [FIX CRITICAL] Phân loại dựa trên Type
+                if (keyMeta.type === 'leaf') {
+                    // Trường hợp đặc biệt (như AN 2.1-10): Key là một Leaf chứa các Subleaf con
+                    // -> Render Key như một Item (đậm), sau đó nối tiếp Children ở dưới
+                    html += createItem(key);
+                    html += childrenHtml; 
+                } else {
+                    // Trường hợp thường (Vagga/Nipata): Key là Branch
+                    // -> Render Key như Header (nhạt), bọc Children bên trong
+                    html += createBranchHeader(key, childrenHtml, level);
+                }
             }
         }
         return html;

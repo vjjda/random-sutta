@@ -1,7 +1,8 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_breadcrumb_bar.css */
 
 #magic-breadcrumb-bar {
-    /* [CHANGED] Không dùng absolute nữa */
+    /* [CHANGED] Bỏ absolute, dùng static flex item */
+    position: static; 
     height: 32px;
     
     background-color: var(--bg-card);
@@ -13,32 +14,27 @@
     white-space: nowrap;
     overflow: hidden;
     
-    /* Animation State: Đóng */
+    /* Animation State: Đóng (Width 0) */
     width: 0;
     opacity: 0;
-    padding: 0; /* Không padding khi đóng */
-    margin-left: 0; 
+    padding: 0; 
+    border-width: 0; /* Ẩn border khi đóng để không bị vệt đen */
+    margin-left: 0;
     
-    /* Animate cả width, padding và opacity */
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    
-    /* Nằm bên phải nút bấm */
-    z-index: 1100;
 }
 
 #magic-breadcrumb-bar.expanded {
     /* Animation State: Mở */
     width: auto;
-    min-width: 100px;
-    opacity: 1;
+    min-width: 50px; /* Đủ chỗ cho text ngắn nhất */
     
-    /* Padding thật sự để chứa text */
     padding-left: 15px; 
     padding-right: 15px;
+    margin-left: 5px; /* Cách nút Chevron một chút */
     
-    /* Tạo khoảng cách với nút Chevron */
-    margin-left: 8px; 
-    
+    opacity: 1;
+    border-width: 1px;
     box-shadow: var(--shadow-soft);
 }
 
@@ -48,9 +44,6 @@
     display: flex; font-size: 0.85rem; color: var(--text-light);
 }
 #magic-breadcrumb-bar .bc-sep { margin: 0 6px; color: #ddd; font-size: 0.8em; }
-#magic-breadcrumb-bar .bc-link { 
-    background: none; border: none; color: var(--text-muted); 
-    cursor: pointer; padding: 0; font-weight: 400;
-}
+#magic-breadcrumb-bar .bc-link { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; font-weight: 400; }
 #magic-breadcrumb-bar .bc-link:hover { color: var(--primary-color); text-decoration: underline; }
 #magic-breadcrumb-bar .bc-item.active { font-weight: 600; color: var(--text-main); }
