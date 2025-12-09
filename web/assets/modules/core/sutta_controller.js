@@ -15,21 +15,9 @@ export const SuttaController = {
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
     
-    // [FIX 1] Lưu vị trí cuộn hiện tại trước khi chuyển trang
-    // Điều này đảm bảo khi nhấn Back, trình duyệt nhớ được chỗ cũ
-    if (shouldUpdateUrl) {
-        try {
-            const currentScroll = window.scrollY || document.documentElement.scrollTop;
-            const currentState = window.history.state || {};
-            window.history.replaceState(
-                { ...currentState, scrollY: currentScroll },
-                document.title,
-                window.location.href
-            );
-        } catch (e) {
-            // Ignore history errors
-        }
-    }
+    // [FIX 1] CHỤP ẢNH VỊ TRÍ CUỘN (Capture Scroll Position)
+    // Phải lấy ngay lúc này, trước khi render làm thay đổi layout
+    const preRenderScrollY = window.scrollY || document.documentElement.scrollTop;
 
     hideComment();
 
@@ -47,8 +35,6 @@ export const SuttaController = {
         }
     }
 
-    // [FIX 2] Chuẩn hóa scrollTarget để khớp với DOM ID (Bilara format: uid:segment)
-    // Nếu target chỉ là số (ví dụ "36.4") mà không có prefix, thêm prefix vào
     if (scrollTarget && !scrollTarget.includes(':') && !scrollTarget.startsWith(suttaId)) {
         scrollTarget = `${suttaId}:${scrollTarget}`;
     }
@@ -77,7 +63,8 @@ export const SuttaController = {
         
         if (success && shouldUpdateUrl) {
              const bookParam = generateBookParam();
-             Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, 0);
+             // [FIX 2] Truyền preRenderScrollY vào Router thay vì để Router tự lấy window.scrollY (lúc này đã là 0)
+             Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, preRenderScrollY);
         }
         return success;
     };
@@ -87,15 +74,12 @@ export const SuttaController = {
     } else {
         await performRender();
         
-        // [FIX 3] Logic cuộn ưu tiên: Target -> Saved Position -> Top
         if (scrollTarget) {
-            // Dùng timeout nhẹ để đảm bảo DOM đã render xong hoàn toàn (đôi khi requestAnimationFrame là chưa đủ với content lớn)
             setTimeout(() => Scroller.scrollToId(scrollTarget), 0);
         } else if (scrollY > 0) {
             // Khôi phục vị trí cũ (khi Back)
             window.scrollTo({ top: scrollY, behavior: 'instant' });
         } else {
-            // Mặc định lên đầu
             window.scrollTo({ top: 0, behavior: 'instant' });
         }
     }
