@@ -56,6 +56,12 @@ def create_db_bundle(build_dir: Path) -> bool:
                 for file in meta_dir.glob("*.json"):
                     zf.write(file, arcname=f"meta/{file.name}")
             
+            # Add index files (Split Index)
+            index_dir = db_dir / "index"
+            if index_dir.exists():
+                for file in index_dir.glob("*.json"):
+                    zf.write(file, arcname=f"index/{file.name}")
+
             # Add content files
             content_dir = db_dir / "content"
             if content_dir.exists():
