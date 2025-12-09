@@ -30,24 +30,30 @@ export function setupTableOfHeadings() {
     });
 
     /**
-     * Trích xuất số đoạn từ Segment ID
-     * Logic: Lấy phần số nằm giữa dấu hai chấm (:) và dấu chấm (.) đầu tiên.
+     * Trích xuất số đoạn từ Segment ID.
+     * Hỗ trợ cả số đơn (3) và phạm vi (9-15).
      * Ví dụ: "mn10:3.1" -> "3"
-     * Ví dụ: "dn1:1.1" -> "1"
+     * Ví dụ: "mn3:9-15.1" -> "9-15"
      */
     function extractParagraphNumber(segmentId) {
         if (!segmentId) return "";
         try {
             // Lấy phần sau dấu hai chấm (nếu có)
             const parts = segmentId.split(':');
-            if (parts.length < 2) return ""; // Không đúng định dạng chuẩn
+            if (parts.length < 2) return ""; 
             
             const suffix = parts[1];
-            // Lấy phần trước dấu chấm đầu tiên (hoặc toàn bộ nếu không có chấm)
-            const number = suffix.split('.')[0];
+            // Lấy phần trước dấu chấm đầu tiên
+            const numberOrRange = suffix.split('.')[0];
             
-            // Chỉ trả về nếu là số hợp lệ
-            return number && !isNaN(number) ? number : "";
+            // Regex: Chấp nhận số (3) hoặc phạm vi số (9-15)
+            // ^\d+ : Bắt đầu bằng số
+            // (-\d+)? : Có thể theo sau là dấu gạch ngang và số khác (không bắt buộc)
+            // $ : Kết thúc chuỗi
+            if (/^\d+(-\d+)?$/.test(numberOrRange)) {
+                return numberOrRange;
+            }
+            return "";
         } catch (e) {
             return "";
         }
@@ -108,11 +114,9 @@ export function setupTableOfHeadings() {
 
         segments.forEach(seg => {
             const id = seg.id;
-            // Sử dụng let để có thể chỉnh sửa nếu gặp trường hợp Evam
             let paraNum = extractParagraphNumber(id);
             
-            // [CHECK EVAM] Kiểm tra class 'evam'. 
-            // Nếu tìm thấy (bên trong segment hoặc là cha của segment), xoá số thứ tự.
+            // [CHECK EVAM] Nếu là đoạn 'Evam' (Thus have I heard), bỏ số thứ tự
             if (seg.querySelector('.evam') || seg.closest('.evam')) {
                 paraNum = "";
             }
@@ -144,36 +148,30 @@ export function setupTableOfHeadings() {
         fab.classList.remove("active");
 
         // 1. Chiến lược A: Tìm Heading cấu trúc (h2 trở lên)
-        // h1 thường là tên bài kinh nên không đưa vào mục lục con
         const structuralHeadings = container.querySelectorAll("h2, h3, h4, h5");
 
         if (structuralHeadings.length >= 2) {
-            // Nếu có đủ heading cấu trúc -> Render Mục lục chuẩn
             renderHeadings(structuralHeadings);
             wrapper.classList.remove("hidden");
         } else {
             // 2. Chiến lược B: Paragraph Scan (Fallback)
-            // Tìm tất cả thẻ <p> chứa ít nhất một .segment
             const paragraphs = container.querySelectorAll("p");
             const validSegments = [];
 
             paragraphs.forEach(p => {
-                // Lấy segment đầu tiên trong paragraph để làm đại diện
+                // Lấy segment đầu tiên trong paragraph
                 const firstSeg = p.querySelector(".segment");
                 if (firstSeg && firstSeg.id) {
-                    // Kiểm tra xem có text thực sự không (tránh segment rỗng)
                     if (firstSeg.textContent.trim().length > 0) {
                         validSegments.push(firstSeg);
                     }
                 }
             });
 
-            // Chỉ hiển thị TOH nếu có số lượng đoạn văn đáng kể (ví dụ > 2)
             if (validSegments.length > 2) {
                 renderParagraphs(validSegments);
                 wrapper.classList.remove("hidden");
             } else {
-                // Ẩn nút nếu không có gì để hiển thị
                 wrapper.classList.add("hidden");
             }
         }
