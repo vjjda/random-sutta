@@ -9,10 +9,12 @@
   
   position: static;
   flex-shrink: 0;
-  margin: 0; /* Bỏ margin để control bằng flex gap */
+  
+  /* [UPDATED] Tăng lề để tổng chiều rộng vùng chứa ~30px, cân bằng với các nút khác */
+  margin: 0 12px; 
   
   transition: none;
-  pointer-events: none; /* Wrapper xử lý click */
+  pointer-events: none;
 }
 
 /* 1. Khi đóng: Dot mờ gần như không thấy (hoặc ẩn luôn nếu muốn hoàn toàn invisible) */
