@@ -2,128 +2,140 @@
 
 /* --- 1. DRAWER CONTAINER --- */
 #magic-toc-drawer {
-    position: fixed;
-    top: 55px; left: 15px; width: 320px; max-height: 70vh;
-    background-color: var(--bg-card);
-    border-radius: 8px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    overflow-y: auto;
-    z-index: 1101;
+    position: fixed; top: 55px; left: 15px; width: 320px; max-height: 70vh;
+    background-color: var(--bg-card); border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1); overflow-y: auto; z-index: 1101;
     opacity: 0; transform: translateY(-10px); pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
     scrollbar-width: thin;
 }
 #magic-toc-drawer.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
 #magic-toc-content { padding: 8px 0; }
-
-/* Scrollbar */
 #magic-toc-drawer::-webkit-scrollbar { width: 6px; }
 #magic-toc-drawer::-webkit-scrollbar-track { background: transparent; }
 #magic-toc-drawer::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
 
-
-/* --- 2. NODE WRAPPER (COLLAPSIBLE) --- */
+/* --- 2. NODE WRAPPER & HEADER --- */
 .toc-node-wrapper { display: block; }
 
 .toc-header-row {
     display: flex;
-    align-items: stretch; /* Để header và icon cao bằng nhau */
+    align-items: stretch;
     padding-right: 5px;
     border-bottom: 1px solid rgba(0,0,0,0.03);
     background-color: transparent;
+    /* [IMPORTANT] Để định vị thanh active bar tuyệt đối theo row này */
+    position: relative; 
 }
 .toc-header-row:hover { background-color: rgba(0,0,0,0.03); }
 
-/* Toggle Icon */
-.toc-toggle-icon {
-    width: 32px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--text-light);
-    transition: transform 0.3s ease, color 0.2s;
-    flex-shrink: 0;
+/* Active State cho Row (Branch) */
+.toc-header-row.active {
+    background-color: var(--highlight-color-background);
 }
-.toc-toggle-icon:hover { color: var(--primary-color); }
-.toc-node-wrapper.collapsed .toc-toggle-icon svg { transform: rotate(-90deg); } /* Đóng: Quay trái */
-/* Mặc định mở: Mũi tên trỏ xuống (không rotate) */
+/* Thanh Active Bar: Luôn dính lề trái (left: 0) bất kể padding của con */
+.toc-header-row.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--primary-color);
+    z-index: 1;
+}
 
-
-/* --- 3. HEADER TYPES (Inside Row) --- */
+/* Header Text */
 .toc-header {
     flex: 1;
-    padding-top: 8px; padding-bottom: 8px; padding-right: 10px;
-    cursor: default;
-}
-.toc-header.clickable { cursor: pointer; }
-
-/* A. BRANCH HEADER (Vagga/Chapter) - Style cũ */
-.toc-header.type-branch .toc-branch-label {
+    /* Padding sẽ được JS inject inline vào đây để thụt lề text */
+    padding-top: 10px; padding-bottom: 5px; padding-right: 10px;
     font-size: 0.75rem; font-weight: 700; color: var(--text-light);
     text-transform: uppercase; letter-spacing: 0.5px;
     line-height: 1.3;
+    cursor: default;
+}
+.toc-header.clickable { cursor: pointer; }
+.toc-header.clickable:hover { color: var(--primary-color); }
+
+/* Khi active, text đậm màu hơn */
+.toc-header-row.active .toc-header {
+    color: var(--text-main);
 }
 
-/* B. LEAF HEADER (Leaf Container - AN 2.1-10) - Style mới giống Item */
-.toc-header.type-leaf {
-    padding-top: 8px; padding-bottom: 8px; /* Khớp với toc-item.leaf */
+/* Toggle Icon */
+.toc-toggle-icon {
+    width: 32px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-light); flex-shrink: 0;
+    transition: transform 0.3s ease;
 }
-/* Active State cho Header */
-.toc-header.active {
-    background-color: var(--highlight-color-background);
-    /* Border left cho Header nằm ở chính nó */
-    border-left: 3px solid var(--primary-color);
-    padding-left: calc(var(--padding-left) - 3px); /* Bù trừ border */
-}
+.toc-toggle-icon:hover { color: var(--primary-color); }
+.toc-node-wrapper.collapsed .toc-toggle-icon svg { transform: rotate(-90deg); }
 
 
-/* --- 4. ITEM TYPES (Leaf/Subleaf) --- */
+/* --- 3. LEAF ITEMS --- */
 .toc-item {
+    /* Padding-left inline bởi JS */
     padding-top: 8px; padding-bottom: 8px; padding-right: 10px;
     border-bottom: 1px solid rgba(0,0,0,0.03);
     cursor: pointer; transition: background 0.1s;
-    position: relative;
+    /* [IMPORTANT] Relative để neo thanh active bar */
+    position: relative; 
 }
 .toc-item:hover { background-color: rgba(0,0,0,0.03); }
 
-.toc-item.active { background-color: var(--highlight-color-background); }
-/* Border left cho Item dùng ::before để sát mép container */
+/* Active State cho Leaf */
+.toc-item.active {
+    background-color: var(--highlight-color-background);
+}
+/* Thanh Active Bar: Dính lề trái */
 .toc-item.active::before {
-    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    content: "";
+    position: absolute;
+    left: 0; /* KHÓA CỨNG Ở TRÁI */
+    top: 0;
+    bottom: 0;
+    width: 4px;
     background-color: var(--primary-color);
 }
 
-
-/* --- 5. TEXT CONTENT STYLING (Shared) --- */
-
-/* [LEAF STYLE] Acronym Đậm + Title Nhạt (Dùng cho cả Item Leaf và Header Leaf) */
-.toc-row-main {
+/* Layout Leaf (2 dòng) */
+.toc-item.leaf {
+    display: flex; flex-direction: column; gap: 2px;
+}
+.toc-row-main { 
     font-size: 0.95rem; 
-    font-weight: 600; /* [REQ] Đậm rõ ràng */
+    font-weight: 700; /* [FIX] Đậm hơn nữa cho rõ acronym */
     color: var(--text-main); 
     line-height: 1.2;
 }
-.toc-row-sub {
-    font-size: 0.8rem; 
-    color: var(--text-muted); 
-    line-height: 1.2;
-    margin-top: 2px;
-    font-style: normal;
-    /* Cắt bớt nếu quá dài */
+/* Khi active, acronym chuyển màu cam cho nổi */
+.toc-item.active .toc-row-main {
+    color: var(--primary-color);
+}
+
+.toc-row-sub { 
+    font-size: 0.8rem; color: var(--text-muted); line-height: 1.2;
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* [SUBLEAF STYLE] Low Profile */
-.toc-subleaf-label {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    font-weight: 400;
+/* Layout Subleaf (1 dòng) */
+.toc-item.subleaf {
+    padding-top: 4px; padding-bottom: 4px;
+    border-bottom: none;
 }
-/* Subleaf Active: Đậm hơn, màu cam */
+.toc-item.subleaf .toc-subleaf-label {
+    font-size: 0.85rem; color: var(--text-light);
+}
 .toc-item.subleaf.active .toc-subleaf-label {
     color: var(--primary-color);
     font-weight: 600;
 }
+/* Subleaf active bar: Mỏng hơn, nhẹ hơn */
+.toc-item.subleaf.active::before {
+    width: 3px; opacity: 0.6;
+}
 
-
-/* --- 6. CHILDREN CONTAINER --- */
+/* Children Container */
 .toc-children { display: block; }
 .toc-node-wrapper.collapsed > .toc-children { display: none; }
