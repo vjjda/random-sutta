@@ -121,7 +121,8 @@ export const SuttaRepository = {
         logger.info("Sync", "Starting full download via Zip Bundle...");
         const JSZip = await this._loadJsZip();
         
-        const res = await fetch('assets/db/db_bundle.zip');
+        // [FIX] Add timestamp to bypass old cached zip
+        const res = await fetch(`assets/db/db_bundle.zip?v=${Date.now()}`);
         if (!res.ok) throw new Error("Bundle not found");
         
         const blob = await res.blob();
@@ -130,19 +131,52 @@ export const SuttaRepository = {
         let count = 0;
         const total = files.length;
 
+        // [FIX] Prepare Cache access for index files
+        let cache = null;
+        try {
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                const suttaCaches = keys.filter(k => k.startsWith("sutta-cache-"));
+                suttaCaches.sort().reverse(); // Newest first
+                const cacheName = suttaCaches[0] || "sutta-cache-temp";
+                cache = await caches.open(cacheName);
+                logger.info("Sync", `Writing index files to cache: ${cacheName}`);
+            }
+        } catch (e) {
+            logger.warn("Sync", "Could not open Cache Storage", e);
+        }
+
         for (const filename of files) {
             if (zip.files[filename].dir) continue;
+            
+            // Read content
             const contentStr = await zip.files[filename].async("string");
-            const data = JSON.parse(contentStr);
             
             if (filename.startsWith("meta/")) {
+                const data = JSON.parse(contentStr);
                 const bookId = filename.split("/")[1].replace(".json", "");
                 await DbAdapter.set("meta", bookId, data);
             } 
             else if (filename.startsWith("content/")) {
+                const data = JSON.parse(contentStr);
                 const key = filename.split("/")[1].replace(".json", "");
                 await DbAdapter.set("content", key, data);
             }
+            else if (filename.startsWith("index/") && cache) {
+                // [FIX] Save index files to Cache Storage so fetch() works
+                const targetUrl = new URL(`assets/db/${filename}`, window.location.href).href;
+                const headers = new Headers({
+                    'Content-Type': 'application/json',
+                    'Content-Length': contentStr.length.toString()
+                });
+                const response = new Response(contentStr, {
+                    status: 200,
+                    statusText: "OK",
+                    headers: headers
+                });
+                await cache.put(targetUrl, response);
+            }
+
             count++;
             if (progressCallback && count % 20 === 0) progressCallback(count, total);
         }
