@@ -14,7 +14,6 @@ export const TocRenderer = {
 
     render(node, currentUid, metaMap, level = 0) {
         let html = ``;
-        
         const getToggleIcon = () => `
             <span class="toc-toggle-icon" onclick="event.stopPropagation(); MagicNav.toggleNode(this)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -24,7 +23,6 @@ export const TocRenderer = {
             const meta = metaMap[id] || {};
             const acronym = meta.acronym || id.toUpperCase();
             const title = meta.translated_title || meta.original_title || "";
-
             if (type === 'leaf') {
                 return `
                     <div class="toc-text-container">
@@ -41,16 +39,18 @@ export const TocRenderer = {
             }
         };
 
+        // [UPDATED] Hàm loadSutta snappy (transition: false)
+        const getLoadAction = (id) => `onclick="window.loadSutta('${id}', true, 0, { transition: false }); MagicNav.toggleTOC()"`;
+
         // 1. Leaf Item
         const createItem = (id) => {
             const meta = metaMap[id] || {};
             const type = meta.type || (level === 0 ? 'leaf' : 'subleaf');
             const isActive = id === currentUid ? "active" : "";
-            const action = isActive ? "" : `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"`;
+            // Sử dụng action mới
+            const action = isActive ? "" : getLoadAction(id);
             
-            // Padding áp dụng trực tiếp cho Item vì Item tự là container
-            const paddingLeft = 15 + (level * 16); 
-            
+            const paddingLeft = 15 + (level * 16);
             return `<div class="toc-item ${type} ${isActive}" ${action} style="padding-left: ${paddingLeft}px">
                         ${generateInnerContent(id, type)}
                     </div>`;
@@ -61,20 +61,18 @@ export const TocRenderer = {
             const meta = metaMap[id] || {};
             const type = meta.type || 'branch'; 
             
-            // [CHANGED] Padding này sẽ áp dụng cho TEXT bên trong, không phải Row
             const paddingLeft = 15 + (currentLevel * 10);
-            
             const isActive = id === currentUid;
             const isClickable = !!metaMap[id];
             
             let headerAction = "";
             if (isClickable && !isActive) {
-                headerAction = `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"`;
+                // Sử dụng action mới
+                headerAction = getLoadAction(id);
             } else if (!isClickable) {
-                headerAction = `onclick="MagicNav.toggleNode(this)"`; 
+                headerAction = `onclick="MagicNav.toggleNode(this)"`;
             }
 
-            // Collapse Logic
             let isCollapsed = false;
             const hasActiveChild = this._containsActiveUid(rawChildNode, currentUid);
             if (type === 'leaf') {
@@ -82,8 +80,6 @@ export const TocRenderer = {
             }
             
             const collapsedClass = isCollapsed ? "collapsed" : "";
-            
-            // [CHANGED] Class active nằm ở Row
             const rowActiveClass = isActive ? "active" : "";
             const headerClasses = `toc-header type-${type} ${isClickable ? 'clickable' : ''}`;
 

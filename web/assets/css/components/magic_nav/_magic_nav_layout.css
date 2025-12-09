@@ -66,11 +66,17 @@
   align-items: center;
   overflow-x: auto; 
   white-space: nowrap;
-  scrollbar-width: none;
+  
+  /* Ẩn thanh cuộn */
+  scrollbar-width: none; 
   -ms-overflow-style: none;
   
-  /* [UPDATED] Padding phải lớn để text cuối cùng không bị che khuất */
-  padding: 0 25px 0 10px; 
+  /* [UPDATED] Mask chỉ làm mờ bên trái, bên phải hiển thị full */
+  mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
+  
+  /* [UPDATED] Padding phải đủ rộng để chữ không dính sát mép màn hình */
+  padding: 0 20px 0 15px; 
   max-width: 100%;
 }
 
@@ -78,13 +84,20 @@
   display: none;
 }
 
+/* [UPDATED] Backdrop vô hình (như TOH) */
 #magic-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(1px);
+  /* Loại bỏ màu nền và blur */
+  background: transparent; 
+  backdrop-filter: none;
   z-index: 1099;
 }
 #magic-backdrop.hidden {
   display: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
