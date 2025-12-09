@@ -13,7 +13,11 @@ from .logic import (
     zip_packager,
     git_automator,
     github_publisher,
-    web_deployer
+    web_deployer,
+    version_injector,
+    html_patcher,
+    sw_patcher,
+    offline_converter
 )
 
 logger = logging.getLogger("Release.Orchestrator")
@@ -52,26 +56,29 @@ def run_release_process(
              raise Exception("Failed to prepare Online Build.")
         
         # 1. Inject SW Version
-        if not web_content_modifier.inject_version_into_sw(BUILD_ONLINE_DIR, version_tag):
+        if not version_injector.inject_version_into_sw(BUILD_ONLINE_DIR, version_tag):
              raise Exception("Failed to inject version into SW (Online).")
 
         # [NEW] 2. Inject App Version (vào app.js và offline_manager.js)
         # Quan trọng để OfflineManager biết phiên bản hiện tại
-        web_content_modifier.inject_version_into_app_js(BUILD_ONLINE_DIR, version_tag)
-        web_content_modifier.inject_version_into_offline_manager(BUILD_ONLINE_DIR, version_tag)
+        version_injector.inject_version_into_app_js(BUILD_ONLINE_DIR, version_tag)
+        version_injector.inject_version_into_offline_manager(BUILD_ONLINE_DIR, version_tag)
 
         # 3. Bundle CSS
         if not css_bundler.bundle_css(BUILD_ONLINE_DIR):
             raise Exception("Online CSS Bundling failed.")
 
         # [NEW] 4. Patch SW Assets (Replace style.css -> style.bundle.css)
-        web_content_modifier.patch_sw_style_bundle(BUILD_ONLINE_DIR)
+        sw_patcher.patch_sw_style_bundle(BUILD_ONLINE_DIR)
 
         # 5. Patch HTML
-        if not web_content_modifier.patch_online_html(BUILD_ONLINE_DIR, version_tag):
+        if not html_patcher.patch_online_html(BUILD_ONLINE_DIR, version_tag):
              raise Exception("Online HTML patching failed.")
 
-        # [NEW] 6. Create DB Bundle Zip (for Offline Download feature)
+        # [NEW] 6. Cleanup Redundant Index
+        web_content_modifier.remove_monolithic_index(BUILD_ONLINE_DIR)
+
+        # [NEW] 7. Create DB Bundle Zip (for Offline Download feature)
         if not zip_packager.create_db_bundle(BUILD_ONLINE_DIR):
              logger.warning("⚠️ Failed to create DB bundle zip (Offline download may fail).")
 
@@ -87,18 +94,18 @@ def run_release_process(
             raise Exception("Failed to prepare Offline Build.")
 
         # 1. Inject SW Version
-        if not web_content_modifier.inject_version_into_sw(BUILD_OFFLINE_DIR, version_tag):
+        if not version_injector.inject_version_into_sw(BUILD_OFFLINE_DIR, version_tag):
              raise Exception("Failed to inject version into SW (Offline).")
 
         # 2. Inject App Version
-        web_content_modifier.inject_version_into_app_js(BUILD_OFFLINE_DIR, version_tag)
-        web_content_modifier.inject_version_into_offline_manager(BUILD_OFFLINE_DIR, version_tag)
+        version_injector.inject_version_into_app_js(BUILD_OFFLINE_DIR, version_tag)
+        version_injector.inject_version_into_offline_manager(BUILD_OFFLINE_DIR, version_tag)
 
         # 3. Bundle JS
         if not js_bundler.bundle_javascript(BUILD_OFFLINE_DIR):
              raise Exception("JS Bundling failed.")
             
-        if not web_content_modifier.patch_sw_assets_for_offline(BUILD_OFFLINE_DIR):
+        if not sw_patcher.patch_sw_assets_for_offline(BUILD_OFFLINE_DIR):
              logger.warning("⚠️ Could not patch SW asset list")
 
         # 4. Bundle CSS
@@ -106,20 +113,20 @@ def run_release_process(
             raise Exception("Offline CSS Bundling failed.")
 
         # 5. Patch SW Style
-        web_content_modifier.patch_sw_style_bundle(BUILD_OFFLINE_DIR)
+        sw_patcher.patch_sw_style_bundle(BUILD_OFFLINE_DIR)
 
         # 6. Patch HTML
-        if not web_content_modifier.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
+        if not html_patcher.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
             raise Exception("HTML patching failed.")
 
         # 7. Offline Data Injection
-        if not web_content_modifier.create_offline_index_js(BUILD_OFFLINE_DIR):
+        if not offline_converter.create_offline_index_js(BUILD_OFFLINE_DIR):
              logger.warning("⚠️ Failed to create offline index JS")
         
-        if not web_content_modifier.convert_db_json_to_js(BUILD_OFFLINE_DIR):
+        if not offline_converter.convert_db_json_to_js(BUILD_OFFLINE_DIR):
              logger.warning("⚠️ Failed to convert DB JSON to JS")
 
-        if not web_content_modifier.inject_offline_index_script(BUILD_OFFLINE_DIR):
+        if not html_patcher.inject_offline_index_script(BUILD_OFFLINE_DIR):
              logger.warning("⚠️ Failed to inject offline index script")
 
         # [NEW] 8. Remove redundant Zip
