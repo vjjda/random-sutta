@@ -8,13 +8,19 @@ export const ContentScanner = {
      * @returns {Object} { mode: 'headings'|'paragraphs'|'none', items: Array }
      */
     scan(container) {
+        // [UPDATED] Đếm số lượng article để quyết định có dùng Article ID làm prefix không
+        const articles = container.querySelectorAll('article');
+        const useArticlePrefix = articles.length > 1;
+
         // 1. Chiến lược A: Tìm Heading cấu trúc (h2 trở lên)
         const headings = container.querySelectorAll("h2, h3, h4, h5");
         
         if (headings.length >= 2) {
             return {
                 mode: 'headings',
-                items: Array.from(headings).map((h, index) => this._parseHeading(h, index))
+                items: Array.from(headings).map((h, index) => 
+                    this._parseHeading(h, index, useArticlePrefix)
+                )
             };
         }
 
@@ -39,7 +45,7 @@ export const ContentScanner = {
         return { mode: 'none', items: [] };
     },
 
-    _parseHeading(heading, index) {
+    _parseHeading(heading, index, useArticlePrefix) {
         // Tự động gán ID nếu thiếu để chức năng cuộn hoạt động
         if (!heading.id) {
             heading.id = `toh-heading-${index}`;
@@ -47,11 +53,12 @@ export const ContentScanner = {
 
         let prefix = null;
 
-        // [UPDATED] Kiểm tra thẻ cha trực tiếp.
-        // Nếu heading nằm ngay dưới <article id="..."> (ví dụ: Dhp), lấy ID đó làm số thứ tự.
-        const parent = heading.parentElement;
-        if (parent && parent.tagName === 'ARTICLE' && parent.id) {
-            prefix = parent.id;
+        // [UPDATED] Chỉ lấy Article ID làm prefix nếu có nhiều article (dạng Range Sutta)
+        if (useArticlePrefix) {
+            const parent = heading.parentElement;
+            if (parent && parent.tagName === 'ARTICLE' && parent.id) {
+                prefix = parent.id;
+            }
         }
 
         return {
