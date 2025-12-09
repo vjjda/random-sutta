@@ -1,0 +1,53 @@
+/* Path: web/assets/css/components/_breadcrumb.css */
+.breadcrumb {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+    padding: 0 5px;
+    overflow-x: auto; /* Cho phép cuộn ngang trên mobile nếu dài */
+    white-space: nowrap;
+}
+
+.breadcrumb ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumb li {
+    display: inline-flex;
+    align-items: center;
+}
+
+.bc-link {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: inherit;
+    font-weight: 500;
+    transition: background 0.2s;
+    text-decoration: none;
+}
+
+.bc-link:hover {
+    background-color: rgba(139, 69, 19, 0.1);
+    text-decoration: underline;
+}
+
+.bc-separator {
+    margin: 0 6px;
+    color: #ccc;
+    font-size: 0.8em;
+}
+
+.bc-item.active {
+    color: var(--text-main);
+    font-weight: 600;
+    padding: 2px 4px;
+    pointer-events: none;
+}
