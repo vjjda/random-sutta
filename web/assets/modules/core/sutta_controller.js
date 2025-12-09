@@ -1,6 +1,6 @@
 // Path: web/assets/modules/core/sutta_controller.js
 import { SuttaService } from '../services/sutta_service.js';
-import { RandomBuffer } from '../services/random_buffer.js'; // [NEW]
+import { RandomBuffer } from '../services/random_buffer.js';
 import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
 import { getActiveFilters, generateBookParam } from '../ui/components/filters.js';
@@ -17,21 +17,33 @@ export const SuttaController = {
     const isTransition = options.transition === true;
     hideComment();
 
-    // Parse Input
+    // [FIX] Tách biệt ID (để fetch) và Scroll Target (để cuộn)
     let suttaId;
+    let scrollTarget = null; // Target ID để cuộn tới (ví dụ: '36.4')
+
     if (typeof input === 'object') {
         suttaId = input.uid;
+        // Nếu payload object có chứa thông tin chunk/scroll thì lấy ở đây (nếu cần)
     } else {
-        let [baseId] = input.split('#');
-        suttaId = baseId.trim().toLowerCase();
+        // String handling (strip hash)
+        // Input ví dụ: "mn10#36.4"
+        const parts = input.split('#');
+        suttaId = parts[0].trim().toLowerCase(); // "mn10"
+        
+        if (parts.length > 1) {
+            scrollTarget = parts[1]; // "36.4"
+        }
     }
 
-    logger.info('loadSutta', `Request: ${suttaId}`);
+    logger.info('loadSutta', `Request: ${suttaId} ${scrollTarget ? '(Target: ' + scrollTarget + ')' : ''}`);
 
     const performRender = async () => {
         console.time('⏱️ Data Fetch');
-        // Vẫn dùng SuttaService để fetch data cụ thể
-        const result = await SuttaService.loadSutta(input);
+        
+        // [FIX] Luôn truyền suttaId sạch (không có hash) vào Service
+        // Nếu truyền "mn10#36.4", IndexResolver sẽ tính sai hash bucket -> 404
+        const result = await SuttaService.loadSutta(suttaId);
+        
         console.timeEnd('⏱️ Data Fetch');
         
         if (!result) {
@@ -41,6 +53,7 @@ export const SuttaController = {
 
         if (result.isAlias) {
             logger.info('loadSutta', `Alias redirect -> ${result.targetUid}`);
+            // Đệ quy: Nếu redirect thì gọi lại, giữ nguyên transition setting
             this.loadSutta(result.targetUid, true, 0, { transition: false });
             return true;
         }
@@ -51,27 +64,33 @@ export const SuttaController = {
         
         if (success && shouldUpdateUrl) {
              const bookParam = generateBookParam();
-             Router.updateURL(suttaId, bookParam, false, null, window.scrollY);
+             // URL hash sẽ được router tự xử lý hoặc cập nhật sau
+             Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, window.scrollY);
         }
         return success;
     };
 
     if (isTransition) {
-        await Scroller.transitionTo(performRender, null);
+        // [FIX] Truyền scrollTarget vào hàm transition để Scroller xử lý sau khi render
+        await Scroller.transitionTo(performRender, scrollTarget);
     } else {
         await performRender();
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        // Xử lý scroll thủ công nếu không có hiệu ứng chuyển trang
+        if (scrollTarget) {
+            // Cần delay nhẹ hoặc gọi requestAnimationFrame để đảm bảo DOM đã paint
+            requestAnimationFrame(() => Scroller.scrollToId(scrollTarget));
+        } else {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }
     }
   },
 
-  // Load Random Sutta
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     console.time('🚀 Total Random Process');
     hideComment();
     const filters = getActiveFilters();
     
     console.time('🎲 Selection');
-    // [UPDATED] Sử dụng RandomBuffer thay vì SuttaService
     const payload = await RandomBuffer.getPayload(filters);
     console.timeEnd('🎲 Selection');
     
@@ -82,7 +101,6 @@ export const SuttaController = {
     }
     
     logger.info('loadRandom', `Selected: ${payload.uid} (Fast Path Active)`);
-    // Truyền payload vào loadSutta
     await this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
     console.timeEnd('🚀 Total Random Process');
   }
