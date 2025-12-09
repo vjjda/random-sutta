@@ -61,6 +61,6 @@ def inject_offline_index_script(build_dir: Path) -> bool:
     index_path = build_dir / "index.html"
     logger.info("💉 Injecting db_index.js script tag...")
     script_tag = '<script src="assets/db_index.js"></script>'
-    pattern = r'(<script defer src="assets/app\.bundle\.js.*?)</script>')
-    replacement = f'{script_tag}\n    \1'
+    pattern = r'(<script defer src="assets/app\.bundle\.js.*?</script>)'
+    replacement = f'{script_tag}\n    \\1'
     return _update_file(index_path, pattern, replacement)
