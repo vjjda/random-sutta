@@ -2,7 +2,7 @@
 export const UIManager = {
     elements: {},
     _autoCollapseTimer: null,
-    _COLLAPSE_DELAY: 2000, // 2 giây
+    _COLLAPSE_DELAY: 2000, 
 
     init() {
         this.elements = {
@@ -17,27 +17,24 @@ export const UIManager = {
         };
 
         if (this.elements.wrapper) {
-            // Sự kiện Click Wrapper
             this.elements.wrapper.addEventListener("click", (e) => {
-                // Nếu click vào chính cái Dot hoặc Wrapper khi đang collapsed -> Toggle
+                // Mở
                 if (this.elements.wrapper.classList.contains("collapsed")) {
                     this.openWrapper();
                     e.stopPropagation();
-                } else if (e.target === this.elements.dot || e.target === this.elements.wrapper) {
-                    // Nếu đang mở mà click vào dot/vùng trống wrapper -> Đóng
+                } 
+                // Đóng (Click vào Dot hoặc vùng trống wrapper khi đã mở)
+                else if (e.target === this.elements.dot || e.target === this.elements.wrapper) {
                     this.closeAll();
                     e.stopPropagation();
                 }
-                // Nếu click vào các nút con (btnToc...) thì để sự kiện lan truyền (bubble)
                 this.resetAutoCollapse();
             });
 
-            // Sự kiện Mouse Enter/Leave (cho Desktop)
             this.elements.wrapper.addEventListener("mouseenter", () => this.clearAutoCollapse());
             this.elements.wrapper.addEventListener("mouseleave", () => this.startAutoCollapse());
-            
-            // Sự kiện Touch/Scroll (cho Mobile) để reset timer
             this.elements.wrapper.addEventListener("touchstart", () => this.resetAutoCollapse());
+            
             if (this.elements.bar) {
                 this.elements.bar.addEventListener("scroll", () => this.resetAutoCollapse());
             }
@@ -66,12 +63,8 @@ export const UIManager = {
         if (this.elements.tocContent) this.elements.tocContent.innerHTML = tocHtml;
     },
 
-    // --- LOGIC AUTO COLLAPSE ---
     startAutoCollapse() {
-        // Chỉ auto collapse khi không có Drawer (TOC) đang mở
-        // Nếu đang đọc TOC thì không nên đóng
         if (this.elements.drawer && this.elements.drawer.classList.contains("open")) return;
-
         this.clearAutoCollapse();
         this._autoCollapseTimer = setTimeout(() => {
             this.closeAll();
@@ -90,16 +83,11 @@ export const UIManager = {
         this.startAutoCollapse();
     },
 
-    // --- OPEN / CLOSE ---
     openWrapper() {
         this.elements.wrapper.classList.remove("collapsed");
-        this.startAutoCollapse(); // Bắt đầu đếm ngược ngay khi mở
+        this.startAutoCollapse();
         
-        // Mặc định expand breadcrumb luôn cho tiện (theo yêu cầu cũ)
-        // Hoặc giữ nguyên logic cũ là click nút mới hiện. 
-        // Ở đây ta giữ logic hiển thị nút, người dùng bấm nút mới xem
-        
-        // Tuy nhiên, nếu breadcrumb đang hiển thị sẵn (do state cũ), cần scroll
+        // Scroll ngay lập tức khi mở
         if (this.elements.bar && this.elements.bar.innerHTML) {
              this._scrollBreadcrumbToEnd();
         }
@@ -107,37 +95,28 @@ export const UIManager = {
 
     closeAll() {
         this.clearAutoCollapse();
-        
         const { bar, drawer, backdrop, btnToc, btnBreadcrumb, wrapper } = this.elements;
-        bar?.classList.remove("expanded"); // Có thể bỏ dòng này nếu muốn giữ state breadcrumb bar
+        bar?.classList.remove("expanded");
         drawer?.classList.remove("open");
         backdrop?.classList.add("hidden");
-        
         btnToc?.classList.remove("active");
         btnBreadcrumb?.classList.remove("active");
         btnBreadcrumb?.classList.remove("open");
-        
-        // Thu gọn về Dot
         wrapper?.classList.add("collapsed");
     },
 
-    // --- FEATURE LOGIC ---
     toggleBreadcrumb() {
         const { bar, btnBreadcrumb } = this.elements;
         const isExpanded = bar.classList.contains("expanded");
-
         this._closePopupsOnly(); 
-        this.resetAutoCollapse(); // Reset timer khi tương tác
+        this.resetAutoCollapse(); 
 
         if (!isExpanded) {
             bar.classList.add("expanded");
             btnBreadcrumb.classList.add("active");
             btnBreadcrumb.classList.add("open");
             this.elements.backdrop.classList.remove("hidden");
-            
-            // [NEW] Auto scroll to end
             this._scrollBreadcrumbToEnd();
-            
             return true;
         }
         this.elements.backdrop.classList.remove("hidden"); 
@@ -147,9 +126,8 @@ export const UIManager = {
     toggleTOC() {
         const { drawer, backdrop, btnToc } = this.elements;
         const isOpen = drawer.classList.contains("open");
-
         this._closePopupsOnly();
-        this.clearAutoCollapse(); // Khi mở TOC thì dừng auto collapse để người dùng đọc
+        this.clearAutoCollapse(); 
 
         if (!isOpen) {
             drawer.classList.add("open");
@@ -158,8 +136,6 @@ export const UIManager = {
             this._scrollToActive();
             return true;
         }
-        
-        // Nếu đóng TOC thì bắt đầu đếm ngược lại
         this.startAutoCollapse(); 
         backdrop.classList.remove("hidden");
         return false;
@@ -167,8 +143,6 @@ export const UIManager = {
 
     _closePopupsOnly() {
         const { bar, drawer, btnToc, btnBreadcrumb } = this.elements;
-        // Chú ý: Ở logic này ta giữ bar expanded hay không tùy ý thích
-        // Nếu muốn behavior "Switch tab":
         bar?.classList.remove("expanded");
         drawer?.classList.remove("open");
         btnToc?.classList.remove("active");
@@ -187,20 +161,20 @@ export const UIManager = {
             if (activeItem) {
                 activeItem.scrollIntoView({ block: "center", behavior: "instant" });
             }
-        }, 50);
+        }, 0); // Giảm delay xuống 0 cho instant feel
     },
 
-    // [NEW] Scroll Breadcrumb
+    // [UPDATED] Instant Scroll
     _scrollBreadcrumbToEnd() {
+        // Cần setTimeout nhỏ để đảm bảo render xong (dù là instant cũng cần DOM có width)
         setTimeout(() => {
             const bar = this.elements.bar;
             if (bar) {
-                // Scroll mượt sang phải cùng
                 bar.scrollTo({
                     left: bar.scrollWidth,
-                    behavior: 'smooth'
+                    behavior: 'instant' // [UPDATED] Không dùng smooth
                 });
             }
-        }, 100); // Delay nhỏ để DOM render xong chiều rộng
+        }, 0);
     }
 };

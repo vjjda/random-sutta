@@ -2,35 +2,39 @@
 
 /* [NEW] The Ghost Dot */
 #magic-nav-dot {
-  width: 6px;  /* Nhỏ tí xíu */
+  width: 6px;
   height: 6px;
   background-color: var(--text-main);
   border-radius: 50%;
   
-  /* Căn giữa trong wrapper khi collapsed */
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  /* [UPDATED] Luôn là static để không bị nhảy vị trí khi parent thay đổi layout */
+  position: static;
+  flex-shrink: 0;
+  margin: 0 4px; /* Căn chỉnh vị trí Dot một chút */
   
-  opacity: 0.1; /* Rất mờ */
-  transition: all 0.3s ease;
-  pointer-events: none; /* Để click xuyên qua wrapper xử lý */
+  opacity: 0.1;
+  /* [UPDATED] Bỏ transition */
+  transition: none; 
+  pointer-events: none;
 }
 
-/* Khi Expanded: Dot biến thành nút đóng (đậm hơn, vị trí tĩnh) */
+/* Hover effect cho Wrapper collapsed (làm đậm Dot) */
+#magic-nav-wrapper.collapsed:hover #magic-nav-dot {
+  opacity: 0.6;
+  transform: scale(1.5);
+}
+
+/* Khi Expanded: Dot biến thành nút đóng */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-dot {
-  position: static;
-  transform: none;
-  opacity: 0.4; /* Hiện rõ hơn để biết là có thể bấm */
+  opacity: 0.4;
   cursor: pointer;
-  flex-shrink: 0; /* Không bị co lại */
+  pointer-events: auto; /* Cho phép click để đóng */
 }
 
 #magic-nav-wrapper:not(.collapsed) #magic-nav-dot:hover {
   opacity: 1;
   color: var(--primary-color);
-  background-color: var(--primary-color); /* Đổi màu khi hover */
+  background-color: var(--primary-color);
 }
 
 /* Buttons style */
@@ -44,7 +48,8 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  /* [UPDATED] Bỏ transition */
+  transition: none;
   color: var(--text-light);
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
@@ -62,8 +67,9 @@
   box-shadow: var(--shadow-soft);
 }
 
+/* Xoay icon - Giữ lại transition xoay nhẹ cho tinh tế, hoặc bỏ nếu muốn */
 #btn-magic-breadcrumb svg {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 #btn-magic-breadcrumb.open svg {
   transform: rotate(180deg);

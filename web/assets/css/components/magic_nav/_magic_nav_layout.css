@@ -6,37 +6,31 @@
   z-index: 1100;
   display: flex;
   align-items: center;
-  gap: 8px; /* Khoảng cách giữa Dot và các nút */
+  gap: 8px;
   
-  padding: 4px;
+  /* [UPDATED] Padding cố định cho cả 2 trạng thái để Dot không nhảy */
+  padding: 6px; 
   border-radius: 20px;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  
+  /* [UPDATED] Xóa transition để snappy */
+  transition: none; 
   background-color: transparent;
   
-  /* Đảm bảo chiều rộng fit content để animation mượt */
   width: auto;
-  max-width: 90vw; /* Giới hạn chiều rộng tối đa */
+  max-width: 90vw;
 }
 
 /* --- STATE: COLLAPSED --- */
 #magic-nav-wrapper.collapsed {
-  width: 20px; /* Thu nhỏ wrapper lại bằng kích thước vùng chứa dot */
-  height: 20px;
-  padding: 0;
+  /* Không set width cố định, để nó tự co theo content (chỉ còn mỗi Dot) */
   cursor: pointer;
   background-color: transparent;
-  border: none;
+  border: 1px solid transparent; /* Giữ border transparent để chiếm chỗ, tránh nhảy layout */
   box-shadow: none;
 }
 
 #magic-nav-wrapper.collapsed #magic-group {
   display: none;
-}
-
-/* Khi hover vào vùng wrapper lúc đang đóng (trên PC) */
-#magic-nav-wrapper.collapsed:hover #magic-nav-dot {
-  opacity: 0.6;
-  transform: scale(1.5);
 }
 
 /* --- STATE: EXPANDED --- */
@@ -45,25 +39,24 @@
   box-shadow: var(--shadow-soft);
   border: 1px solid var(--border-light);
   opacity: 1;
-  padding: 4px 8px 4px 12px; /* Padding trái lớn hơn chút cho Dot */
 }
 
 #magic-nav-wrapper:not(.collapsed) #magic-group {
   display: flex;
   align-items: center;
   gap: 8px;
-  animation: fadeIn 0.2s ease-out;
-  flex: 1; /* Chiếm phần còn lại */
-  min-width: 0; /* Quan trọng cho Flexbox scrolling */
+  /* [UPDATED] Bỏ animation fadeIn */
+  animation: none; 
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 
-/* Wrapper cho Breadcrumb */
 #magic-breadcrumb-wrapper {
   display: flex;
   align-items: center;
   flex: 1;
-  min-width: 0; /* Quan trọng */
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -71,24 +64,18 @@
 #magic-breadcrumb-bar {
   display: flex;
   align-items: center;
-  /* Cho phép cuộn ngang */
   overflow-x: auto; 
   white-space: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   
-  /* Ẩn thanh cuộn nhưng vẫn vuốt được */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-  
-  /* Mask để làm mờ nhẹ 2 bên khi cuộn (Optional, tăng thẩm mỹ) */
-  mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 10px, black 90%, transparent);
-  
-  padding: 0 10px;
+  /* [UPDATED] Padding phải lớn để text cuối cùng không bị che khuất */
+  padding: 0 25px 0 10px; 
   max-width: 100%;
 }
 
 #magic-breadcrumb-bar::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
 }
 
 #magic-backdrop {
@@ -100,9 +87,4 @@
 }
 #magic-backdrop.hidden {
   display: none;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
