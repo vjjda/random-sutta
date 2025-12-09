@@ -1,7 +1,8 @@
 // Path: web/assets/modules/ui/views/renderer.js
 import { LeafRenderer } from "./renderers/leaf_renderer.js";
 import { BranchRenderer } from "./renderers/branch_renderer.js";
-import { setupTableOfHeadings } from "../components/toh.js";
+// [UPDATED] Import from new module folder (tự động trỏ vào index.js)
+import { setupTableOfHeadings } from "../components/toh/index.js";
 import { UIFactory } from "../common/ui_factory.js";
 import { HeaderView } from "./header_view.js";
 import { MagicNav } from "../components/magic_nav/magic_nav_controller.js";
@@ -10,6 +11,7 @@ let tohInstance = null;
 
 export async function renderSutta(suttaId, data, options = {}) {
     const container = document.getElementById("sutta-container");
+
     if (!data) {
         container.innerHTML = UIFactory.createErrorHtml(suttaId);
         document.getElementById("breadcrumb-container")?.classList.add("hidden");

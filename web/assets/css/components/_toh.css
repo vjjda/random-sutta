@@ -22,7 +22,6 @@
   background-color: transparent;
   border: none;
   box-shadow: none;
-  /* color: var(--text-light); */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -45,15 +44,19 @@
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: 15px;
-  width: 240px;
+  
+  /* [UPDATED] Tăng chiều rộng menu */
+  width: 320px;
   max-height: 60vh;
   overflow-y: auto;
   box-shadow: var(--shadow-card);
   animation: slideDown 0.2s ease-out;
 }
+
 @media (max-width: 600px) {
   #toh-menu {
-    width: 200px;
+    /* [UPDATED] Mobile cũng rộng hơn chút */
+    width: 280px; 
   }
 }
 
@@ -114,43 +117,4 @@
   font-size: 0.75rem;
   color: var(--text-light);
   font-style: italic;
-}
-
-/* Trạng thái mặc định khi đang chuyển cảnh */
-.nav-transitioning {
-  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
-  pointer-events: none; /* Chặn click lung tung khi đang bay */
-  will-change: opacity, transform; /* Gợi ý browser tối ưu render */
-}
-
-/* 1. Khi đi XUỐNG (Next): 
-   - Cái cũ bay lên trời (Exit Up)
-   - Cái mới từ dưới đất chui lên (Enter From Bottom) 
-*/
-.exit-up {
-  opacity: 0;
-  transform: translateY(-40px);
-}
-.enter-from-bottom {
-  opacity: 0;
-  transform: translateY(40px);
-}
-
-/* 2. Khi đi LÊN (Prev): 
-   - Cái cũ tụt xuống đất (Exit Down)
-   - Cái mới từ trên trời rơi xuống (Enter From Top) 
-*/
-.exit-down {
-  opacity: 0;
-  transform: translateY(40px);
-}
-.enter-from-top {
-  opacity: 0;
-  transform: translateY(-40px);
-}
-
-/* Helper để reset về vị trí chuẩn */
-.reset-transform {
-  opacity: 1;
-  transform: translateY(0);
 }
