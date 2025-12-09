@@ -32,8 +32,7 @@ export const SuttaRepository = {
     _hydrateOfflineIndex(fullIndex) {
         for (const [uid, loc] of Object.entries(fullIndex)) {
             if (!uid) continue;
-            const char = uid[0].toLowerCase();
-            const bucket = /[a-z0-9]/.test(char) ? char : '_';
+            const bucket = this._getBucketId(uid);
             
             if (!_indexCache.has(bucket)) {
                 _indexCache.set(bucket, {});
@@ -43,22 +42,28 @@ export const SuttaRepository = {
         logger.info("Offline", "Hydrated index from Global Variable.");
     },
 
-    // [NEW] Load index part by character
-    async _ensureIndexPart(char) {
-        if (!char) return false;
-        char = char.toLowerCase();
-        if (!/[a-z0-9]/.test(char)) char = '_';
+    // [NEW] Consistent Hash (DJB2) for Bucketing
+    _getBucketId(uid) {
+        let hash = 5381;
+        for (let i = 0; i < uid.length; i++) {
+            hash = ((hash << 5) + hash) + uid.charCodeAt(i);
+            hash = hash >>> 0; // Ensure 32-bit unsigned
+        }
+        return (hash % 20).toString();
+    },
 
-        if (_indexCache.has(char)) return true;
+    // [NEW] Load index part by Bucket ID
+    async _ensureIndexPart(bucketId) {
+        if (_indexCache.has(bucketId)) return true;
 
         try {
-            const resp = await fetch(`./assets/db/index/${char}.json`);
+            const resp = await fetch(`./assets/db/index/${bucketId}.json`);
             if (!resp.ok) {
-                _indexCache.set(char, {}); // Mark as loaded but empty
+                _indexCache.set(bucketId, {}); 
                 return false;
             }
             const data = await resp.json();
-            _indexCache.set(char, data);
+            _indexCache.set(bucketId, data);
             return true;
         } catch (e) {
             return false;
@@ -74,7 +79,8 @@ export const SuttaRepository = {
         if (loc) return loc;
 
         // 2. Load Index
-        await this._ensureIndexPart(uid[0]);
+        const bucket = this._getBucketId(uid);
+        await this._ensureIndexPart(bucket);
         
         // 3. Retry lookup
         return this.getLocation(uid);
@@ -83,8 +89,7 @@ export const SuttaRepository = {
     // Sync Locator (Cache-only)
     getLocation(uid) {
         if (!uid) return null;
-        const char = uid[0].toLowerCase();
-        const bucket = /[a-z0-9]/.test(char) ? char : '_';
+        const bucket = this._getBucketId(uid);
         
         const indexPart = _indexCache.get(bucket);
         if (!indexPart) return null;

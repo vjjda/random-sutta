@@ -148,37 +148,42 @@ class DBOrchestrator:
         """Lưu index tổng (cho Offline Build legacy support)."""
         self.io.save_category("root", "uid_index.json", self.global_locator)
 
+    def _get_bucket_id(self, uid: str) -> str:
+        """
+        Consistent Hash (DJB2) compatible with JS.
+        Used to distribute index entries evenly across 20 buckets.
+        """
+        hash_val = 5381
+        for char in uid:
+            # hash * 33 + c
+            hash_val = ((hash_val << 5) + hash_val) + ord(char)
+            hash_val &= 0xFFFFFFFF # Force 32-bit unsigned behavior to match JS
+        
+        return str(hash_val % 20)
+
     def _save_split_indexes(self) -> None:
         """
-        [NEW] Chia nhỏ UID Index thành các file theo ký tự đầu (a-z, 0-9).
-        Giúp load nhanh (Lazy Loading) thay vì tải 1 file index khổng lồ.
+        [NEW] Chia nhỏ UID Index thành 20 Hash Buckets.
+        Đảm bảo kích thước file đồng đều (~22KB) và load cực nhanh.
         """
         buckets: Dict[str, Dict[str, Any]] = {}
         
-        # 1. Grouping
+        # 1. Grouping by Hash
         for uid, loc in self.global_locator.items():
             if not uid: continue
             
-            first_char = uid[0].lower()
+            bucket_id = self._get_bucket_id(uid)
             
-            # Validate char (chỉ chấp nhận a-z, 0-9, còn lại vào '_')
-            if not (first_char.isalnum()):
-                first_char = '_'
+            if bucket_id not in buckets:
+                buckets[bucket_id] = {}
             
-            if first_char not in buckets:
-                buckets[first_char] = {}
-            
-            buckets[first_char][uid] = loc
+            buckets[bucket_id][uid] = loc
 
         # 2. Saving
-        # Lưu vào assets/db/index/{char}.json
-        # Lưu ý: Cần đảm bảo IOManager xử lý được path con
-        for char, data in buckets.items():
-            # Sử dụng category 'root' nhưng thêm prefix 'index/' vào tên file
-            # IOManager sẽ nối: assets/db/ + index/a.json -> assets/db/index/a.json
-            self.io.save_category("root", f"index/{char}.json", data)
+        for bucket_id, data in buckets.items():
+            self.io.save_category("root", f"index/{bucket_id}.json", data)
             
-        logger.info(f"   📦 Split Index created: {len(buckets)} files.")
+        logger.info(f"   📦 Hash Index created: {len(buckets)} buckets (0-19).")
 
 def run_optimizer(dry_run: bool = False):
     orchestrator = DBOrchestrator(dry_run)
