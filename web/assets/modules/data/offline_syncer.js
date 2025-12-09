@@ -11,7 +11,7 @@ export const OfflineSyncer = {
         try {
             // 1. Download Zip Bundle
             logger.info("downloadAll", "Fetching db_bundle.zip...");
-            const response = await fetch('assets/db/db_bundle.zip');
+            const response = await fetch(`assets/db/db_bundle.zip?v=${Date.now()}`);
             if (!response.ok) {
                 throw new Error(`Failed to fetch bundle: ${response.status}`);
             }
@@ -30,12 +30,18 @@ export const OfflineSyncer = {
 
             // 4. Identify Cache Name
             const cacheKeys = await caches.keys();
-            const targetCacheName = cacheKeys.find(k => k.startsWith("sutta-cache-"));
+            const suttaCaches = cacheKeys.filter(k => k.startsWith("sutta-cache-"));
+            
+            // Sort descending to pick the latest version (v2025...)
+            suttaCaches.sort().reverse();
+            const targetCacheName = suttaCaches[0];
             
             if (!targetCacheName) {
                 logger.warn("downloadAll", "No active cache found. Creating a new temporary one.");
-                // Fallback nếu chưa có cache nào (hiếm khi xảy ra nếu SW đã chạy)
+            } else {
+                logger.info("downloadAll", `Writing to cache: ${targetCacheName}`);
             }
+
             const cacheName = targetCacheName || "sutta-cache-temp";
             const cache = await caches.open(cacheName);
 
