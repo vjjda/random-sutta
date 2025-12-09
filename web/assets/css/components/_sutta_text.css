@@ -160,56 +160,68 @@ span.highlight,
 }
 
 .sutta-context-footer {
-  /* Layout: Cột dọc */
   display: flex;
   flex-direction: column;
+  align-items: flex-end; /* Căn phải toàn bộ container */
+  width: 100%;
   
-  /* Căn chỉnh: Ép toàn bộ con sang mép PHẢI */
-  align-items: flex-end; 
-  text-align: right;
-  
-  /* Kích thước: Bắt buộc chiếm hết chiều ngang */
-  width: 100%; 
-  box-sizing: border-box;
-  
-  /* Spacing */
-  margin-top: 50px;
+  margin-top: 60px; /* Tăng khoảng cách với nội dung chính */
+  margin-bottom: 20px;
   padding-top: 15px;
-  padding-bottom: 20px;
   
-  /* Đường kẻ phân cách */
-  border-top: 1px solid var(--border-light);
-}
-
-/* Dòng 1: Nhãn "See also" - Nhỏ, nhạt màu */
-.sutta-context-footer .ctx-label {
+  /* border-top: 1px solid var(--border-light); */
   font-family: var(--font-main);
-  font-style: italic;
-  font-size: 0.85rem;
-  color: var(--text-light);
-  margin-bottom: 4px; /* Tạo khoảng cách với dòng dưới */
-  display: block;     /* Chắc chắn chiếm 1 dòng riêng */
 }
 
-/* Dòng 2: Link Tên sách - To, đậm, màu theme */
+/* Layer 1: Label "See also" - Nhỏ nhất, mờ nhất */
+.sutta-context-footer .ctx-label {
+  font-style: italic;
+  font-size: 0.75rem; /* Rất nhỏ */
+  color: var(--text-light); /* Màu xám nhạt */
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* Container của nút bấm: Chứa Acronym và Title */
 .sutta-context-footer .ctx-link {
   background: none;
   border: none;
   padding: 0;
   margin: 0;
-  
-  font-family: var(--font-main); /* Hoặc font-sutta nếu muốn */
-  font-size: 1.1rem;             /* To hơn hẳn để dễ đọc */
-  font-weight: 700;              /* Đậm đà làm điểm nhấn */
-  color: var(--primary-color);   /* Màu nâu chủ đạo */
-  
   cursor: pointer;
-  line-height: 1.4;
-  text-align: right;             /* Căn phải text bên trong nút */
-  max-width: 100%;               /* Tránh tràn màn hình mobile */
+  
+  display: flex;
+  flex-direction: column; /* Xếp Acronym và Title dọc */
+  align-items: flex-end;  /* Căn phải nội dung bên trong */
+  text-align: right;
+  
+  transition: opacity 0.2s ease;
 }
 
 .sutta-context-footer .ctx-link:hover {
-  text-decoration: underline;
-  opacity: 0.8;
+  opacity: 0.7; /* Hiệu ứng hover nhẹ */
+}
+
+/* Layer 2: Acronym (AN 1.7) - Điểm nhấn chính */
+.sutta-context-footer .ctx-acronym {
+  font-size: 0.95rem; /* Vừa phải, không quá to */
+  font-weight: 700;   /* Đậm */
+  color: var(--primary-color); /* Màu nâu theme */
+  line-height: 1.3;
+}
+
+/* Layer 3: Title (What Occupies...) - Bổ trợ */
+.sutta-context-footer .ctx-title {
+  font-size: 0.85rem; /* Nhỏ hơn acronym chút xíu */
+  font-weight: 400;   /* Nét thường */
+  color: var(--text-muted); /* Màu xám đen, đậm hơn label nhưng nhạt hơn acronym */
+  line-height: 1.3;
+  margin-top: 2px;    /* Tách nhẹ khỏi acronym */
+}
+
+/* Mobile Responsive */
+@media (max-width: 400px) {
+  .sutta-context-footer .ctx-title {
+    max-width: 250px; /* Giới hạn chiều rộng để text dài tự xuống dòng đẹp hơn */
+  }
 }

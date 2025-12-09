@@ -7,29 +7,27 @@ function createContextFooter(currentUid, metaEntry, contextMeta) {
     const parentId = metaEntry.parent_uid;
     const parentMeta = contextMeta[parentId] || {};
     
-    // Logic lấy tên: Ưu tiên Translated -> Original -> Acronym
     const acronym = parentMeta.acronym || parentId.toUpperCase();
     const title = parentMeta.translated_title || parentMeta.original_title || "";
     
-    // Format hiển thị: "AN 1.1-10: What Occupies the Mind"
-    let displayLabel = acronym;
-    if (title && title.toLowerCase() !== acronym.toLowerCase()) {
-        displayLabel = `${acronym}: ${title}`;
-    }
+    // Kiểm tra xem title có trùng acronym không (tránh in lặp)
+    const hasDistinctTitle = title && title.toLowerCase() !== acronym.toLowerCase();
     
     const targetId = metaEntry.extract_id || currentUid;
-    // Thêm transition: true để cuộn mượt
     const action = `window.loadSutta('${parentId}#${targetId}', true, 0, { transition: true })`;
 
     return `
         <div class="sutta-context-footer">
-            <span class="ctx-label">See also:</span>
-            <button onclick="${action}" class="ctx-link" title="Read full context">
-                ${displayLabel}
+            <span class="ctx-label">See also</span>
+            <button onclick="${action}" class="ctx-link">
+                <span class="ctx-acronym">${acronym}</span>
+                ${hasDistinctTitle ? `<span class="ctx-title">${title}</span>` : ''}
             </button>
         </div>
     `;
 }
+
+// ... (Giữ nguyên phần còn lại của file) ...
 
 function getDisplayInfo(uid, metaEntry) {
     let main = uid.toUpperCase();
@@ -47,14 +45,10 @@ function getDisplayInfo(uid, metaEntry) {
 export const LeafRenderer = {
     render(data) {
         let htmlContent = ContentCompiler.compile(data.content, data.uid);
-        
-        // Inject Footer
         const footerHtml = createContextFooter(data.uid, data.meta, data.contextMeta);
-        
         if (footerHtml) {
             htmlContent = htmlContent + footerHtml;
         }
-
         const displayInfo = getDisplayInfo(data.uid, data.meta);
         return {
             html: htmlContent,
