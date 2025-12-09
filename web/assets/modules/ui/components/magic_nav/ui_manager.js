@@ -1,8 +1,7 @@
 // Path: web/assets/modules/ui/components/magic_nav/ui_manager.js
 export const UIManager = {
     elements: {},
-    _autoCollapseTimer: null,
-    _COLLAPSE_DELAY: 2000, 
+    // [UPDATED] Đã xóa timer variables
 
     init() {
         this.elements = {
@@ -18,31 +17,19 @@ export const UIManager = {
 
         if (this.elements.wrapper) {
             this.elements.wrapper.addEventListener("click", (e) => {
+                // Mở khi click vào vùng "Hot Corner"
                 if (this.elements.wrapper.classList.contains("collapsed")) {
                     this.openWrapper();
                     e.stopPropagation();
                 } 
+                // Đóng khi click vào Dot (nút đóng) hoặc vùng trống của thanh bar
                 else if (e.target === this.elements.dot || e.target === this.elements.wrapper) {
                     this.closeAll();
                     e.stopPropagation();
                 }
-                this.resetAutoCollapse();
             });
-
-            // Reset timer trên PC
-            this.elements.wrapper.addEventListener("mouseenter", () => this.clearAutoCollapse());
-            this.elements.wrapper.addEventListener("mouseleave", () => this.startAutoCollapse());
             
-            // [UPDATED] Reset timer trên Mobile khi chạm vào wrapper chung
-            this.elements.wrapper.addEventListener("touchstart", () => this.resetAutoCollapse());
-            
-            // [UPDATED] Xử lý riêng cho thanh Breadcrumb để vuốt mượt mà không bị đóng
-            if (this.elements.bar) {
-                // Lắng nghe mọi cử động vuốt, lăn chuột trên thanh bar
-                ['scroll', 'touchstart', 'touchmove', 'touchend', 'mousedown'].forEach(evt => {
-                    this.elements.bar.addEventListener(evt, () => this.resetAutoCollapse());
-                });
-            }
+            // [UPDATED] Xóa các sự kiện mouseenter/mouseleave/touch gây auto-collapse
         }
 
         if (this.elements.backdrop) {
@@ -68,37 +55,17 @@ export const UIManager = {
         if (this.elements.tocContent) this.elements.tocContent.innerHTML = tocHtml;
     },
 
-    startAutoCollapse() {
-        if (this.elements.drawer && this.elements.drawer.classList.contains("open")) return;
-        this.clearAutoCollapse();
-        this._autoCollapseTimer = setTimeout(() => {
-            this.closeAll();
-        }, this._COLLAPSE_DELAY);
-    },
-
-    clearAutoCollapse() {
-        if (this._autoCollapseTimer) {
-            clearTimeout(this._autoCollapseTimer);
-            this._autoCollapseTimer = null;
-        }
-    },
-
-    resetAutoCollapse() {
-        this.clearAutoCollapse();
-        this.startAutoCollapse();
-    },
+    // [UPDATED] Các hàm timer đã bị xóa (startAutoCollapse, clear, reset)
 
     openWrapper() {
         this.elements.wrapper.classList.remove("collapsed");
-        this.startAutoCollapse();
-        
+        // Scroll ngay lập tức khi mở
         if (this.elements.bar && this.elements.bar.innerHTML) {
              this._scrollBreadcrumbToEnd();
         }
     },
 
     closeAll() {
-        this.clearAutoCollapse();
         const { bar, drawer, backdrop, btnToc, btnBreadcrumb, wrapper } = this.elements;
         bar?.classList.remove("expanded");
         drawer?.classList.remove("open");
@@ -113,7 +80,6 @@ export const UIManager = {
         const { bar, btnBreadcrumb } = this.elements;
         const isExpanded = bar.classList.contains("expanded");
         this._closePopupsOnly(); 
-        this.resetAutoCollapse(); 
 
         if (!isExpanded) {
             bar.classList.add("expanded");
@@ -131,7 +97,6 @@ export const UIManager = {
         const { drawer, backdrop, btnToc } = this.elements;
         const isOpen = drawer.classList.contains("open");
         this._closePopupsOnly();
-        this.clearAutoCollapse(); 
 
         if (!isOpen) {
             drawer.classList.add("open");
@@ -140,7 +105,6 @@ export const UIManager = {
             this._scrollToActive();
             return true;
         }
-        this.startAutoCollapse(); 
         backdrop.classList.remove("hidden");
         return false;
     },
@@ -165,16 +129,15 @@ export const UIManager = {
             if (activeItem) {
                 activeItem.scrollIntoView({ block: "center", behavior: "instant" });
             }
-        }, 0);
+        }, 0); 
     },
 
     _scrollBreadcrumbToEnd() {
         setTimeout(() => {
             const bar = this.elements.bar;
             if (bar) {
-                // Scroll tới tận cùng bên phải (bao gồm cả padding)
                 bar.scrollTo({
-                    left: bar.scrollWidth,
+                    left: bar.scrollWidth, // Scroll kịch kim sang phải
                     behavior: 'instant'
                 });
             }

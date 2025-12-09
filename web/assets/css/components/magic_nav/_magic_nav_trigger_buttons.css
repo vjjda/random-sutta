@@ -2,40 +2,34 @@
 
 /* [NEW] The Ghost Dot */
 #magic-nav-dot {
-  /* [UPDATED] Siêu nhỏ */
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
   background-color: var(--text-main);
   border-radius: 50%;
   
   position: static;
   flex-shrink: 0;
-  /* Căn chỉnh margin để Dot nằm giữa vùng padding */
-  margin: 0 4px; 
+  margin: 0; /* Bỏ margin để control bằng flex gap */
   
-  /* Mặc định rất mờ */
-  opacity: 0.15;
-  transition: opacity 0.2s ease, background-color 0.2s ease; /* Chỉ transition màu/độ mờ */
-  pointer-events: none;
+  transition: none;
+  pointer-events: none; /* Wrapper xử lý click */
 }
 
-/* Hover effect cho Wrapper collapsed */
-#magic-nav-wrapper.collapsed:hover #magic-nav-dot {
-  opacity: 0.8;
-  /* [UPDATED] KHÔNG SCALE, giữ nguyên kích thước */
-  transform: none; 
+/* 1. Khi đóng: Dot mờ gần như không thấy (hoặc ẩn luôn nếu muốn hoàn toàn invisible) */
+#magic-nav-wrapper.collapsed #magic-nav-dot {
+  opacity: 0.0; /* [FIX] Invisible hoàn toàn theo ý bạn */
 }
 
-/* Khi Expanded: Dot biến thành nút đóng */
+/* 2. Khi mở: Dot hiện lên làm nút đóng */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-dot {
-  opacity: 0.4;
+  opacity: 0.3; /* Hiện nhẹ nhàng */
   cursor: pointer;
-  pointer-events: auto;
+  pointer-events: auto; /* Cho phép click để đóng */
 }
 
 #magic-nav-wrapper:not(.collapsed) #magic-nav-dot:hover {
   opacity: 1;
-  background-color: var(--primary-color); /* Highlight màu cam */
+  background-color: var(--primary-color);
 }
 
 /* Buttons style */

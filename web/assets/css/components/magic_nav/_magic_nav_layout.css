@@ -1,33 +1,41 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_layout.css */
 #magic-nav-wrapper {
   position: fixed;
-  top: 15px;
-  left: 15px;
+  top: 10px; /* Dịch lên một chút để vùng bấm bao phủ góc tốt hơn */
+  left: 10px;
   z-index: 1100;
   display: flex;
   align-items: center;
   gap: 8px;
   
-  padding: 6px;
-  border-radius: 20px;
+  /* [QUAN TRỌNG] Padding cố định để nội dung không bị nhảy khi đổi trạng thái */
+  padding: 6px; 
+  border-radius: 30px; /* Bo tròn mạnh hơn */
   
   transition: none; 
   background-color: transparent;
   
-  /* [UPDATED] Giới hạn chiều rộng để Breadcrumb có thể cuộn được */
+  /* Chiều rộng tự động nhưng giới hạn */
   width: auto;
-  max-width: calc(100vw - 30px); /* Chừa lề 2 bên */
+  max-width: calc(100vw - 20px);
 }
 
-/* --- STATE: COLLAPSED --- */
+/* --- STATE: COLLAPSED (Tàng hình) --- */
 #magic-nav-wrapper.collapsed {
-  cursor: pointer;
+  /* Vùng bấm "vô hình" rộng rãi (44px chuẩn touch) */
+  width: 44px;
+  height: 44px;
+  
+  /* [UPDATED] Hoàn toàn trong suốt nhưng vẫn nhận sự kiện click */
   background-color: transparent;
-  border: 1px solid transparent;
+  border: 1px solid transparent; 
   box-shadow: none;
-  /* Thu gọn về kích thước tối thiểu của dot */
-  padding: 10px; /* Tăng vùng bấm ảo xung quanh dot cho dễ tap */
-  margin: -4px; /* Bù lại padding để vị trí dot không đổi */
+  
+  cursor: pointer;
+  
+  /* Reset padding về 0 để căn giữa dot ảo */
+  padding: 0;
+  justify-content: center;
 }
 
 #magic-nav-wrapper.collapsed #magic-group {
@@ -40,6 +48,8 @@
   box-shadow: var(--shadow-soft);
   border: 1px solid var(--border-light);
   opacity: 1;
+  /* Giữ padding khớp với vị trí tương đối */
+  padding: 6px 8px 6px 12px; 
 }
 
 #magic-nav-wrapper:not(.collapsed) #magic-group {
@@ -48,7 +58,7 @@
   gap: 8px;
   animation: none; 
   flex: 1;
-  min-width: 0; /* Quan trọng để flex item co lại */
+  min-width: 0; 
   overflow: hidden;
 }
 
@@ -64,26 +74,22 @@
 #magic-breadcrumb-bar {
   display: flex;
   align-items: center;
+  
+  /* [UPDATED] Cơ chế scroll */
   overflow-x: auto; 
   white-space: nowrap;
   scrollbar-width: none;
   -ms-overflow-style: none;
   
-  /* Mask mờ bên trái, bên phải rõ hoàn toàn */
-  mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black 100%);
+  /* [UPDATED] Touch Action quan trọng để vuốt trên mobile */
+  touch-action: pan-x;
   
-  /* [UPDATED] Padding phải cực lớn để text cuối "thoát" khỏi mép màn hình */
-  padding: 0 50px 0 15px; 
+  /* [UPDATED] Padding phải cực lớn (60px) để text cuối "thoát" hẳn ra ngoài mép phải */
+  padding: 0 60px 0 10px; 
+  
+  /* Đảm bảo chiếm hết không gian còn lại */
+  flex-grow: 1;
   max-width: 100%;
-  
-  /* Cho phép thao tác chạm mượt mà */
-  -webkit-overflow-scrolling: touch; 
-  cursor: grab;
-}
-
-#magic-breadcrumb-bar:active {
-  cursor: grabbing;
 }
 
 #magic-breadcrumb-bar::-webkit-scrollbar {
