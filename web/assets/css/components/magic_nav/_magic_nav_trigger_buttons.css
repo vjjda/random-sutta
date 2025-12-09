@@ -1,5 +1,16 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_trigger_buttons.css */
 
+/* [NEW] The Ghost Dot */
+#magic-nav-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--text-main);
+  border-radius: 50%;
+  margin: auto; /* Căn giữa trong wrapper */
+  pointer-events: none; /* Click xuyên qua wrapper bắt sự kiện */
+}
+
+/* Buttons style (cập nhật để low-profile hơn) */
 .magic-btn {
   width: 32px;
   height: 32px;
@@ -11,8 +22,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: var(--text-light);
-  /* Flex item cố định size */
+  color: var(--text-light); /* Màu nhạt mặc định */
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
@@ -29,7 +39,7 @@
   box-shadow: var(--shadow-soft);
 }
 
-/* Xoay icon */
+/* Xoay icon path */
 #btn-magic-breadcrumb svg {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

@@ -6,15 +6,61 @@
   z-index: 1100;
   display: flex;
   align-items: center;
+  
+  /* [NEW] Style cho container chính */
+  padding: 4px;
+  border-radius: 20px; /* Bo tròn như viên thuốc */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  background-color: transparent; 
+}
+
+/* --- STATE: COLLAPSED (Mặc định) --- */
+#magic-nav-wrapper.collapsed {
+  width: 24px;  /* Nhỏ xíu */
+  height: 24px;
+  cursor: pointer;
+  background-color: transparent;
+  opacity: 0.2; /* [QUAN TRỌNG] Rất mờ */
+}
+
+/* Khi hover vào wrapper (trên PC) -> Tự động hiện rõ để dễ bấm */
+#magic-nav-wrapper.collapsed:hover {
+  opacity: 0.6;
+  transform: scale(1.1);
+}
+
+#magic-nav-wrapper.collapsed #magic-group {
+  display: none; /* Ẩn toàn bộ nút chức năng */
+}
+
+#magic-nav-wrapper.collapsed #magic-nav-dot {
+  display: block; /* Hiện chấm */
+}
+
+/* --- STATE: EXPANDED (Khi đang dùng) --- */
+#magic-nav-wrapper:not(.collapsed) {
+  background-color: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--border-light);
+  opacity: 1;
+  padding: 4px 8px; /* Thêm padding cho đẹp */
+}
+
+#magic-nav-wrapper:not(.collapsed) #magic-nav-dot {
+  display: none; /* Ẩn chấm đi */
+}
+
+#magic-nav-wrapper:not(.collapsed) #magic-group {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  animation: fadeIn 0.2s ease-out;
 }
 
 /* Wrapper mới cho cụm Breadcrumb */
 #magic-breadcrumb-wrapper {
   display: flex;
   align-items: center;
-  /* position: relative;
-    height: 32px; */
 }
 
 #magic-backdrop {
@@ -26,4 +72,9 @@
 }
 #magic-backdrop.hidden {
   display: none;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
