@@ -30,40 +30,46 @@ export const SuttaRepository = {
     },
 
     /**
-     * [NEW] Transport Layer thông minh
-     * Tự động chọn fetch (Online) hoặc JSON-P Script (Offline/File)
+     * Transport Layer thông minh
+     * [FIXED] Xử lý lỗi script loading (Offline) để trả về null thay vì throw Error
      */
     async _loadData(category, filenameKey) {
         const isFileProtocol = window.location.protocol === 'file:';
-        // Python Converter đổi tên file: meta/mn.json -> meta/mn.js
-        // category: 'meta' hoặc 'content'
-        
         const path = `assets/db/${category}/${filenameKey}`;
 
         if (isFileProtocol) {
             // --- Strategy A: JSON-P Injection (Offline Build) ---
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
-                script.src = `${path}.js`; // Đuôi .js
+                script.src = `${path}.js`;
                 
                 script.onload = async () => {
-                    // Script chạy xong sẽ gọi window.__DB_LOADER__.receive()
-                    // Dữ liệu đã vào DbAdapter memory, giờ ta lấy ra
                     const data = await DbAdapter.get(category, filenameKey);
-                    if (data) resolve(data);
-                    else reject(new Error(`Data not found in adapter after loading ${path}`));
-                    script.remove(); // Dọn dẹp
+                    // Nếu load script thành công mà không có data trong Adapter -> trả null
+                    resolve(data || null);
+                    script.remove();
                 };
                 
-                script.onerror = () => reject(new Error(`Failed to load script ${path}`));
+                script.onerror = () => {
+                    // [CHANGE] Thay vì reject(new Error...), ta log warning và trả về null
+                    // Điều này giúp app không bị crash khi thiếu file phụ (như kn.js)
+                    logger.warn("_loadData", `Offline resource not found: ${path}`);
+                    resolve(null); 
+                    script.remove();
+                };
+                
                 document.head.appendChild(script);
             });
 
         } else {
             // --- Strategy B: Fetch (Online / Server) ---
             try {
-                const res = await fetch(`${path}.json`); // Đuôi .json
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const res = await fetch(`${path}.json`);
+                if (!res.ok) {
+                    // 404 hoặc lỗi mạng -> trả null
+                    logger.warn("_loadData", `Fetch 404: ${path}`);
+                    return null;
+                }
                 const data = await res.json();
                 
                 // Lưu cache background
