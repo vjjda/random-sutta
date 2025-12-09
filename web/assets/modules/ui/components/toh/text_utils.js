@@ -2,24 +2,20 @@
 
 /**
  * Trích xuất số đoạn từ Segment ID.
- * Hỗ trợ cả số đơn (3) và phạm vi (9-15).
- * Ví dụ: "mn10:3.1" -> "3"
- * Ví dụ: "mn3:9-15.1" -> "9-15"
+ * [UPDATED] Lấy toàn bộ giá trị sau dấu hai chấm (:).
+ * Ví dụ: "mn10:3.1" -> "3.1"
+ * Ví dụ: "an3.130:1.3" -> "1.3"
  */
 export function extractParagraphNumber(segmentId) {
     if (!segmentId) return "";
     try {
-        const parts = segmentId.split(':');
-        if (parts.length < 2) return ""; 
+        const colonIndex = segmentId.indexOf(':');
         
-        const suffix = parts[1];
-        const numberOrRange = suffix.split('.')[0];
+        // Nếu không có dấu :, trả về rỗng (hoặc trả về nguyên chuỗi nếu muốn)
+        if (colonIndex === -1) return ""; 
         
-        // Regex: Chấp nhận số (3) hoặc phạm vi số (9-15)
-        if (/^\d+(-\d+)?$/.test(numberOrRange)) {
-            return numberOrRange;
-        }
-        return "";
+        // Lấy toàn bộ chuỗi nằm sau dấu : đầu tiên
+        return segmentId.substring(colonIndex + 1);
     } catch (e) {
         return "";
     }
