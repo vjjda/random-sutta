@@ -3,14 +3,12 @@ export const TocRenderer = {
     render(node, currentUid, metaMap, level = 0) {
         let html = ``;
         
-        // Helper: Render Leaf Item
+        // Helper: Render Leaf Item (Bài kinh lẻ)
         const createItem = (id) => {
             const meta = metaMap[id] || {};
             const label = meta.acronym || meta.original_title || id.toUpperCase();
             const isActive = id === currentUid ? "active" : "";
             const action = isActive ? "" : `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"`;
-            
-            // Level 0 không cần padding, Level > 0 padding tăng dần
             const paddingLeft = 15 + (level * 15); 
             
             return `<div class="toc-item ${isActive}" ${action} style="padding-left: ${paddingLeft}px">
@@ -19,36 +17,45 @@ export const TocRenderer = {
                     </div>`;
         };
 
-        // Helper: Render Branch Header
+        // Helper: Render Branch Header (Nhóm/Chương)
+        // [FIXED] Giờ đây Branch Header cũng có thể click được nếu nó là một UID thực thụ
         const createBranchHeader = (id, childrenHtml) => {
             const meta = metaMap[id] || {};
             const label = meta.translated_title || meta.acronym || id.toUpperCase();
+            
+            // Tính toán style
             const paddingLeft = 15 + (level * 15);
+            const isActive = id === currentUid ? "active" : "";
+            
+            // Nếu ID này có trong Meta, nghĩa là nó là một entity có thể load được -> Thêm onClick
+            // Nếu không (ví dụ key rác của JSON), chỉ hiển thị text
+            const isClickable = !!metaMap[id];
+            const action = (isClickable && !isActive) ? `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"` : "";
+            const cursorClass = isClickable ? "clickable" : "";
 
             return `<div class="toc-branch-wrapper">
-                        <div class="toc-header" style="padding-left: ${paddingLeft}px">${label}</div>
+                        <div class="toc-header ${isActive} ${cursorClass}" ${action} style="padding-left: ${paddingLeft}px">
+                            ${label}
+                        </div>
                         <div class="toc-children">${childrenHtml}</div>
                     </div>`;
         };
 
         if (typeof node === 'string') {
-            // Case 1: Leaf Node
             return createItem(node);
         } 
         else if (Array.isArray(node)) {
-            // Case 2: Array Container (Chỉ là wrapper, không có tên riêng)
+            // Array chỉ là container thuần túy, duyệt qua con
             node.forEach(child => {
                 html += this.render(child, currentUid, metaMap, level);
             });
         } 
         else if (typeof node === 'object' && node !== null) {
-            // Case 3: Branch Object (Có key là ID nhánh)
             for (const key in node) {
-                // Đệ quy xuống con với level + 1
+                // Đệ quy lấy nội dung con trước
                 const childrenHtml = this.render(node[key], currentUid, metaMap, level + 1);
                 
-                // Nếu key là một UID có trong meta (ví dụ: 'kn', 'dn'), hiển thị nó như Header
-                // Nếu không có trong meta, vẫn hiển thị Key dạng raw để phân cấp
+                // Render Header cho nhánh này
                 html += createBranchHeader(key, childrenHtml);
             }
         }

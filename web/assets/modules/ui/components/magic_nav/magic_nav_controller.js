@@ -4,13 +4,13 @@ import { TocRenderer } from './toc_renderer.js';
 
 export const MagicNav = {
     _state: { tree: null, uid: null, meta: null },
-    _closeTimer: null, // [NEW] Timer quản lý tự đóng
+    _closeTimer: null,
 
     init() {
         const btnBreadcrumb = document.getElementById("btn-magic-breadcrumb");
         const btnToc = document.getElementById("btn-magic-toc");
         const backdrop = document.getElementById("magic-backdrop");
-        const breadcrumbBar = document.getElementById("magic-breadcrumb-bar"); // [NEW]
+        const breadcrumbBar = document.getElementById("magic-breadcrumb-bar");
 
         if (btnBreadcrumb) {
             btnBreadcrumb.addEventListener("click", (e) => {
@@ -19,18 +19,15 @@ export const MagicNav = {
             });
         }
 
-        // [NEW] Logic Auto-collapse cho Breadcrumb Bar
         if (breadcrumbBar) {
-            // Khi chuột rời đi: Đếm ngược 2s rồi đóng
             breadcrumbBar.addEventListener("mouseleave", () => {
                 if (breadcrumbBar.classList.contains("expanded")) {
                     this._closeTimer = setTimeout(() => {
                         this.closeAll();
-                    }, 2000); // 2 giây
+                    }, 2000); 
                 }
             });
 
-            // Khi chuột quay lại: Hủy đếm ngược (giữ mở)
             breadcrumbBar.addEventListener("mouseenter", () => {
                 if (this._closeTimer) {
                     clearTimeout(this._closeTimer);
@@ -52,7 +49,6 @@ export const MagicNav = {
     },
 
     closeAll() {
-        // Clear timer nếu có
         if (this._closeTimer) {
             clearTimeout(this._closeTimer);
             this._closeTimer = null;
@@ -63,10 +59,13 @@ export const MagicNav = {
         document.getElementById("magic-backdrop")?.classList.add("hidden");
         
         document.getElementById("btn-magic-toc")?.classList.remove("active");
-        document.getElementById("btn-magic-breadcrumb")?.classList.remove("active");
+        
+        // [UPDATED] Xóa class open để xoay mũi tên lại
+        const btnBc = document.getElementById("btn-magic-breadcrumb");
+        btnBc?.classList.remove("active");
+        btnBc?.classList.remove("open"); 
     },
 
-    // ... (Giữ nguyên các hàm toggleBreadcrumb, toggleTOC, render) ...
     toggleBreadcrumb() {
         const bar = document.getElementById("magic-breadcrumb-bar");
         const btn = document.getElementById("btn-magic-breadcrumb");
@@ -77,6 +76,8 @@ export const MagicNav = {
         if (!isExpanded) {
             bar.classList.add("expanded");
             btn.classList.add("active");
+            // [UPDATED] Thêm class open để xoay icon
+            btn.classList.add("open"); 
         }
     },
 
@@ -94,15 +95,17 @@ export const MagicNav = {
             btn.classList.add("active");
 
             setTimeout(() => {
-                const activeItem = drawer.querySelector(".toc-item.active");
+                const activeItem = drawer.querySelector(".toc-item.active") || drawer.querySelector(".toc-header.active");
                 if (activeItem) {
-                    activeItem.scrollIntoView({ block: "center", behavior: "smooth" });
+                    // [UPDATED] Snappy scroll (Instant)
+                    activeItem.scrollIntoView({ block: "center", behavior: "instant" });
                 }
-            }, 100);
+            }, 50); // Giảm timeout xuống chút cho nhanh
         }
     },
 
     render(localTree, currentUid, contextMeta, superTree, superMeta) {
+        // ... (Giữ nguyên logic render cũ) ...
         const barContent = document.getElementById("magic-breadcrumb-bar");
         const tocContent = document.getElementById("magic-toc-content");
         const wrapper = document.getElementById("magic-nav-wrapper");
@@ -130,7 +133,6 @@ export const MagicNav = {
         }
 
         if (tocContent) {
-            // Pass level 0
             tocContent.innerHTML = TocRenderer.render(localTree, currentUid, finalMeta, 0);
         }
     }
