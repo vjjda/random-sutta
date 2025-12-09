@@ -1,4 +1,6 @@
-/* Path: web/assets/css/components/magic_nav/_buttons.css */
+/* Path: web/assets/css/components/magic_nav/_magic_nav_trigger_buttons.css */
+
+/* Style chung cho các nút tròn (List icon & Chevron icon) */
 .magic-btn {
     width: 32px;
     height: 32px;
@@ -11,9 +13,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     color: var(--text-light);
-    
-    /* [FIX] Z-index cao hơn Bar để luôn nổi lên trên */
-    z-index: 1105; 
+    z-index: 1102; /* Nổi lên trên thanh Breadcrumb Bar */
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
 }
@@ -30,13 +30,12 @@
     box-shadow: var(--shadow-soft);
 }
 
-/* Animation Xoay */
+/* Animation xoay riêng cho nút Breadcrumb (Chevron) */
 #btn-magic-breadcrumb svg {
     transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-    transform-origin: center;
 }
 
-/* [REQ] Mặc định hướng phải (>). Khi mở (active/open) xoay sang trái (<) */
-#btn-magic-breadcrumb.active svg {
+/* Khi mở ra, xoay ngược 180 độ */
+#btn-magic-breadcrumb.open svg {
     transform: rotate(180deg);
 }

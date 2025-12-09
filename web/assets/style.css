@@ -20,10 +20,10 @@
 @import "css/components/_popup.css";
 @import "css/components/_toh.css";
 
-/* [NEW] Magic Nav Split Modules */
-@import "css/components/magic_nav/_layout.css";
-@import "css/components/magic_nav/_buttons.css";
-@import "css/components/magic_nav/_bar.css";
-@import "css/components/magic_nav/_drawer.css";
+/* [REPLACED] Magic Nav with Explicit Names */
+@import "css/components/magic_nav/_magic_nav_wrapper_and_backdrop.css";
+@import "css/components/magic_nav/_magic_nav_trigger_buttons.css";
+@import "css/components/magic_nav/_magic_nav_breadcrumb_bar.css";
+@import "css/components/magic_nav/_magic_nav_toc_tree_drawer.css";
 
 @import "css/components/_misc.css";

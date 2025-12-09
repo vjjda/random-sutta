@@ -1,41 +1,42 @@
-/* Path: web/assets/css/components/magic_nav/_bar.css */
+/* Path: web/assets/css/components/magic_nav/_magic_nav_breadcrumb_bar.css */
+
+/* Thanh hiển thị đường dẫn nằm ngang */
 #magic-breadcrumb-bar {
     position: absolute;
-    left: 0;
+    left: 0; 
     top: 0;
     height: 32px;
-    
     background-color: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: 20px;
     
-    /* [FIX] Padding trái lớn để text không đè lên nút Chevron */
-    padding-left: 36px; 
+    /* Padding trái lớn (40px) để không che khuất nút Chevron */
+    padding-left: 40px; 
     padding-right: 15px;
     
     display: flex;
     align-items: center;
     white-space: nowrap;
     
-    /* Trạng thái đóng: Ẩn hoàn toàn */
     opacity: 0;
     visibility: hidden;
-    width: 32px; /* Thu về bằng kích thước nút */
+    width: 32px; /* Thu gọn bằng kích thước nút */
     overflow: hidden;
     
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    z-index: 1101; /* Thấp hơn nút */
+    z-index: 1101; /* Nằm dưới nút Trigger */
 }
 
 #magic-breadcrumb-bar.expanded {
     opacity: 1;
     visibility: visible;
     width: auto;
-    min-width: 120px;
+    min-width: 150px;
+    max-width: 80vw;
     box-shadow: var(--shadow-soft);
 }
 
-/* Breadcrumb Items */
+/* Nội dung danh sách bên trong */
 #magic-breadcrumb-bar ol {
     list-style: none; margin: 0; padding: 0; 
     display: flex; font-size: 0.85rem; color: var(--text-light);
