@@ -25,7 +25,9 @@ const SHELL_ASSETS = [
   "./assets/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf",
 
   // Data
-  "./assets/modules/data/constants.js"
+  "./assets/modules/data/constants.js",
+
+  // [AUTO_GENERATED_ASSETS]
 ];
 
 // ... (Các phần logic install, activate, fetch giữ nguyên không đổi) ...

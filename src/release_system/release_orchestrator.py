@@ -70,6 +70,9 @@ def run_release_process(
 
         # [NEW] 4. Patch SW Assets (Replace style.css -> style.bundle.css)
         sw_patcher.patch_sw_style_bundle(BUILD_ONLINE_DIR)
+        
+        # [NEW] 4b. Inject all JS modules for Online (Unbundled) Offline capability
+        sw_patcher.patch_online_assets(BUILD_ONLINE_DIR)
 
         # 5. Patch HTML
         if not html_patcher.patch_online_html(BUILD_ONLINE_DIR, version_tag):

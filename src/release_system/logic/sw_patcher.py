@@ -50,3 +50,45 @@ def patch_sw_assets_for_offline(target_dir: Path) -> bool:
     res2 = _update_file(sw_path, pat2, rep2)
     
     return res1 or res2
+
+def patch_online_assets(target_dir: Path) -> bool:
+    """
+    Quét toàn bộ file .js trong assets/modules và assets/libs để inject vào sw.js.
+    """
+    logger.info("💉 Patching sw.js assets for Online Unbundled Build...")
+    sw_path = target_dir / "sw.js"
+    
+    scan_dirs = [
+        target_dir / "assets" / "modules",
+        target_dir / "assets" / "libs"
+    ]
+
+    js_files = []
+    
+    for folder in scan_dirs:
+        if not folder.exists():
+            continue
+            
+        for file_path in folder.rglob("*.js"):
+            rel_path = file_path.relative_to(target_dir)
+            js_path_str = f'"./{rel_path.as_posix()}"'
+            
+            if "app.js" in js_path_str or "constants.js" in js_path_str:
+                continue
+                
+            js_files.append(js_path_str)
+
+    if not js_files:
+        logger.warning("⚠️ No JS files found to inject.")
+        return False
+
+    # 2. Tạo string để replace
+    # Format: 
+    #   "./path/1.js",
+    #   "./path/2.js",
+    injection_content = ",\n  ".join(js_files)
+    
+    # 3. Inject vào placeholder
+    pattern = r"// \[AUTO_GENERATED_ASSETS\]"
+    # Note: re.sub cần escape backslash trong replacement string nếu có, nhưng ở đây chỉ có path đơn giản.
+    return _update_file(sw_path, pattern, injection_content)
