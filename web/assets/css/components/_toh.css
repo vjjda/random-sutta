@@ -45,7 +45,7 @@
   border-radius: var(--radius-md);
   padding: 15px;
   
-  /* [UPDATED] Tăng chiều rộng menu */
+  /* Width rộng hơn cho dễ đọc */
   width: 320px;
   max-height: 60vh;
   overflow-y: auto;
@@ -55,7 +55,6 @@
 
 @media (max-width: 600px) {
   #toh-menu {
-    /* [UPDATED] Mobile cũng rộng hơn chút */
     width: 280px; 
   }
 }
@@ -79,17 +78,21 @@
   font-size: 0.9rem;
   line-height: 1.3;
 }
+
+/* [UPDATED] Style Link đồng bộ với TOC */
 .toh-link {
   display: block;
-  padding: 4px 6px;
+  padding: 6px 10px; /* Tăng padding chút cho thoáng giống TOC */
   border-radius: 4px;
   cursor: pointer;
   color: var(--text-main);
-  transition: background 0.2s;
+  transition: background-color 0.2s ease; /* Thêm transition mượt */
 }
+
+/* [UPDATED] Hover Style: Subtle gray background, giữ nguyên màu chữ */
 .toh-link:hover {
-  background-color: #f5f5f5;
-  color: var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.03); /* Đồng bộ với .toc-item:hover */
+  color: var(--text-main);
 }
 
 .toh-h1 {
