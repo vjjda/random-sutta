@@ -1,39 +1,48 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_breadcrumb_bar.css */
 
 #magic-breadcrumb-bar {
-    position: absolute;
-    left: 0; 
-    top: 0;
+    /* [CHANGED] Không dùng absolute nữa */
     height: 32px;
+    
     background-color: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: 20px;
     
-    /* [FIX] Tăng padding lên 48px (32px nút + 16px khoảng cách) để text không bị nút che */
-    padding-left: 48px; 
-    padding-right: 15px;
-    
     display: flex;
     align-items: center;
     white-space: nowrap;
-    
-    opacity: 0;
-    visibility: hidden;
-    width: 32px;
     overflow: hidden;
     
+    /* Animation State: Đóng */
+    width: 0;
+    opacity: 0;
+    padding: 0; /* Không padding khi đóng */
+    margin-left: 0; 
+    
+    /* Animate cả width, padding và opacity */
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    z-index: 1101; /* Thấp hơn nút bấm (1105) */
+    
+    /* Nằm bên phải nút bấm */
+    z-index: 1100;
 }
 
 #magic-breadcrumb-bar.expanded {
-    opacity: 1;
-    visibility: visible;
+    /* Animation State: Mở */
     width: auto;
-    min-width: 150px;
+    min-width: 100px;
+    opacity: 1;
+    
+    /* Padding thật sự để chứa text */
+    padding-left: 15px; 
+    padding-right: 15px;
+    
+    /* Tạo khoảng cách với nút Chevron */
+    margin-left: 8px; 
+    
     box-shadow: var(--shadow-soft);
 }
 
+/* Nội dung bên trong */
 #magic-breadcrumb-bar ol {
     list-style: none; margin: 0; padding: 0; 
     display: flex; font-size: 0.85rem; color: var(--text-light);

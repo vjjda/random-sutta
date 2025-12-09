@@ -21,7 +21,7 @@
 @import "css/components/_toh.css";
 
 /* [REPLACED] Magic Nav with Explicit Names */
-@import "css/components/magic_nav/_magic_nav_wrapper_and_backdrop.css";
+@import "css/components/magic_nav/_magic_nav_layout.css"; /* Update tên nếu cần */
 @import "css/components/magic_nav/_magic_nav_trigger_buttons.css";
 @import "css/components/magic_nav/_magic_nav_breadcrumb_bar.css";
 @import "css/components/magic_nav/_magic_nav_toc_tree_drawer.css";

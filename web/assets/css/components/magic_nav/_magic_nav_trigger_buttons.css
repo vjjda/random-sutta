@@ -4,7 +4,7 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background-color: transparent; 
+    background-color: transparent;
     border: 1px solid transparent;
     display: flex;
     align-items: center;
@@ -12,13 +12,9 @@
     cursor: pointer;
     transition: all 0.2s ease;
     color: var(--text-light);
-    
-    /* [IMPORTANT] Z-index cao để nổi lên trên Bar */
-    position: relative;
-    z-index: 1105; 
-    
+    /* Flex item cố định size */
+    flex-shrink: 0; 
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
 }
 
 .magic-btn:hover {
@@ -27,19 +23,16 @@
 }
 
 .magic-btn.active {
-    /* Khi active (mở), nút có nền để che đi đường viền của Bar bên dưới nếu cần */
-    background-color: var(--bg-card); 
+    background-color: var(--bg-card);
     border-color: var(--border-light);
     color: var(--primary-color);
     box-shadow: var(--shadow-soft);
 }
 
-/* Animation Xoay */
+/* Xoay icon */
 #btn-magic-breadcrumb svg {
     transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
-
-/* [FIX] Khi có class open, xoay 180 độ (hướng về trái để đóng) */
 #btn-magic-breadcrumb.open svg {
     transform: rotate(180deg);
 }

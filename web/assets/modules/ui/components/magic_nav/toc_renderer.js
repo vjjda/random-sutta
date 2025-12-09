@@ -3,12 +3,9 @@ export const TocRenderer = {
     render(node, currentUid, metaMap, level = 0) {
         let html = ``;
         
-        // Helper tính thụt lề (Tăng multiplier lên 16px)
-        const getPadding = (lvl) => 15 + (lvl * 16);
-
-        // 1. Render Item (Leaf/Subleaf)
         const createItem = (id) => {
             const meta = metaMap[id] || {};
+            // [FIX] Ưu tiên meta.type. Nếu là leaf thì luôn render kiểu leaf (bất kể level)
             const type = meta.type || (level === 0 ? 'leaf' : 'subleaf');
             
             const acronym = meta.acronym || id.toUpperCase();
@@ -17,15 +14,19 @@ export const TocRenderer = {
             const isActive = id === currentUid ? "active" : "";
             const action = isActive ? "" : `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"`;
             
-            const paddingLeft = getPadding(level);
+            // Padding vẫn tăng theo level để thụt lề đúng cấu trúc cây
+            const paddingLeft = 15 + (level * 16); 
             
             let contentHtml = "";
+
             if (type === 'leaf') {
+                // [LEAF STYLE] Luôn hiện đầy đủ: Acronym + Title
                 contentHtml = `
                     <div class="toc-row-main">${acronym}</div>
                     ${title ? `<div class="toc-row-sub">${title}</div>` : ''}
                 `;
             } else {
+                // [SUBLEAF STYLE] Chỉ hiện Acronym hoặc Title ngắn gọn
                 contentHtml = `<span class="toc-subleaf-label" title="${title}">${acronym}</span>`;
             }
 
@@ -34,12 +35,13 @@ export const TocRenderer = {
                     </div>`;
         };
 
-        // 2. Render Branch Header
         const createBranchHeader = (id, childrenHtml, currentLevel) => {
             const meta = metaMap[id] || {};
-            const label = meta.translated_title || meta.original_title || meta.acronym || id.toUpperCase();
+            const label = meta.translated_title || meta.acronym || id.toUpperCase();
             
-            const paddingLeft = getPadding(currentLevel);
+            // Header thụt lề ít hơn con 1 chút
+            const paddingLeft = 15 + (currentLevel * 10);
+            
             const isActive = id === currentUid ? "active" : "";
             const isClickable = !!metaMap[id];
             const action = (isClickable && !isActive) ? `onclick="window.loadSutta('${id}'); MagicNav.toggleTOC()"` : "";
@@ -53,7 +55,6 @@ export const TocRenderer = {
                     </div>`;
         };
 
-        // Recursion
         if (typeof node === 'string') {
             return createItem(node);
         } else if (Array.isArray(node)) {
