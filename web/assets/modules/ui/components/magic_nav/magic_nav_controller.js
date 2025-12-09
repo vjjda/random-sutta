@@ -1,118 +1,62 @@
 // Path: web/assets/modules/ui/components/magic_nav/magic_nav_controller.js
 import { BreadcrumbRenderer } from './breadcrumb_renderer.js';
 import { TocRenderer } from './toc_renderer.js';
+import { UIManager } from './ui_manager.js';
 
 export const MagicNav = {
-    _state: { tree: null, uid: null, meta: null },
     _closeTimer: null,
 
     init() {
-        const btnBreadcrumb = document.getElementById("btn-magic-breadcrumb");
-        const btnToc = document.getElementById("btn-magic-toc");
-        const backdrop = document.getElementById("magic-backdrop");
-        const breadcrumbBar = document.getElementById("magic-breadcrumb-bar");
+        // Init UI Manager để lấy các element đã cache
+        const els = UIManager.init();
 
-        if (btnBreadcrumb) {
-            btnBreadcrumb.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this.toggleBreadcrumb();
-            });
-        }
+        if (!els.wrapper) return;
 
-        if (breadcrumbBar) {
-            breadcrumbBar.addEventListener("mouseleave", () => {
-                if (breadcrumbBar.classList.contains("expanded")) {
-                    this._closeTimer = setTimeout(() => {
-                        this.closeAll();
-                    }, 2000); 
-                }
-            });
+        // --- BIND EVENTS ---
 
-            breadcrumbBar.addEventListener("mouseenter", () => {
-                if (this._closeTimer) {
-                    clearTimeout(this._closeTimer);
-                    this._closeTimer = null;
-                }
-            });
-        }
+        // 1. Breadcrumb Button
+        els.btnBreadcrumb.addEventListener("click", (e) => {
+            e.stopPropagation();
+            UIManager.toggleBreadcrumb();
+        });
 
-        if (btnToc) {
-            btnToc.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this.toggleTOC();
-            });
-        }
+        // 2. TOC Button
+        els.btnToc.addEventListener("click", (e) => {
+            e.stopPropagation();
+            UIManager.toggleTOC();
+        });
 
-        if (backdrop) {
-            backdrop.addEventListener("click", () => this.closeAll());
-        }
+        // 3. Close on Backdrop
+        els.backdrop.addEventListener("click", () => UIManager.closeAll());
+
+        // 4. Auto-collapse Logic (Mouse Leave)
+        els.bar.addEventListener("mouseleave", () => {
+            if (UIManager.isBreadcrumbExpanded()) {
+                this._closeTimer = setTimeout(() => {
+                    UIManager.closeAll();
+                }, 2000); 
+            }
+        });
+
+        // 5. Cancel Collapse (Mouse Enter)
+        els.bar.addEventListener("mouseenter", () => {
+            if (this._closeTimer) {
+                clearTimeout(this._closeTimer);
+                this._closeTimer = null;
+            }
+        });
     },
 
-    closeAll() {
-        if (this._closeTimer) {
-            clearTimeout(this._closeTimer);
-            this._closeTimer = null;
-        }
-
-        document.getElementById("magic-breadcrumb-bar")?.classList.remove("expanded");
-        document.getElementById("magic-toc-drawer")?.classList.remove("open");
-        document.getElementById("magic-backdrop")?.classList.add("hidden");
-        
-        document.getElementById("btn-magic-toc")?.classList.remove("active");
-        
-        // [UPDATED] Xóa class open để xoay mũi tên lại
-        const btnBc = document.getElementById("btn-magic-breadcrumb");
-        btnBc?.classList.remove("active");
-        btnBc?.classList.remove("open"); 
-    },
-
-    toggleBreadcrumb() {
-        const bar = document.getElementById("magic-breadcrumb-bar");
-        const btn = document.getElementById("btn-magic-breadcrumb");
-        const isExpanded = bar.classList.contains("expanded");
-
-        this.closeAll(); 
-
-        if (!isExpanded) {
-            bar.classList.add("expanded");
-            btn.classList.add("active");
-            // [UPDATED] Thêm class open để xoay icon
-            btn.classList.add("open"); 
-        }
-    },
-
+    // Public method gọi từ bên ngoài (ví dụ khi click link trong TOC)
     toggleTOC() {
-        const drawer = document.getElementById("magic-toc-drawer");
-        const backdrop = document.getElementById("magic-backdrop");
-        const btn = document.getElementById("btn-magic-toc");
-        const isOpen = drawer.classList.contains("open");
-
-        this.closeAll();
-
-        if (!isOpen) {
-            drawer.classList.add("open");
-            backdrop.classList.remove("hidden");
-            btn.classList.add("active");
-
-            setTimeout(() => {
-                const activeItem = drawer.querySelector(".toc-item.active") || drawer.querySelector(".toc-header.active");
-                if (activeItem) {
-                    // [UPDATED] Snappy scroll (Instant)
-                    activeItem.scrollIntoView({ block: "center", behavior: "instant" });
-                }
-            }, 50); // Giảm timeout xuống chút cho nhanh
-        }
+        UIManager.toggleTOC();
     },
 
     render(localTree, currentUid, contextMeta, superTree, superMeta) {
-        // ... (Giữ nguyên logic render cũ) ...
-        const barContent = document.getElementById("magic-breadcrumb-bar");
-        const tocContent = document.getElementById("magic-toc-content");
-        const wrapper = document.getElementById("magic-nav-wrapper");
-
-        if (!wrapper) return;
-
+        // 1. Calculate Path
         let fullPath = BreadcrumbRenderer.findPath(localTree, currentUid);
+        
+        // Merge Super Tree if needed
         if (fullPath && superTree && fullPath.length > 0) {
             const rootBookId = fullPath[0]; 
             if (currentUid === rootBookId) {
@@ -123,19 +67,18 @@ export const MagicNav = {
                 }
             }
         }
+
         const finalMeta = { ...superMeta, ...contextMeta };
 
-        if (fullPath && barContent) {
-            barContent.innerHTML = BreadcrumbRenderer.generateHtml(fullPath, finalMeta);
-            wrapper.classList.remove("hidden");
-        } else {
-            wrapper.classList.add("hidden");
-        }
+        // 2. Generate HTML
+        const bcHtml = fullPath ? BreadcrumbRenderer.generateHtml(fullPath, finalMeta) : "";
+        const tocHtml = TocRenderer.render(localTree, currentUid, finalMeta, 0);
 
-        if (tocContent) {
-            tocContent.innerHTML = TocRenderer.render(localTree, currentUid, finalMeta, 0);
-        }
+        // 3. Update UI
+        UIManager.updateContent(bcHtml, tocHtml);
+        UIManager.setHidden(!fullPath); // Ẩn wrapper nếu không tìm thấy path
     }
 };
 
+// Expose global
 window.MagicNav = MagicNav;

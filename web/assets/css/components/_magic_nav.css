@@ -1,6 +1,6 @@
 /* Path: web/assets/css/components/_magic_nav.css */
 
-/* --- WRAPPER (Top Left) --- */
+/* --- 1. WRAPPER & LAYOUT --- */
 #magic-nav-wrapper {
     position: fixed;
     top: 15px;
@@ -8,10 +8,10 @@
     z-index: 1100;
     display: flex;
     align-items: center;
-    gap: 8px; /* Khoảng cách giữa 2 nút */
+    gap: 8px; /* Khoảng cách giữa nút List và Chevron */
 }
 
-/* --- COMMON BUTTON STYLE (Low Profile) --- */
+/* --- 2. COMMON BUTTONS (Low Profile) --- */
 .magic-btn {
     width: 32px;
     height: 32px;
@@ -24,12 +24,13 @@
     cursor: pointer;
     transition: all 0.2s ease;
     color: var(--text-light); /* Màu xám nhạt */
-    z-index: 1102;
+    z-index: 1102; /* Luôn nổi lên trên */
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation; /* Tắt double-tap zoom */
 }
 
 .magic-btn:hover {
-    background-color: rgba(0,0,0,0.05); /* Hover hiện nền nhẹ */
+    background-color: rgba(0,0,0,0.05);
     color: var(--primary-color);
 }
 
@@ -40,7 +41,15 @@
     box-shadow: var(--shadow-soft);
 }
 
-/* --- BREADCRUMB BAR --- */
+/* Xoay icon Chevron */
+#btn-magic-breadcrumb svg {
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+#btn-magic-breadcrumb.open svg {
+    transform: rotate(180deg); /* Xoay ngược lại khi mở */
+}
+
+/* --- 3. BREADCRUMB BAR (Horizontal) --- */
 #magic-breadcrumb-bar {
     position: absolute;
     left: 0; 
@@ -50,47 +59,52 @@
     border: 1px solid var(--border-light);
     border-radius: 20px;
     
-    /* Padding trái đủ lớn để không che mất icon Chevron */
-    padding-left: 35px; 
+    /* Padding trái đủ lớn (35px + gap) để không che nút Chevron */
+    padding-left: 40px; 
     padding-right: 15px;
     
     display: flex;
     align-items: center;
     white-space: nowrap;
     
+    /* Trạng thái đóng */
     opacity: 0;
     visibility: hidden;
+    width: 32px;
     overflow: hidden;
     
-    width: 32px; /* Thu gọn bằng kích thước nút */
-    
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    z-index: 1101; /* Nằm dưới nút Chevron (1102) */
+    z-index: 1101; /* Nằm dưới nút */
 }
 
 #magic-breadcrumb-bar.expanded {
     opacity: 1;
     visibility: visible;
     width: auto;
-    min-width: 150px;
+    min-width: 150px; /* Đảm bảo độ dài tối thiểu cho đẹp */
+    max-width: 80vw;
     box-shadow: var(--shadow-soft);
 }
 
 #magic-breadcrumb-bar ol {
-    list-style: none; margin: 0; padding: 0; display: flex; font-size: 0.85rem; color: var(--text-light);
+    list-style: none; margin: 0; padding: 0; 
+    display: flex; font-size: 0.85rem; color: var(--text-light);
 }
 #magic-breadcrumb-bar .bc-sep { margin: 0 5px; color: #ddd; font-size: 0.8em; }
-#magic-breadcrumb-bar .bc-link { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; }
+#magic-breadcrumb-bar .bc-link { 
+    background: none; border: none; color: var(--text-muted); 
+    cursor: pointer; padding: 0; font-weight: 400;
+}
 #magic-breadcrumb-bar .bc-link:hover { color: var(--primary-color); text-decoration: underline; }
 #magic-breadcrumb-bar .bc-item.active { font-weight: 600; color: var(--text-main); }
 
 
-/* --- TOC DRAWER (Vertical) --- */
+/* --- 4. TOC DRAWER (Vertical Tree) --- */
 #magic-toc-drawer {
     position: fixed;
-    top: 55px;
+    top: 55px; /* Dưới cụm nút */
     left: 15px;
-    width: 260px;
+    width: 280px; /* Đủ rộng cho thụt lề */
     max-height: 70vh;
     background-color: var(--bg-card);
     border-radius: 8px;
@@ -98,11 +112,20 @@
     overflow-y: auto;
     z-index: 1101;
     
+    /* Animation */
     opacity: 0;
     transform: translateY(-10px);
     pointer-events: none;
-    transition: all 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    
+    /* Scrollbar đẹp */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.2) transparent;
 }
+
+#magic-toc-drawer::-webkit-scrollbar { width: 6px; }
+#magic-toc-drawer::-webkit-scrollbar-track { background: transparent; }
+#magic-toc-drawer::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
 
 #magic-toc-drawer.open {
     opacity: 1;
@@ -110,44 +133,54 @@
     pointer-events: auto;
 }
 
-/* Branch Header (Tên nhánh cha) */
+#magic-toc-content { padding: 10px 0; }
+
+/* Styles cho Tree Node */
 .toc-header {
     font-size: 0.8rem;
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 8px 15px 4px 15px; /* Padding-left sẽ được override inline bởi JS */
+    padding-top: 8px;
+    padding-bottom: 4px;
+    padding-right: 15px;
+    /* padding-left được set inline bởi JS */
     margin-top: 5px;
     border-bottom: 1px solid rgba(0,0,0,0.03);
-    background-color: rgba(0,0,0,0.02); /* Nền nhẹ để phân biệt */
+    background-color: rgba(0,0,0,0.02);
 }
+
+.toc-header.clickable { cursor: pointer; transition: color 0.1s; }
+.toc-header.clickable:hover { color: var(--primary-color); background-color: rgba(0,0,0,0.05); }
+.toc-header.active {
+    background-color: var(--highlight-color-background);
+    border-left: 3px solid var(--primary-color);
+    color: var(--text-main);
+}
+
 .toc-item {
-    /* Padding-left sẽ được override inline bởi JS để thụt lề */
     padding-top: 6px;
     padding-bottom: 6px;
     padding-right: 15px;
+    /* padding-left được set inline bởi JS */
     border-bottom: 1px solid rgba(0,0,0,0.02);
     cursor: pointer;
     transition: background 0.1s;
-    position: relative; /* Để active bar canh theo */
+    position: relative;
 }
 
 .toc-item:hover { background-color: rgba(0,0,0,0.03); }
 
 .toc-item.active { 
-    /* Đổi kiểu active bar: Không dùng border-left nữa vì padding-left thay đổi */
     background-color: var(--highlight-color-background);
     font-weight: 600;
 }
 
-/* Active Indicator (Vạch màu bên trái) */
 .toc-item.active::before {
     content: "";
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
+    left: 0; top: 0; bottom: 0;
     width: 4px;
     background-color: var(--primary-color);
 }
@@ -155,6 +188,10 @@
 .toc-label { display: block; color: var(--text-main); font-size: 0.85rem; line-height: 1.3; }
 .toc-sub { display: block; font-size: 0.75rem; color: var(--text-light); font-style: italic; margin-top: 1px; }
 
-/* Backdrop */
-#magic-backdrop { position: fixed; inset: 0; z-index: 1099; }
+/* --- 5. BACKDROP --- */
+#magic-backdrop { 
+    position: fixed; inset: 0; background: rgba(0,0,0,0.1); 
+    backdrop-filter: blur(1px); /* Làm mờ nền nhẹ */
+    z-index: 1099; 
+}
 #magic-backdrop.hidden { display: none; }
