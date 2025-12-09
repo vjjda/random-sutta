@@ -52,7 +52,21 @@ export const SuttaService = {
 
     // [UPDATED] Get from Buffer if available
     async getRandomPayload(activeFilters) {
-        // 1. Try to pop from buffer
+        // 1. Clean buffer of mismatched items (Stale Buffer Fix)
+        if (activeFilters && activeFilters.length > 0) {
+            const originalLength = this._randomBuffer.length;
+            this._randomBuffer = this._randomBuffer.filter(item => {
+                const match = item.uid.match(/^[a-z]+/i);
+                const bookId = match ? match[0].toLowerCase() : '';
+                return activeFilters.includes(bookId);
+            });
+            
+            if (this._randomBuffer.length < originalLength) {
+                logger.info("Buffer", `Cleaned ${originalLength - this._randomBuffer.length} stale items.`);
+            }
+        }
+
+        // 2. Try to pop from buffer
         if (this._randomBuffer.length > 0) {
              // Simple check: In a real app, we might check if buffered item matches current filters.
              // For now, assuming filters change rarely, we just pop.
@@ -64,7 +78,7 @@ export const SuttaService = {
              return item;
         }
 
-        // 2. Fallback (Slow path)
+        // 3. Fallback (Slow path)
         const payload = await RandomHelper.getRandomPayload(activeFilters);
         
         // Refill for next time
