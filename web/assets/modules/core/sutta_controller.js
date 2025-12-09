@@ -1,5 +1,6 @@
 // Path: web/assets/modules/core/sutta_controller.js
 import { SuttaService } from '../services/sutta_service.js';
+import { RandomBuffer } from '../services/random_buffer.js'; // [NEW]
 import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
 import { getActiveFilters, generateBookParam } from '../ui/components/filters.js';
@@ -11,7 +12,7 @@ const logger = getLogger("SuttaController");
 const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
-  // Input có thể là String ID hoặc Rich Payload Object
+  // Load Specific Sutta
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
     hideComment();
@@ -21,7 +22,6 @@ export const SuttaController = {
     if (typeof input === 'object') {
         suttaId = input.uid;
     } else {
-        // String handling (strip hash)
         let [baseId] = input.split('#');
         suttaId = baseId.trim().toLowerCase();
     }
@@ -29,8 +29,8 @@ export const SuttaController = {
     logger.info('loadSutta', `Request: ${suttaId}`);
 
     const performRender = async () => {
-        // [UPDATED] Gọi Service với input đa năng
         console.time('⏱️ Data Fetch');
+        // Vẫn dùng SuttaService để fetch data cụ thể
         const result = await SuttaService.loadSutta(input);
         console.timeEnd('⏱️ Data Fetch');
         
@@ -39,15 +39,12 @@ export const SuttaController = {
             return false;
         }
 
-        // Xử lý Alias Redirect
         if (result.isAlias) {
             logger.info('loadSutta', `Alias redirect -> ${result.targetUid}`);
-            // Gọi đệ quy với ID mới
-            this.loadSutta(result.targetUid, true, 0, { transition: false }); 
+            this.loadSutta(result.targetUid, true, 0, { transition: false });
             return true;
         }
         
-        // Render
         console.time('⏱️ Render');
         const success = await renderSutta(suttaId, result, options);
         console.timeEnd('⏱️ Render');
@@ -60,21 +57,22 @@ export const SuttaController = {
     };
 
     if (isTransition) {
-        await Scroller.transitionTo(performRender, null); // Simplified scroll logic
+        await Scroller.transitionTo(performRender, null);
     } else {
         await performRender();
         window.scrollTo({ top: 0, behavior: 'instant' });
     }
   },
 
+  // Load Random Sutta
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     console.time('🚀 Total Random Process');
     hideComment();
     const filters = getActiveFilters();
     
-    // [UPDATED] Nhận Rich Payload
     console.time('🎲 Selection');
-    const payload = await SuttaService.getRandomPayload(filters);
+    // [UPDATED] Sử dụng RandomBuffer thay vì SuttaService
+    const payload = await RandomBuffer.getPayload(filters);
     console.timeEnd('🎲 Selection');
     
     if (!payload) {
@@ -84,8 +82,7 @@ export const SuttaController = {
     }
     
     logger.info('loadRandom', `Selected: ${payload.uid} (Fast Path Active)`);
-    
-    // Truyền cả payload vào loadSutta để kích hoạt Fast Path
+    // Truyền payload vào loadSutta
     await this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
     console.timeEnd('🚀 Total Random Process');
   }

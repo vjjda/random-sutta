@@ -2,95 +2,23 @@
 import { SuttaRepository } from '../data/sutta_repository.js';
 import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { getLogger } from '../utils/logger.js';
-import { RandomHelper } from './random_helper.js'; 
-import { AppConfig } from '../core/app_config.js'; // [NEW]
+import { RandomHelper } from './random_helper.js';
 
 const logger = getLogger("SuttaService");
 
 export const SuttaService = {
-    _randomBuffer: [], 
-    _bgWorkStarted: false,
-    
     async init() {
         await SuttaRepository.init();
         RandomHelper.init(); 
     },
 
-    // [NEW] Explicitly start background tasks (Buffer, Preload, etc.)
-    startBackgroundWork() {
-        if (this._bgWorkStarted) return;
-        this._bgWorkStarted = true;
-        
-        logger.info("Service", "Starting background buffering...");
-        this._fillBuffer();
-    },
-
-    // [NEW] Background buffering logic
-    async _fillBuffer(filters = null) {
-        if (this._randomBuffer.length >= AppConfig.BUFFER_SIZE) return;
-
-        try {
-            // Get candidate (lightweight)
-            const payload = await RandomHelper.getRandomPayload(filters);
-            if (!payload) return;
-
-            // Pre-fetch data (heavyweight)
-            // [UPDATED] Disable Nav Prefetch for random buffer to save bandwidth
-            await this.loadSutta(payload, { prefetchNav: false });
-
-            this._randomBuffer.push(payload);
-            logger.info("Buffer", `Buffered: ${payload.uid} (Buffer Size: ${this._randomBuffer.length})`);
-            
-            // Recursive fill if still low
-            if (this._randomBuffer.length < AppConfig.BUFFER_SIZE) {
-                 this._fillBuffer(filters); 
-            }
-        } catch (e) {
-            logger.warn("Buffer", "Failed to buffer random sutta", e);
-        }
-    },
-
-    // [UPDATED] Get from Buffer if available
-    async getRandomPayload(activeFilters) {
-        // 1. Clean buffer of mismatched items (Stale Buffer Fix)
-        if (activeFilters && activeFilters.length > 0) {
-            const originalLength = this._randomBuffer.length;
-            this._randomBuffer = this._randomBuffer.filter(item => {
-                const match = item.uid.match(/^[a-z]+/i);
-                const bookId = match ? match[0].toLowerCase() : '';
-                return activeFilters.includes(bookId);
-            });
-            
-            if (this._randomBuffer.length < originalLength) {
-                logger.info("Buffer", `Cleaned ${originalLength - this._randomBuffer.length} stale items.`);
-            }
-        }
-
-        // 2. Try to pop from buffer
-        if (this._randomBuffer.length > 0) {
-             // Simple check: In a real app, we might check if buffered item matches current filters.
-             // For now, assuming filters change rarely, we just pop.
-             const item = this._randomBuffer.pop();
-             logger.info("Random", `Served from Buffer: ${item.uid} (Remaining: ${this._randomBuffer.length})`);
-             
-             // Refill in background
-             this._fillBuffer(activeFilters);
-             return item;
-        }
-
-        // 3. Fallback (Slow path)
-        const payload = await RandomHelper.getRandomPayload(activeFilters);
-        
-        // Refill for next time
-        this._fillBuffer(activeFilters);
-        
-        return payload;
-    },
-
-    // --- CORE LOGIC: LOAD CONTENT ---
+    /**
+     * Load nội dung chi tiết của một bài kinh
+     * @param {string|object} input - UID string hoặc object {uid, chunk, book_id}
+     * @param {object} options - Options (e.g., prefetchNav)
+     */
     async loadSutta(input, options = { prefetchNav: true }) {
         let uid, hintChunk = null, hintBook = null;
-
         if (typeof input === 'object') {
             uid = input.uid;
             hintChunk = input.chunk || null;
@@ -102,7 +30,6 @@ export const SuttaService = {
         // 1. Locate
         if (hintBook === null || hintChunk === null) {
             let loc = await SuttaRepository.resolveLocation(uid);
-            
             if (!loc) {
                 logger.warn("loadSutta", `UID not found in index: ${uid}`);
                 return null;
@@ -118,16 +45,15 @@ export const SuttaService = {
 
         const [bookMeta, contentChunk] = await Promise.all(promises);
         if (!bookMeta) return null;
-
         const metaEntry = bookMeta.meta[uid];
         if (!metaEntry) return null;
 
-        // 3. Alias
+        // 3. Alias Redirect Handling
         if (metaEntry.type === 'alias') {
             return { isAlias: true, targetUid: metaEntry.target_uid };
         }
 
-        // 4. Extract
+        // 4. Extract Content
         let content = null;
         if (contentChunk) {
             if (contentChunk[uid]) {
@@ -140,7 +66,7 @@ export const SuttaService = {
             }
         }
 
-        // 5. Nav
+        // 5. Navigation Logic & Meta
         const nav = metaEntry.nav || {};
         const navMeta = {};
         const neighborsToFetch = [];
@@ -157,11 +83,12 @@ export const SuttaService = {
         checkAndAdd(nav.prev);
         checkAndAdd(nav.next);
 
+        // Fetch external neighbors meta
         if (neighborsToFetch.length > 0) {
             const extraMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
             Object.assign(navMeta, extraMeta);
             
-            // [NEW] Smart Prefetch for Neighbors (External)
+            // Smart Prefetch for Neighbors (External chunks)
             if (options.prefetchNav) {
                 neighborsToFetch.forEach(neighborUid => {
                      this.loadSutta(neighborUid, { prefetchNav: false })
@@ -170,11 +97,10 @@ export const SuttaService = {
             }
         }
         
-        // Prefetch for internal neighbors (already in meta, but content might need fetching)
+        // Prefetch for internal neighbors
         if (options.prefetchNav) {
              [nav.prev, nav.next].forEach(nid => {
-                 if (nid && bookMeta.meta[nid]) { // Only if it was internal
-                     // Internal check optimization logic handles same-chunk skip inside loadSutta
+                 if (nid && bookMeta.meta[nid]) { 
                      this.loadSutta(nid, { prefetchNav: false }).catch(() => {});
                  }
              });
