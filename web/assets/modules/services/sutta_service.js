@@ -2,18 +2,18 @@
 import { SuttaRepository } from '../data/sutta_repository.js';
 import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { getLogger } from '../utils/logger.js';
-import { RandomHelper } from './random_helper.js'; // [NEW]
+import { RandomHelper } from './random_helper.js'; 
+import { AppConfig } from '../core/app_config.js'; // [NEW]
 
 const logger = getLogger("SuttaService");
 
 export const SuttaService = {
-    _randomBuffer: [], // [NEW] Buffer for preloaded random suttas
+    _randomBuffer: [], 
     _bgWorkStarted: false,
     
     async init() {
         await SuttaRepository.init();
-        RandomHelper.init(); // [NEW] Delegate init
-        // Buffer initiation is now deferred to startBackgroundWork()
+        RandomHelper.init(); 
     },
 
     // [NEW] Explicitly start background tasks (Buffer, Preload, etc.)
@@ -27,7 +27,7 @@ export const SuttaService = {
 
     // [NEW] Background buffering logic
     async _fillBuffer(filters = null) {
-        if (this._randomBuffer.length >= 5) return;
+        if (this._randomBuffer.length >= AppConfig.BUFFER_SIZE) return;
 
         try {
             // Get candidate (lightweight)
@@ -42,7 +42,7 @@ export const SuttaService = {
             logger.info("Buffer", `Buffered: ${payload.uid} (Buffer Size: ${this._randomBuffer.length})`);
             
             // Recursive fill if still low
-            if (this._randomBuffer.length < 5) {
+            if (this._randomBuffer.length < AppConfig.BUFFER_SIZE) {
                  this._fillBuffer(filters); 
             }
         } catch (e) {

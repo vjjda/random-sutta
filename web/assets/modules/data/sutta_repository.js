@@ -3,7 +3,8 @@ import { getLogger } from '../utils/logger.js';
 // [NOTE] Cần đảm bảo constants.js export PRIMARY_BOOKS
 import { PRIMARY_BOOKS } from './constants.js';
 import { ZipImporter } from './loader/zip_importer.js';
-import { AssetLoader } from './loader/asset_loader.js'; // [NEW]
+import { AssetLoader } from './loader/asset_loader.js'; 
+import { AppConfig } from '../core/app_config.js'; // [NEW]
 
 const logger = getLogger("SuttaRepo");
 
@@ -14,19 +15,22 @@ const _chunkCache = new Map();
 const _metaCache = new Map();
 // Key: "char" -> Map<uid, loc>
 const _indexCache = new Map(); // [NEW] Split Index Cache
+const _pendingIndexRequests = new Map(); // [NEW] Deduplication for index loading
 
 export const SuttaRepository = {
     
     async init() {
-        // [UPDATED] Check Offline Global Index
+        // [UPDATED] Lazy index loading, no initial fetch
+        
+        // Check Offline Global Index
         if (window.__DB_INDEX__) {
             this._hydrateOfflineIndex(window.__DB_INDEX__);
         }
         
-        // Kích hoạt tải ngầm thông minh sau 3 giây
+        // Kích hoạt tải ngầm thông minh sau delay
         setTimeout(() => {
             this.startSmartPreload();
-        }, 3000);
+        }, AppConfig.INITIAL_PRELOAD_DELAY);
     },
 
     _hydrateOfflineIndex(fullIndex) {
@@ -52,26 +56,38 @@ export const SuttaRepository = {
         return (hash % 20).toString();
     },
 
-    // [NEW] Load index part by Bucket ID
+    // [NEW] Load index part by Bucket ID (With Deduplication)
     async _ensureIndexPart(bucketId) {
         if (_indexCache.has(bucketId)) return true;
+        
+        // Deduplication: If already loading, return the pending promise
+        if (_pendingIndexRequests.has(bucketId)) {
+            return _pendingIndexRequests.get(bucketId);
+        }
 
-        try {
-            console.time(`Index Load ${bucketId}`);
-            const resp = await fetch(`./assets/db/index/${bucketId}.json`);
-            if (!resp.ok) {
-                _indexCache.set(bucketId, {}); 
+        const loadPromise = (async () => {
+            try {
+                console.time(`Index Load ${bucketId}`);
+                const resp = await fetch(`./assets/db/index/${bucketId}.json`);
+                if (!resp.ok) {
+                    _indexCache.set(bucketId, {}); 
+                    console.timeEnd(`Index Load ${bucketId}`);
+                    return false;
+                }
+                const data = await resp.json();
+                _indexCache.set(bucketId, data);
+                console.timeEnd(`Index Load ${bucketId}`);
+                return true;
+            } catch (e) {
                 console.timeEnd(`Index Load ${bucketId}`);
                 return false;
+            } finally {
+                _pendingIndexRequests.delete(bucketId);
             }
-            const data = await resp.json();
-            _indexCache.set(bucketId, data);
-            console.timeEnd(`Index Load ${bucketId}`);
-            return true;
-        } catch (e) {
-            console.timeEnd(`Index Load ${bucketId}`);
-            return false;
-        }
+        })();
+
+        _pendingIndexRequests.set(bucketId, loadPromise);
+        return loadPromise;
     },
 
     // [NEW] Async Locator (Network-aware)
@@ -105,9 +121,9 @@ export const SuttaRepository = {
     startSmartPreload() {
         if ('requestIdleCallback' in window) {
             // Chỉ tải khi trình duyệt rảnh (không làm đơ UI)
-            requestIdleCallback(() => this._preloadPrimaryBooks(), { timeout: 2000 });
+            requestIdleCallback(() => this._preloadPrimaryBooks(), { timeout: AppConfig.IDLE_CALLBACK_TIMEOUT });
         } else {
-            // Fallback (dùng setTimeout)
+            // Fallback
             setTimeout(() => this._preloadPrimaryBooks(), 1000);
         }
     },
