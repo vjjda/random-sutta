@@ -15,9 +15,20 @@ export const SuttaController = {
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
     
-    // [FIX 1] CHỤP ẢNH VỊ TRÍ CUỘN (Capture Scroll Position)
-    // Phải lấy ngay lúc này, trước khi render làm thay đổi layout
-    const preRenderScrollY = window.scrollY || document.documentElement.scrollTop;
+    // [CLEAN] Sử dụng Scroller để lấy vị trí (Semantic Code)
+    // Dòng này rất rõ nghĩa: "Lấy vị trí hiện tại", khó bị xóa nhầm khi refactor
+    const currentScroll = Scroller.getScrollTop();
+
+    if (shouldUpdateUrl) {
+        try {
+            const currentState = window.history.state || {};
+            window.history.replaceState(
+                { ...currentState, scrollY: currentScroll },
+                document.title,
+                window.location.href
+            );
+        } catch (e) {}
+    }
 
     hideComment();
 
@@ -63,8 +74,8 @@ export const SuttaController = {
         
         if (success && shouldUpdateUrl) {
              const bookParam = generateBookParam();
-             // [FIX 2] Truyền preRenderScrollY vào Router thay vì để Router tự lấy window.scrollY (lúc này đã là 0)
-             Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, preRenderScrollY);
+             // Pass currentScroll to Router history
+             Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, currentScroll);
         }
         return success;
     };
@@ -77,10 +88,10 @@ export const SuttaController = {
         if (scrollTarget) {
             setTimeout(() => Scroller.scrollToId(scrollTarget), 0);
         } else if (scrollY > 0) {
-            // Khôi phục vị trí cũ (khi Back)
-            window.scrollTo({ top: scrollY, behavior: 'instant' });
+            // [CLEAN] Sử dụng Scroller để khôi phục (Semantic Code)
+            Scroller.restoreScrollTop(scrollY);
         } else {
-            window.scrollTo({ top: 0, behavior: 'instant' });
+            Scroller.restoreScrollTop(0);
         }
     }
   },
