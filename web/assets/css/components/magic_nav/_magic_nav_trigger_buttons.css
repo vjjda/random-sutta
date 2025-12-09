@@ -1,25 +1,29 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_trigger_buttons.css */
 
 /* [UPDATED] The Corner Trigger (Chevron Left) */
+/* Áp dụng chính xác các thông số của .magic-btn để cân xứng */
 #magic-nav-corner {
   display: flex;
   align-items: center;
   justify-content: center;
   
-  /* Tăng kích thước vùng bấm lên 32px cho bằng với các nút khác */
   width: 32px; 
   height: 32px;
   
-  /* Căn chỉnh lại margin để cân đối */
+  border-radius: 50%;
+  background-color: transparent;
+  border: 1px solid transparent;
+  
+  /* [IMPORTANT] Sử dụng màu text-light giống hệt các nút khác */
+  color: var(--text-light);
+  
   margin-right: 2px;
   flex-shrink: 0;
-  border-radius: 50%; /* Bo tròn để hover đẹp hơn */
-  
-  /* Style mặc định */
-  color: var(--text-light); /* Màu xám nhạt giống trạng thái nghỉ của các nút khác */
   cursor: pointer;
   pointer-events: auto;
-  transition: all 0.2s ease;
+  
+  /* [CHANGED] Bỏ transition opacity để khớp với transition: none của .magic-btn */
+  transition: none; 
 }
 
 /* 1. Khi đóng (Collapsed): Ẩn đi */
@@ -27,21 +31,22 @@
   display: none; 
 }
 
-/* 2. Khi mở (Expanded): Hiện mờ */
+/* 2. Khi mở (Expanded): Hiện nguyên bản */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-corner {
   display: flex;
-  opacity: 0.5; /* Rõ hơn một chút so với dot cũ để thấy hình dạng chevron */
+  /* [CHANGED] Bỏ opacity: 0.5 để nó rõ nét như bên phải */
+  opacity: 1; 
 }
 
-/* Hover: Sáng lên và nền nhẹ */
+/* Hover: Hiệu ứng y hệt .magic-btn:hover */
 #magic-nav-wrapper:not(.collapsed) #magic-nav-corner:hover {
-  opacity: 1;
-  color: var(--primary-color);
   background-color: rgba(0, 0, 0, 0.05);
-  transform: translateX(-1px); /* Hiệu ứng đẩy nhẹ sang trái biểu thị hành động đóng */
+  color: var(--primary-color);
+  /* [CHANGED] Bỏ transform translate để nút đứng yên, ổn định như bên phải */
+  transform: none; 
 }
 
-/* --- Giữ nguyên các phần dưới --- */
+/* --- Giữ nguyên phần dưới --- */
 
 .magic-btn {
   width: 32px;
