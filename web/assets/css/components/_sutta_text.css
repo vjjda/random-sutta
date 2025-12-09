@@ -159,55 +159,57 @@ span.highlight,
   margin-bottom: 2px; /* Giảm khoảng cách giữa Pali/Eng khi đang highlight */
 }
 
-/* [NEW] Context Bar Styles */
-.sutta-context-bar {
+.sutta-context-footer {
+  /* Layout: Cột dọc */
   display: flex;
-  justify-content: flex-end; /* Căn toàn bộ sang PHẢI */
-  align-items: baseline;     /* Căn chân chữ */
-  gap: 6px;
+  flex-direction: column;
   
-  margin-top: 40px;
-  margin-bottom: 10px;
+  /* Căn chỉnh: Ép toàn bộ con sang mép PHẢI */
+  align-items: flex-end; 
+  text-align: right;
+  
+  /* Kích thước: Bắt buộc chiếm hết chiều ngang */
+  width: 100%; 
+  box-sizing: border-box;
+  
+  /* Spacing */
+  margin-top: 50px;
   padding-top: 15px;
+  padding-bottom: 20px;
   
-  border-top: 1px dashed var(--border-light);
-  
-  font-family: var(--font-main);
-  font-size: 0.9rem;
+  /* Đường kẻ phân cách */
+  border-top: 1px solid var(--border-light);
 }
 
+/* Dòng 1: Nhãn "See also" - Nhỏ, nhạt màu */
 .sutta-context-footer .ctx-label {
+  font-family: var(--font-main);
   font-style: italic;
   font-size: 0.85rem;
-  color: var(--primary-color); /* Màu theme */
-  opacity: 0.7; /* Mờ nhẹ để không tranh chấp */
+  color: var(--text-light);
+  margin-bottom: 4px; /* Tạo khoảng cách với dòng dưới */
+  display: block;     /* Chắc chắn chiếm 1 dòng riêng */
 }
 
+/* Dòng 2: Link Tên sách - To, đậm, màu theme */
 .sutta-context-footer .ctx-link {
   background: none;
   border: none;
   padding: 0;
   margin: 0;
   
-  font-family: inherit;
-  font-weight: 600; /* Đậm hơn label một chút */
-  color: var(--primary-color); /* Màu theme */
+  font-family: var(--font-main); /* Hoặc font-sutta nếu muốn */
+  font-size: 1.1rem;             /* To hơn hẳn để dễ đọc */
+  font-weight: 700;              /* Đậm đà làm điểm nhấn */
+  color: var(--primary-color);   /* Màu nâu chủ đạo */
   
   cursor: pointer;
-  text-align: right;
-  transition: opacity 0.2s ease;
+  line-height: 1.4;
+  text-align: right;             /* Căn phải text bên trong nút */
+  max-width: 100%;               /* Tránh tràn màn hình mobile */
 }
 
 .sutta-context-footer .ctx-link:hover {
-  opacity: 0.8; /* Hover thì mờ đi chút thay vì đổi màu */
   text-decoration: underline;
-}
-
-/* Responsive: Trên mobile vẫn giữ căn phải */
-@media (max-width: 400px) {
-  .sutta-context-footer {
-    flex-direction: column;
-    align-items: flex-end; /* Mobile vẫn căn phải */
-    gap: 2px;
-  }
+  opacity: 0.8;
 }

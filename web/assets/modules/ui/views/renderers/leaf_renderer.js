@@ -1,32 +1,30 @@
 // Path: web/assets/modules/ui/views/renderers/leaf_renderer.js
 import { ContentCompiler } from "../../../data/content_compiler.js";
 
-// [UPDATED] Helper tạo Footer "See also"
 function createContextFooter(currentUid, metaEntry, contextMeta) {
     if (!metaEntry || !metaEntry.parent_uid) return "";
 
     const parentId = metaEntry.parent_uid;
     const parentMeta = contextMeta[parentId] || {};
     
-    // 1. Lấy Acronym (VD: Dhp, MN)
+    // Logic lấy tên: Ưu tiên Translated -> Original -> Acronym
     const acronym = parentMeta.acronym || parentId.toUpperCase();
-    
-    // 2. Lấy Title (VD: The Dhammapada)
     const title = parentMeta.translated_title || parentMeta.original_title || "";
     
-    // 3. Kết hợp: "Dhp: The Dhammapada"
+    // Format hiển thị: "AN 1.1-10: What Occupies the Mind"
     let displayLabel = acronym;
     if (title && title.toLowerCase() !== acronym.toLowerCase()) {
         displayLabel = `${acronym}: ${title}`;
     }
     
     const targetId = metaEntry.extract_id || currentUid;
+    // Thêm transition: true để cuộn mượt
     const action = `window.loadSutta('${parentId}#${targetId}', true, 0, { transition: true })`;
 
     return `
         <div class="sutta-context-footer">
             <span class="ctx-label">See also:</span>
-            <button onclick="${action}" class="ctx-link" title="Read full text in ${displayLabel}">
+            <button onclick="${action}" class="ctx-link" title="Read full context">
                 ${displayLabel}
             </button>
         </div>
