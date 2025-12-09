@@ -4,60 +4,47 @@ import { getLogger } from '../../utils/logger.js';
 const logger = getLogger("MagicNav");
 
 export const MagicNav = {
-    _longPressTimer: null,
-    _isLongPress: false,
+    _clickTimer: null,
     _state: { tree: null, uid: null, meta: null },
 
     init() {
         const wrapper = document.getElementById("magic-nav-wrapper");
         const dot = document.getElementById("magic-dot");
-        const breadcrumbBar = document.getElementById("magic-breadcrumb");
-        const tocDrawer = document.getElementById("magic-toc");
         const backdrop = document.getElementById("magic-backdrop");
 
         if (!wrapper || !dot) return;
 
-        // --- HANDLER: CLICK VS LONG PRESS ---
-        const startPress = (e) => {
-            // Chỉ xử lý chuột trái hoặc touch đơn
-            if (e.type === 'mousedown' && e.button !== 0) return;
-            
-            this._isLongPress = false;
-            this._longPressTimer = setTimeout(() => {
-                this._isLongPress = true;
-                this._openTOC(); // LONG PRESS ACTION
-                // Rung nhẹ trên mobile nếu hỗ trợ
-                if (navigator.vibrate) navigator.vibrate(50);
-            }, 600); // 600ms = Long press
+        // --- HANDLER: CLICK & DOUBLE CLICK ---
+        const handleClick = (e) => {
+            // Ngăn chặn các hành vi mặc định nếu cần
+            // e.preventDefault(); 
+
+            if (this._clickTimer) {
+                // --- DOUBLE CLICK DETECTED ---
+                clearTimeout(this._clickTimer);
+                this._clickTimer = null;
+                
+                // Action: Open TOC
+                this._openTOC();
+            } else {
+                // --- FIRST CLICK ---
+                this._clickTimer = setTimeout(() => {
+                    this._clickTimer = null;
+                    
+                    // Action: Toggle Breadcrumb (Single Click)
+                    const breadcrumbBar = document.getElementById("magic-breadcrumb");
+                    if (breadcrumbBar.classList.contains("expanded")) {
+                        this._collapseAll();
+                    } else {
+                        this._openBreadcrumb();
+                    }
+                }, 250); // Delay 250ms để chờ cú click thứ 2
+            }
         };
 
-        const endPress = (e) => {
-            if (this._longPressTimer) {
-                clearTimeout(this._longPressTimer);
-                this._longPressTimer = null;
-            }
-
-            if (!this._isLongPress) {
-                // Đây là CLICK ACTION
-                // Toggle giữa Dot và Breadcrumb Bar
-                if (breadcrumbBar.classList.contains("expanded")) {
-                    this._collapseAll();
-                } else {
-                    this._openBreadcrumb();
-                }
-            }
-            // Reset flag
-            this._isLongPress = false;
-        };
-
-        // Mouse Events
-        dot.addEventListener("mousedown", startPress);
-        dot.addEventListener("mouseup", endPress);
-        dot.addEventListener("mouseleave", endPress); // Kéo chuột ra ngoài thì hủy
-
-        // Touch Events (Mobile)
-        dot.addEventListener("touchstart", startPress, { passive: true });
-        dot.addEventListener("touchend", endPress);
+        // Chỉ cần bắt sự kiện 'click' là đủ cho cả Mouse và Touch
+        // (Trình duyệt mobile hiện đại xử lý click rất tốt nếu có touch-action: manipulation)
+        dot.addEventListener("click", handleClick);
 
         // Click Backdrop để đóng
         backdrop.addEventListener("click", () => this._collapseAll());
@@ -73,12 +60,13 @@ export const MagicNav = {
     _openBreadcrumb() {
         const bar = document.getElementById("magic-breadcrumb");
         bar.classList.add("expanded");
-        // Tự động đóng sau 5s nếu không tương tác (Optional, cho gọn)
-        // setTimeout(() => bar.classList.remove("expanded"), 5000);
+        
+        // Tự động đóng sau 10s nếu không dùng
+        // setTimeout(() => this._collapseAll(), 10000);
     },
 
     _openTOC() {
-        this._collapseAll(); // Đóng breadcrumb nếu đang mở
+        this._collapseAll(); // Reset trạng thái trước khi mở
         
         const drawer = document.getElementById("magic-toc");
         const backdrop = document.getElementById("magic-backdrop");
@@ -97,14 +85,13 @@ export const MagicNav = {
         }, 100);
     },
 
-    // --- RENDER LOGIC ---
+    // --- RENDER LOGIC (Giữ nguyên không đổi) ---
 
     _renderBreadcrumbHtml(path, metaMap) {
         let html = `<ol>`;
         path.forEach((uid, index) => {
             const isLast = index === path.length - 1;
             const meta = metaMap[uid] || {};
-            // Ưu tiên: Acronym -> Original -> UID
             let label = meta.acronym || meta.original_title || uid.toUpperCase();
             
             if (index > 0) html += `<li class="bc-sep">/</li>`;
@@ -121,13 +108,10 @@ export const MagicNav = {
 
     _renderTocRecursive(node, currentUid, metaMap) {
         let html = ``;
-        
-        // Helper: Render 1 item
         const createItem = (id) => {
             const meta = metaMap[id] || {};
             const label = meta.acronym || meta.original_title || id.toUpperCase();
             const isActive = id === currentUid ? "active" : "";
-            // Nếu là active item thì không click được (đang xem rồi)
             const action = isActive ? "" : `onclick="window.loadSutta('${id}'); MagicNav._collapseAll()"`;
             
             return `<div class="toc-item ${isActive}" ${action}>
@@ -139,18 +123,14 @@ export const MagicNav = {
         if (typeof node === 'string') {
             return createItem(node);
         } else if (Array.isArray(node)) {
-            // Mảng con -> List
             html += `<div class="toc-group">`;
             node.forEach(child => {
                 html += this._renderTocRecursive(child, currentUid, metaMap);
             });
             html += `</div>`;
         } else if (typeof node === 'object' && node !== null) {
-            // Object -> Branch
             for (const key in node) {
                 html += `<div class="toc-branch">`;
-                // Render tiêu đề branch (nếu cần thiết, hoặc chỉ render con)
-                // Ở đây ta render con thôi cho phẳng
                 html += this._renderTocRecursive(node[key], currentUid, metaMap);
                 html += `</div>`;
             }
@@ -159,7 +139,6 @@ export const MagicNav = {
     },
 
     _findPath(structure, targetUid, currentPath = []) {
-        // ... (Giữ nguyên logic DFS cũ từ Breadcrumb.js) ...
         if (!structure) return null;
         if (typeof structure === 'string') {
             return structure === targetUid ? [...currentPath, structure] : null;
@@ -191,7 +170,6 @@ export const MagicNav = {
 
         if (!breadcrumbBar || !wrapper) return;
 
-        // 1. Prepare Data
         let fullPath = this._findPath(localTree, currentUid);
         if (fullPath && superTree && fullPath.length > 0) {
             const rootBookId = fullPath[0]; 
@@ -205,7 +183,6 @@ export const MagicNav = {
         }
         const finalMeta = { ...superMeta, ...contextMeta };
 
-        // 2. Render Breadcrumb Bar
         if (fullPath) {
             breadcrumbBar.innerHTML = this._renderBreadcrumbHtml(fullPath, finalMeta);
             wrapper.classList.remove("hidden");
@@ -213,12 +190,10 @@ export const MagicNav = {
             wrapper.classList.add("hidden");
         }
 
-        // 3. Render TOC (Pre-render sẵn để mở cho nhanh)
         if (tocContent) {
             tocContent.innerHTML = this._renderTocRecursive(localTree, currentUid, finalMeta);
         }
     }
 };
 
-// Expose để gọi từ HTML onclick
 window.MagicNav = MagicNav;

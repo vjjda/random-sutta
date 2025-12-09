@@ -27,6 +27,7 @@
     color: var(--text-muted);
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    touch-action: manipulation;
 }
 
 #magic-dot:hover {
