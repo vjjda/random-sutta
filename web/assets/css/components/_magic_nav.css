@@ -50,10 +50,9 @@
     border: 1px solid var(--border-light);
     border-radius: 20px;
     
-    /* Animation khi mở ra */
-    width: 32px; /* Bắt đầu nhỏ bằng nút */
-    padding-left: 35px; /* Chừa chỗ cho icon Breadcrumb */
-    padding-right: 10px;
+    /* Padding trái đủ lớn để không che mất icon Chevron */
+    padding-left: 35px; 
+    padding-right: 15px;
     
     display: flex;
     align-items: center;
@@ -62,8 +61,11 @@
     opacity: 0;
     visibility: hidden;
     overflow: hidden;
+    
+    width: 32px; /* Thu gọn bằng kích thước nút */
+    
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    z-index: 1101; /* Dưới nút bấm */
+    z-index: 1101; /* Nằm dưới nút Chevron (1102) */
 }
 
 #magic-breadcrumb-bar.expanded {

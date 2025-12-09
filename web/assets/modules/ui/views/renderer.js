@@ -4,7 +4,7 @@ import { BranchRenderer } from "./renderers/branch_renderer.js";
 import { setupTableOfHeadings } from "../components/toh.js";
 import { UIFactory } from "../common/ui_factory.js";
 import { HeaderView } from "./header_view.js";
-import { MagicNav } from "../components/magic_nav/index.js";
+import { MagicNav } from "../components/magic_nav/magic_nav_controller.js";
 
 let tohInstance = null;
 
