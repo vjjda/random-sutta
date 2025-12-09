@@ -110,22 +110,50 @@
     pointer-events: auto;
 }
 
-#magic-toc-content { padding: 10px 0; }
-
+/* Branch Header (Tên nhánh cha) */
+.toc-header {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 15px 4px 15px; /* Padding-left sẽ được override inline bởi JS */
+    margin-top: 5px;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    background-color: rgba(0,0,0,0.02); /* Nền nhẹ để phân biệt */
+}
 .toc-item {
-    padding: 6px 15px;
+    /* Padding-left sẽ được override inline bởi JS để thụt lề */
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-right: 15px;
     border-bottom: 1px solid rgba(0,0,0,0.02);
     cursor: pointer;
     transition: background 0.1s;
+    position: relative; /* Để active bar canh theo */
 }
+
 .toc-item:hover { background-color: rgba(0,0,0,0.03); }
+
 .toc-item.active { 
-    border-left: 3px solid var(--primary-color); 
+    /* Đổi kiểu active bar: Không dùng border-left nữa vì padding-left thay đổi */
     background-color: var(--highlight-color-background);
     font-weight: 600;
 }
-.toc-label { display: block; color: var(--text-main); font-size: 0.85rem; }
-.toc-sub { display: block; font-size: 0.75rem; color: var(--text-light); font-style: italic; margin-top: 2px; }
+
+/* Active Indicator (Vạch màu bên trái) */
+.toc-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--primary-color);
+}
+
+.toc-label { display: block; color: var(--text-main); font-size: 0.85rem; line-height: 1.3; }
+.toc-sub { display: block; font-size: 0.75rem; color: var(--text-light); font-style: italic; margin-top: 1px; }
 
 /* Backdrop */
 #magic-backdrop { position: fixed; inset: 0; z-index: 1099; }
