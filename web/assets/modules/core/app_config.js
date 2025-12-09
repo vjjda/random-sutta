@@ -9,4 +9,5 @@ export const AppConfig = {
     
     // UI/UX
     TOAST_DURATION: 3000,
+    MAGIC_NAV_COOLDOWN: 60000, // [NEW] Thời gian tự động đóng Magic Nav khi rời chuột (ms)
 };
