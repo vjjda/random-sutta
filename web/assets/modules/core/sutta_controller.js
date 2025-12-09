@@ -2,7 +2,7 @@
 import { SuttaService } from '../services/sutta_service.js';
 import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
-import { getActiveFilters } from '../ui/components/filters.js';
+import { getActiveFilters, generateBookParam } from '../ui/components/filters.js';
 import { initCommentPopup } from '../ui/components/popup.js';
 import { Scroller } from '../ui/common/scroller.js';
 import { getLogger } from '../utils/logger.js';
@@ -53,7 +53,8 @@ export const SuttaController = {
         console.timeEnd('⏱️ Render');
         
         if (success && shouldUpdateUrl) {
-             Router.updateURL(suttaId, null, false, null, window.scrollY);
+             const bookParam = generateBookParam();
+             Router.updateURL(suttaId, bookParam, false, null, window.scrollY);
         }
         return success;
     };
