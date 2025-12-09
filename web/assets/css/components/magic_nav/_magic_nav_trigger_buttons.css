@@ -1,79 +1,68 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_trigger_buttons.css */
 
-/* [UPDATED] The Corner Trigger (Chevron Left) */
-/* Áp dụng chính xác các thông số của .magic-btn để cân xứng */
-#magic-nav-corner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  width: 32px; 
-  height: 32px;
-  
-  border-radius: 50%;
-  background-color: transparent;
-  border: 1px solid transparent;
-  
-  /* [IMPORTANT] Sử dụng màu text-light giống hệt các nút khác */
-  color: var(--text-light);
-  
-  margin-right: 2px;
-  flex-shrink: 0;
-  cursor: pointer;
-  pointer-events: auto;
-  
-  /* [CHANGED] Bỏ transition opacity để khớp với transition: none của .magic-btn */
-  transition: none; 
-}
-
-/* 1. Khi đóng (Collapsed): Ẩn đi */
-#magic-nav-wrapper.collapsed #magic-nav-corner {
-  display: none; 
-}
-
-/* 2. Khi mở (Expanded): Hiện nguyên bản */
-#magic-nav-wrapper:not(.collapsed) #magic-nav-corner {
-  display: flex;
-  /* [CHANGED] Bỏ opacity: 0.5 để nó rõ nét như bên phải */
-  opacity: 1; 
-}
-
-/* Hover: Hiệu ứng y hệt .magic-btn:hover */
-#magic-nav-wrapper:not(.collapsed) #magic-nav-corner:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: var(--primary-color);
-  /* [CHANGED] Bỏ transform translate để nút đứng yên, ổn định như bên phải */
-  transform: none; 
-}
-
-/* --- Giữ nguyên phần dưới --- */
-
+/* --- 1. SHARED SETTINGS (BASE CLASS) --- */
+/* Class chung cho Corner, Breadcrumb, và TOC buttons */
 .magic-btn {
+  /* Kích thước chuẩn */
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  background-color: transparent;
-  border: 1px solid transparent;
+  flex-shrink: 0;
+  
+  /* Layout & Border */
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: none;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background-color: transparent;
+  
+  /* Màu sắc & Con trỏ */
   color: var(--text-light);
-  flex-shrink: 0;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  
+  /* Hiệu ứng mượt mà cho tất cả */
+  transition: all 0.2s ease;
 }
 
+/* Hover chung */
 .magic-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
   color: var(--primary-color);
 }
 
+/* Active chung */
 .magic-btn.active {
   background-color: var(--bg-card);
   color: var(--primary-color);
 }
 
+/* --- 2. SPECIFIC OVERRIDES --- */
+
+/* [UPDATED] Corner Trigger (Chevron Left) */
+#magic-nav-corner {
+  /* Chỉ cần căn chỉnh lề riêng, còn lại kế thừa từ .magic-btn */
+  margin-right: 2px;
+  
+  /* Đảm bảo nhận sự kiện click */
+  pointer-events: auto;
+}
+
+/* Logic ẩn hiện đặc thù của Corner */
+
+/* Khi đóng (Collapsed): Ẩn đi */
+#magic-nav-wrapper.collapsed #magic-nav-corner {
+  display: none; 
+}
+
+/* Khi mở (Expanded): Hiện rõ (Opacity 1 do kế thừa từ .magic-btn, không cần set lại) */
+#magic-nav-wrapper:not(.collapsed) #magic-nav-corner {
+  display: flex;
+}
+
+/* --- 3. ICON ANIMATIONS --- */
+
+/* Riêng nút Breadcrumb có hiệu ứng xoay khi active */
 #btn-magic-breadcrumb svg {
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
