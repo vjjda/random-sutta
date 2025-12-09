@@ -125,6 +125,10 @@ def run_release_process(
         # [NEW] 8. Remove redundant Zip
         # Bản Offline không dùng tính năng "Download All" (vì đã có sẵn data), nên xóa zip đi cho nhẹ
         web_content_modifier.remove_db_bundle(BUILD_OFFLINE_DIR)
+        
+        # [NEW] 9. Remove redundant Index directory
+        # Bản Offline dùng db_index.js, không cần folder index/
+        web_content_modifier.remove_redundant_index(BUILD_OFFLINE_DIR)
 
         # Create Zip Artifact (Final Output)
         if create_zip:

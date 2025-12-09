@@ -3,6 +3,7 @@ import logging
 import re
 import json
 import os # [NEW]
+import shutil # [NEW]
 from pathlib import Path
 from ..release_config import VERSION_PLACEHOLDER
 
@@ -194,4 +195,20 @@ def remove_db_bundle(build_dir: Path) -> bool:
             logger.error(f"❌ Failed to remove db_bundle.zip: {e}")
             return False
             
+    return True
+
+def remove_redundant_index(build_dir: Path) -> bool:
+    """
+    [NEW] Xóa thư mục index/ (Split Index) trong bản Offline Build.
+    Vì bản Offline đã dùng db_index.js (global variable) nên không cần các file json nhỏ lẻ.
+    """
+    index_dir = build_dir / "assets" / "db" / "index"
+    if index_dir.exists():
+        try:
+            shutil.rmtree(index_dir)
+            logger.info(f"   🧹 Removed redundant index directory from {build_dir.name}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to remove index dir: {e}")
+            return False
     return True
