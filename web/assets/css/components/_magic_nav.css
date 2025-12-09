@@ -1,0 +1,142 @@
+/* Path: web/assets/css/components/_magic_nav.css */
+
+/* --- WRAPPER --- */
+#magic-nav-wrapper {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1100; /* Cao hơn TOH cũ */
+    display: flex;
+    align-items: center;
+}
+
+/* --- THE DOT --- */
+#magic-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 1102;
+    color: var(--text-muted);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+#magic-dot:hover {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+#magic-dot.active {
+    background-color: var(--primary-color);
+    color: white;
+    transform: rotate(90deg);
+}
+
+/* --- BREADCRUMB BAR (Unfold Horizontal) --- */
+#magic-breadcrumb {
+    position: absolute;
+    left: 18px; /* Giữa Dot */
+    top: 0;
+    height: 36px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    padding-left: 25px; /* Để chừa chỗ cho Dot */
+    padding-right: 15px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    width: 36px; /* Bắt đầu bằng độ rộng Dot */
+    overflow: hidden;
+    transition: all 0.3s ease;
+    z-index: 1101; /* Nằm dưới Dot */
+    box-shadow: var(--shadow-soft);
+}
+
+#magic-breadcrumb.expanded {
+    opacity: 1;
+    visibility: visible;
+    width: auto; /* Bung ra theo nội dung */
+    min-width: 200px;
+    max-width: 80vw;
+}
+
+#magic-breadcrumb ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+#magic-breadcrumb .bc-sep { margin: 0 6px; color: #ddd; }
+#magic-breadcrumb .bc-link { 
+    background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; 
+}
+#magic-breadcrumb .bc-link:hover { color: var(--primary-color); text-decoration: underline; }
+#magic-breadcrumb .bc-item.active { font-weight: 600; color: var(--text-main); }
+
+/* --- TOC DRAWER (Unfold Vertical - Long Press) --- */
+#magic-toc {
+    position: fixed;
+    top: 60px; /* Dưới Dot một chút */
+    left: 15px;
+    width: 280px;
+    max-height: 70vh;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    overflow-y: auto;
+    z-index: 1101;
+    
+    /* Animation State */
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+    pointer-events: none;
+    transition: all 0.2s ease-out;
+    transform-origin: top left;
+}
+
+#magic-toc.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+#magic-toc-content {
+    padding: 10px 0;
+}
+
+.toc-item {
+    padding: 8px 15px;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.toc-item:hover { background-color: rgba(0,0,0,0.03); }
+.toc-item.active { 
+    border-left: 4px solid var(--primary-color); 
+    background-color: var(--highlight-color-background);
+    font-weight: 600;
+}
+
+.toc-label { display: block; color: var(--text-main); font-size: 0.9rem; }
+.toc-sub { display: block; font-size: 0.8rem; color: var(--text-light); font-style: italic; }
+
+/* Backdrop */
+#magic-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.2); z-index: 1099;
+    backdrop-filter: blur(2px);
+}
+#magic-backdrop.hidden { display: none; }

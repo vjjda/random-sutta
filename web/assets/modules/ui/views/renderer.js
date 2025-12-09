@@ -4,7 +4,7 @@ import { BranchRenderer } from "./renderers/branch_renderer.js";
 import { setupTableOfHeadings } from "../components/toh.js";
 import { UIFactory } from "../common/ui_factory.js";
 import { HeaderView } from "./header_view.js";
-import { Breadcrumb } from "../components/breadcrumb.js";
+import { MagicNav } from "../components/magic_nav.js";
 
 let tohInstance = null;
 
@@ -28,6 +28,11 @@ export async function renderSutta(suttaId, data, options = {}) {
         document.getElementById("toh-wrapper")?.classList.add("hidden");
     }
 
+    if (!window._magicNavInitialized) {
+        MagicNav.init();
+        window._magicNavInitialized = true;
+    }
+
     const nav = data.nav || {};
     const bottomNavHtml = UIFactory.createBottomNavHtml(nav.prev, nav.next, data.navMeta || {});
     
@@ -39,13 +44,12 @@ export async function renderSutta(suttaId, data, options = {}) {
     const combinedMeta = { ...data.contextMeta, ...data.navMeta };
     if (data.meta) combinedMeta[data.uid] = data.meta;
 
-    Breadcrumb.render(
-        "breadcrumb-container", 
+    MagicNav.render(
         data.tree, 
         data.uid, 
         combinedMeta,
-        data.superTree, // [NEW]
-        data.superMeta  // [NEW]
+        data.superTree, 
+        data.superMeta
     );
 
     if (isLeaf) {

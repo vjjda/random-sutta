@@ -163,7 +163,31 @@
       <div id="status">Initializing...</div>
     </header>
 
-    <div id="breadcrumb-container" class="hidden"></div>
+    <div id="magic-nav-wrapper" class="hidden">
+      <div id="magic-dot" title="Click: Breadcrumb / Hold: Table of Contents">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="2"></circle>
+        </svg>
+      </div>
+
+      <div id="magic-breadcrumb"></div>
+    </div>
+
+    <div id="magic-toc">
+      <div id="magic-toc-content"></div>
+    </div>
+
+    <div id="magic-backdrop" class="hidden"></div>
 
     <main id="sutta-container">
       <p class="placeholder">Click the button to load a sutta.</p>
