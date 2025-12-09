@@ -89,7 +89,9 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      const cachedResponse = await cache.match(request);
+      
+      // [FIX] ignoreSearch: true để match được app.js?v=... với app.js trong cache
+      const cachedResponse = await cache.match(request, { ignoreSearch: true });
       if (cachedResponse) return cachedResponse;
 
       try {
