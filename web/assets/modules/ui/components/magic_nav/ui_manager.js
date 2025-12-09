@@ -1,6 +1,5 @@
 // Path: web/assets/modules/ui/components/magic_nav/ui_manager.js
 export const UIManager = {
-    // Cache DOM Elements
     elements: {},
 
     init() {
@@ -13,27 +12,19 @@ export const UIManager = {
             tocContent: document.getElementById("magic-toc-content"),
             backdrop: document.getElementById("magic-backdrop"),
         };
-        return this.elements; // Trả về để Controller gắn event
+        return this.elements;
     },
 
+    // ... (Giữ nguyên setHidden, updateContent) ...
     setHidden(isHidden) {
         if (this.elements.wrapper) {
-            isHidden 
-                ? this.elements.wrapper.classList.add("hidden")
-                : this.elements.wrapper.classList.remove("hidden");
+            isHidden ? this.elements.wrapper.classList.add("hidden") : this.elements.wrapper.classList.remove("hidden");
         }
     },
-
-    updateContent(breadcrumbHtml, tocHtml) {
-        if (this.elements.bar && breadcrumbHtml) {
-            this.elements.bar.innerHTML = breadcrumbHtml;
-        }
-        if (this.elements.tocContent && tocHtml) {
-            this.elements.tocContent.innerHTML = tocHtml;
-        }
+    updateContent(bcHtml, tocHtml) {
+        if (this.elements.bar) this.elements.bar.innerHTML = bcHtml;
+        if (this.elements.tocContent) this.elements.tocContent.innerHTML = tocHtml;
     },
-
-    // --- TOGGLE LOGIC ---
 
     closeAll() {
         const { bar, drawer, backdrop, btnToc, btnBreadcrumb } = this.elements;
@@ -44,21 +35,22 @@ export const UIManager = {
         
         btnToc?.classList.remove("active");
         btnBreadcrumb?.classList.remove("active");
-        btnBreadcrumb?.classList.remove("open"); // Reset xoay icon
+        btnBreadcrumb?.classList.remove("open"); // [FIXED] Xóa class open để xoay lại
     },
 
     toggleBreadcrumb() {
         const { bar, btnBreadcrumb } = this.elements;
         const isExpanded = bar.classList.contains("expanded");
 
-        this.closeAll(); // Reset trạng thái trước
+        this.closeAll(); // Đóng các cái khác trước
 
         if (!isExpanded) {
             bar.classList.add("expanded");
             btnBreadcrumb.classList.add("active");
-            btnBreadcrumb.classList.add("open"); // Kích hoạt xoay icon
-            return true; // Báo hiệu đã mở
+            btnBreadcrumb.classList.add("open"); // [FIXED] Thêm class open để xoay icon
+            return true;
         }
+        // Nếu đã mở, closeAll() ở trên đã đóng nó rồi -> Logic toggle hoàn tất
         return false;
     },
 
@@ -72,27 +64,21 @@ export const UIManager = {
             drawer.classList.add("open");
             backdrop.classList.remove("hidden");
             btnToc.classList.add("active");
-            
             this._scrollToActive();
             return true;
         }
         return false;
     },
 
-    // --- HELPERS ---
-
     isBreadcrumbExpanded() {
         return this.elements.bar?.classList.contains("expanded");
     },
 
     _scrollToActive() {
-        // Sử dụng timeout nhỏ để đảm bảo drawer đã display block/visible
         setTimeout(() => {
             const { drawer } = this.elements;
             const activeItem = drawer?.querySelector(".toc-item.active") || drawer?.querySelector(".toc-header.active");
-            
             if (activeItem) {
-                // Snappy scroll (instant) theo yêu cầu
                 activeItem.scrollIntoView({ block: "center", behavior: "instant" });
             }
         }, 50);

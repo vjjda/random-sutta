@@ -1,0 +1,39 @@
+/* Path: web/assets/css/components/magic_nav/_buttons.css */
+.magic-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: transparent;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-light);
+    z-index: 1102;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.magic-btn:hover {
+    background-color: rgba(0,0,0,0.05);
+    color: var(--primary-color);
+}
+
+.magic-btn.active {
+    background-color: var(--bg-card);
+    border-color: var(--border-light);
+    color: var(--primary-color);
+    box-shadow: var(--shadow-soft);
+}
+
+/* Xoay icon Chevron */
+#btn-magic-breadcrumb svg {
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* [FIXED] Class 'open' sẽ được JS toggle để xoay icon */
+#btn-magic-breadcrumb.open svg {
+    transform: rotate(180deg);
+}

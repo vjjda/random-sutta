@@ -19,5 +19,11 @@
 @import "css/components/_cards.css";
 @import "css/components/_popup.css";
 @import "css/components/_toh.css";
-@import "css/components/_magic_nav.css";
+
+/* [REPLACED] Magic Nav Split Modules */
+@import "css/components/magic_nav/_layout.css";
+@import "css/components/magic_nav/_buttons.css";
+@import "css/components/magic_nav/_bar.css";
+@import "css/components/magic_nav/_drawer.css";
+
 @import "css/components/_misc.css";

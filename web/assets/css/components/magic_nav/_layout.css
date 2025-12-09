@@ -1,0 +1,17 @@
+/* Path: web/assets/css/components/magic_nav/_layout.css */
+#magic-nav-wrapper {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#magic-backdrop { 
+    position: fixed; inset: 0; background: rgba(0,0,0,0.1); 
+    backdrop-filter: blur(1px);
+    z-index: 1099; 
+}
+#magic-backdrop.hidden { display: none; }

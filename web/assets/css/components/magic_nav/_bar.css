@@ -1,0 +1,46 @@
+/* Path: web/assets/css/components/magic_nav/_bar.css */
+#magic-breadcrumb-bar {
+    position: absolute;
+    left: 0; 
+    top: 0;
+    height: 32px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    
+    padding-left: 40px; 
+    padding-right: 15px;
+    
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    
+    opacity: 0;
+    visibility: hidden;
+    width: 32px;
+    overflow: hidden;
+    
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 1101;
+}
+
+#magic-breadcrumb-bar.expanded {
+    opacity: 1;
+    visibility: visible;
+    width: auto;
+    min-width: 150px;
+    max-width: 80vw;
+    box-shadow: var(--shadow-soft);
+}
+
+#magic-breadcrumb-bar ol {
+    list-style: none; margin: 0; padding: 0; 
+    display: flex; font-size: 0.85rem; color: var(--text-light);
+}
+#magic-breadcrumb-bar .bc-sep { margin: 0 5px; color: #ddd; font-size: 0.8em; }
+#magic-breadcrumb-bar .bc-link { 
+    background: none; border: none; color: var(--text-muted); 
+    cursor: pointer; padding: 0; font-weight: 400;
+}
+#magic-breadcrumb-bar .bc-link:hover { color: var(--primary-color); text-decoration: underline; }
+#magic-breadcrumb-bar .bc-item.active { font-weight: 600; color: var(--text-main); }
