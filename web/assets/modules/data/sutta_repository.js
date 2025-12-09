@@ -134,7 +134,8 @@ export const SuttaRepository = {
 
         try {
             // [UPDATED] Use AssetLoader
-            const data = await AssetLoader.load(`meta_${bookId}`, `meta/${bookId}`);
+            // Key must match the one in .js file (which is the filename stem)
+            const data = await AssetLoader.load(bookId, `meta/${bookId}`);
             if (!data) throw new Error(`Meta missing: ${bookId}`);
             
             _metaCache.set(bookId, data); // Lưu vào RAM
@@ -183,7 +184,8 @@ export const SuttaRepository = {
         try {
             const fileName = `${bookId}_chunk_${chunkIdx}`;
             // [UPDATED] Use AssetLoader
-            const data = await AssetLoader.load(cacheKey, `content/${fileName}`);
+            // Key must match the one in .js file (fileName)
+            const data = await AssetLoader.load(fileName, `content/${fileName}`);
             
             if (!data) throw new Error(`Chunk missing: ${fileName}`);
             
