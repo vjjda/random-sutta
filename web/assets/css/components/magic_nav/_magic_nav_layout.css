@@ -1,39 +1,30 @@
 /* Path: web/assets/css/components/magic_nav/_magic_nav_layout.css */
 #magic-nav-wrapper {
   position: fixed;
-  top: 10px; /* Dịch lên một chút để vùng bấm bao phủ góc tốt hơn */
+  top: 10px;
   left: 10px;
   z-index: 1100;
   display: flex;
   align-items: center;
   gap: 8px;
   
-  /* [QUAN TRỌNG] Padding cố định để nội dung không bị nhảy khi đổi trạng thái */
-  padding: 6px; 
-  border-radius: 30px; /* Bo tròn mạnh hơn */
+  padding: 6px;
+  border-radius: 30px;
   
   transition: none; 
   background-color: transparent;
   
-  /* Chiều rộng tự động nhưng giới hạn */
   width: auto;
   max-width: calc(100vw - 20px);
 }
 
-/* --- STATE: COLLAPSED (Tàng hình) --- */
 #magic-nav-wrapper.collapsed {
-  /* Vùng bấm "vô hình" rộng rãi (44px chuẩn touch) */
   width: 44px;
   height: 44px;
-  
-  /* [UPDATED] Hoàn toàn trong suốt nhưng vẫn nhận sự kiện click */
   background-color: transparent;
   border: 1px solid transparent; 
   box-shadow: none;
-  
   cursor: pointer;
-  
-  /* Reset padding về 0 để căn giữa dot ảo */
   padding: 0;
   justify-content: center;
 }
@@ -42,13 +33,11 @@
   display: none;
 }
 
-/* --- STATE: EXPANDED --- */
 #magic-nav-wrapper:not(.collapsed) {
   background-color: var(--bg-card);
   box-shadow: var(--shadow-soft);
   border: 1px solid var(--border-light);
   opacity: 1;
-  /* Giữ padding khớp với vị trí tương đối */
   padding: 6px 8px 6px 12px; 
 }
 
@@ -70,26 +59,35 @@
   overflow: hidden;
 }
 
-/* --- BREADCRUMB SCROLLING --- */
+/* --- BREADCRUMB SCROLLING FIX --- */
 #magic-breadcrumb-bar {
   display: flex;
   align-items: center;
   
-  /* [UPDATED] Cơ chế scroll */
+  /* Scroll ngang */
   overflow-x: auto; 
   white-space: nowrap;
+  
+  /* Ẩn scrollbar */
   scrollbar-width: none;
   -ms-overflow-style: none;
   
-  /* [UPDATED] Touch Action quan trọng để vuốt trên mobile */
-  touch-action: pan-x;
+  /* [FIX] pan-y: Cho phép cuộn trang dọc, NHƯNG giữ lại sự kiện vuốt ngang cho element này */
+  touch-action: pan-y;
   
-  /* [UPDATED] Padding phải cực lớn (60px) để text cuối "thoát" hẳn ra ngoài mép phải */
+  /* Padding phải cực lớn để text cuối thoát hẳn ra ngoài mép phải */
   padding: 0 60px 0 10px; 
   
-  /* Đảm bảo chiếm hết không gian còn lại */
   flex-grow: 1;
   max-width: 100%;
+  
+  /* Smooth touch scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* [NEW] Đảm bảo nội dung con (thẻ ol) không bị co lại, gây mất chữ */
+#magic-breadcrumb-bar > * {
+  flex-shrink: 0;
 }
 
 #magic-breadcrumb-bar::-webkit-scrollbar {

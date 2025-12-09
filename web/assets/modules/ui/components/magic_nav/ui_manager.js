@@ -1,7 +1,6 @@
 // Path: web/assets/modules/ui/components/magic_nav/ui_manager.js
 export const UIManager = {
     elements: {},
-    // [UPDATED] Đã xóa timer variables
 
     init() {
         this.elements = {
@@ -17,19 +16,37 @@ export const UIManager = {
 
         if (this.elements.wrapper) {
             this.elements.wrapper.addEventListener("click", (e) => {
-                // Mở khi click vào vùng "Hot Corner"
                 if (this.elements.wrapper.classList.contains("collapsed")) {
                     this.openWrapper();
                     e.stopPropagation();
                 } 
-                // Đóng khi click vào Dot (nút đóng) hoặc vùng trống của thanh bar
                 else if (e.target === this.elements.dot || e.target === this.elements.wrapper) {
                     this.closeAll();
                     e.stopPropagation();
                 }
             });
             
-            // [UPDATED] Xóa các sự kiện mouseenter/mouseleave/touch gây auto-collapse
+            // [NEW] Xử lý sự kiện lăn chuột (Wheel) cho Breadcrumb Bar
+            if (this.elements.bar) {
+                this.elements.bar.addEventListener("wheel", (e) => {
+                    // Nếu giữ Shift -> Lăn ngang (Hỗ trợ laptop)
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        this.elements.bar.scrollLeft += e.deltaY;
+                    } 
+                    // [Optional] Nếu muốn lăn chuột dọc bình thường cũng cuộn ngang (tiện hơn)
+                    // thì bỏ comment phần else if dưới đây:
+                    /*
+                    else if (e.deltaY !== 0) {
+                        // Chỉ cuộn ngang nếu nội dung thực sự bị tràn
+                        if (this.elements.bar.scrollWidth > this.elements.bar.clientWidth) {
+                            e.preventDefault();
+                            this.elements.bar.scrollLeft += e.deltaY;
+                        }
+                    }
+                    */
+                }, { passive: false });
+            }
         }
 
         if (this.elements.backdrop) {
@@ -55,11 +72,8 @@ export const UIManager = {
         if (this.elements.tocContent) this.elements.tocContent.innerHTML = tocHtml;
     },
 
-    // [UPDATED] Các hàm timer đã bị xóa (startAutoCollapse, clear, reset)
-
     openWrapper() {
         this.elements.wrapper.classList.remove("collapsed");
-        // Scroll ngay lập tức khi mở
         if (this.elements.bar && this.elements.bar.innerHTML) {
              this._scrollBreadcrumbToEnd();
         }
@@ -137,7 +151,7 @@ export const UIManager = {
             const bar = this.elements.bar;
             if (bar) {
                 bar.scrollTo({
-                    left: bar.scrollWidth, // Scroll kịch kim sang phải
+                    left: bar.scrollWidth, 
                     behavior: 'instant'
                 });
             }
