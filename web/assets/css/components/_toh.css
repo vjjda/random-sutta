@@ -168,3 +168,14 @@
   font-style: italic;
   font-weight: 400;
 }
+
+/* [NEW] Low-profile styling for Paragraphs Mode */
+#toh-menu.toh-mode-paragraphs .toh-main-text {
+  font-weight: 400; /* Reduce boldness */
+  color: var(--text-light); /* Make it lighter */
+}
+
+#toh-menu.toh-mode-paragraphs .toh-prefix {
+    font-weight: 600; /* Keep prefix slightly bolder */
+    color: var(--text-muted);
+}

@@ -50,12 +50,20 @@ export function setupTableOfHeadings() {
         // 2. Render & Display (Sử dụng DomRenderer)
         if (scanResult.mode === 'none') {
             els.wrapper.classList.add("hidden");
+            els.menu.classList.remove("toh-mode-paragraphs"); // Ensure class is removed if no items
         } else {
             DomRenderer.updateHeader(scanResult.mode, els.header);
             DomRenderer.renderList(scanResult.items, els.list, {
                 onItemClick: closeMenu
             });
             els.wrapper.classList.remove("hidden");
+            
+            // [NEW] Add mode class to menu for styling
+            if (scanResult.mode === 'paragraphs') {
+                els.menu.classList.add("toh-mode-paragraphs");
+            } else {
+                els.menu.classList.remove("toh-mode-paragraphs");
+            }
         }
     }
 
