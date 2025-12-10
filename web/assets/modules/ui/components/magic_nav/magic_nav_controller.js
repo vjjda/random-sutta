@@ -54,13 +54,19 @@ export const MagicNav = {
         // ... (Giữ nguyên logic tính toán path) ...
         let fullPath = BreadcrumbRenderer.findPath(localTree, currentUid);
         if (fullPath && superTree && fullPath.length > 0) {
-            const rootBookId = fullPath[0];
-            if (currentUid === rootBookId) {
-                const superPath = BreadcrumbRenderer.findPath(superTree, rootBookId);
-                if (superPath) {
-                    superPath.pop();
-                    fullPath = [...superPath, ...fullPath];
+            const rootBookId = fullPath[0]; // e.g., "an1" from ["an1", "an1.1-10", "an1.5"]
+            
+            // Find the path to this rootBookId within the superTree (e.g., ["tipitaka", "sutta", "an", "an1"])
+            const superPath = BreadcrumbRenderer.findPath(superTree, rootBookId);
+            
+            if (superPath && superPath.length > 0) {
+                // If the superPath's last element is the same as the localPath's first element,
+                // remove it to avoid duplication when concatenating.
+                // e.g., superPath ["...", "an1"] and fullPath ["an1", "..."]. Remove "an1" from superPath.
+                if (superPath[superPath.length - 1] === rootBookId) {
+                    superPath.pop(); 
                 }
+                fullPath = [...superPath, ...fullPath];
             }
         }
         const finalMeta = { ...superMeta, ...contextMeta };
