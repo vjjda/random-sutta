@@ -1,3 +1,10 @@
+/* Disable double-tap to zoom on buttons for iOS */
+button,
+.magic-btn {
+  touch-action: manipulation;
+  -webkit-touch-callout: none; /* Optional: Disable long-press context menu */
+}
+
 /* Path: web/assets/css/components/_buttons.css */
 #btn-random {
   background-color: var(--primary-color);
