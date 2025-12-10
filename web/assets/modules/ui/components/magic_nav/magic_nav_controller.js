@@ -12,10 +12,6 @@ export const MagicNav = {
         if (!els.wrapper) return;
 
         // ... (Giữ nguyên các event listeners cũ) ...
-        els.btnBreadcrumb.addEventListener("click", (e) => {
-            e.stopPropagation();
-            UIManager.toggleBreadcrumb();
-        });
         els.btnToc.addEventListener("click", (e) => {
             e.stopPropagation();
             UIManager.toggleTOC();

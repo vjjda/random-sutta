@@ -5,9 +5,7 @@ export const UIManager = {
     init() {
         this.elements = {
             wrapper: document.getElementById("magic-nav-wrapper"),
-            // [CHANGED] Đổi tên tham chiếu
-            corner: document.getElementById("magic-nav-corner"), 
-            btnBreadcrumb: document.getElementById("btn-magic-breadcrumb"),
+            corner: document.getElementById("magic-nav-corner"),
             btnToc: document.getElementById("btn-magic-toc"),
             bar: document.getElementById("magic-breadcrumb-bar"),
             drawer: document.getElementById("magic-toc-drawer"),
@@ -17,15 +15,19 @@ export const UIManager = {
 
         if (this.elements.wrapper) {
             this.elements.wrapper.addEventListener("click", (e) => {
-                // Logic: Nếu đang đóng -> Click vào wrapper để mở
+                // If collapsed, a click on the wrapper opens everything.
                 if (this.elements.wrapper.classList.contains("collapsed")) {
-                    this.openWrapper();
+                    this.openWrapper(); // This will now open wrapper AND breadcrumb
                     e.stopPropagation();
-                } 
-                // Logic: Nếu đang mở -> Click vào corner (chữ x) hoặc vùng trống của wrapper để đóng
-                else if (e.target === this.elements.corner || this.elements.corner?.contains(e.target) || e.target === this.elements.wrapper) {
-                    this.closeAll();
-                    e.stopPropagation();
+                }
+                // If open, a click on the corner or the wrapper background closes everything.
+                else {
+                    const cornerClicked = this.elements.corner.contains(e.target);
+                    const wrapperBgClicked = e.target === this.elements.wrapper;
+                    if (cornerClicked || wrapperBgClicked) {
+                        this.closeAll();
+                        e.stopPropagation();
+                    }
                 }
             });
 
@@ -104,31 +106,31 @@ export const UIManager = {
 
     openWrapper() {
         this.elements.wrapper.classList.remove("collapsed");
-        if (this.elements.bar && this.elements.bar.innerHTML) {
-             this._scrollBreadcrumbToEnd();
-        }
+
+        // also expand breadcrumb
+        const { bar, backdrop } = this.elements;
+        this._closePopupsOnly(); // Ensure other popups are closed
+        bar?.classList.add("expanded");
+        backdrop?.classList.remove("hidden");
+        this._scrollBreadcrumbToEnd();
     },
 
     closeAll() {
-        const { bar, drawer, backdrop, btnToc, btnBreadcrumb, wrapper } = this.elements;
+        const { bar, drawer, backdrop, btnToc, wrapper } = this.elements;
         bar?.classList.remove("expanded");
         drawer?.classList.remove("open");
         backdrop?.classList.add("hidden");
         btnToc?.classList.remove("active");
-        btnBreadcrumb?.classList.remove("active");
-        btnBreadcrumb?.classList.remove("open");
         wrapper?.classList.add("collapsed");
     },
 
     toggleBreadcrumb() {
-        const { bar, btnBreadcrumb } = this.elements;
+        const { bar } = this.elements;
         const isExpanded = bar.classList.contains("expanded");
         this._closePopupsOnly(); 
 
         if (!isExpanded) {
             bar.classList.add("expanded");
-            btnBreadcrumb.classList.add("active");
-            btnBreadcrumb.classList.add("open");
             this.elements.backdrop.classList.remove("hidden");
             this._scrollBreadcrumbToEnd();
             return true;
@@ -140,26 +142,26 @@ export const UIManager = {
     toggleTOC() {
         const { drawer, backdrop, btnToc } = this.elements;
         const isOpen = drawer.classList.contains("open");
-        this._closePopupsOnly();
 
-        if (!isOpen) {
+        // A simple toggle for the TOC drawer
+        if (isOpen) {
+            drawer.classList.remove("open");
+            btnToc.classList.remove("active");
+            // The backdrop is handled by other functions now, don't hide it here
+            // as the breadcrumb bar might need it.
+        } else {
             drawer.classList.add("open");
-            backdrop.classList.remove("hidden");
             btnToc.classList.add("active");
+            backdrop.classList.remove("hidden"); // Ensure backdrop is visible
             this._scrollToActive();
-            return true;
         }
-        backdrop.classList.remove("hidden");
-        return false;
     },
 
     _closePopupsOnly() {
-        const { bar, drawer, btnToc, btnBreadcrumb } = this.elements;
+        const { bar, drawer, btnToc } = this.elements;
         bar?.classList.remove("expanded");
         drawer?.classList.remove("open");
         btnToc?.classList.remove("active");
-        btnBreadcrumb?.classList.remove("active");
-        btnBreadcrumb?.classList.remove("open");
     },
 
     isBreadcrumbExpanded() {
