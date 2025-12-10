@@ -13,27 +13,40 @@ export const StructureStrategy = {
         let mergedMeta = { ...superBookMeta.meta };
         let allSubBookIds = new Set();
         
-        // 1. Collect Sub-book IDs
-        for (const key in superBookMeta.tree) {
-            const children = superBookMeta.tree[key];
-            if (Array.isArray(children)) {
-                children.forEach(childId => allSubBookIds.add(childId));
+        // 1. Collect Sub-book IDs from Root Keys
+        // Ví dụ: tree = { "an": ["an1", "an2"] } -> Collect an1, an2
+        const collectIds = (node) => {
+            if (Array.isArray(node)) {
+                node.forEach(child => {
+                    if (typeof child === 'string') allSubBookIds.add(child);
+                });
+            } else if (typeof node === 'object' && node !== null) {
+                Object.values(node).forEach(val => collectIds(val));
             }
-        }
+        };
+        collectIds(mergedTree);
 
         // 2. Fetch all Sub-book Metas concurrently
         const subBookMetas = await Promise.all(
-            Array.from(allSubBookIds).map(async (subBookId) => ({
-                id: subBookId,
-                meta: await SuttaRepository.fetchMeta(subBookId)
-            }))
+            Array.from(allSubBookIds).map(async (subBookId) => {
+                try {
+                    const meta = await SuttaRepository.fetchMeta(subBookId);
+                    return { id: subBookId, meta };
+                } catch (e) {
+                    logger.warn("buildSuperToc", `Failed to fetch meta for sub-book ${subBookId}`, e);
+                    return { id: subBookId, meta: null };
+                }
+            })
         );
 
         const subBookMetaMap = {};
         subBookMetas.forEach(entry => {
             if (entry.meta) {
                 subBookMetaMap[entry.id] = entry.meta;
-                Object.assign(mergedMeta, entry.meta.meta); 
+                // Merge Sub-book meta into Super-book meta context
+                if (entry.meta.meta) {
+                    Object.assign(mergedMeta, entry.meta.meta);
+                }
             }
         });
 
@@ -42,33 +55,41 @@ export const StructureStrategy = {
             if (Array.isArray(currentSuperTreePart)) {
                 const newArray = [];
                 currentSuperTreePart.forEach(itemId => {
-                    if (subBookMetaMap[itemId] && subBookMetaMap[itemId].tree) {
+                    // Check if this item is a Sub-book that needs expansion
+                    if (typeof itemId === 'string' && subBookMetaMap[itemId] && subBookMetaMap[itemId].tree) {
                         const subTree = subBookMetaMap[itemId].tree;
                         let extractedContent = null;
                         
-                        // Try exact parent match or scan keys
+                        // Strategy A: Exact Match (e.g. subTree["an"]["an1"])
                         if (parentKey && subTree[parentKey] && subTree[parentKey][itemId]) {
                             extractedContent = subTree[parentKey][itemId];
-                        } else {
+                        } 
+                        // Strategy B: Direct Key Match (e.g. subTree["an1"]) - Handles inconsistent wrapping
+                        else if (subTree[itemId]) {
+                            extractedContent = subTree[itemId];
+                        }
+                        // Strategy C: Scan keys (Fallback)
+                        else {
                              for (const key in subTree) {
                                  if (subTree[key] && subTree[key][itemId]) {
                                      extractedContent = subTree[key][itemId];
-                                     break;
-                                 }
-                                 if (key === itemId) {
-                                     extractedContent = subTree[key];
                                      break;
                                  }
                              }
                         }
 
                         if (extractedContent) {
+                            // Recursively merge deeply (in case sub-book has its own sub-books)
+                            // We wrap it back in { [itemId]: content } to maintain the Branch structure
                             const recursivelyMergedContent = mergeTrees(extractedContent, subBookMetaMap, itemId);
                             newArray.push({ [itemId]: recursivelyMergedContent });
                         } else {
+                            // Data exists but structure mismatch? Keep ID as leaf to avoid crash
+                            logger.warn("buildSuperToc", `Content extraction failed for ${itemId} (Parent: ${parentKey})`);
                             newArray.push(itemId);
                         }
                     } else {
+                        // Not a sub-book or data missing, keep as is
                         newArray.push(itemId);
                     }
                 });
@@ -76,6 +97,7 @@ export const StructureStrategy = {
             } else if (typeof currentSuperTreePart === 'object' && currentSuperTreePart !== null) {
                 const newObject = {};
                 for (const key in currentSuperTreePart) {
+                    // Pass 'key' as the parentKey for the next level (e.g. "an")
                     newObject[key] = mergeTrees(currentSuperTreePart[key], subBookMetaMap, key);
                 }
                 return newObject;
@@ -111,21 +133,24 @@ export const StructureStrategy = {
                     logger.error("resolveContext", `Sub-book ${bookMeta.uid} is missing super_book_id`);
                     finalTree = bookMeta.tree;
                 } else {
-                    const superBookMeta = await SuttaRepository.fetchMeta(superBookId);
-                    if (!superBookMeta) {
-                        logger.error("resolveContext", `Failed to fetch super_book meta for ${superBookId}`);
-                        finalTree = bookMeta.tree;
-                    } else {
+                    try {
+                        const superBookMeta = await SuttaRepository.fetchMeta(superBookId);
+                        if (!superBookMeta) {
+                            throw new Error("Super book meta not found");
+                        }
                         const superTocData = await this.buildSuperToc(superBookMeta);
                         finalTree = superTocData.tree;
                         Object.assign(finalContextMeta, superTocData.meta);
+                    } catch (e) {
+                        logger.error("resolveContext", `Failed to build Super TOC for ${superBookId}`, e);
+                        finalTree = bookMeta.tree; // Fallback to local tree
                     }
                 }
             } else {
                 finalTree = bookMeta.tree;
             }
         } else {
-            logger.warn("resolveContext", `Unknown book type: ${bookMeta.type} for UID ${uid}`);
+            // Fallback for unknown types
             finalTree = bookMeta.tree;
         }
 
