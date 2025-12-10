@@ -39,10 +39,13 @@ export function setupTableOfHeadings() {
     });
 
     // --- Main Logic ---
+    let observer = null;
+
     function generate() {
         // Reset State
         els.list.innerHTML = "";
         closeMenu();
+        if (observer) observer.disconnect();
 
         // 1. Scan Data (Sử dụng ContentScanner)
         const scanResult = ContentScanner.scan(els.container);
@@ -63,6 +66,41 @@ export function setupTableOfHeadings() {
                 els.menu.classList.add("toh-mode-paragraphs");
             } else {
                 els.menu.classList.remove("toh-mode-paragraphs");
+            }
+
+            // [NEW] Active State Tracking
+            const idsToTrack = [];
+            scanResult.items.forEach(item => {
+                if (item.id) idsToTrack.push(item.id);
+                if (item.subTexts) {
+                    item.subTexts.forEach(sub => {
+                        if (sub.id) idsToTrack.push(sub.id);
+                    });
+                }
+            });
+
+            if (idsToTrack.length > 0) {
+                observer = new IntersectionObserver((entries) => {
+                    // Logic: Find the first entry that is intersecting.
+                    // Ideally, we want the one closest to the top of viewport.
+                    // But intersection observer triggers when they enter/leave.
+                    // Simple logic: if multiple are intersecting, take the first one.
+                    // A robust active spy needs more complex logic (keeping track of all intersecting),
+                    // but for TOH, taking the first intersecting entry usually works if margin is set right.
+                    
+                    const visible = entries.find(e => e.isIntersecting);
+                    if (visible) {
+                        DomRenderer.updateActiveState(visible.target.id);
+                    }
+                }, {
+                    rootMargin: '-10% 0px -80% 0px', // Active zone is top 10-20% of screen
+                    threshold: 0
+                });
+
+                idsToTrack.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) observer.observe(el);
+                });
             }
         }
     }

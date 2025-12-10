@@ -94,7 +94,17 @@ export const ContentScanner = {
                     } else {
                         subText = rawSub.substring(0, 80) + (rawSub.length > 80 ? "..." : "");
                     }
-                    subTexts.push(subText);
+                    
+                    // Find ID for linking
+                    let paraId = null;
+                    const segment = nextElem.querySelector('.segment');
+                    if (segment && segment.id) {
+                        paraId = segment.id;
+                    } else if (nextElem.id) {
+                        paraId = nextElem.id;
+                    }
+
+                    subTexts.push({ id: paraId, text: subText });
                 }
             }
             nextElem = nextElem.nextElementSibling;
@@ -105,7 +115,7 @@ export const ContentScanner = {
             text: getCleanTextContent(heading),
             levelClass: `toh-${heading.tagName.toLowerCase()}`, 
             prefix: prefix,
-            subTexts: subTexts // [UPDATED] Return array
+            subTexts: subTexts // [UPDATED] Return array of objects
         };
     },
 

@@ -82,7 +82,7 @@
 }
 
 /* [FULL WIDTH HOVER & LAYOUT] */
-.toh-link {
+.toh-item-wrapper {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -91,17 +91,22 @@
   margin-left: -15px;
   margin-right: -15px;
   
-  /* Bù lại padding để nội dung văn bản không bị dính sát lề */
-  padding-top: 8px;
-  padding-bottom: 8px;
-  padding-right: 15px;
-  /* padding-left sẽ được set riêng theo từng cấp độ heading bên dưới */
-  
+  /* Padding cho container */
+  padding-top: 4px;
+  padding-bottom: 4px;
+  /* padding-left được set bởi level heading */
+}
+
+/* Header Row */
+.toh-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 15px; /* Padding phải */
   cursor: pointer;
   transition: background-color 0.1s ease;
 }
-
-.toh-link:hover {
+.toh-header-row:hover {
   background-color: rgba(0, 0, 0, 0.04);
 }
 
@@ -111,6 +116,9 @@
   font-weight: 600;
   color: var(--text-main);
   line-height: 1.3;
+  flex: 1;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 .toh-prefix {
   font-weight: 700;
@@ -118,10 +126,48 @@
   margin-right: 4px;
 }
 
+/* Toggle Icon */
+.toh-toggle-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-light);
+  transition: transform 0.2s ease, color 0.2s;
+  border-radius: 4px;
+}
+.toh-toggle-icon:hover {
+  color: var(--primary-color);
+  background-color: rgba(0,0,0,0.05);
+}
+
+/* Rotation logic: Default points Down. Collapsed points Right? 
+   TOC logic: collapsed -> rotate -90deg.
+   Here, icon is chevron-down.
+*/
+.toh-item-wrapper.collapsed .toh-toggle-icon svg {
+  transform: rotate(-90deg);
+}
+
+/* Children Container */
+.toh-children {
+  display: flex;
+  flex-direction: column;
+  padding-right: 15px; /* Padding phải cho subtext */
+}
+.toh-item-wrapper.collapsed .toh-children {
+  display: none;
+}
+
+/* Sub Text */
 .toh-sub-text {
   font-size: 0.85rem;
   color: var(--text-muted);
   line-height: 1.3;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-right: 5px; /* Less right padding */
   
   /* Line Clamp */
   display: -webkit-box;
@@ -129,50 +175,55 @@
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  
+  cursor: default;
+}
+.toh-sub-text.clickable {
+  cursor: pointer;
+}
+.toh-sub-text.clickable:hover {
+  color: var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
-/* [INDENTATION VIA PADDING] */
-/* Base padding = 15px (bằng với padding của menu cha) */
-
-.toh-h1 .toh-link {
-  padding-left: 15px;
-  /* H1 styling specific */
-  background-color: rgba(0, 0, 0, 0.02); 
+/* [ACTIVE STATE] */
+.toh-header-row.active,
+.toh-sub-text.active {
+  background-color: var(--highlight-color-background, rgba(255, 152, 0, 0.1));
+  color: var(--text-main);
+  font-weight: 600;
+  border-radius: 4px;
 }
-.toh-h1 .toh-main-text {
-  font-weight: 700;
+/* Ensure text color inside active header is consistent */
+.toh-header-row.active .toh-main-text,
+.toh-header-row.active .toh-toggle-icon {
+  color: var(--primary-color);
+}
+.toh-sub-text.active {
   color: var(--primary-color);
 }
 
-.toh-h2 .toh-link {
-  padding-left: 15px; /* Level 1 */
-}
+/* [INDENTATION VIA PADDING] */
+/* Apply indentation to both header-row and children to align them */
 
-.toh-h3 .toh-link {
-  padding-left: 30px; /* Level 2 */
-}
+.toh-h1 .toh-header-row, .toh-h1 .toh-children { padding-left: 15px; }
+.toh-h1 .toh-header-row { background-color: rgba(0, 0, 0, 0.02); }
+.toh-h1 .toh-main-text { font-weight: 700; color: var(--primary-color); }
 
-.toh-h4 .toh-link {
-  padding-left: 45px; /* Level 3 */
-}
-.toh-h4 .toh-main-text {
-  font-size: 0.9rem;
-  font-weight: 400;
-}
+.toh-h2 .toh-header-row, .toh-h2 .toh-children { padding-left: 15px; }
 
-.toh-h5 .toh-link {
-  padding-left: 60px; /* Level 4 */
-}
-.toh-h5 .toh-main-text {
-  font-size: 0.85rem;
-  font-style: italic;
-  font-weight: 400;
-}
+.toh-h3 .toh-header-row, .toh-h3 .toh-children { padding-left: 30px; }
+
+.toh-h4 .toh-header-row, .toh-h4 .toh-children { padding-left: 45px; }
+.toh-h4 .toh-main-text { font-size: 0.9rem; font-weight: 400; }
+
+.toh-h5 .toh-header-row, .toh-h5 .toh-children { padding-left: 60px; }
+.toh-h5 .toh-main-text { font-size: 0.85rem; font-style: italic; font-weight: 400; }
 
 /* [NEW] Low-profile styling for Paragraphs Mode */
 #toh-menu.toh-mode-paragraphs .toh-main-text {
   font-weight: 400; /* Reduce boldness */
-  color: var(--text-main); /* Make it lighter */
+  color: var(--text-light); /* Make it lighter */
 }
 
 #toh-menu.toh-mode-paragraphs .toh-prefix {
