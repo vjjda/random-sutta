@@ -153,30 +153,49 @@ export const SuttaService = {
         let finalTree = null;
         let finalContextMeta = { ...bookMeta.meta }; // Start with current book's meta
 
-        // [NEW LOGIC] Handle super_book and sub_book types
+        // [NEW LOGIC] Lazy-load super_toc
+        // Only build super_toc if we are "Offline Ready" (zip bundle downloaded) or in File/Dev mode.
+        // This prevents massive network fetching (100+ requests) on first load for online users without cache.
+        const isFileProtocol = window.location.protocol === 'file:';
+        const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
+        const shouldBuildSuperToc = isFileProtocol || isOfflineReady;
+
+        // Handle super_book and sub_book types
         if (bookMeta.type === 'book') {
             // Existing behavior for regular books
             finalTree = bookMeta.tree;
         } else if (bookMeta.type === 'super_book') {
-            // For a super_book, build the super_toc from itself
-            const superTocData = await this._buildSuperToc(bookMeta, uid);
-            finalTree = superTocData.tree;
-            Object.assign(finalContextMeta, superTocData.meta);
+            if (shouldBuildSuperToc) {
+                 // For a super_book, build the super_toc from itself
+                const superTocData = await this._buildSuperToc(bookMeta, uid);
+                finalTree = superTocData.tree;
+                Object.assign(finalContextMeta, superTocData.meta);
+            } else {
+                // Fallback: Use simple children list
+                finalTree = bookMeta.tree;
+            }
         } else if (bookMeta.type === 'sub_book') {
-            // For a sub_book, we need to fetch its super_book and build the super_toc
-            const superBookId = bookMeta.super_book_id;
-            if (!superBookId) {
-                logger.error("loadSutta", `Sub-book ${bookMeta.uid} is missing super_book_id`);
-                return null;
+            if (shouldBuildSuperToc) {
+                // For a sub_book, we need to fetch its super_book and build the super_toc
+                const superBookId = bookMeta.super_book_id;
+                if (!superBookId) {
+                    logger.error("loadSutta", `Sub-book ${bookMeta.uid} is missing super_book_id`);
+                    finalTree = bookMeta.tree;
+                } else {
+                    const superBookMeta = await SuttaRepository.fetchMeta(superBookId);
+                    if (!superBookMeta) {
+                        logger.error("loadSutta", `Failed to fetch super_book meta for ${superBookId}`);
+                        finalTree = bookMeta.tree;
+                    } else {
+                        const superTocData = await this._buildSuperToc(superBookMeta, uid);
+                        finalTree = superTocData.tree;
+                        Object.assign(finalContextMeta, superTocData.meta);
+                    }
+                }
+            } else {
+                 // Fallback: Use local sub-book tree (Normal TOC)
+                finalTree = bookMeta.tree;
             }
-            const superBookMeta = await SuttaRepository.fetchMeta(superBookId);
-            if (!superBookMeta) {
-                logger.error("loadSutta", `Failed to fetch super_book meta for ${superBookId}`);
-                return null;
-            }
-            const superTocData = await this._buildSuperToc(superBookMeta, uid);
-            finalTree = superTocData.tree;
-            Object.assign(finalContextMeta, superTocData.meta);
         } else {
             logger.warn("loadSutta", `Unknown book type: ${bookMeta.type} for UID ${uid}`);
             finalTree = bookMeta.tree; // Fallback to local tree
