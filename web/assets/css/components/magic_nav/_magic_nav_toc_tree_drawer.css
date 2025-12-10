@@ -116,13 +116,32 @@
   transform: rotate(-90deg);
 }
 
-/* --- 3. LEAF ITEMS --- */
+/* --- 3. LEAF ITEMS & SHARED STYLES --- */
+
+/* Shared presentation for anything acting as a "Leaf" (text + subtext) */
+.toc-leaf-presentation {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Standardize padding for all leaves (header or item) */
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  padding-right: 10px;
+  
+  /* Reset typography that might come from .toc-header */
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-size: 1rem !important; /* Reset to base to allow children to control */
+  font-weight: normal !important;
+  line-height: normal !important;
+  color: inherit;
+}
+
 .toc-item {
   /* Padding-left inline bởi JS */
   padding-top: 8px;
   padding-bottom: 8px;
   padding-right: 10px;
-  /* border-bottom: 1px solid rgba(0, 0, 0, 0.03); */
   cursor: pointer;
   transition: background 0.1s;
   /* [IMPORTANT] Relative để neo thanh active bar */
@@ -147,12 +166,19 @@
   background-color: var(--primary-color);
 }
 
-/* Layout Leaf (2 dòng) */
+/* Apply shared style to .toc-item.leaf */
 .toc-item.leaf {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  /* Inherits everything from .toc-leaf-presentation via JS class or just mixin behavior */
+  /* The class .toc-leaf-presentation will be added in JS, but we keep this selector for legacy or specific overrides if needed */
 }
+
+/* Ensure .toc-header acting as leaf looks correct */
+.toc-header.toc-leaf-presentation {
+  /* The shared class handles the reset, but we ensure flex works in the header context */
+  flex: 1; 
+  /* Note: padding and typography are reset by !important in .toc-leaf-presentation */
+}
+
 .toc-row-main {
   font-size: 0.95rem;
   font-weight: 700; /* [FIX] Đậm hơn nữa cho rõ acronym */
@@ -160,7 +186,8 @@
   line-height: 1.2;
 }
 /* Khi active, acronym chuyển màu cam cho nổi */
-.toc-item.active .toc-row-main {
+.toc-item.active .toc-row-main,
+.toc-header-row.active .toc-row-main {
   color: var(--primary-color);
 }
 

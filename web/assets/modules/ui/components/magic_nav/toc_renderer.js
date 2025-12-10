@@ -50,8 +50,9 @@ export const TocRenderer = {
             // Sử dụng action mới
             const action = isActive ? "" : getLoadAction(id);
             
+            const presentationClass = type === 'leaf' ? 'toc-leaf-presentation' : '';
             const paddingLeft = 15 + (level * 16);
-            return `<div class="toc-item ${type} ${isActive}" ${action} style="padding-left: ${paddingLeft}px">
+            return `<div class="toc-item ${type} ${presentationClass} ${isActive}" ${action} style="padding-left: ${paddingLeft}px">
                         ${generateInnerContent(id, type)}
                     </div>`;
         };
@@ -81,7 +82,8 @@ export const TocRenderer = {
             
             const collapsedClass = isCollapsed ? "collapsed" : "";
             const rowActiveClass = isActive ? "active" : "";
-            const headerClasses = `toc-header type-${type} ${isClickable ? 'clickable' : ''}`;
+            const presentationClass = type === 'leaf' ? 'toc-leaf-presentation' : '';
+            const headerClasses = `toc-header type-${type} ${presentationClass} ${isClickable ? 'clickable' : ''}`;
 
             return `<div class="toc-node-wrapper ${collapsedClass}">
                         <div class="toc-header-row ${rowActiveClass}">
