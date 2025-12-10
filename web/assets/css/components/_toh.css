@@ -81,9 +81,11 @@
   margin-bottom: 2px;
 }
 
-/* [FULL WIDTH HOVER] */
+/* [FULL WIDTH HOVER & LAYOUT] */
 .toh-link {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   
   /* Kỹ thuật Margin Âm: Kéo link tràn ra khỏi padding:15px của cha */
   margin-left: -15px;
@@ -96,45 +98,73 @@
   /* padding-left sẽ được set riêng theo từng cấp độ heading bên dưới */
   
   cursor: pointer;
-  color: var(--text-main);
   transition: background-color 0.1s ease;
-  font-size: 0.9rem;
-  line-height: 1.4;
 }
 
 .toh-link:hover {
-  background-color: rgba(0, 0, 0, 0.04); /* Màu nền xám nhẹ full chiều rộng */
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Typography mirroring TOC */
+.toh-main-text {
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--text-main);
+  line-height: 1.3;
+}
+.toh-prefix {
+  font-weight: 700;
+  color: var(--text-light);
+  margin-right: 4px;
+}
+
+.toh-sub-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+  
+  /* Line Clamp */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* [INDENTATION VIA PADDING] */
-/* Thay vì margin thẻ li, ta tăng padding-left của thẻ link */
 /* Base padding = 15px (bằng với padding của menu cha) */
 
 .toh-h1 .toh-link {
   padding-left: 15px;
-  font-weight: 600;
+  /* H1 styling specific */
+  background-color: rgba(0, 0, 0, 0.02); 
+}
+.toh-h1 .toh-main-text {
+  font-weight: 700;
   color: var(--primary-color);
-  background-color: rgba(0, 0, 0, 0.02); /* H1 có nền nhẹ mặc định để phân cách */
 }
 
 .toh-h2 .toh-link {
-  padding-left: 15px; /* Cấp 1: Sát lề chuẩn */
+  padding-left: 15px; /* Level 1 */
 }
 
 .toh-h3 .toh-link {
-  padding-left: 30px; /* Cấp 2: Thụt vào 15px */
+  padding-left: 30px; /* Level 2 */
 }
 
 .toh-h4 .toh-link {
-  padding-left: 45px; /* Cấp 3: Thụt thêm */
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  padding-left: 45px; /* Level 3 */
+}
+.toh-h4 .toh-main-text {
+  font-size: 0.9rem;
+  font-weight: 400;
 }
 
 .toh-h5 .toh-link {
-  padding-left: 60px; /* Cấp 4 */
-  font-size: 0.8rem;
-  color: var(--text-light);
+  padding-left: 60px; /* Level 4 */
+}
+.toh-h5 .toh-main-text {
+  font-size: 0.85rem;
   font-style: italic;
+  font-weight: 400;
 }

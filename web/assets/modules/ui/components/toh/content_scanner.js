@@ -73,11 +73,28 @@ export const ContentScanner = {
             }
         }
 
+        // [NEW] Extract first sentence of the following paragraph
+        let subText = "";
+        const nextElem = heading.nextElementSibling;
+        if (nextElem && nextElem.tagName.toLowerCase() === 'p') {
+            const rawSub = getCleanTextContent(nextElem);
+            if (rawSub) {
+                // Take first sentence or truncate
+                const dotIndex = rawSub.indexOf('.');
+                if (dotIndex !== -1 && dotIndex < 100) {
+                    subText = rawSub.substring(0, dotIndex + 1);
+                } else {
+                    subText = rawSub.substring(0, 80) + (rawSub.length > 80 ? "..." : "");
+                }
+            }
+        }
+
         return {
             id: heading.id,
             text: getCleanTextContent(heading),
             levelClass: `toh-${heading.tagName.toLowerCase()}`, 
-            prefix: prefix
+            prefix: prefix,
+            subText: subText // [NEW]
         };
     },
 

@@ -11,21 +11,33 @@ export const DomRenderer = {
             const li = document.createElement("li");
             li.className = `toh-item ${item.levelClass}`;
             
-            const span = document.createElement("span"); 
-            span.className = "toh-link";
+            const linkWrapper = document.createElement("div"); 
+            linkWrapper.className = "toh-link";
             
+            // Main Text Row
+            const mainTextDiv = document.createElement("div");
+            mainTextDiv.className = "toh-main-text";
             if (item.prefix) {
-                span.innerHTML = `<b>${item.prefix}.</b> ${item.text}`;
+                mainTextDiv.innerHTML = `<span class="toh-prefix">${item.prefix}.</span> ${item.text}`;
             } else {
-                span.textContent = item.text;
+                mainTextDiv.textContent = item.text;
+            }
+            linkWrapper.appendChild(mainTextDiv);
+
+            // Sub Text Row (if available)
+            if (item.subText) {
+                const subTextDiv = document.createElement("div");
+                subTextDiv.className = "toh-sub-text";
+                subTextDiv.textContent = item.subText;
+                linkWrapper.appendChild(subTextDiv);
             }
             
-            span.onclick = () => {
+            linkWrapper.onclick = () => {
                 Scroller.animateScrollTo(item.id);
                 if (callbacks.onItemClick) callbacks.onItemClick();
             };
 
-            li.appendChild(span);
+            li.appendChild(linkWrapper);
             listElement.appendChild(li);
         });
     },
