@@ -159,31 +159,43 @@ async function testSuperTocFallback() {
     localStorage.removeItem('sutta_offline_version');
     
     // Test Case: Load "an" (Super Book)
-    // Expectation: Return simple tree (["an1", "an2", "an3"]), NOT merged tree
     const result = await SuttaService.loadSutta("an", { prefetchNav: false });
 
     if (!result || !result.tree) throw new Error("Result or tree is null");
     if (!result.tree.an) throw new Error("Expected 'an' key in tree");
     
     // Check that it is NOT merged
-    // In unmerged tree, children are strings ("an1", "an2"), not objects
     const firstChild = result.tree.an[0];
     if (typeof firstChild !== 'string' || firstChild !== 'an1') {
         throw new Error(`Expected unmerged child 'an1', got ${JSON.stringify(firstChild)}`);
     }
     
     // Test Case: Load "an1.1" (Sub Book)
-    // Expectation: Return local tree of "an1" only
     const subResult = await SuttaService.loadSutta("an1.1", { prefetchNav: false });
     
     if (!subResult || !subResult.tree) throw new Error("Result or tree is null");
-    // Sub Book "an1" local tree is { "an1": ... }, NOT { "an": ... }
-    // Wait, let's check mock data for an1: { "an1": { "an1.1-10": ... } }
-    // Actually, sub-book an1.json wraps in "an1"? No, let's check mock data.
-    // Mock data: tree: { "an1": { "an1.1-10": [...] } }
     
     if (!subResult.tree.an1) throw new Error("Expected 'an1' key in local fallback tree");
     if (subResult.tree.an) throw new Error("Did not expect 'an' key (Super Tree) in local fallback");
+}
+
+async function testBreadcrumbLazyLoad() {
+    // Setup: Simulate Not Ready
+    localStorage.removeItem('sutta_offline_version');
+    
+    // Load a book
+    const resultNotReady = await SuttaService.loadSutta("an1", { prefetchNav: false });
+    if (resultNotReady.superTree !== null) throw new Error("Expected superTree to be null when Not Ready");
+    if (resultNotReady.superMeta !== null) throw new Error("Expected superMeta to be null when Not Ready");
+
+    // Setup: Simulate Ready
+    localStorage.setItem('sutta_offline_version', 'v1');
+    
+    // Load a book
+    const resultReady = await SuttaService.loadSutta("an1", { prefetchNav: false });
+    if (resultReady.superTree === null) throw new Error("Expected superTree to be present when Ready");
+    if (resultReady.superMeta === null) throw new Error("Expected superMeta to be present when Ready");
+    if (!resultReady.superTree.tipitaka) throw new Error("Invalid superTree structure");
 }
 
 // Run all tests
@@ -192,4 +204,5 @@ async function testSuperTocFallback() {
     await runTest("Sub Book TOC Generation (Ready)", testSubBookTocGeneration);
     await runTest("Regular Book TOC Generation", testBookTypeTocGeneration);
     await runTest("Super TOC Fallback (Not Ready)", testSuperTocFallback);
+    await runTest("Breadcrumb Lazy Load", testBreadcrumbLazyLoad);
 })();

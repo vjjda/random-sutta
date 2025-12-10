@@ -123,11 +123,16 @@ export const SuttaService = {
             [hintBook, hintChunk] = loc;
         }
 
-        // 2. Fetch Data (Parallel: Book Meta, Content, [NEW] Super Meta)
+        const isFileProtocol = window.location.protocol === 'file:';
+        const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
+        const shouldBuildSuperToc = isFileProtocol || isOfflineReady;
+
+        // 2. Fetch Data (Parallel: Book Meta, Content, [Conditionally] Super Meta)
         // Fetch 'tpk' để lấy cấu trúc tổng thể (Tipitaka > Sutta > Nikaya)
+        // Only fetch 'tpk' if we are Offline Ready or in File Mode (Lazy Load Strategy)
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
-            SuttaRepository.fetchMeta('tpk') 
+            shouldBuildSuperToc ? SuttaRepository.fetchMeta('tpk') : Promise.resolve(null)
         ];
         
         if (hintChunk !== null) {
@@ -138,7 +143,7 @@ export const SuttaService = {
         // [NOTE] Promise.all thứ tự trả về khớp thứ tự mảng promises
         const results = await Promise.all(promises);
         const bookMeta = results[0];
-        const superMeta = results[1]; // tpk data
+        const superMeta = results[1]; // tpk data (or null if skipped)
         const contentChunk = hintChunk !== null ? results[2] : null;
 
         if (!bookMeta) return null;
@@ -152,13 +157,6 @@ export const SuttaService = {
 
         let finalTree = null;
         let finalContextMeta = { ...bookMeta.meta }; // Start with current book's meta
-
-        // [NEW LOGIC] Lazy-load super_toc
-        // Only build super_toc if we are "Offline Ready" (zip bundle downloaded) or in File/Dev mode.
-        // This prevents massive network fetching (100+ requests) on first load for online users without cache.
-        const isFileProtocol = window.location.protocol === 'file:';
-        const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
-        const shouldBuildSuperToc = isFileProtocol || isOfflineReady;
 
         // Handle super_book and sub_book types
         if (bookMeta.type === 'book') {
