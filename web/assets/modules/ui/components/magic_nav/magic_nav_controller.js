@@ -53,6 +53,8 @@ export const MagicNav = {
     render(localTree, currentUid, contextMeta, superTree, superMeta) {
         // ... (Giữ nguyên logic tính toán path) ...
         let fullPath = BreadcrumbRenderer.findPath(localTree, currentUid);
+        let localRootId = fullPath ? fullPath[0] : null;
+
         if (fullPath && superTree && fullPath.length > 0) {
             const rootBookId = fullPath[0]; // e.g., "an1" from ["an1", "an1.1-10", "an1.5"]
             
@@ -70,7 +72,7 @@ export const MagicNav = {
             }
         }
         const finalMeta = { ...superMeta, ...contextMeta };
-        const bcHtml = fullPath ? BreadcrumbRenderer.generateHtml(fullPath, finalMeta) : "";
+        const bcHtml = fullPath ? BreadcrumbRenderer.generateHtml(fullPath, finalMeta, localRootId) : "";
         
         // [UPDATED] Render TOC với logic collapse mới
         const tocHtml = TocRenderer.render(localTree, currentUid, finalMeta, 0);

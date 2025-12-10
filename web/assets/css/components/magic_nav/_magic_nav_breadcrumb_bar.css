@@ -68,3 +68,10 @@
   font-weight: 600;
   color: var(--text-main);
 }
+
+/* [NEW] Root Marker Highlight */
+#magic-breadcrumb-bar .bc-link.bc-root-marker,
+#magic-breadcrumb-bar .bc-item.active.bc-root-marker {
+  color: var(--primary-color);
+  font-weight: 500;
+}
