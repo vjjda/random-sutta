@@ -23,9 +23,21 @@ export function setupTableOfHeadings() {
     };
 
     const toggleMenu = (e) => {
+        const isOpening = els.menu.classList.contains("hidden");
         els.menu.classList.toggle("hidden");
         els.fab.classList.toggle("active");
         e.stopPropagation();
+
+        if (isOpening) {
+            // Force scroll to active item when opening
+            // Use setTimeout to ensure layout is updated after removing 'hidden'
+            setTimeout(() => {
+                const activeItem = els.list.querySelector(".active");
+                if (activeItem) {
+                    activeItem.scrollIntoView({ block: "center", behavior: "instant" });
+                }
+            }, 0);
+        }
     };
 
     // Binding Events
