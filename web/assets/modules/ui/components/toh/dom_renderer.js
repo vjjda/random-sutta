@@ -24,8 +24,17 @@ export const DomRenderer = {
             }
             linkWrapper.appendChild(mainTextDiv);
 
-            // Sub Text Row (if available)
-            if (item.subText) {
+            // Sub Text Rows (Array support)
+            if (item.subTexts && Array.isArray(item.subTexts)) {
+                item.subTexts.forEach(text => {
+                    const subTextDiv = document.createElement("div");
+                    subTextDiv.className = "toh-sub-text";
+                    subTextDiv.textContent = text;
+                    linkWrapper.appendChild(subTextDiv);
+                });
+            } 
+            // Fallback for single subText (legacy or paragraph mode)
+            else if (item.subText) {
                 const subTextDiv = document.createElement("div");
                 subTextDiv.className = "toh-sub-text";
                 subTextDiv.textContent = item.subText;

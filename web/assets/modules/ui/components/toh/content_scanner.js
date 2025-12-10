@@ -73,20 +73,31 @@ export const ContentScanner = {
             }
         }
 
-        // [NEW] Extract first sentence of the following paragraph
-        let subText = "";
-        const nextElem = heading.nextElementSibling;
-        if (nextElem && nextElem.tagName.toLowerCase() === 'p') {
-            const rawSub = getCleanTextContent(nextElem);
-            if (rawSub) {
-                // Take first sentence or truncate
-                const dotIndex = rawSub.indexOf('.');
-                if (dotIndex !== -1 && dotIndex < 100) {
-                    subText = rawSub.substring(0, dotIndex + 1);
-                } else {
-                    subText = rawSub.substring(0, 80) + (rawSub.length > 80 ? "..." : "");
+        // [NEW] Extract first sentence of ALL following paragraphs until next heading
+        const subTexts = [];
+        let nextElem = heading.nextElementSibling;
+        
+        while (nextElem) {
+            // Stop if we hit another heading
+            if (/^H[1-6]$/i.test(nextElem.tagName)) {
+                break;
+            }
+
+            if (nextElem.tagName.toLowerCase() === 'p') {
+                const rawSub = getCleanTextContent(nextElem);
+                if (rawSub) {
+                    let subText = "";
+                    // Take first sentence or truncate
+                    const dotIndex = rawSub.indexOf('.');
+                    if (dotIndex !== -1 && dotIndex < 100) {
+                        subText = rawSub.substring(0, dotIndex + 1);
+                    } else {
+                        subText = rawSub.substring(0, 80) + (rawSub.length > 80 ? "..." : "");
+                    }
+                    subTexts.push(subText);
                 }
             }
+            nextElem = nextElem.nextElementSibling;
         }
 
         return {
@@ -94,7 +105,7 @@ export const ContentScanner = {
             text: getCleanTextContent(heading),
             levelClass: `toh-${heading.tagName.toLowerCase()}`, 
             prefix: prefix,
-            subText: subText // [NEW]
+            subTexts: subTexts // [UPDATED] Return array
         };
     },
 
