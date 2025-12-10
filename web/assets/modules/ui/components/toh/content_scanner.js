@@ -104,7 +104,17 @@ export const ContentScanner = {
                         paraId = nextElem.id;
                     }
 
-                    subTexts.push({ id: paraId, text: subText });
+                    // Extract Prefix
+                    let paraNum = "";
+                    if (paraId) {
+                        paraNum = extractParagraphNumber(paraId);
+                        // Check Evam
+                        if (nextElem.querySelector('.evam') || nextElem.closest('.evam')) {
+                            paraNum = "";
+                        }
+                    }
+
+                    subTexts.push({ id: paraId, text: subText, prefix: paraNum });
                 }
             }
             nextElem = nextElem.nextElementSibling;

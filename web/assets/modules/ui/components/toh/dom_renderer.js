@@ -59,7 +59,13 @@ export const DomRenderer = {
                 item.subTexts.forEach(sub => {
                     const subDiv = document.createElement("div");
                     subDiv.className = "toh-sub-text clickable";
-                    subDiv.textContent = sub.text;
+                    
+                    if (sub.prefix) {
+                        subDiv.innerHTML = `<span class="toh-prefix">${sub.prefix}</span> ${sub.text}`;
+                    } else {
+                        subDiv.textContent = sub.text;
+                    }
+
                     if (sub.id) subDiv.dataset.targetId = sub.id; // Store ID
 
                     if (sub.id) {

@@ -154,7 +154,7 @@
 .toh-children {
   display: flex;
   flex-direction: column;
-  padding-right: 15px; /* Padding phải cho subtext */
+  /* Removed padding-right/left to let sub-items span full width */
 }
 .toh-item-wrapper.collapsed .toh-children {
   display: none;
@@ -167,7 +167,8 @@
   line-height: 1.3;
   padding-top: 4px;
   padding-bottom: 4px;
-  padding-right: 5px; /* Less right padding */
+  padding-right: 15px; /* Standard right padding */
+  padding-left: 15px;  /* Base left padding (Level 1 default) */
   
   /* Line Clamp */
   display: -webkit-box;
@@ -177,6 +178,7 @@
   overflow: hidden;
   
   cursor: default;
+  transition: background-color 0.1s ease;
 }
 .toh-sub-text.clickable {
   cursor: pointer;
@@ -192,7 +194,7 @@
   background-color: var(--highlight-color-background, rgba(255, 152, 0, 0.1));
   color: var(--text-main);
   font-weight: 600;
-  border-radius: 4px;
+  border-radius: 0; /* Full width -> no radius usually, or keep if preferred. TOC uses active bar. Here background. */
 }
 /* Ensure text color inside active header is consistent */
 .toh-header-row.active .toh-main-text,
@@ -204,20 +206,25 @@
 }
 
 /* [INDENTATION VIA PADDING] */
-/* Apply indentation to both header-row and children to align them */
+/* Apply indentation directly to header-row and sub-text to allow full-width background */
 
-.toh-h1 .toh-header-row, .toh-h1 .toh-children { padding-left: 15px; }
+/* Level 1 */
+.toh-h1 .toh-header-row, .toh-h1 .toh-sub-text { padding-left: 15px; }
 .toh-h1 .toh-header-row { background-color: rgba(0, 0, 0, 0.02); }
 .toh-h1 .toh-main-text { font-weight: 700; color: var(--primary-color); }
 
-.toh-h2 .toh-header-row, .toh-h2 .toh-children { padding-left: 15px; }
+/* Level 1 (h2) */
+.toh-h2 .toh-header-row, .toh-h2 .toh-sub-text { padding-left: 15px; }
 
-.toh-h3 .toh-header-row, .toh-h3 .toh-children { padding-left: 30px; }
+/* Level 2 (h3) */
+.toh-h3 .toh-header-row, .toh-h3 .toh-sub-text { padding-left: 30px; }
 
-.toh-h4 .toh-header-row, .toh-h4 .toh-children { padding-left: 45px; }
+/* Level 3 (h4) */
+.toh-h4 .toh-header-row, .toh-h4 .toh-sub-text { padding-left: 45px; }
 .toh-h4 .toh-main-text { font-size: 0.9rem; font-weight: 400; }
 
-.toh-h5 .toh-header-row, .toh-h5 .toh-children { padding-left: 60px; }
+/* Level 4 (h5) */
+.toh-h5 .toh-header-row, .toh-h5 .toh-sub-text { padding-left: 60px; }
 .toh-h5 .toh-main-text { font-size: 0.85rem; font-style: italic; font-weight: 400; }
 
 /* [NEW] Low-profile styling for Paragraphs Mode */
