@@ -1,27 +1,92 @@
 // Path: web/assets/modules/data/sutta_extractor.js
+import { getLogger } from '../utils/logger.js';
+
+const logger = getLogger("SuttaExtractor");
 
 export const SuttaExtractor = {
     /**
-     * Trích xuất các segment con từ nội dung cha.
-     * @param {Object} parentContent - Object chứa toàn bộ segment của cha (vd: dhp1-20)
-     * @param {String} extractId - ID cần trích xuất (vd: "dhp1")
+     * Trích xuất một bài kinh con từ một tập dữ liệu lớn (Content Chunk).
+     * Hỗ trợ 2 cơ chế:
+     * 1. Prefix Match (Cũ): Dựa vào ID segment (vd: an1.1:1.1)
+     * 2. Article Tag (Mới): Dựa vào thẻ <article id="..."> trong HTML
      */
-    extract: function(parentContent, extractId) {
-        if (!parentContent || !extractId) return null;
+    extract(parentContent, targetId) {
+        if (!parentContent || !targetId) return null;
 
-        const extracted = {};
-        const prefix = extractId + ":"; // vd: "dhp1:"
-        let found = false;
+        // --- CHIẾN LƯỢC 1: PREFIX MATCH (Nhanh nhất) ---
+        // Dành cho trường hợp targetId là prefix của segment (vd: dhp1 trích từ dhp1-20)
+        // Kiểm tra nhanh segment đầu tiên khớp
+        const keys = Object.keys(parentContent);
+        // Sắp xếp keys để đảm bảo thứ tự (quan trọng cho việc quét HTML)
+        keys.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
-        for (const [segId, data] of Object.entries(parentContent)) {
-            // Kiểm tra xem segment ID có bắt đầu bằng prefix của con không
-            // Ví dụ: "dhp1:1" bắt đầu bằng "dhp1:" -> Lấy
-            if (segId.startsWith(prefix)) {
-                extracted[segId] = data;
-                found = true;
+        const prefixMatches = {};
+        let hasPrefixMatch = false;
+        
+        // Regex an toàn cho prefix (thêm dấu : hoặc . để tránh an1 khớp an10)
+        // Tuy nhiên với logic Article mới, ta ưu tiên quét HTML trước nếu ID trông giống Range
+        
+        // --- CHIẾN LƯỢC 2: HTML ARTICLE SCAN (Chính xác cho Range) ---
+        // Regex bắt thẻ mở: <article ... id="targetId" ... >
+        // Lưu ý: targetId có thể chứa dấu chấm, cần escape nếu dùng trong new RegExp, 
+        // nhưng ở đây ta check string includes hoặc match đơn giản.
+        
+        // Pattern: <article (mọi thứ) id='targetId' (mọi thứ)> hoặc id="targetId"
+        const startRegex = new RegExp(`<article[^>]*\\sid=['"]${this._escapeRegExp(targetId)}['"]`, 'i');
+        const endRegex = /<\/article>/i;
+
+        const articleMatches = {};
+        let isCapturing = false;
+        let foundArticle = false;
+
+        for (const key of keys) {
+            const segment = parentContent[key];
+            const html = segment.html || "";
+
+            // 1. Kiểm tra điểm bắt đầu
+            if (!isCapturing && startRegex.test(html)) {
+                isCapturing = true;
+                foundArticle = true;
+            }
+
+            // 2. Đang trong trạng thái Capture
+            if (isCapturing) {
+                articleMatches[key] = segment;
+
+                // 3. Kiểm tra điểm kết thúc
+                // Nếu gặp thẻ đóng </article>, dừng ngay sau segment này
+                if (endRegex.test(html)) {
+                    isCapturing = false;
+                    // Break luôn vì một file extracted chỉ chứa 1 bài kinh
+                    break; 
+                }
             }
         }
 
-        return found ? extracted : null;
+        if (foundArticle) {
+            return articleMatches;
+        }
+
+        // --- FALLBACK: CHIẾN LƯỢC PREFIX (Nếu không tìm thấy Article Tag) ---
+        // Logic cũ: Tìm những segment bắt đầu bằng targetId
+        for (const key of keys) {
+            // Logic match lỏng: key bắt đầu bằng targetId
+            // Cần cẩn thận: targetId="an1.1" không được khớp "an1.10"
+            // Quy tắc: targetId + ":" hoặc targetId là toàn bộ key (ít gặp)
+            if (key === targetId || key.startsWith(targetId + ':')) {
+                prefixMatches[key] = parentContent[key];
+                hasPrefixMatch = true;
+            }
+        }
+
+        if (hasPrefixMatch) {
+            return prefixMatches;
+        }
+
+        return null;
+    },
+
+    _escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 };
