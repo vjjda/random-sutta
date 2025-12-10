@@ -18,7 +18,6 @@ export const TocRenderer = {
             <span class="toc-toggle-icon" onclick="event.stopPropagation(); MagicNav.toggleNode(this)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </span>`;
-
         const generateInnerContent = (id, type) => {
             const meta = metaMap[id] || {};
             const acronym = meta.acronym || id.toUpperCase();
@@ -33,21 +32,18 @@ export const TocRenderer = {
             } else if (type === 'subleaf') {
                 return `<div class="toc-subleaf-label" title="${title}">${acronym}</div>`;
             } else {
-                // Branch
                 const branchLabel = meta.translated_title || meta.original_title || meta.acronym || id.toUpperCase();
                 return `<div class="toc-branch-label">${branchLabel}</div>`;
             }
         };
-
-        // [UPDATED] Hàm loadSutta snappy (transition: false)
-        const getLoadAction = (id) => `onclick="window.loadSutta('${id}', true, 0, { transition: false }); MagicNav.toggleTOC()"`;
-
-        // 1. Leaf Item
+        
+        // [FIXED] Dùng closeAll() thay vì toggleTOC() để ẩn luôn cả backdrop
+        const getLoadAction = (id) => `onclick="window.loadSutta('${id}', true, 0, { transition: false }); MagicNav.closeAll()"`;
+        
         const createItem = (id) => {
             const meta = metaMap[id] || {};
             const type = meta.type || (level === 0 ? 'leaf' : 'subleaf');
             const isActive = id === currentUid ? "active" : "";
-            // Sử dụng action mới
             const action = isActive ? "" : getLoadAction(id);
             
             const presentationClass = type === 'leaf' ? 'toc-leaf-presentation' : '';
@@ -57,7 +53,6 @@ export const TocRenderer = {
                     </div>`;
         };
 
-        // 2. Parent Node (Header)
         const createParentNode = (id, childrenHtml, currentLevel, rawChildNode) => {
             const meta = metaMap[id] || {};
             const type = meta.type || 'branch'; 
@@ -68,7 +63,6 @@ export const TocRenderer = {
             
             let headerAction = "";
             if (isClickable && !isActive) {
-                // Sử dụng action mới
                 headerAction = getLoadAction(id);
             } else if (!isClickable) {
                 headerAction = `onclick="MagicNav.toggleNode(this)"`;
@@ -84,12 +78,11 @@ export const TocRenderer = {
             const rowActiveClass = isActive ? "active" : "";
             const presentationClass = type === 'leaf' ? 'toc-leaf-presentation' : '';
             const headerClasses = `toc-header type-${type} ${presentationClass} ${isClickable ? 'clickable' : ''}`;
-
             return `<div class="toc-node-wrapper ${collapsedClass}">
                         <div class="toc-header-row ${rowActiveClass}">
                             <div class="${headerClasses}" ${headerAction} style="padding-left: ${paddingLeft}px">
                                 ${generateInnerContent(id, type)}
-                            </div>
+                             </div>
                             ${getToggleIcon()} 
                         </div>
                         <div class="toc-children">${childrenHtml}</div>
