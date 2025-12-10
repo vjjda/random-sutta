@@ -105,7 +105,7 @@ export function setupTableOfHeadings() {
                         DomRenderer.updateActiveState(visible.target.id);
                     }
                 }, {
-                    rootMargin: '-10% 0px -80% 0px', // Active zone is top 10-20% of screen
+                    rootMargin: '0px 0px -90% 0px', // Active zone is the top 10% of the screen
                     threshold: 0
                 });
 
