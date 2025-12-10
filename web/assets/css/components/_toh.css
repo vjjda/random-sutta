@@ -42,13 +42,16 @@
   margin-top: 5px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
+  
+  /* [UPDATED] Đồng bộ kích thước với TOC Drawer */
+  width: 320px;
+  max-height: 70vh; /* Tăng từ 60vh lên 70vh */
+  border-radius: 8px; /* Tăng từ 6px lên 8px */
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1); /* Shadow mềm hơn giống TOC */
+  
   /* Giữ padding cho khung, nhưng item con sẽ dùng margin âm để tràn ra */
   padding: 15px;
-  width: 320px;
-  max-height: 60vh;
   overflow-y: auto;
-  box-shadow: var(--shadow-card);
   animation: slideDown 0.2s ease-out;
 }
 
@@ -112,7 +115,7 @@
 .toh-main-text {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-main);
   line-height: 1.3;
   flex: 1;
   padding-top: 4px;
@@ -190,7 +193,7 @@
 .toh-sub-text.active {
   background-color: var(--highlight-color-background, rgba(255, 152, 0, 0.1));
   color: var(--text-main);
-  font-weight: 600 !important; /* Đậm chữ để nổi bật */
+  font-weight: 700 !important; /* Đậm chữ để nổi bật */
   border-radius: 0;
 }
 
