@@ -42,7 +42,7 @@ export function setupTableOfHeadings() {
 
     // Binding Events
     els.fab.onclick = toggleMenu;
-    
+
     // Click outside to close
     document.addEventListener("click", (e) => {
         if (!els.menu.classList.contains("hidden") && !els.wrapper.contains(e.target)) {
@@ -68,9 +68,11 @@ export function setupTableOfHeadings() {
             els.menu.classList.remove("toh-mode-paragraphs"); // Ensure class is removed if no items
         } else {
             DomRenderer.updateHeader(scanResult.mode, els.header);
+            
             DomRenderer.renderList(scanResult.items, els.list, {
                 onItemClick: closeMenu
             });
+
             els.wrapper.classList.remove("hidden");
             
             // [NEW] Add mode class to menu for styling
@@ -93,19 +95,25 @@ export function setupTableOfHeadings() {
 
             if (idsToTrack.length > 0) {
                 observer = new IntersectionObserver((entries) => {
-                    // Logic: Find the first entry that is intersecting.
-                    // Ideally, we want the one closest to the top of viewport.
-                    // But intersection observer triggers when they enter/leave.
-                    // Simple logic: if multiple are intersecting, take the first one.
-                    // A robust active spy needs more complex logic (keeping track of all intersecting),
-                    // but for TOH, taking the first intersecting entry usually works if margin is set right.
+                    // [UPDATED LOGIC] Sắp xếp để tìm phần tử cao nhất
+                    // 1. Lấy tất cả các phần tử đang giao nhau (visible)
+                    const visibleEntries = entries.filter(e => e.isIntersecting);
                     
-                    const visible = entries.find(e => e.isIntersecting);
-                    if (visible) {
-                        DomRenderer.updateActiveState(visible.target.id);
+                    if (visibleEntries.length > 0) {
+                        // 2. Sắp xếp theo vị trí top (nhỏ nhất -> cao nhất trên màn hình)
+                        // Điều này đảm bảo ta luôn active đoạn văn đầu tiên trong vùng nhìn thấy
+                        // thay vì một đoạn văn ngẫu nhiên ở giữa.
+                        visibleEntries.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+                        
+                        const topMostTarget = visibleEntries[0];
+                        DomRenderer.updateActiveState(topMostTarget.target.id);
                     }
                 }, {
-                    rootMargin: '0px 0px -90% 0px', // Active zone is the top 10% of the screen
+                    // [UPDATED MARGIN] Tạo một vùng "Scanner" hẹp ở phía trên màn hình.
+                    // -5% top: Bỏ qua 5% trên cùng (tránh header che hoặc padding).
+                    // -85% bottom: Loại bỏ 85% phía dưới màn hình.
+                    // => Vùng kích hoạt (Active Zone) chỉ là dải 10% nằm sát phía trên.
+                    rootMargin: '-5% 0px -85% 0px', 
                     threshold: 0
                 });
 
