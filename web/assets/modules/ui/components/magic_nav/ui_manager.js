@@ -171,7 +171,8 @@ export const UIManager = {
     _scrollToActive() {
         setTimeout(() => {
             const { drawer } = this.elements;
-            const activeItem = drawer?.querySelector(".toc-item.active") || drawer?.querySelector(".toc-header.active");
+            // [FIX] Update selector to target .toc-header-row.active for branches
+            const activeItem = drawer?.querySelector(".toc-item.active") || drawer?.querySelector(".toc-header-row.active");
             if (activeItem) {
                 activeItem.scrollIntoView({ block: "center", behavior: "instant" });
             }
