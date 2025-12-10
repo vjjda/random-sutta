@@ -3,7 +3,7 @@ import { SuttaRepository } from '../data/sutta_repository.js';
 import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { getLogger } from '../utils/logger.js';
 import { RandomHelper } from './random_helper.js';
-import { StructureStrategy } from './structure_strategy.js'; // [NEW IMPORT]
+import { StructureStrategy } from './structure_strategy.js';
 
 const logger = getLogger("SuttaService");
 
@@ -14,7 +14,6 @@ export const SuttaService = {
     },
 
     async loadSutta(input, options = { prefetchNav: true }) {
-        // --- 1. Input Parsing & Locating ---
         let uid, hintChunk = null, hintBook = null;
         if (typeof input === 'object') {
             uid = input.uid;
@@ -33,14 +32,10 @@ export const SuttaService = {
             [hintBook, hintChunk] = loc;
         }
 
-        // --- 2. Environment Check ---
         const isFileProtocol = window.location.protocol === 'file:';
         const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
-        // Logic: Chỉ build Super TOC (gộp cây) khi chạy Offline hoặc File Protocol
-        // Online thì dùng Lazy Load để tiết kiệm băng thông.
         const shouldBuildSuperToc = isFileProtocol || isOfflineReady;
 
-        // --- 3. Parallel Data Fetching ---
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
             shouldBuildSuperToc ? SuttaRepository.fetchMeta('tpk') : Promise.resolve(null)
@@ -55,7 +50,6 @@ export const SuttaService = {
         const metaEntry = bookMeta.meta[uid];
         if (!metaEntry) return null;
 
-        // --- 4. Handle Alias Redirect (Clean) ---
         if (metaEntry.type === 'alias') {
             return { 
                 isAlias: true, 
@@ -64,25 +58,44 @@ export const SuttaService = {
             };
         }
 
-        // --- 5. Resolve Structure (Delegated to Strategy) ---
-        // Phần logic phức tạp nhất đã được chuyển đi
         const { tree: finalTree, contextMeta: finalContextMeta } = 
             await StructureStrategy.resolveContext(bookMeta, uid, shouldBuildSuperToc);
 
-        // --- 6. Content Extraction ---
+        // --- CONTENT EXTRACTION (DEBUGGED) ---
         let content = null;
         if (contentChunk) {
+            // Case 1: Direct Content (Leaf)
             if (contentChunk[uid]) {
                 content = contentChunk[uid];
             } 
-            else if (metaEntry.parent_uid && contentChunk[metaEntry.parent_uid]) {
-                const parentContent = contentChunk[metaEntry.parent_uid];
-                const extractKey = metaEntry.extract_id || uid;
-                content = SuttaExtractor.extract(parentContent, extractKey);
+            // Case 2: Subleaf / Range Extraction
+            else if (metaEntry.parent_uid) {
+                const parentUid = metaEntry.parent_uid;
+                
+                if (contentChunk[parentUid]) {
+                    const parentContent = contentChunk[parentUid];
+                    const extractKey = metaEntry.extract_id || uid;
+                    content = SuttaExtractor.extract(parentContent, extractKey);
+                    
+                    if (!content) {
+                        logger.error("loadSutta", `Extraction failed. Parent '${parentUid}' found, but extract '${extractKey}' returned null.`);
+                    }
+                } else {
+                    // --- DEBUG LOGGING ---
+                    // Log lý do tại sao không tìm thấy parent_uid trong chunk
+                    logger.warn("loadSutta", `Parent '${parentUid}' NOT found in Chunk ${hintChunk}.`);
+                    const chunkKeys = Object.keys(contentChunk);
+                    // Tìm xem có key nào gần giống không (ví dụ an1.394-574 vs an1.394)
+                    const similar = chunkKeys.find(k => k.startsWith(parentUid.split('.')[0]));
+                    logger.info("loadSutta", `Available keys in chunk (sample): ${chunkKeys.slice(0, 5).join(', ')}... (Total: ${chunkKeys.length})`);
+                    if (similar) logger.info("loadSutta", `Did you mean '${similar}'?`);
+                    // ---------------------
+                }
+            } else {
+                logger.warn("loadSutta", `No content for ${uid} and no parent_uid defined.`);
             }
         }
 
-        // --- 7. Navigation & Prefetching ---
         const nav = metaEntry.nav || {};
         const navMeta = {};
         const neighborsToFetch = [];
@@ -119,23 +132,17 @@ export const SuttaService = {
              });
         }
 
-        // --- 8. Final Return Object ---
         return {
             uid: uid,
             meta: metaEntry,
             content: content,
             root_title: bookMeta.super_book_title || bookMeta.title,
             book_title: bookMeta.title,
-            
-            // Core Structure Data
             tree: finalTree, 
-            bookStructure: finalTree, // Legacy alias
+            bookStructure: finalTree, 
             contextMeta: finalContextMeta,
-            
-            // Super Data (TPK for breadcrumbs)
             superTree: superMeta ? superMeta.tree : null,
             superMeta: superMeta ? superMeta.meta : null,
-            
             nav: nav,
             navMeta: navMeta
         };
