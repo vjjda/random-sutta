@@ -15,15 +15,22 @@ def build_meta_entry(
     
     # 1. Alias (Slim)
     if m_type == "alias":
+        # [UPDATED] Lấy target_uid và hash_id theo chuẩn mới
         target = info.get("target_uid")
         
+        # Fallback cũ (đề phòng dữ liệu staging cũ chưa clean)
         if not target:
             target = info.get("extract_id") or info.get("parent_uid")
             
-        return { 
+        entry = { 
             "type": "alias", 
             "target_uid": target 
         }
+        
+        if info.get("hash_id"):
+            entry["hash_id"] = info["hash_id"]
+            
+        return entry
 
     # 2. Standard Entry
     entry = {
@@ -60,10 +67,7 @@ def build_book_payload(
     root_title: str = None,
     children: List[str] = None
 ) -> Dict[str, Any]:
-    """
-    Tạo cấu trúc JSON chuẩn cho file meta/{book}.json.
-    [UPDATED] Đã loại bỏ random_pool.
-    """
+    
     payload = {
         "id": book_id,
         "type": book_type,
@@ -72,7 +76,6 @@ def build_book_payload(
         "meta": meta
     }
 
-    # Inject optional fields
     if root_id: 
         payload["super_book_id"] = root_id
     if root_title: 

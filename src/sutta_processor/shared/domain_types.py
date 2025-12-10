@@ -10,9 +10,18 @@ class SuttaMeta(TypedDict):
     blurb: Optional[str]
     best_author_uid: Optional[str]
     author_uid: Optional[str]
-    # [NEW] extract_id thay thế cho scroll_target
-    # Dùng để làm prefix filter lấy content segment
-    extract_id: Optional[str] 
+    
+    # Dùng cho Subleaf: ID của thẻ article chứa nội dung
+    extract_id: Optional[str]
+    
+    # Dùng cho Alias/Subleaf: UID của file mẹ chứa nội dung
+    parent_uid: Optional[str]
+
+    # [NEW] Dùng cho Alias: UID của file vật lý cần load (thường trùng parent_uid)
+    target_uid: Optional[str]
+    
+    # [NEW] Dùng cho Alias: ID của phần tử HTML cần cuộn tới (Anchor)
+    hash_id: Optional[str]
 
 class SuttaSegment(TypedDict, total=False):
     pli: str
