@@ -10,6 +10,7 @@ export const StructureStrategy = {
         let mergedMeta = { ...superBookMeta.meta };
         let allSubBookIds = new Set();
         
+        // 1. Collect Sub-book IDs
         const collectIds = (node) => {
             if (Array.isArray(node)) {
                 node.forEach(child => { if (typeof child === 'string') allSubBookIds.add(child); });
@@ -19,6 +20,7 @@ export const StructureStrategy = {
         };
         collectIds(mergedTree);
 
+        // 2. Fetch all Sub-book Metas
         const subBookMetas = await Promise.all(
             Array.from(allSubBookIds).map(async (subBookId) => {
                 try {
@@ -38,6 +40,7 @@ export const StructureStrategy = {
             }
         });
 
+        // 3. Recursive Merge Logic
         const mergeTrees = (currentSuperTreePart, subBookMetaMap, parentKey = null) => {
             if (Array.isArray(currentSuperTreePart)) {
                 const newArray = [];
@@ -46,39 +49,41 @@ export const StructureStrategy = {
                         const subTree = subBookMetaMap[itemId].tree;
                         let extractedContent = null;
                         
-                        // --- DEBUG LOG START ---
-                        if (itemId === 'an1') {
-                            logger.info("DebugMerge", `Analyzing 'an1'. Keys found in subTree: ${Object.keys(subTree).join(', ')}`);
-                        }
-                        // --- DEBUG LOG END ---
-
-                        // 1. Exact Match
+                        // [UPDATED] Smart Unwrap Strategy
+                        
+                        // 1. Direct Match: { "an1": ... }
                         if (subTree[itemId]) {
                             extractedContent = subTree[itemId];
                         }
-                        // 2. Parent Match
-                        else if (parentKey && subTree[parentKey] && subTree[parentKey][itemId]) {
-                            extractedContent = subTree[parentKey][itemId];
+                        // 2. Parent Wrapper: { "an": ... }
+                        else if (parentKey && subTree[parentKey]) {
+                            const container = subTree[parentKey];
+                            
+                            // IMPORTANT: Ignore if container is just an Array (it's likely a mirror of the supertree list)
+                            if (!Array.isArray(container)) {
+                                // 2a. Nested Exact Match: { "an": { "an1": ... } }
+                                if (container[itemId]) {
+                                    extractedContent = container[itemId];
+                                } 
+                                // 2b. Content Unwrap: { "an": { "an1-vagga": ... } }
+                                // If the container doesn't have the key, but is an object, assume it IS the content.
+                                else {
+                                    extractedContent = container;
+                                }
+                            }
                         }
-                        // 3. First Key Fallback (Robust)
+                        // 3. Fallback: First Key (Use with caution, ensure not array)
                         else {
                             const keys = Object.keys(subTree);
-                            if (keys.length > 0) {
-                                // Nếu keys[0] khác itemId, log warning để biết
-                                if (keys[0] !== itemId) {
-                                    logger.warn("DebugMerge", `Mismatch! ID: ${itemId} vs Key: ${keys[0]}. Using fallback.`);
-                                }
+                            if (keys.length > 0 && !Array.isArray(subTree[keys[0]])) {
                                 extractedContent = subTree[keys[0]];
                             }
                         }
 
                         if (extractedContent) {
-                            // Recursively merge
                             const recursivelyMergedContent = mergeTrees(extractedContent, subBookMetaMap, itemId);
-                            // Wrap lại để giữ cấu trúc
                             newArray.push({ [itemId]: recursivelyMergedContent });
                         } else {
-                            logger.error("DebugMerge", `Failed to extract content for ${itemId}`);
                             newArray.push(itemId);
                         }
                     } else {
@@ -100,7 +105,6 @@ export const StructureStrategy = {
         return { tree: mergedTree, meta: mergedMeta };
     },
 
-    // ... (Giữ nguyên hàm resolveContext như cũ) ...
     async resolveContext(bookMeta, uid, shouldBuildSuperToc) {
         let finalTree = null;
         let finalContextMeta = { ...bookMeta.meta };
