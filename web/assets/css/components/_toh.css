@@ -43,10 +43,8 @@
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  
   /* Giữ padding cho khung, nhưng item con sẽ dùng margin âm để tràn ra */
   padding: 15px;
-  
   width: 320px;
   max-height: 60vh;
   overflow-y: auto;
@@ -86,11 +84,9 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  
   /* Kỹ thuật Margin Âm: Kéo link tràn ra khỏi padding:15px của cha */
   margin-left: -15px;
   margin-right: -15px;
-  
   /* Padding cho container */
   padding-top: 4px;
   padding-bottom: 4px;
@@ -105,6 +101,8 @@
   padding-right: 15px; /* Padding phải */
   cursor: pointer;
   transition: background-color 0.1s ease;
+  /* [QUAN TRỌNG] Position relative để neo thanh Active Bar */
+  position: relative;
 }
 .toh-header-row:hover {
   background-color: rgba(0, 0, 0, 0.04);
@@ -142,10 +140,7 @@
   background-color: rgba(0,0,0,0.05);
 }
 
-/* Rotation logic: Default points Down. Collapsed points Right? 
-   TOC logic: collapsed -> rotate -90deg.
-   Here, icon is chevron-down.
-*/
+/* Rotation logic */
 .toh-item-wrapper.collapsed .toh-toggle-icon svg {
   transform: rotate(-90deg);
 }
@@ -154,7 +149,6 @@
 .toh-children {
   display: flex;
   flex-direction: column;
-  /* Removed padding-right/left to let sub-items span full width */
 }
 .toh-item-wrapper.collapsed .toh-children {
   display: none;
@@ -167,7 +161,7 @@
   line-height: 1.3;
   padding-top: 4px;
   padding-bottom: 4px;
-  padding-right: 15px; /* Standard right padding */
+  padding-right: 15px;
   padding-left: 15px;  /* Base left padding (Level 1 default) */
   
   /* Line Clamp */
@@ -179,6 +173,8 @@
   
   cursor: default;
   transition: background-color 0.1s ease;
+  /* [QUAN TRỌNG] Position relative để neo thanh Active Bar */
+  position: relative;
 }
 .toh-sub-text.clickable {
   cursor: pointer;
@@ -188,52 +184,58 @@
   background-color: rgba(0, 0, 0, 0.03);
 }
 
-/* [ACTIVE STATE] */
+/* [UNIFIED ACTIVE STATE] */
+/* Gộp chung active cho cả Header Row (Headings) và Sub Text (Paragraphs) */
 .toh-header-row.active,
 .toh-sub-text.active {
   background-color: var(--highlight-color-background, rgba(255, 152, 0, 0.1));
   color: var(--text-main);
-  font-weight: 600;
-  border-radius: 0; /* Full width -> no radius usually, or keep if preferred. TOC uses active bar. Here background. */
+  font-weight: 700 !important; /* Đậm chữ để nổi bật */
+  border-radius: 0;
 }
-/* Ensure text color inside active header is consistent */
+
+/* Shared Active Bar (Thanh màu bên trái) */
+.toh-header-row.active::before,
+.toh-sub-text.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px; /* Độ rộng thanh highlight */
+  background-color: var(--primary-color);
+  z-index: 1;
+}
+
+/* Đảm bảo text và icon đổi màu theo theme khi active */
 .toh-header-row.active .toh-main-text,
-.toh-header-row.active .toh-toggle-icon {
-  color: var(--primary-color);
-}
+.toh-header-row.active .toh-toggle-icon,
 .toh-sub-text.active {
   color: var(--primary-color);
 }
 
 /* [INDENTATION VIA PADDING] */
-/* Apply indentation directly to header-row and sub-text to allow full-width background */
-
-/* Level 1 */
 .toh-h1 .toh-header-row, .toh-h1 .toh-sub-text { padding-left: 15px; }
 .toh-h1 .toh-header-row { background-color: rgba(0, 0, 0, 0.02); }
 .toh-h1 .toh-main-text { font-weight: 700; color: var(--primary-color); }
 
-/* Level 1 (h2) */
 .toh-h2 .toh-header-row, .toh-h2 .toh-sub-text { padding-left: 15px; }
 
-/* Level 2 (h3) */
 .toh-h3 .toh-header-row, .toh-h3 .toh-sub-text { padding-left: 30px; }
 
-/* Level 3 (h4) */
 .toh-h4 .toh-header-row, .toh-h4 .toh-sub-text { padding-left: 45px; }
 .toh-h4 .toh-main-text { font-size: 0.9rem; font-weight: 400; }
 
-/* Level 4 (h5) */
 .toh-h5 .toh-header-row, .toh-h5 .toh-sub-text { padding-left: 60px; }
 .toh-h5 .toh-main-text { font-size: 0.85rem; font-style: italic; font-weight: 400; }
 
 /* [NEW] Low-profile styling for Paragraphs Mode */
 #toh-menu.toh-mode-paragraphs .toh-main-text {
-  font-weight: 400; /* Reduce boldness */
-  color: var(--text-muted); /* Make it lighter */
+  font-weight: 400; 
+  color: var(--text-muted);
 }
 
 #toh-menu.toh-mode-paragraphs .toh-prefix {
-    font-weight: 600; /* Keep prefix slightly bolder */
+    font-weight: 600;
     color: var(--text-muted);
 }
