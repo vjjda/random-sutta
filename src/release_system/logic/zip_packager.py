@@ -49,7 +49,7 @@ def create_db_bundle(build_dir: Path) -> bool:
     logger.info("📦 Creating db_bundle.zip...")
 
     try:
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf: # Dùng STORED (không nén) hoặc DEFLATED nhẹ để giải nén nhanh
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf: # Dùng STORED (không nén) hoặc DEFLATED nhẹ để giải nén nhanh
             # Add meta files
             meta_dir = db_dir / "meta"
             if meta_dir.exists():
