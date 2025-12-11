@@ -29,14 +29,15 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  opacity: 0.2;
+  opacity: 0.3; /* [TWEAK] Tăng nhẹ opacity mặc định cho dễ thấy hơn */
+  color: var(--text-light);
 }
 
 #toh-fab:hover,
 #toh-fab.active {
   opacity: 1;
   color: var(--primary-color);
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--bg-hover); /* [FIXED] Dùng biến semantic */
   transform: scale(1.1);
 }
 
@@ -46,30 +47,33 @@
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   
-  /* Đồng bộ kích thước & Shadow với Magic Nav Drawer */
   width: 320px;
   max-height: 70vh;
   border-radius: 8px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-card); /* [FIXED] Dùng biến shadow chuẩn */
   
   padding: 15px;
   overflow-y: auto;
   animation: slideDown 0.2s ease-out;
   scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent; /* [FIXED] Firefox scrollbar */
 }
 
-/* Scrollbar styling cho webkit */
+/* Scrollbar styling (Webkit) */
 #toh-menu::-webkit-scrollbar {
   width: 6px;
 }
 #toh-menu::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--border-color); /* [FIXED] Màu scrollbar theo theme */
   border-radius: 10px;
+}
+#toh-menu::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-light);
 }
 
 @media (max-width: 600px) {
   #toh-menu {
-    width: 280px; 
+    width: 280px;
   }
 }
 
@@ -81,6 +85,7 @@
   padding-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  font-weight: 600;
 }
 
 /* --- 3. LIST & ITEM LAYOUT --- */
@@ -98,7 +103,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  /* Margin âm để nội dung hover tràn ra sát mép container padding */
+  /* Margin âm để hover effect tràn viền đẹp */
   margin-left: -15px;
   margin-right: -15px;
   padding-top: 4px;
@@ -108,44 +113,62 @@
 /* --- 4. HEADER ROW (MAIN HEADING) --- */
 .toh-header-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* [TWEAK] Align start để icon không bị lệch nếu text dài */
   justify-content: space-between;
   padding-right: 15px;
   cursor: pointer;
-  transition: background-color 0.1s ease; /* Nhanh hơn chút cho mượt */
+  transition: background-color 0.1s ease;
   position: relative;
+  min-height: 28px;
 }
 
 .toh-header-row:hover {
-  /* [FIXED] Dùng biến thay vì rgba cứng */
   background-color: var(--bg-hover);
+}
+
+.toh-header-row.active {
+  background-color: var(--highlight-color-background); /* Highlight nhẹ khi active */
 }
 
 .toh-main-text {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-muted);
-  line-height: 1.3;
+  line-height: 1.4;
   flex: 1;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.toh-header-row.active .toh-main-text {
+  color: var(--primary-color);
+  font-weight: 700;
 }
 
 .toh-prefix {
   font-weight: 700;
   color: var(--text-light);
-  margin-right: 4px;
+  margin-right: 6px;
+  font-size: 0.85em;
 }
 
-/* ... (Phần Description giữ nguyên) ... */
+.toh-row-sub {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-top: 2px;
+  line-height: 1.3;
+}
 
-/* Style riêng cho Sub-text (Item con có thể click) */
+/* --- 5. SUB-TEXT ITEMS --- */
 .toh-sub-text {
   padding-top: 4px;
   padding-bottom: 4px;
   padding-right: 15px;
   cursor: default;
   position: relative;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .toh-sub-text.clickable {
@@ -153,9 +176,14 @@
 }
 .toh-sub-text.clickable:hover {
   color: var(--primary-color);
-  /* [FIXED] Dùng biến */
   background-color: var(--bg-hover);
 }
+.toh-sub-text.active {
+  color: var(--primary-color);
+  background-color: var(--highlight-color-background);
+  font-weight: 500;
+}
+
 .toh-sub-text.disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -172,50 +200,61 @@
   transition: transform 0.2s ease, color 0.2s;
   border-radius: 4px;
   flex-shrink: 0;
+  margin-top: 2px; /* Căn chỉnh với dòng text đầu tiên */
 }
 
 .toh-toggle-icon:hover {
   color: var(--primary-color);
-  /* [FIXED] Dùng biến */
   background-color: var(--bg-hover);
 }
 
+.toh-item-wrapper.collapsed .toh-toggle-icon svg {
+  transform: rotate(-90deg);
+}
+
+.toh-children {
+  display: block;
+}
+.toh-item-wrapper.collapsed .toh-children {
+  display: none;
+}
+
 /* --- 8. INDENTATION LEVELS --- */
-/* JS sẽ set padding-left inline, nhưng ta giữ class để control các style khác nếu cần */
-.toh-h1 .toh-header-row, .toh-h1 .toh-sub-text { padding-left: 15px; }
-.toh-h1 .toh-header-row { background-color: rgba(0, 0, 0, 0.02); } /* Nhấn nhẹ H1 */
+/* Level 1 (H1/Heading chính) - Có background nhẹ */
+.toh-h1 .toh-header-row {
+  padding-left: 15px;
+  /* [FIXED] Dùng biến highlight thay vì màu cứng */
+  background-color: var(--highlight-color-background); 
+  border-bottom: 1px solid var(--bg-body); /* Đường kẻ ngăn cách nhẹ */
+}
+.toh-h1 .toh-sub-text { padding-left: 15px; }
 
 .toh-h2 .toh-header-row, .toh-h2 .toh-sub-text { padding-left: 15px; }
 .toh-h3 .toh-header-row, .toh-h3 .toh-sub-text { padding-left: 30px; }
 .toh-h4 .toh-header-row, .toh-h4 .toh-sub-text { padding-left: 45px; }
 .toh-h5 .toh-header-row, .toh-h5 .toh-sub-text { padding-left: 60px; }
 
-/* --- 9. PARAGRAPHS MODE SPECIFIC (Low Profile) --- */
-/* Chỉ áp dụng khi TOH đang ở chế độ Paragraphs */
-
+/* --- 9. PARAGRAPHS MODE SPECIFIC --- */
 #toh-menu.toh-mode-paragraphs .toh-main-text {
-  font-weight: 400;       /* Nét thường, không in đậm */
-  font-size: 0.9rem;      /* Nhỏ hơn Heading một chút */
-  color: var(--text-main); /* Màu chữ chính nhưng nhẹ nhàng hơn do nét mảnh */
-  line-height: 1.5;       /* Tăng độ thoáng dòng */
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  line-height: 1.5;
 }
 
-/* Chỉnh lại Prefix (số thứ tự 1.1, 2.1...) trong Paragraph Mode */
 #toh-menu.toh-mode-paragraphs .toh-prefix {
-  font-weight: 600;       /* Giữ độ đậm vừa phải để tách biệt số */
-  font-size: 0.85rem;     /* Nhỏ hơn text chính */
-  color: var(--text-light); /* Màu xám nhạt */
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-light);
   margin-right: 6px;
 }
 
-/* Tinh chỉnh Item Wrapper trong Paragraph Mode cho khít hơn */
 #toh-menu.toh-mode-paragraphs .toh-item-wrapper {
   padding-top: 2px;
   padding-bottom: 2px;
 }
 
-/* Đảm bảo trạng thái Active vẫn nổi bật */
 #toh-menu.toh-mode-paragraphs .toh-header-row.active .toh-main-text {
-  font-weight: 700;       /* Khi Active thì đậm lên */
+  font-weight: 700;
   color: var(--primary-color);
 }
