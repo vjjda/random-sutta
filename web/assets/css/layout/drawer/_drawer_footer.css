@@ -1,0 +1,152 @@
+/* Path: web/assets/css/layout/drawer/_drawer_footer.css */
+
+/* --- FOOTER CONTAINER (System Toolbar) --- */
+#drawer-footer {
+  margin-top: 15px;
+  padding: 0 10px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-drawer); /* Nền tiệp màu drawer */
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  
+  height: 52px;
+  
+  /* GRID LAYOUT: 1fr - auto - 1fr */
+  /* Giúp phần tử giữa (Offline) luôn ở chính giữa drawer, bất kể chiều rộng của nút Theme */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  
+  /* Reset margin âm từ container cha */
+  margin-left: -15px;
+  margin-right: -15px;
+  margin-bottom: -15px;
+}
+
+/* --- CENTER GROUP: OFFLINE WIDGET --- */
+.offline-widget {
+  grid-column: 2; /* Nằm cột giữa */
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Khoảng cách giữa các thành phần */
+}
+
+/* 1. Status/Action Button (Chứa Icon + Label) */
+.offline-main-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.offline-main-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+}
+
+.offline-main-btn .icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  /* Icon căn chỉnh */
+}
+
+/* 2. Update Button (Nút Refresh) */
+#btn-update-offline {
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+#btn-update-offline:hover {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+}
+
+/* --- RIGHT GROUP: THEME TOGGLE --- */
+.theme-toggle-group {
+  grid-column: 3; /* Nằm cột phải */
+  justify-self: end; /* Neo sang phải */
+  display: flex;
+  align-items: center;
+  padding-right: 5px;
+}
+
+#btn-theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+#btn-theme-toggle:hover {
+  background-color: var(--bg-card);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: rotate(15deg);
+}
+
+/* --- STATES (Logic hiển thị) --- */
+
+/* Syncing */
+#drawer-footer.syncing .offline-main-btn {
+  color: var(--primary-color);
+  pointer-events: none;
+}
+#drawer-footer.syncing .icon svg {
+  animation: spin 1s linear infinite;
+}
+#drawer-footer.syncing #btn-update-offline {
+  display: none;
+}
+
+/* Ready */
+#drawer-footer.ready .offline-main-btn {
+  cursor: default;
+}
+#drawer-footer.ready .offline-main-btn:hover {
+  background-color: transparent;
+  color: var(--text-muted);
+}
+#drawer-footer.ready .icon svg {
+  stroke: #4caf50; /* Màu xanh lá cho dấu check */
+  stroke-width: 2.5;
+}
+#drawer-footer.ready #btn-update-offline {
+  display: flex;
+}
+
+/* Error */
+#drawer-footer.error .offline-main-btn {
+  color: #d32f2f;
+}
+#drawer-footer.error #btn-update-offline {
+  display: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

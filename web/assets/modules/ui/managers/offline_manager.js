@@ -114,15 +114,16 @@ export const OfflineManager = {
     },
 
     setUIState(state, text, iconSvg, percent = 0) {
-        const wrapper = document.getElementById("offline-wrapper");
+        // [UPDATED] Đổi ID selector
+        const footer = document.getElementById("drawer-footer");
         const btnOffline = document.getElementById("btn-download-offline");
         const btnUpdate = document.getElementById("btn-update-offline");
         const globalBar = document.getElementById("global-progress-bar");
 
-        // 1. Wrapper State
-        if (wrapper) {
-            wrapper.classList.remove("syncing", "ready", "error");
-            if (state) wrapper.classList.add(state);
+        // 1. Footer State
+        if (footer) {
+            footer.classList.remove("syncing", "ready", "error");
+            if (state) footer.classList.add(state);
         }
 
         // 2. Main Button Content

@@ -9,8 +9,12 @@
 
 /* Layout */
 @import "css/layout/_header.css";
-@import "css/layout/_drawer.css";
 @import "css/layout/_container.css";
+
+/* [NEW] Drawer Modules */
+@import "css/layout/drawer/_drawer_container.css";
+@import "css/layout/drawer/_drawer_filters.css";
+@import "css/layout/drawer/_drawer_footer.css";
 
 /* Components */
 @import "css/components/_buttons.css";

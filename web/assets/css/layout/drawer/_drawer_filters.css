@@ -1,0 +1,61 @@
+/* Path: web/assets/css/layout/drawer/_drawer_filters.css */
+
+.filter-label {
+  font-size: 0.85em;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center; /* Center label cho cân đối */
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.filter-btn {
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.filter-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.filter-btn.active {
+  background-color: var(--primary-color);
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border-color: var(--primary-color);
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  display: block;
+  margin: 0 auto; /* Center nút Others */
+}
+
+.text-btn:hover {
+  opacity: 1;
+}
