@@ -19,6 +19,7 @@ def execute_split_book_strategy(
 ) -> None:
     """
     Chiến lược xử lý cho các sách Super Book (AN, SN).
+    [UPDATED] Inject Meta của Next/Prev biên (Boundary Neighbors) để đảm bảo nút điều hướng luôn có info.
     """
     sub_books = extract_sub_books(book_id, structure, full_meta)
     sub_book_ids = []
@@ -40,11 +41,9 @@ def execute_split_book_strategy(
         flatten_tree_uids(sub_struct, full_meta, sub_leaves_check)
         
         for uid in sub_leaves_check:
-            # Case 1: ID có trực tiếp trong content
             if uid in raw_content:
-                sub_content[uid] = raw_content[uid]
+                 sub_content[uid] = raw_content[uid]
             else:
-                # Case 2: ID là subleaf, nội dung nằm ở Parent Container
                 parent = full_meta.get(uid, {}).get("parent_uid")
                 if parent and parent in raw_content:
                     sub_content[parent] = raw_content[parent]
@@ -57,12 +56,33 @@ def execute_split_book_strategy(
                 for uid in chunk_data.keys():
                     sub_chunk_map[uid] = idx
 
-        # 2. Build Meta & Locator
+        # 2. Build Meta & Locator (Core Items)
         sub_meta_map = {}
         for k in all_sub_keys:
             c_idx = resolve_chunk_idx(k, sub_chunk_map, full_meta)
             result["locator_map"][k] = [sub_id, c_idx]
             sub_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
+
+        # 3. [NEW] Boundary Injection (Tiêm Meta của hàng xóm)
+        # Tìm First và Last Leaf để xác định hàng xóm biên
+        if sub_leaves_check:
+            first_uid = sub_leaves_check[0]
+            last_uid = sub_leaves_check[-1]
+            
+            # Xác định Prev của bài đầu và Next của bài cuối
+            prev_boundary = nav_map.get(first_uid, {}).get("prev")
+            next_boundary = nav_map.get(last_uid, {}).get("next")
+            
+            boundary_neighbors = []
+            if prev_boundary: boundary_neighbors.append(prev_boundary)
+            if next_boundary: boundary_neighbors.append(next_boundary)
+            
+            for neighbor_uid in boundary_neighbors:
+                # Chỉ tiêm nếu nó CHƯA có trong sub_meta_map (tức là nó thuộc sách khác)
+                if neighbor_uid not in sub_meta_map:
+                    # chunk_idx sẽ là None vì nó không nằm trong content file của sách này
+                    # Nhưng meta title/acronym sẽ có đủ để hiển thị nút
+                    sub_meta_map[neighbor_uid] = build_meta_entry(neighbor_uid, full_meta, nav_map, None)
 
         # Inject Parent Info vào con
         if book_id in full_meta:
@@ -77,7 +97,6 @@ def execute_split_book_strategy(
         # Save Sub-Book
         final_tree = { book_id: { sub_id: sub_struct } }
         
-        # [UPDATED] Không truyền random_pool
         sub_payload = build_book_payload(
             book_id=sub_id,
             title=f"{sub_id.upper()}",
@@ -99,7 +118,6 @@ def execute_split_book_strategy(
     result["locator_map"][book_id] = [book_id, None]
     super_tree = { book_id: sub_book_ids }
     
-    # [UPDATED] Không truyền random_pool
     super_payload = build_book_payload(
         book_id=book_id,
         title=root_title,
