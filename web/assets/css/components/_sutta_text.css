@@ -78,7 +78,7 @@ p {
   font-style: normal;            /* Bắt buộc normal để đè italic của Pali */
   line-height: 1.5;
   margin-top: 0;
-  display: block;                /* Đảm bảo block display */
+  display: inline;                /* Đảm bảo block display */
 }
 
 /* [NEW] Centered End Markers */
