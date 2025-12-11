@@ -8,9 +8,46 @@ from typing import Set
 
 logger = logging.getLogger("Release.CSSBundler")
 
-def _resolve_imports(base_dir: Path, file_path: Path, processed: Set[Path]) -> str:
-    """Đệ quy gộp nội dung CSS từ các file @import."""
-    # Resolve symlinks và absolute path để tránh trùng lặp
+def _rewrite_urls(content: str, source_file: Path, bundle_dir: Path) -> str:
+    """
+    Tìm và viết lại các đường dẫn url(...) trong CSS.
+    Chuyển từ: Tương đối với source_file
+    Sang: Tương đối với bundle_dir (nơi đặt style.bundle.css)
+    """
+    # Regex bắt: url("..."), url('...'), hoặc url(...)
+    # Group 2: Quote (hoặc rỗng)
+    # Group 3: Path
+    url_pattern = re.compile(r'url\s*\(\s*(["\']?)([^)"\']+)\1\s*\)')
+
+    def replace_url(match):
+        quote = match.group(1) or ""
+        original_path = match.group(2).strip()
+
+        # Bỏ qua Data URI hoặc Absolute URL (http/https)
+        if original_path.startswith("data:") or original_path.startswith("http"):
+            return match.group(0)
+
+        try:
+            # 1. Xác định vị trí tuyệt đối của tài nguyên gốc
+            # source_file.parent là thư mục chứa file CSS con (vd: web/assets/css/base/)
+            resource_abs_path = (source_file.parent / original_path).resolve()
+
+            # 2. Tính toán đường dẫn tương đối từ thư mục bundle (vd: web/assets/) tới tài nguyên
+            # bundle_dir là nơi file style.bundle.css sẽ nằm
+            new_rel_path = os.path.relpath(resource_abs_path, bundle_dir)
+            
+            # Chuẩn hóa path separator cho Windows (\ -> /)
+            new_rel_path = new_rel_path.replace("\\", "/")
+
+            return f'url({quote}{new_rel_path}{quote})'
+        except Exception as e:
+            # Nếu lỗi (vd: path ảo), giữ nguyên
+            return match.group(0)
+
+    return url_pattern.sub(replace_url, content)
+
+def _resolve_imports(base_dir: Path, file_path: Path, processed: Set[Path], bundle_output_dir: Path) -> str:
+    """Đệ quy gộp nội dung CSS và viết lại URL."""
     try:
         file_path = file_path.resolve()
     except FileNotFoundError:
@@ -28,36 +65,34 @@ def _resolve_imports(base_dir: Path, file_path: Path, processed: Set[Path]) -> s
         logger.error(f"❌ Error reading {file_path.name}: {e}")
         return ""
 
-    # Regex bắt: @import "..." hoặc @import '...' ; (có thể có dấu ;)
-    # Group 2 là đường dẫn
+    # [NEW] Viết lại URL trước khi xử lý @import
+    # Để đảm bảo path trong file con đúng với vị trí của file bundle
+    content = _rewrite_urls(content, file_path, bundle_output_dir)
+
+    # Regex bắt: @import "..." hoặc @import '...' ;
     import_pattern = re.compile(r'@import\s+url\((["\']?)([^"\')]+)\1\);?|@import\s+([\'"])(.+?)\3;?')
 
     def replace_import(match):
-        # Lấy path từ các group regex (tùy thuộc format @import nào match)
         rel_path = match.group(2) or match.group(4)
         if not rel_path: return ""
         
-        # Đường dẫn trong CSS là relative với file hiện tại
         full_child_path = (file_path.parent / rel_path).resolve()
         
-        return _resolve_imports(base_dir, full_child_path, processed)
+        # Đệ quy
+        return _resolve_imports(base_dir, full_child_path, processed, bundle_output_dir)
 
     return import_pattern.sub(replace_import, content)
 
 def _minify_css(content: str) -> str:
-    """Minify đơn giản: Xóa comment và khoảng trắng thừa."""
-    # 1. Xóa comment /* ... */
+    """Minify đơn giản."""
     content = re.sub(r'/\*[\s\S]*?\*/', '', content)
-    # 2. Xóa khoảng trắng quanh { } : ; ,
     content = re.sub(r'\s*([\{,;:\}])\s*', r'\1', content)
-    # 3. Xóa dòng trống và khoảng trắng lặp lại
     content = re.sub(r'\s\s+', ' ', content)
     return content.strip()
 
 def bundle_css(base_dir: Path) -> bool:
     """
-    Tạo style.bundle.css từ style.css và các imports.
-    Sau đó xóa thư mục css/ nguồn để dọn dẹp bản build.
+    Tạo style.bundle.css từ style.css.
     """
     assets_dir = base_dir / "assets"
     entry_file = assets_dir / "style.css"
@@ -72,22 +107,20 @@ def bundle_css(base_dir: Path) -> bool:
 
     try:
         processed: Set[Path] = set()
-        # 1. Gộp nội dung
-        raw_content = _resolve_imports(base_dir, entry_file, processed)
         
-        # 2. Minify
+        # [UPDATED] Truyền assets_dir vào để làm gốc tính toán path
+        raw_content = _resolve_imports(base_dir, entry_file, processed, assets_dir)
+        
         final_content = _minify_css(raw_content)
         
-        # 3. Ghi file bundle
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(final_content)
         
-        # 4. Cleanup: Xóa style.css gốc và folder modules 'css/'
         os.remove(entry_file)
         if css_modules_dir.exists():
             shutil.rmtree(css_modules_dir)
             
-        logger.info("   ✅ Created style.bundle.css & Cleaned up sources")
+        logger.info("   ✅ Created style.bundle.css & Rewrote URLs")
         return True
 
     except Exception as e:
