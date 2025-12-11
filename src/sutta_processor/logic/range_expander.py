@@ -59,8 +59,11 @@ def _generate_smart_acronym(parent_acronym: str, start: int, end: int, replaceme
     new_acronym = range_pattern.sub(str(replacement), parent_acronym)
     return new_acronym if new_acronym != parent_acronym else ""
 
-def _generate_vinaya_variants(uid: str) -> Set[str]:
-    """Sinh ra các biến thể tên gọi (Alias) dựa trên quy tắc Vinaya."""
+def generate_vinaya_variants(uid: str) -> Set[str]:
+    """
+    [PUBLIC] Sinh ra các biến thể tên gọi (Alias) dựa trên quy tắc Vinaya.
+    Được sử dụng bởi cả Range Expander (Leaf) và Structure Expansion (Branch).
+    """
     variants = set()
     for pattern, replacement in VINAYA_REGEX_RULES:
         if pattern.match(uid):
@@ -80,12 +83,10 @@ def generate_subleaf_shortcuts(
     article_ids = _extract_unique_article_ids(content)
     root_range_info = _parse_range_string(root_uid)
 
-    # --- CASE A: SINGLE LEAF (Bài đơn hoặc range gộp) ---
-    # Ví dụ: pli-tv-bi-vb-pj1-4
+    # --- CASE A: SINGLE LEAF ---
     if len(article_ids) <= 1:
-        # Mặc định structure là chính nó
         ordered_structure_ids.append(root_uid)
-
+        
         if root_range_info:
             prefix, start, end = root_range_info
             aliases = _expand_alias_ids(prefix, start, end)
@@ -94,16 +95,13 @@ def generate_subleaf_shortcuts(
 
             for alias_id in aliases:
                 if alias_id == root_uid: continue
-                # [ALIAS TYPE 1] Trỏ về bài gốc
                 result_meta[alias_id] = {
                     "type": "alias",
                     "target_uid": root_uid,
                     "hash_id": None
                 }
-        
-        # [LƯU Ý] Không return ngay ở đây nữa! Để code chạy tiếp xuống phần Post-process.
 
-    # --- CASE B: MULTI SUBLEAFS (Nhiều bài con trong 1 file) ---
+    # --- CASE B: MULTI SUBLEAFS ---
     else:
         logger.info(f"   🌿 HTML Articles Detected: {root_uid} -> {len(article_ids)} subleafs")
 
@@ -118,7 +116,6 @@ def generate_subleaf_shortcuts(
                     display_suffix = suffix.replace("-", "–")
                     sub_acronym = _generate_smart_acronym(parent_acronym, r_start, r_end, display_suffix)
 
-            # [SUBLEAF]
             result_meta[sub_uid] = {
                 "type": "subleaf",
                 "parent_uid": root_uid,
@@ -126,7 +123,6 @@ def generate_subleaf_shortcuts(
                 "acronym": sub_acronym
             }
 
-            # Kiểm tra Nested Range (Sub-Alias)
             sub_range = _parse_range_string(sub_uid)
             if sub_range:
                 p_prefix, p_start, p_end = sub_range
@@ -134,8 +130,6 @@ def generate_subleaf_shortcuts(
                 
                 for alias_id in aliases:
                     if alias_id == sub_uid: continue
-                    
-                    # [ALIAS TYPE 2]
                     result_meta[alias_id] = {
                         "type": "alias",
                         "target_uid": root_uid,
@@ -146,8 +140,8 @@ def generate_subleaf_shortcuts(
     # [UNIVERSAL POST-PROCESS] SINH BIẾN THỂ VINAYA
     # =================================================================
     
-    # 1. Sinh biến thể cho Root UID (ví dụ: ivb-pj1-4 -> ipj1-4)
-    root_variants = _generate_vinaya_variants(root_uid)
+    # 1. Sinh biến thể cho Root UID
+    root_variants = generate_vinaya_variants(root_uid)
     for var_uid in root_variants:
         if var_uid not in result_meta:
             result_meta[var_uid] = {
@@ -156,27 +150,20 @@ def generate_subleaf_shortcuts(
                 "hash_id": None
             }
 
-    # 2. Sinh biến thể cho TẤT CẢ items hiện có trong result_meta
-    # (Bao gồm Subleaf và các Alias chuẩn vừa tạo ở Case A hoặc B)
-    # Dùng list(keys) để snapshot, tránh lỗi runtime khi dictionary thay đổi size
+    # 2. Sinh biến thể cho TẤT CẢ items hiện có
     current_keys = list(result_meta.keys())
     
     for item_uid in current_keys:
         item_data = result_meta[item_uid]
-        variants = _generate_vinaya_variants(item_uid)
+        variants = generate_vinaya_variants(item_uid)
         
-        # Kế thừa đích đến từ item gốc
         final_target = item_data.get("target_uid") or item_data.get("parent_uid")
         final_hash = item_data.get("hash_id") or item_data.get("extract_id")
 
-        # Đặc biệt: Nếu item gốc là Alias trong Case A (Target là Root),
-        # thì biến thể Vinaya của nó cũng phải trỏ về Root.
         if item_data["type"] == "alias" and not final_hash and not final_target:
-             # Fallback an toàn nếu data thiếu (thường không xảy ra với logic trên)
              final_target = root_uid
 
         for var_uid in variants:
-            # Chỉ tạo nếu chưa tồn tại (tránh ghi đè Subleaf thật hoặc Alias đã có)
             if var_uid not in result_meta and var_uid not in ordered_structure_ids:
                 result_meta[var_uid] = {
                     "type": "alias",

@@ -2,7 +2,8 @@
 from typing import Dict, Any, List
 
 from ...shared.domain_types import SuttaMeta
-from ..range_expander import generate_subleaf_shortcuts
+# [UPDATED] Import thêm hàm generate_vinaya_variants
+from ..range_expander import generate_subleaf_shortcuts, generate_vinaya_variants
 from .meta_service import ensure_meta_entry
 
 def expand_structure_with_subleaves(
@@ -32,11 +33,10 @@ def expand_structure_with_subleaves(
                 if sc_id not in target_meta_dict:
                     
                     if sc_data["type"] == "alias":
-                        # [UPDATED] Alias Entry
-                        # Chỉ lấy những trường cần thiết cho Alias
+                        target = sc_data.get("target_uid") or sc_data.get("extract_id") or sc_data.get("parent_uid")
                         entry = {
                             "type": "alias",
-                            "target_uid": sc_data.get("target_uid"),
+                            "target_uid": target, 
                         }
                         if sc_data.get("hash_id"):
                             entry["hash_id"] = sc_data.get("hash_id")
@@ -44,7 +44,6 @@ def expand_structure_with_subleaves(
                         target_meta_dict[sc_id] = entry
                     
                     else:
-                        # [KEEP] Subleaf Entry (Giữ nguyên logic cũ)
                         api_info = meta_map.get(sc_id, {})
                         entry = {
                             "type": sc_data["type"],
@@ -83,7 +82,21 @@ def expand_structure_with_subleaves(
         new_dict = {}
         for key, val in node.items():
             new_dict[key] = expand_structure_with_subleaves(val, raw_content_map, meta_map, target_meta_dict)
+            
+            # Node cha (Key) là Branch -> Tạo meta mặc định
             ensure_meta_entry(key, "branch", meta_map, target_meta_dict)
+            
+            # [NEW] Sinh Alias cho Branch (VD: pli-tv-kd -> kd)
+            # Vì đây là Branch, nên target_uid chính là key đó
+            variants = generate_vinaya_variants(key)
+            for var_uid in variants:
+                if var_uid not in target_meta_dict:
+                    target_meta_dict[var_uid] = {
+                        "type": "alias",
+                        "target_uid": key
+                        # Hash ID không cần thiết vì Branch load cả trang
+                    }
+
         return new_dict
     
     return node
