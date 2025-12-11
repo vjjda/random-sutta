@@ -61,7 +61,7 @@ class IOManager:
             mirror_target = MIRROR_DB_DIR / filename
             web_target = WEB_DB_DIR / filename
 
-        # 1. Write Mirror
+        # 1. Write Mirror (Pretty Print - Dễ đọc)
         try:
             if not mirror_target.parent.exists():
                 mirror_target.parent.mkdir(parents=True, exist_ok=True)
@@ -71,15 +71,15 @@ class IOManager:
         except Exception as e:
             logger.error(f"❌ Write Mirror Error {filename}: {e}")
 
-        # 2. Write Web (Prod)
+        # 2. Write Web (Production - Minified tối đa)
         if not self.dry_run and web_target:
             try:
                 if not web_target.parent.exists():
                     web_target.parent.mkdir(parents=True, exist_ok=True)
                     
                 with open(web_target, "w", encoding="utf-8") as f:
-                    # Content nén dòng, Meta giữ indent=0 hoặc nén tùy ý
-                    separators = (',', ':') if category == "content" else None
-                    json.dump(data, f, ensure_ascii=False, separators=separators)
+                    # [OPTIMIZED] Luôn dùng separators chặt chẽ cho cả Meta và Content
+                    # separators=(',', ':') loại bỏ khoảng trắng sau dấu phẩy và hai chấm
+                    json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
             except Exception as e:
                 logger.error(f"❌ Write Web Error {filename}: {e}")
