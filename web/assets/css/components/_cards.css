@@ -10,28 +10,34 @@
 
 .b-card-link {
   display: block;
-  background-color: var(--bg-card); 
+  background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--text-main);
-  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1); /* [TWEAK] Easing mượt hơn */
+  /* [TWEAK] Transition mượt mà cho cả transform và shadow */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: var(--shadow-soft);
   overflow: hidden;
-  position: relative; /* Để xử lý z-index nếu cần */
+  position: relative;
+  /* Quan trọng: để scale mượt hơn trên một số trình duyệt */
+  transform: translateZ(0); 
+  backface-visibility: hidden; 
 }
 
 .b-card-link:hover {
-  /* [FIX] Tắt gạch chân xấu xí do global link style */
   text-decoration: none;
-  
-  /* [IMPROVED] Hiệu ứng nổi khối rõ ràng */
   border-color: var(--primary-color);
-  transform: translateY(-4px); /* Nhấc cao hơn chút nữa */
-  box-shadow: var(--shadow-hover); /* Bóng đổ sâu hơn */
   
-  /* Tăng sáng nhẹ nền để card rực rỡ hơn */
-  filter: brightness(1.02); 
+  /* [CHANGED] Zoom In effect instead of Lifting up */
+  transform: scale(1.02); 
+  
+  /* Giữ shadow nhưng có thể giảm nhẹ độ lan nếu muốn cảm giác "dẹt" hơn, 
+     nhưng shadow hiện tại giúp tách lớp tốt khi zoom */
+  box-shadow: var(--shadow-hover);
+  
+  filter: brightness(1.02);
+  z-index: 1; /* Đảm bảo card đang zoom nằm đè lên các card khác */
 }
 
 .branch-card-group .b-card-link {
@@ -141,7 +147,7 @@
   line-height: 1.6;
   margin-bottom: 20px;
   /* Tạo nền nhẹ để tách biệt */
-  background-color: var(--bg-drawer); /* [REFACTORED] was var(--bg-body), dùng bg-drawer cho đậm hơn chút */
+  background-color: transparent; /* [REFACTORED] was var(--bg-body), dùng bg-drawer cho đậm hơn chút */
   padding: 15px 20px;
   border-radius: 8px;
   display: inline-block;
