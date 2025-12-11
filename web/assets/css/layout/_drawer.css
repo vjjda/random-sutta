@@ -31,11 +31,8 @@
 }
 
 #filter-drawer {
-  /* margin-top: 5px; */
   padding: 15px;
-  /* background: rgba(255, 255, 255, 0.5); */
   border-radius: var(--radius-md);
-  /* border: 1px dashed var(--border-color); */
   animation: slideDown 0.3s ease-out;
 }
 
@@ -59,12 +56,10 @@
 .filter-btn {
   background-color: #e8e0d9;
   color: #5d4037;
-  /* Giữ border trong suốt để chiếm chỗ sẵn, tránh nhảy khi hover/active nếu có border màu */
   border: 1px solid transparent;
   padding: 6px 14px;
   font-size: 0.9rem;
   border-radius: var(--radius-sm);
-  /* [QUAN TRỌNG] Đặt font-weight cố định */
   font-weight: 500;
   transition: background-color 0.2s, color 0.2s;
 }
@@ -76,7 +71,6 @@
 .filter-btn.active {
   background-color: var(--primary-color);
   color: #fff;
-  /* [ĐÃ SỬA] Xóa dòng font-weight: 600; để không thay đổi kích thước chữ */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -93,6 +87,7 @@
   opacity: 1;
 }
 
+/* OFFLINE MANAGER SECTION */
 #offline-wrapper {
   margin-top: 20px;
   padding-top: 0;
@@ -110,7 +105,6 @@
 }
 
 .offline-btn {
-  /* ... (Giữ nguyên) ... */
   background: transparent;
   border: none;
   width: 100%;
@@ -129,16 +123,14 @@
   letter-spacing: 0.5px;
 }
 
-/* [NEW] Style cho nút Update nhỏ */
 #btn-update-offline {
   position: absolute;
   right: 0;
   top: 0;
   bottom: 0;
-  width: 44px; /* Vuông góc phải */
+  width: 44px;
   background: transparent;
   border: none;
-  /* border-left: 1px solid rgba(0, 0, 0, 0.05); Ngăn cách nhẹ */
   color: var(--text-light);
   cursor: pointer;
   z-index: 3;
@@ -168,32 +160,13 @@
 /* 1. Syncing */
 #offline-wrapper.syncing .offline-btn {
   color: var(--primary-color);
-  pointer-events: none; /* Disable click khi đang sync */
+  pointer-events: none;
 }
 #offline-wrapper.syncing svg {
   animation: spin 1s linear infinite;
 }
-/* Ẩn nút update khi đang sync */
 #offline-wrapper.syncing #btn-update-offline {
   display: none;
-}
-
-/* Progress Bar (Nền chạy) */
-#offline-progress-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 0%;
-  background-color: rgba(
-    139,
-    69,
-    19,
-    0.15
-  ); /* Tăng đậm lên chút (0.1 -> 0.15) cho dễ nhìn */
-  z-index: 1;
-  /* [CHANGED] Dùng linear để chạy đều, giảm thời gian xuống 0.2s cho phản hồi nhanh */
-  transition: width 0.2s linear;
 }
 
 /* 2. Ready */
@@ -202,35 +175,24 @@
 }
 
 #offline-wrapper.ready .offline-btn {
-  color: var(--text-muted); /* [CHANGED] Màu chữ chìm (low profile) */
-  font-weight: 400; /* [CHANGED] Nét mảnh */
+  color: var(--text-muted);
+  font-weight: 400;
   cursor: help;
   transition: all 0.2s ease;
 }
 
 #offline-wrapper.ready .offline-btn:hover {
-  background-color: rgba(
-    139,
-    69,
-    19,
-    0.08
-  ); /* [CHANGED] Hover nền nâu nhạt (theo theme) */
-  color: var(--primary-color); /* Hover chữ chuyển nâu đậm */
+  background-color: rgba(139, 69, 19, 0.08);
+  color: var(--primary-color);
 }
 
 #offline-wrapper.ready .offline-btn svg {
-  stroke: #4caf50; /* [KEEP] Chỉ giữ dấu tích màu xanh */
-  opacity: 0.8; /* Giảm độ chói một chút cho hài hòa */
-}
-
-#offline-wrapper.ready #offline-progress-bar {
-  display: none;
+  stroke: #4caf50;
+  opacity: 0.8;
 }
 
 #offline-wrapper.ready #btn-update-offline {
   display: flex;
-  /* [NEW] Chỉnh lại nút update nhỏ cho khớp style mới */
-  /* border-left: 1px solid rgba(139, 69, 19, 0.1); */
 }
 
 /* 3. Error */
@@ -241,7 +203,6 @@
   display: none;
 }
 
-/* Ẩn mặc định */
 .icon-only-btn.hidden {
   display: none !important;
 }
