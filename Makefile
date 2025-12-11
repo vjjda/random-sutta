@@ -15,18 +15,18 @@ help:
 	@echo "  make sync           - Đồng bộ TOÀN BỘ dữ liệu (Bilara Text + API Meta)"
 	@echo ""
 	@echo "⚙️  BUILD & DEV:"
-	@echo "  make build-dry     - Chạy Sutta Processor (Dry Run, không ghi file)"
-	@echo "  make build-data     - Chạy Sutta Processor (JSON -> Assets)"
-	@echo "  make build-full          - Chạy Full Build (Data + Release)"
+	@echo "  make dry     - Chạy Sutta Processor (Dry Run, không ghi file)"
+	@echo "  make data     - Chạy Sutta Processor (JSON -> Assets)"
+	@echo "  make build          - Chạy Full Build (Data + Release)"
 	@echo "  make dev            - Server Web gốc (Source)  -> http://localhost:8000"
-	@echo "  make dev-online     - Server Build Online      -> http://localhost:8001"
-	@echo "  make dev-offline    - Server Build Offline     -> http://localhost:8002"
+	@echo "  make dev-on     - Server Build Online      -> http://localhost:8001"
+	@echo "  make dev-off    - Server Build Offline     -> http://localhost:8002"
 	@echo ""
 	@echo "🚀 RELEASE SYSTEM:"
 	@echo "  make release        - Build Local kiểm tra (Không zip, không commit)"
-	@echo "  make release-zip    - Build & Tạo file .zip (-z)"
-	@echo "  make release-web    - Build & Deploy lên GitHub Pages (-w)"
-	@echo "  make release-beta   - PUBLISH PRE-RELEASE (-p) (Commit -> Push -> GH Release)"
+	@echo "  make zip    - Build & Tạo file .zip (-z)"
+	@echo "  make reweb    - Build & Deploy lên GitHub Pages (-w)"
+	@echo "  make beta   - PUBLISH PRE-RELEASE (-p) (Commit -> Push -> GH Release)"
 	@echo "  make publish        - PUBLISH OFFICIAL (-p -w) (Commit -> Push -> GH Release -> Deploy Web)"
 	@echo ""
 	@echo "🧹 MAINTENANCE:"
@@ -49,15 +49,15 @@ sync:
 # ==============================================================================
 # ⚙️ BUILD & DEV
 # ==============================================================================
-build-dry:
+dry:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor -d
 
-build-data:
+data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
 
-build-full:
+build:
 	@echo "🧠 Full Build (Data + Release)..."
 	$(PYTHON) -m src.sutta_processor
 	$(PYTHON) -m src.release_system
@@ -70,14 +70,14 @@ dev:
 
 # Server cho bản Build Online - Port 8001
 # Yêu cầu: Phải chạy 'make release' trước để có thư mục build
-dev-online:
+dev-on:
 	@echo "🌍 Starting BUILD ONLINE Server..."
 	@echo "   👉 http://localhost:8001/"
 	$(PYTHON) -m http.server 8001 --directory build/dev-online
 
 # Server cho bản Build Offline - Mở trực tiếp file HTML
 # Giả lập môi trường không mạng, chạy trên protocol file://
-dev-offline:
+dev-off:
 	@echo "📂 Opening BUILD OFFLINE (file://)..."
 	open build/dev-offline/index.html
 
@@ -90,20 +90,20 @@ release:
 	$(PYTHON) -m src.release_system
 
 # 2. Tạo Zip Artifact (-z)
-release-zip:
+zip:
 	$(PYTHON) -m src.release_system --zip
 
 # 3. Deploy Web GH-Pages (-w)
-release-web:
+reweb:
 	$(PYTHON) -m src.release_system --web
 
 # 4. [MỚI] Publish Pre-release (-p)
 # Dùng cho các bản beta, test, chưa phải official
-release-beta:
+beta:
 	@echo "🚀 PUBLISHING PRE-RELEASE (Beta)..."
 	$(PYTHON) -m src.release_system --publish
 
-release-official:
+official:
 	@echo "🚀 PUBLISHING OFFICIAL RELEASE..."
 	$(PYTHON) -m src.release_system --official
 
