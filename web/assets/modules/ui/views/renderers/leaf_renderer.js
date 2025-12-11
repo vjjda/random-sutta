@@ -59,6 +59,51 @@ function cleanRedundantHeadings(htmlString) {
     return wrapper.innerHTML;
 }
 
+function postProcessHtml(htmlString) {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = htmlString;
+
+    const segments = wrapper.querySelectorAll('.segment');
+
+    // 1. GLOBAL CHECK: Quét xem trang này có chút tiếng Anh nào không?
+    // Chỉ cần tìm thấy MỘT thẻ .eng có nội dung -> Coi như trang này ĐÃ DỊCH (Translation Exists)
+    let isTranslatedPage = false;
+    for (const seg of segments) {
+        const eng = seg.querySelector('.eng');
+        if (eng && eng.textContent.trim().length > 0) {
+            isTranslatedPage = true;
+            break; // Tìm thấy rồi thì dừng ngay cho nhanh
+        }
+    }
+
+    // 2. Process từng segment dựa trên kết quả Global Check
+    segments.forEach(seg => {
+        const pli = seg.querySelector('.pli');
+        const eng = seg.querySelector('.eng');
+
+        // Logic A: Promote Pali (Chỉ khi TOÀN BỘ trang không có tiếng Anh)
+        // Nếu trang đã dịch (isTranslatedPage = true), ta KHÔNG promote,
+        // để Pali vẫn in nghiêng/mờ, giúp người đọc biết đây là đoạn chưa dịch/bị skip.
+        if (!isTranslatedPage && pli) {
+            pli.classList.add('promoted');
+        }
+
+        // Logic B: Clean Redundant Headings (Giữ nguyên)
+        if (pli && eng) {
+            const parentHeading = seg.closest('h1, h2, h3, h4, h5, h6, .sutta-title');
+            if (parentHeading) {
+                const pliText = pli.textContent.trim();
+                const engText = eng.textContent.trim();
+                if (pliText === engText && pliText.length > 0) {
+                    pli.classList.add('hidden');
+                }
+            }
+        }
+    });
+
+    return wrapper.innerHTML;
+}
+
 function getDisplayInfo(uid, metaEntry) {
     let main = uid.toUpperCase();
     let sub = "";

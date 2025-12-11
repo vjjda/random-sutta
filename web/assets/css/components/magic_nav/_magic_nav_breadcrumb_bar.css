@@ -79,7 +79,7 @@
 /* Style cho dấu gạch chéo bên trong nút gộp (Long / DN) */
 .bc-sep-mini {
   display: inline-block;
-  margin: 0 5px; /* Tạo khoảng cách rõ ràng giữa 2 UIDs */
+  margin: 0 4px; /* Tạo khoảng cách rõ ràng giữa 2 UIDs */
   color: var(--text-light);
   opacity: 0.7;
   font-weight: normal; /* Đảm bảo dấu gạch mảnh mai */
