@@ -1,15 +1,20 @@
 /* Path: web/assets/css/base/_variables.css */
 
-/* 1. Khai báo Font Noto Sans từ file local */
+/* =========================================
+   0. FONT FACE DECLARATION (Local Fonts)
+   ========================================= */
+
+/* Noto Sans Regular */
 @font-face {
   font-family: 'Noto Sans';
-  /* Đường dẫn tương đối từ css/base/ ra fonts/ */
+  /* Đi từ css/base/ ra assets/fonts/ */
   src: url('../../fonts/NotoSans-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
+/* Noto Sans Italic (Dùng cho chữ Pāli) */
 @font-face {
   font-family: 'Noto Sans';
   src: url('../../fonts/NotoSans-Italic.ttf') format('truetype');
@@ -18,7 +23,6 @@
   font-display: swap;
 }
 
-/* 2. Cập nhật biến (Giữ nguyên hoặc chỉnh lại nếu cần) */
 :root {
   /* =========================================
      1. PRIMITIVE PALETTE (Nguyên liệu thô)
@@ -30,7 +34,7 @@
   --primitive-paper-100:   #f5f2eb;
   --primitive-paper-200:   #eceae5; /* Dùng cho border light */
   --primitive-paper-300:   #eaddcf;
-  
+
   /* NEUTRALS: NIGHT (Nền tối) */
   --primitive-night-900:   #1a1918; /* Body Dark */
   --primitive-night-800:   #262423; /* Card Dark */
@@ -67,8 +71,44 @@
      2. SEMANTIC TOKENS (Light Theme Default)
      ========================================= */
 
-  /* Đảm bảo biến --font-sutta sử dụng 'Noto Sans' */
+  /* Typography Scale */
+  --text-scale:            1;
+
+  /* Functional Colors */
+  --primary-color:         var(--primitive-brown-500);
+  --primary-hover:         var(--primitive-brown-400);
+  --text-link:             var(--primitive-brown-500);
+
+  /* Backgrounds */
+  --bg-body:               var(--primitive-paper-50);
+  --bg-card:               var(--primitive-white); /* Was #ffffff */
+  --bg-drawer:             var(--primitive-paper-100);
+  --bg-hover:              rgba(139, 69, 19, 0.06); /* Keep RGBA for opacity effects */
+
+  /* Typography */
+  --text-main:             var(--primitive-ink-900);
+  --text-muted:            var(--primitive-ink-700);
+  --text-light:            var(--primitive-ink-400); /* Was #888888 */
+  
+  --text-pali:             var(--primitive-ink-700);
+  --text-eng:              var(--primitive-ink-900);
+
+  /* Borders & UI */
+  --border-color:          var(--primitive-paper-300);
+  --border-light:          var(--primitive-paper-200); /* Was #eceae5 */
+  
+  /* Shadows & Highlights (Keep RGBA for blending) */
+  --shadow-soft:           0 2px 10px rgba(62, 39, 35, 0.05);
+  --shadow-card:           0 4px 15px rgba(62, 39, 35, 0.08);
+  --shadow-hover:          0 12px 24px rgba(62, 39, 35, 0.15);
+  --highlight-color-background: rgba(139, 69, 19, 0.08);
+  --highlight-color-segment:    rgba(255, 167, 38, 0.15);
+
+  /* Fonts & Spacing */
+  --font-main: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", sans-serif;
+  /* [UPDATED] Sử dụng Font Noto Sans đã import */
   --font-sutta: "Noto Sans", "Segoe UI", sans-serif; 
+  
   --container-width: 800px;
   --radius-md: 8px;
   --radius-sm: 4px;
