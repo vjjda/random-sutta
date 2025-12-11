@@ -1,6 +1,6 @@
 /* Path: web/assets/css/layout/_drawer.css */
 
-/* --- TRIGGER BUTTON (Nút mở Drawer ở Header) --- */
+/* --- TRIGGER BUTTON --- */
 #filter-container {
   margin-bottom: 15px;
 }
@@ -35,58 +35,21 @@
 
 /* --- DRAWER CONTAINER --- */
 #filter-drawer {
-  /* [UPDATED] Thêm padding-top lớn hơn chút để label không bị sát trần quá */
-  padding: 20px 15px 15px 15px;
+  padding: 15px;
   border-radius: var(--radius-md);
   animation: slideDown 0.3s ease-out;
-  
   background-color: var(--bg-drawer);
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-soft);
-  
-  /* [IMPORTANT] Để neo nút Theme ở góc */
-  position: relative; 
-}
-
-/* [NEW] THEME TOGGLE BUTTON (Absolute Top-Right) */
-#btn-theme-toggle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  
-  background: transparent;
-  border: 1px solid transparent; /* Viền trong suốt để tránh nhảy layout khi hover */
-  color: var(--text-muted);
-  
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  z-index: 5; /* Nằm trên các layer khác */
-}
-
-#btn-theme-toggle:hover {
-  background-color: var(--bg-card); /* Nổi lên khi hover */
-  border-color: var(--border-light);
-  color: var(--primary-color);
-  transform: rotate(15deg); /* Hiệu ứng xoay nhẹ vui mắt */
   box-shadow: var(--shadow-soft);
 }
 
 .filter-label {
   font-size: 0.85em;
   color: var(--primary-color);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  /* Tránh label bị nút theme đè lên nếu màn hình quá nhỏ */
-  margin-right: 30px; 
 }
 
 .filter-row {
@@ -99,10 +62,9 @@
 
 /* --- FILTER BUTTONS --- */
 .filter-btn {
-  background-color: var(--bg-card); 
-  color: var(--text-muted);         
+  background-color: var(--bg-card);
+  color: var(--text-muted);
   border: 1px solid var(--border-color);
-  
   padding: 6px 14px;
   font-size: 0.9rem;
   border-radius: var(--radius-sm);
@@ -124,7 +86,7 @@
   border-color: var(--primary-color);
 }
 
-/* --- TEXT BUTTONS (More) --- */
+/* --- TEXT BUTTONS --- */
 .text-btn {
   background: none;
   border: none;
@@ -140,118 +102,130 @@
   opacity: 1;
 }
 
-/* --- OFFLINE MANAGER SECTION --- */
+/* --- SYSTEM BAR (Offline + Theme) --- */
 #offline-wrapper {
   margin-top: 15px;
-  padding-top: 0;
+  padding: 0 15px;
   border-top: 1px solid var(--border-color);
   
-  position: relative;
-  height: 44px;
+  height: 50px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  justify-content: space-between; /* Đẩy 2 nhóm sang 2 bên */
   
+  /* Reset margin âm cũ */
   margin-left: -15px;
   margin-right: -15px;
   margin-bottom: -15px;
+  background-color: var(--bg-drawer);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
-.offline-btn {
-  background: transparent;
-  border: none;
-  width: 100%;
-  height: 100%;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  position: relative;
-  z-index: 2;
+/* 1. LEFT GROUP: Update + Status */
+.offline-left-group {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  transition: all 0.2s;
-  letter-spacing: 0.5px;
 }
 
+/* Nút Update (Refresh) */
 #btn-update-offline {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 44px;
   background: transparent;
   border: none;
   color: var(--text-light);
   cursor: pointer;
-  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 5px;
+  border-radius: 50%;
   transition: all 0.2s;
 }
-
 #btn-update-offline:hover {
   background-color: var(--bg-hover);
   color: var(--primary-color);
 }
-
 #btn-update-offline svg {
-  opacity: 0.6;
-  transition: transform 0.3s ease;
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
 }
 
-#btn-update-offline:hover svg {
-  opacity: 1;
-  transform: rotate(180deg);
+/* Nút Chính (Label + Check Icon) */
+.offline-main-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  transition: color 0.2s;
+}
+.offline-main-btn:hover {
+  color: var(--primary-color);
+}
+.offline-main-btn .icon svg {
+  width: 16px;
+  height: 16px;
+  margin-top: -1px;
 }
 
-/* --- OFFLINE STATES --- */
+/* 2. RIGHT GROUP: Theme Toggle */
+.theme-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.theme-btn:hover {
+  background-color: var(--bg-card);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: rotate(15deg);
+}
 
-/* 1. Syncing */
-#offline-wrapper.syncing .offline-btn {
+/* --- STATES (Logic hiển thị trạng thái) --- */
+
+/* Trạng thái Syncing */
+#offline-wrapper.syncing .offline-main-btn {
   color: var(--primary-color);
   pointer-events: none;
 }
-#offline-wrapper.syncing svg {
+#offline-wrapper.syncing .icon svg {
   animation: spin 1s linear infinite;
 }
 #offline-wrapper.syncing #btn-update-offline {
   display: none;
 }
 
-/* 2. Ready */
-#offline-wrapper.ready {
-  background-color: transparent;
+/* Trạng thái Ready */
+#offline-wrapper.ready .offline-main-btn {
+  cursor: default;
 }
-
-#offline-wrapper.ready .offline-btn {
+#offline-wrapper.ready .offline-main-btn:hover {
   color: var(--text-muted);
-  font-weight: 400;
-  cursor: help;
-  transition: all 0.2s ease;
 }
-
-#offline-wrapper.ready .offline-btn:hover {
-  background-color: var(--bg-hover);
-  color: var(--primary-color);
-}
-
-#offline-wrapper.ready .offline-btn svg {
+#offline-wrapper.ready .icon svg {
   stroke: #4caf50;
-  opacity: 0.8;
+  stroke-width: 2.5;
 }
-
 #offline-wrapper.ready #btn-update-offline {
   display: flex;
 }
 
-/* 3. Error */
-#offline-wrapper.error .offline-btn {
+/* Trạng thái Error */
+#offline-wrapper.error .offline-main-btn {
   color: #d32f2f;
 }
 #offline-wrapper.error #btn-update-offline {
