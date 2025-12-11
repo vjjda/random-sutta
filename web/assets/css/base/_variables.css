@@ -77,34 +77,33 @@
   --bg-body:             var(--primitive-night-900);
   --bg-card:             var(--primitive-night-800);
   --bg-drawer:           #201e1d;
+  
   /* [UPDATED] Fix Hover không rõ ràng */
-  /* Sử dụng màu TRẮNG pha loãng 12% thay vì màu nâu.
-     Trên nền đen, nó sẽ tạo hiệu ứng "bật đèn" nhẹ (lighten), 
-     giúp item nổi bật rõ ràng mà không bị ám màu lạ.
-  */
   --bg-hover:            rgba(255, 255, 255, 0.12);
+  
   /* Text */
   --text-main:           var(--primitive-ivory-900);
   --text-muted:          var(--primitive-ivory-500);
   --text-light:          #757575;
   --text-pali:           #bcaaa4;
   --text-eng:            var(--primitive-ivory-900);
+  
   /* Borders */
   --border-color:        var(--primitive-night-700);
   --border-light:        #33302e;
 
   /* [USER REQUEST] Primary về lại màu Nâu Gốc */
-  /* Dùng màu nâu 500 (gốc) có thể hơi tối, tôi dùng nâu 400 hoặc 300 để sáng hơn chút cho dễ đọc */
-  /* Nếu bạn thích đúng màu nâu gốc: var(--primitive-brown-500) */
-  --primary-color:       var(--primitive-brown-400);
-  /* Nâu sáng (Light Brown) - Dễ đọc trên nền tối hơn #8b4513 */
-  --primary-hover:       #d7ccc8;
+  --primary-color:       var(--primitive-brown-400); /* #a0522d */
+  
+  /* [CHANGED] Màu hover mới: Giữ sắc nâu, không bị bạc */
+  /* Màu cũ: #d7ccc8 (quá sáng/bạc) -> Màu mới: #ba6b45 (Nâu sáng ấm) */
+  --primary-hover:       #ba6b45;
+  
   /* Shadows */
   --shadow-soft:         0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-card:         0 6px 20px rgba(0, 0, 0, 0.6);
+  
   /* Highlights */
-  /* Background highlight (khi active) cũng cần sáng hơn một chút so với hover */
   --highlight-color-background: rgba(255, 255, 255, 0.08);
-  /* Segment highlight (đoạn văn đang chọn) dùng màu vàng/cam nhẹ để tạo điểm nhấn khác biệt */
   --highlight-color-segment:    rgba(255, 179, 0, 0.15);
 }

@@ -48,7 +48,8 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  /* [UPDATED] Thêm transform để animation mượt hơn */
+  transition: background-color 0.2s, transform 0.1s; 
 }
 
 .icon-only-btn:hover {
@@ -56,8 +57,10 @@
   color: var(--primary-color);
 }
 
+/* [NEW] Hiệu ứng nhấn (Active State) */
 .icon-only-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.9); /* Thu nhỏ nhẹ khi nhấn */
+  background-color: var(--highlight-color-background);
 }
 
 /* --- CENTER GROUP: OFFLINE WIDGET --- */
