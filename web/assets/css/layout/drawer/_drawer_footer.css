@@ -168,9 +168,6 @@
   /* Xoay dọc: -90 độ để dưới là Min, trên là Max */
   transform: rotate(-90deg);
   cursor: pointer;
-  
-  /* [FIXED] Sửa lỗi typo 15p -> 15px */
-  margin-right: 15px;
 
   /* [CRITICAL FIX] Ngăn chặn hành vi cuộn trang khi chạm vào slider */
   touch-action: none;

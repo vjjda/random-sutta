@@ -9,7 +9,7 @@ export const AppConfig = {
 
     // Cấu hình Sepia (Đã thêm ở bước trước)
     SEPIA: {
-        MAX_CSS_LIGHT: 40,
+        MAX_CSS_LIGHT: 80,
         MAX_CSS_DARK: 100,
         STORAGE_KEY_PREFIX: "sutta_sepia_"
     },
