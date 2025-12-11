@@ -27,6 +27,7 @@
   --primitive-ink-700: #5c5550;
 
   --primitive-ivory-900: #ececec;
+  --primitive-ivory-800: #dedede;
   --primitive-ivory-500: #a09c98;
   /* =========================================
      2. SEMANTIC TOKENS (Light Theme Default)
@@ -85,7 +86,7 @@
   --bg-hover: rgba(255, 255, 255, 0.12);
 
   /* Text */
-  --text-main: var(--primitive-ivory-900);
+  --text-main: var(--primitive-ivory-800);
   --text-muted: var(--primitive-ivory-500);
   --text-light: #757575;
   --text-pali: #bcaaa4;
@@ -101,7 +102,7 @@
 
   /* [CHANGED] Màu hover mới: Giữ sắc nâu, không bị bạc */
   --primary-hover: var(--primitive-brown-warm);
-  
+
   /* Shadows */
   --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.6);
