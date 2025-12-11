@@ -7,6 +7,69 @@ import { StructureStrategy } from './structure_strategy.js';
 
 const logger = getLogger("SuttaService");
 
+// [NEW] Helper: Tìm node trong cây cấu trúc dựa trên UID
+function findNodeInTree(structure, targetId) {
+    if (!structure) return null;
+    // Nếu structure là array, duyệt từng phần tử
+    if (Array.isArray(structure)) {
+        for (const child of structure) {
+            // Nếu con là string và khớp ID -> Trả về "LEAF" (để phân biệt với null)
+            if (typeof child === 'string') {
+                if (child === targetId) return "LEAF"; 
+            } else {
+                // Nếu con là object, đệ quy
+                const res = findNodeInTree(child, targetId);
+                if (res) return res;
+            }
+        }
+        return null;
+    }
+    // Nếu structure là object (Dictionary hoặc Node Wrapper)
+    if (typeof structure === 'object') {
+        // Nếu tìm thấy key khớp -> Trả về nội dung bên trong (Value)
+        if (structure[targetId]) return structure[targetId];
+        
+        // Nếu không, tìm trong các con
+        for (const key in structure) {
+            const res = findNodeInTree(structure[key], targetId);
+            if (res) return res;
+        }
+    }
+    return null;
+}
+
+// [NEW] Helper: Xác định xem node này có phải là Single Chain không
+// Trả về UID của con duy nhất nếu có, ngược lại trả về null
+function getSingleChildTarget(nodeContent) {
+    if (!nodeContent || nodeContent === "LEAF") return null;
+
+    // Trường hợp 1: Array có đúng 1 phần tử [ "dn" ] hoặc [ { "kn": ... } ]
+    if (Array.isArray(nodeContent) && nodeContent.length === 1) {
+        const child = nodeContent[0];
+        
+        // Con là String -> OK (VD: "dn")
+        if (typeof child === 'string') return child;
+        
+        // Con là Object có 1 key -> OK (VD: { "kn": [...] })
+        if (typeof child === 'object') {
+            const keys = Object.keys(child);
+            if (keys.length === 1) return keys[0];
+        }
+    }
+    
+    // Trường hợp 2: Object dạng Wrapper { "long": ["dn"] } (ít gặp nếu đã unwrap ở findNode, nhưng dự phòng)
+    if (typeof nodeContent === 'object' && !Array.isArray(nodeContent)) {
+        const keys = Object.keys(nodeContent);
+        if (keys.length === 1) {
+             const childVal = nodeContent[keys[0]];
+             // Chỉ redirect nếu value cũng là single
+             return getSingleChildTarget(childVal) ? keys[0] : null; 
+        }
+    }
+
+    return null;
+}
+
 export const SuttaService = {
     async init() {
         await SuttaRepository.init();
@@ -36,11 +99,8 @@ export const SuttaService = {
         const isFileProtocol = window.location.protocol === 'file:';
         const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
         
-        // [CHANGED] Chiến lược mới:
-        // 1. Luôn tải TPK để có Breadcrumb đẹp.
-        // 2. Chỉ gộp cây (Heavy Merge) khi thực sự Offline hoặc File Protocol.
-        const shouldFetchTpk = true; // Luôn tải vì nó nhẹ (45KB)
-        const shouldMergeTree = isFileProtocol || isOfflineReady; // Chỉ gộp khi cần thiết
+        const shouldFetchTpk = true; 
+        const shouldMergeTree = isFileProtocol || isOfflineReady; 
 
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
@@ -56,6 +116,7 @@ export const SuttaService = {
         const metaEntry = bookMeta.meta[uid];
         if (!metaEntry) return null;
 
+        // 1. Check Alias Explicit (Alias cứng trong data)
         if (metaEntry.type === 'alias') {
             return { 
                 isAlias: true, 
@@ -65,9 +126,22 @@ export const SuttaService = {
         }
 
         // --- RESOLVE STRUCTURE ---
-        // Truyền cờ shouldMergeTree vào Strategy thay vì shouldBuildSuperToc cũ
         const { tree: finalTree, contextMeta: finalContextMeta } = 
             await StructureStrategy.resolveContext(bookMeta, uid, shouldMergeTree);
+
+        // 2. [NEW] Check Implicit Single Chain (Alias mềm do cấu trúc)
+        // Tìm vị trí của UID hiện tại trong cây
+        const currentNode = findNodeInTree(finalTree, uid);
+        const singleChildTarget = getSingleChildTarget(currentNode);
+
+        // Nếu tìm thấy con duy nhất và con đó không phải chính nó (tránh loop)
+        if (singleChildTarget && singleChildTarget !== uid) {
+            logger.info("loadSutta", `Auto-redirecting single chain: ${uid} -> ${singleChildTarget}`);
+            return {
+                isAlias: true,
+                targetUid: singleChildTarget
+            };
+        }
 
         // --- CONTENT EXTRACTION ---
         let content = null;
@@ -81,7 +155,6 @@ export const SuttaService = {
                     const parentContent = contentChunk[parentUid];
                     const extractKey = metaEntry.extract_id || uid;
                     content = SuttaExtractor.extract(parentContent, extractKey);
-                    
                     if (!content) {
                         logger.error("loadSutta", `Extraction failed. Parent '${parentUid}' found, but extract '${extractKey}' returned null.`);
                     }
@@ -89,7 +162,10 @@ export const SuttaService = {
                     logger.warn("loadSutta", `Parent '${parentUid}' NOT found in Chunk ${hintChunk}.`);
                 }
             } else {
-                logger.warn("loadSutta", `No content for ${uid} and no parent_uid defined.`);
+                // Chỉ warn nếu đây là Leaf mà không có content. Branch thì không cần content.
+                if (metaEntry.type === 'leaf' || metaEntry.type === 'subleaf') {
+                     logger.warn("loadSutta", `No content for ${uid} and no parent_uid defined.`);
+                }
             }
         }
 
@@ -141,8 +217,6 @@ export const SuttaService = {
             bookStructure: finalTree, 
             contextMeta: finalContextMeta,
             
-            // [IMPORTANT] Luôn trả về dữ liệu Super nếu tải được
-            // Frontend sẽ dùng cái này để vẽ Breadcrumb
             superTree: superMeta ? superMeta.tree : null,
             superMeta: superMeta ? superMeta.meta : null,
             
