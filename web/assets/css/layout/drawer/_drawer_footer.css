@@ -45,6 +45,10 @@
   transition: all 0.2s;
 }
 
+#btn-download-offline .label {
+  margin-right: 10px;
+}
+
 .offline-main-btn:hover {
   background-color: var(--bg-hover);
   color: var(--primary-color);
