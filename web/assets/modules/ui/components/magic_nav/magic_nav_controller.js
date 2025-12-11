@@ -48,6 +48,9 @@ export const MagicNav = {
     render(localTree, currentUid, contextMeta, superTree, superMeta) {
         let fullPath = BreadcrumbRenderer.findPath(localTree, currentUid);
         let localRootId = fullPath ? fullPath[0] : null;
+        
+        // Cây dùng để tra cứu cấu trúc (ưu tiên superTree nếu có để nhìn được toàn cảnh)
+        let structureForLookup = localTree; 
 
         if (fullPath && superTree && fullPath.length > 0) {
             const rootBookId = fullPath[0];
@@ -58,9 +61,13 @@ export const MagicNav = {
                 }
                 fullPath = [...superPath, ...fullPath];
             }
+            structureForLookup = superTree; // Dùng SuperTree để check single-chain
         }
         const finalMeta = { ...superMeta, ...contextMeta };
-        const bcHtml = fullPath ? BreadcrumbRenderer.generateHtml(fullPath, finalMeta, localRootId) : "";
+        
+        // [UPDATED] Truyền structureForLookup vào tham số thứ 4
+        const bcHtml = fullPath ? BreadcrumbRenderer.generateHtml(fullPath, finalMeta, localRootId, structureForLookup) : "";
+        
         const tocHtml = TocRenderer.render(localTree, currentUid, finalMeta, 0);
         UIManager.updateContent(bcHtml, tocHtml);
         UIManager.setHidden(!fullPath);
