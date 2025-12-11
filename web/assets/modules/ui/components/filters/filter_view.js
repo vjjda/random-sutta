@@ -1,5 +1,6 @@
 // Path: web/assets/modules/ui/components/filters/filter_view.js
-import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../../../../data/constants.js';
+// [FIXED] Đường dẫn import lùi 3 cấp
+import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../../../data/constants.js';
 
 export const FilterView = {
     render(containerIds, state, callbacks) {
@@ -58,18 +59,15 @@ export const FilterView = {
         btn.className = "filter-btn";
         if (isActive) btn.classList.add("active");
         
-        // CSS Touch Action để hỗ trợ Swipe
         btn.style.touchAction = "pan-y"; 
         btn.dataset.bookId = bookId;
 
-        // Label Logic
         if (["dn", "mn", "sn", "an"].includes(bookId)) {
             btn.textContent = bookId.toUpperCase();
         } else {
             btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
         }
 
-        // Attach Gestures (gọi callback từ Controller)
         if (callbacks.attachGestures) {
             callbacks.attachGestures(btn, bookId);
         }
@@ -77,7 +75,6 @@ export const FilterView = {
         container.appendChild(btn);
     },
 
-    // Hàm cập nhật UI khi logic thay đổi (mà không cần render lại toàn bộ)
     updateBtnState(bookId, isActive) {
         const btn = document.querySelector(`.filter-btn[data-book-id="${bookId}"]`);
         if (btn) {
@@ -86,7 +83,6 @@ export const FilterView = {
         }
     },
 
-    // Cập nhật toàn bộ UI (dùng cho Solo mode)
     updateAllStates(state) {
         const allBtns = document.querySelectorAll('.filter-btn');
         allBtns.forEach(btn => {
