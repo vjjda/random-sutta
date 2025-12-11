@@ -30,9 +30,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.triggerRandomSutta = () => SuttaController.loadRandomSutta(true);
 
     const randomBtn = document.getElementById("btn-random");
-    const statusDiv = document.getElementById("status"); // Text bên trong Splash
+    const statusDiv = document.getElementById("status"); 
     const navHeader = document.getElementById("nav-header");
-    const splashScreen = document.getElementById("splash-screen"); // [NEW] Container lớn
+    
+    // [MOVED] Hàm ẩn splash được tách ra để gọi sau
+    const hideSplashScreen = () => {
+        const splashScreen = document.getElementById("splash-screen");
+        if (splashScreen) {
+            splashScreen.style.opacity = '0';
+            setTimeout(() => {
+                splashScreen.remove();
+            }, 500); // Khớp với transition trong CSS
+        }
+    };
 
     randomBtn.addEventListener("click", () => SuttaController.loadRandomSutta(true));
 
@@ -41,15 +51,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         await SuttaService.init(); 
         console.timeEnd('📡 Service Init');
 
-        // [UPDATED] Ẩn Splash Screen chuyên nghiệp
-        if (splashScreen) {
-            // 1. Fade out bằng CSS transition
-            splashScreen.style.opacity = '0';
-            // 2. Xóa khỏi DOM sau khi animation xong (0.5s khớp với CSS)
-            setTimeout(() => {
-                splashScreen.remove();
-            }, 500);
-        }
+        // [REMOVED] KHÔNG ẩn splash ở đây nữa.
+        // Giữ splash đè lên cho đến khi load content xong.
 
         navHeader.classList.remove("hidden");
         randomBtn.disabled = false;
@@ -61,22 +64,30 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (window.location.hash) loadId += window.location.hash;
             
             console.time('⏱️ Direct Load Total');
+            // Chờ load xong mới đi tiếp
             await SuttaController.loadSutta(loadId, true);
             console.timeEnd('⏱️ Direct Load Total');
+            
             RandomBuffer.startBackgroundWork();
         } else {
             RandomBuffer.startBackgroundWork();
-            SuttaController.loadRandomSutta(true);
+            // [UPDATED] Thêm await để chờ random load xong mới ẩn splash
+            await SuttaController.loadRandomSutta(true);
         }
+        
+        // [NEW] Giờ mới ẩn Splash -> Chuyển cảnh mượt mà từ Logo sang Nội dung
+        hideSplashScreen();
         console.timeEnd('🚀 App Start to Ready');
 
     } catch (err) {
         logger.error('Init', err);
-        // [UPDATED] Nếu lỗi, hiện thông báo ngay trên Splash Screen
         if (statusDiv) {
             statusDiv.textContent = "Error loading database.";
-            statusDiv.style.color = "#ff6b6b"; // Màu đỏ nhạt cho nền tối
+            statusDiv.style.color = "#ff6b6b"; 
         }
+        // Nếu lỗi thì vẫn phải ẩn splash để user thấy báo lỗi (hoặc xử lý hiển thị lỗi trên splash)
+        // Ở đây ta cứ ẩn đi để hiện giao diện fallback nếu có
+        hideSplashScreen();
     }
 
     window.addEventListener("popstate", (event) => {
