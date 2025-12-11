@@ -4,7 +4,6 @@ import { getLogger } from '../../utils/logger.js';
 const logger = getLogger("Scroller");
 const SCROLL_OFFSET = 0;
 
-// ... (Giữ nguyên các hàm helper getTargetPosition, clearHighlights, applyHighlight) ...
 function getTargetPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
     const rectTop = element.getBoundingClientRect().top;
@@ -12,53 +11,60 @@ function getTargetPosition(element) {
 }
 
 function clearHighlights() {
-    document.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+    document.querySelectorAll('.highlight, .highlight-container').forEach(el => {
+        el.classList.remove('highlight');
+        el.classList.remove('highlight-container');
+    });
 }
 
+// Logic chọn style highlight: Segment (Nền) vs Container (Viền)
 function applyHighlight(element) {
     if (!element) return;
     clearHighlights();
-    element.classList.add('highlight');
+    
+    if (element.classList.contains('segment')) {
+        element.classList.add('highlight');
+    } else {
+        element.classList.add('highlight-container');
+    }
 }
 
 export const Scroller = {
-    // [NEW] 1. Lấy vị trí cuộn hiện tại (Wrapper an toàn)
     getScrollTop: function() {
         return window.scrollY || document.documentElement.scrollTop || 0;
     },
 
-    // [NEW] 2. Khôi phục vị trí cuộn (Đóng gói logic Timeout/Instant)
     restoreScrollTop: function(y) {
         if (typeof y !== 'number') return;
-        
-        // Dùng setTimeout để đẩy xuống cuối Event Loop, 
-        // đảm bảo Stack Render của trình duyệt đã tính toán xong chiều cao DOM
         setTimeout(() => {
+            // [SNAPPY] behavior: 'instant' force trình duyệt nhảy ngay lập tức
             window.scrollTo({ 
                 top: y, 
-                behavior: 'instant' // Quan trọng: Không dùng smooth khi restore history
+                behavior: 'instant' 
             });
         }, 0);
     },
 
     scrollToId: function(targetId) {
         if (!targetId) {
-            this.restoreScrollTop(0); // Dùng lại hàm restore cho nhất quán
+            this.restoreScrollTop(0);
             return;
         }
 
         let retries = 0;
         const maxRetries = 60;
+
         const attemptFind = () => {
-            // [FIX] Escape ký tự đặc biệt trong ID (như dấu hai chấm mn10:36.4)
-            // Tuy nhiên getElementById xử lý tốt việc này, chỉ querySelector mới cần escape.
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = getTargetPosition(element);
+                
+                // [SNAPPY] Jump instantly
                 window.scrollTo({ top: targetY, behavior: 'instant' });
+                
                 applyHighlight(element);
                 
-                // Double check layout shift
+                // Double check layout shift (vẫn cần thiết để đảm bảo chính xác, nhưng nhảy ngay)
                 setTimeout(() => {
                      const newY = getTargetPosition(element);
                      if (Math.abs(newY - window.scrollY) > 2) {
@@ -78,6 +84,7 @@ export const Scroller = {
     },
 
     animateScrollTo: function(targetId) {
+        // Tên hàm giữ nguyên để tương thích interface, nhưng hành vi là instant
         this.scrollToId(targetId);
     },
 
