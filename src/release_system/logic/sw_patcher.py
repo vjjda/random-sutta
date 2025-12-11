@@ -14,6 +14,7 @@ def _update_file(file_path: Path, pattern: str, replacement: str) -> bool:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         
+        # [UPDATED] Check regex linh hoạt hơn
         if not re.search(pattern, content, flags=re.DOTALL):
             logger.warning(f"⚠️ Pattern '{pattern}' not found in {file_path.name}")
             return False
@@ -44,12 +45,19 @@ def patch_sw_assets_for_offline(target_dir: Path) -> bool:
     rep1 = '"./assets/app.bundle.js"'
     res1 = _update_file(sw_path, pat1, rep1)
     
-    # 2. Patch uid_index.json -> db_index.js
-    pat2 = r'"\./assets/db/uid_index\.json",'
-    rep2 = '"./assets/db_index.js",'
+    # [FIXED] 2. Inject db_index.js (Thay vì replace uid_index.json)
+    # Chúng ta chèn nó vào trước marker [AUTO_GENERATED_ASSETS]
+    pat2 = r'// \[AUTO_GENERATED_ASSETS\]'
+    rep2 = '"./assets/db_index.js",\n  // [AUTO_GENERATED_ASSETS]'
+    
     res2 = _update_file(sw_path, pat2, rep2)
     
-    return res1 or res2
+    if res2:
+        logger.info("   ✅ Injected db_index.js for Offline Cache")
+    else:
+        logger.warning("   ⚠️ Failed to inject db_index.js")
+
+    return res1 and res2
 
 def patch_online_assets(target_dir: Path) -> bool:
     """
@@ -83,12 +91,11 @@ def patch_online_assets(target_dir: Path) -> bool:
         return False
 
     # 2. Tạo string để replace
-    # Format: 
-    #   "./path/1.js",
-    #   "./path/2.js",
     injection_content = ",\n  ".join(js_files)
     
     # 3. Inject vào placeholder
+    # [FIX] Thêm dấu phẩy trước nội dung inject để đảm bảo đúng cú pháp JSON/JS Array
     pattern = r"// \[AUTO_GENERATED_ASSETS\]"
-    # Note: re.sub cần escape backslash trong replacement string nếu có, nhưng ở đây chỉ có path đơn giản.
-    return _update_file(sw_path, pattern, injection_content)
+    replacement = f",{injection_content}"
+    
+    return _update_file(sw_path, pattern, replacement)
