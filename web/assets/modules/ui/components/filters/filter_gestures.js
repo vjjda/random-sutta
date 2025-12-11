@@ -1,7 +1,7 @@
 // Path: web/assets/modules/ui/components/filters/filter_gestures.js
 
 let isDragging = false;
-let dragTargetState = true; 
+let dragTargetState = true;
 
 export const FilterGestures = {
     initGlobalHandlers(onDragMove, onDragEnd) {
@@ -14,7 +14,6 @@ export const FilterGestures = {
                 onDragEnd(); // Commit changes (Update URL)
             }
         };
-
         window.addEventListener("mouseup", endDrag);
         window.addEventListener("touchend", endDrag);
 
@@ -38,12 +37,14 @@ export const FilterGestures = {
 
         const handleStart = (e) => {
             if (e.type === 'mousedown' && e.button !== 0) return;
-
+            
             const now = Date.now();
             const timeDiff = now - lastTapTime;
             
-            // [NEW] Double Tap Logic (< 300ms)
-            if (timeDiff < 300 && timeDiff > 0) {
+            // [UPDATED] Tinh chỉnh độ nhạy
+            // 1. Giảm xuống 250ms: Để tránh nhầm lẫn khi người dùng toggle nhanh (tắt/bật liên tục)
+            // 2. Thêm > 50ms: Để lọc bỏ các cú chạm bị rung tay (micro-touches) trên màn hình cảm ứng
+            if (timeDiff < 250 && timeDiff > 50) {
                 onSolo(bookId);
                 isDragging = false; // Prevent dragging conflict
                 lastTapTime = 0;    // Reset
@@ -72,7 +73,6 @@ export const FilterGestures = {
         
         btn.addEventListener("click", (e) => e.preventDefault());
         
-        // Disable Context Menu để trải nghiệm app-like hơn (Optional)
         btn.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
