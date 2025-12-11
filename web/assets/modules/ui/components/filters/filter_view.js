@@ -1,6 +1,6 @@
 // Path: web/assets/modules/ui/components/filters/filter_view.js
 // [FIXED] Đường dẫn import lùi 3 cấp
-import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../../../../data/constants.js';
+import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../../../data/constants.js';
 
 export const FilterView = {
     render(containerIds, state, callbacks) {
