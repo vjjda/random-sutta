@@ -117,7 +117,7 @@ export const OfflineManager = {
                                 globalBar.style.width = '0%';
                             }
                         }, 300);
-                    }, 800);
+                    }, 1500);
                 }
             }
         };
