@@ -18,6 +18,10 @@
   margin-bottom: 10px;
 }
 
+#secondary-filters {
+  margin-top: 10px;
+}
+
 .filter-btn {
   background-color: var(--bg-card);
   color: var(--text-muted);
