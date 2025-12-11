@@ -8,8 +8,7 @@ logger = logging.getLogger("SuttaProcessor.Logic.RangeExpander")
 ARTICLE_ID_PATTERN = re.compile(r"<article[^>]*\sid=['\"]([^'\"]+)['\"]", re.IGNORECASE)
 RANGE_PATTERN = re.compile(r"^(.*?)(\d+)[-–](\d+)$")
 
-# [NEW] Định nghĩa các quy tắc Regex cho Vinaya
-# Thứ tự quan trọng: Quy tắc cụ thể (dài hơn) nên được kiểm tra trước
+# Định nghĩa các quy tắc Regex cho Vinaya
 VINAYA_REGEX_RULES = [
     # 1. Bhikkhuni Vibhanga (pli-tv-bi-vb-pj1 -> ipj1)
     (re.compile(r"^pli-tv-bi-vb-(.+)$"), r"i\1"),
@@ -82,7 +81,11 @@ def generate_subleaf_shortcuts(
     root_range_info = _parse_range_string(root_uid)
 
     # --- CASE A: SINGLE LEAF (Bài đơn hoặc range gộp) ---
+    # Ví dụ: pli-tv-bi-vb-pj1-4
     if len(article_ids) <= 1:
+        # Mặc định structure là chính nó
+        ordered_structure_ids.append(root_uid)
+
         if root_range_info:
             prefix, start, end = root_range_info
             aliases = _expand_alias_ids(prefix, start, end)
@@ -98,18 +101,7 @@ def generate_subleaf_shortcuts(
                     "hash_id": None
                 }
         
-        # [NEW] Sinh Vinaya Alias cho chính Root UID (Case A)
-        # Ví dụ: root_uid = pli-tv-bi-vb-pj1 -> tạo alias ipj1 trỏ về chính nó
-        root_variants = _generate_vinaya_variants(root_uid)
-        for var_uid in root_variants:
-            if var_uid not in result_meta:
-                result_meta[var_uid] = {
-                    "type": "alias",
-                    "target_uid": root_uid,
-                    "hash_id": None
-                }
-
-        return [root_uid], result_meta
+        # [LƯU Ý] Không return ngay ở đây nữa! Để code chạy tiếp xuống phần Post-process.
 
     # --- CASE B: MULTI SUBLEAFS (Nhiều bài con trong 1 file) ---
     else:
@@ -126,7 +118,7 @@ def generate_subleaf_shortcuts(
                     display_suffix = suffix.replace("-", "–")
                     sub_acronym = _generate_smart_acronym(parent_acronym, r_start, r_end, display_suffix)
 
-            # [SUBLEAF] Là một phần tử thực
+            # [SUBLEAF]
             result_meta[sub_uid] = {
                 "type": "subleaf",
                 "parent_uid": root_uid,
@@ -134,8 +126,7 @@ def generate_subleaf_shortcuts(
                 "acronym": sub_acronym
             }
 
-            # 1. Kiểm tra Nested Range (Standard Alias)
-            # Ví dụ: sub_uid = "an1.395-401" -> Alias an1.396...
+            # Kiểm tra Nested Range (Sub-Alias)
             sub_range = _parse_range_string(sub_uid)
             if sub_range:
                 p_prefix, p_start, p_end = sub_range
@@ -144,37 +135,53 @@ def generate_subleaf_shortcuts(
                 for alias_id in aliases:
                     if alias_id == sub_uid: continue
                     
-                    # [ALIAS TYPE 2] Trỏ về bài gốc, cuộn tới Subleaf
+                    # [ALIAS TYPE 2]
                     result_meta[alias_id] = {
                         "type": "alias",
                         "target_uid": root_uid,
                         "hash_id": sub_uid
                     }
 
-        # [NEW] Post-process: Sinh Vinaya Alias cho TẤT CẢ các item vừa tìm được
-        # Bao gồm cả Subleaf và các Alias vừa tạo ra ở bước 1
-        current_keys = list(result_meta.keys()) # Snapshot keys để tránh lỗi runtime khi đang modify dict
+    # =================================================================
+    # [UNIVERSAL POST-PROCESS] SINH BIẾN THỂ VINAYA
+    # =================================================================
+    
+    # 1. Sinh biến thể cho Root UID (ví dụ: ivb-pj1-4 -> ipj1-4)
+    root_variants = _generate_vinaya_variants(root_uid)
+    for var_uid in root_variants:
+        if var_uid not in result_meta:
+            result_meta[var_uid] = {
+                "type": "alias",
+                "target_uid": root_uid,
+                "hash_id": None
+            }
+
+    # 2. Sinh biến thể cho TẤT CẢ items hiện có trong result_meta
+    # (Bao gồm Subleaf và các Alias chuẩn vừa tạo ở Case A hoặc B)
+    # Dùng list(keys) để snapshot, tránh lỗi runtime khi dictionary thay đổi size
+    current_keys = list(result_meta.keys())
+    
+    for item_uid in current_keys:
+        item_data = result_meta[item_uid]
+        variants = _generate_vinaya_variants(item_uid)
         
-        for item_uid in current_keys:
-            item_data = result_meta[item_uid]
-            variants = _generate_vinaya_variants(item_uid)
-            
-            # Xác định đích đến (Target Resolution)
-            # Nếu item gốc là Subleaf -> Target là Root File, Hash là Subleaf ID
-            # Nếu item gốc là Alias -> Target là Alias Target, Hash là Alias Hash
-            
-            # Logic: Lấy target_uid (ưu tiên) hoặc parent_uid
-            final_target = item_data.get("target_uid") or item_data.get("parent_uid")
-            # Logic: Lấy hash_id (ưu tiên) hoặc extract_id
-            final_hash = item_data.get("hash_id") or item_data.get("extract_id")
+        # Kế thừa đích đến từ item gốc
+        final_target = item_data.get("target_uid") or item_data.get("parent_uid")
+        final_hash = item_data.get("hash_id") or item_data.get("extract_id")
 
-            for var_uid in variants:
-                # Chỉ tạo nếu chưa tồn tại (tránh ghi đè Subleaf thật)
-                if var_uid not in result_meta and var_uid not in ordered_structure_ids:
-                    result_meta[var_uid] = {
-                        "type": "alias",
-                        "target_uid": final_target,
-                        "hash_id": final_hash
-                    }
+        # Đặc biệt: Nếu item gốc là Alias trong Case A (Target là Root),
+        # thì biến thể Vinaya của nó cũng phải trỏ về Root.
+        if item_data["type"] == "alias" and not final_hash and not final_target:
+             # Fallback an toàn nếu data thiếu (thường không xảy ra với logic trên)
+             final_target = root_uid
 
-        return ordered_structure_ids, result_meta
+        for var_uid in variants:
+            # Chỉ tạo nếu chưa tồn tại (tránh ghi đè Subleaf thật hoặc Alias đã có)
+            if var_uid not in result_meta and var_uid not in ordered_structure_ids:
+                result_meta[var_uid] = {
+                    "type": "alias",
+                    "target_uid": final_target,
+                    "hash_id": final_hash
+                }
+
+    return ordered_structure_ids, result_meta
