@@ -30,23 +30,19 @@ export const BreadcrumbRenderer = {
             const meta = metaMap[uid] || {};
             let label = meta.acronym || meta.original_title || uid.toUpperCase();
             
-            // Highlight Root (TPK/Super) and Local Root (Book Hint)
             const isRoot = index === 0 || uid === localRootId;
             const markerClass = isRoot ? " bc-root-marker" : "";
 
             if (index > 0) html += `<li class="bc-sep">/</li>`;
             
             if (isLast) {
-                // Active item implies current location, usually not a root marker unless it's the root itself
                 html += `<li class="bc-item active${markerClass}">${label}</li>`;
             } else {
-                html += `<li><button onclick="window.loadSutta('${uid}')" class="bc-link${markerClass}">${label}</button></li>`;
+                html += `<li><button onclick="window.loadSutta('${uid}'); MagicNav.closeAll()" class="bc-link${markerClass}">${label}</button></li>`;
             }
         });
         
-        // [NEW] Thêm phần tử Spacer Marker vào cuối danh sách
         html += `<li id="magic-bc-end"></li>`;
-        
         html += `</ol>`;
         return html;
     }
