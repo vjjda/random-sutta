@@ -18,14 +18,19 @@ def load_original_tree(group_name: str) -> Dict[str, Any]:
         if found:
             tree_path = found[0]
         else:
-            return {book_id: []}
+            # [FIXED] Critical Fallback cho Single Leaf Books (như Patimokkha)
+            # Nếu không có tree file, giả định sách chứa chính nó là content node.
+            # Điều này kích hoạt logic quét Alias/Subleaf trong structure_expansion.
+            logger.info(f"   ⚠️ No tree file for {book_id}. Assuming Single Leaf Structure.")
+            return {book_id: [book_id]}
 
     try:
         with open(tree_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         logger.warning(f"⚠️ Could not load tree for {book_id}: {e}")
-        return {book_id: []}
+        # Return fallback structure on error too
+        return {book_id: [book_id]}
 
 def simplify_structure(node: Any) -> Any:
     """Đệ quy đơn giản hóa cấu trúc cây (loại bỏ các list lồng nhau không cần thiết)."""
@@ -33,13 +38,20 @@ def simplify_structure(node: Any) -> Any:
         if all(isinstance(x, str) for x in node):
             return node
         if any(isinstance(x, str) for x in node):
+            # Mixed content? Keep as is or process recursive
             return [simplify_structure(item) for item in node]
+        
+        # Flatten logic for list of dicts
         new_dict = {}
         for item in node:
             if isinstance(item, dict):
                 for key, val in item.items():
                     new_dict[key] = simplify_structure(val)
+            elif isinstance(item, str):
+                 # Should be caught above, but safe fallback
+                 pass
         return new_dict
+        
     elif isinstance(node, dict):
         return {k: simplify_structure(v) for k, v in node.items()}
     return node
