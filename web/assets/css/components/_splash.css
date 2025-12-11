@@ -2,21 +2,27 @@
 
 #splash-screen {
   position: fixed;
-  inset: 0; /* Full screen */
-  background-color: #121212; /* Màu tối sang trọng (Dark Charcoal) */
-  z-index: 9999; /* Luôn nằm trên cùng */
+  inset: 0;
+  
+  /* [UPDATED] Dùng biến thay vì màu cứng */
+  background-color: var(--bg-body); 
+  
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.5s ease-out; /* Hiệu ứng mờ dần khi tắt */
+  transition: opacity 0.5s ease-out;
 }
 
 /* Container của thanh loader */
 .splash-loader-box {
   width: 200px;
-  height: 2px; /* Thanh mảnh */
-  background-color: rgba(255, 255, 255, 0.1); /* Nền thanh mờ */
+  height: 2px;
+  
+  /* [UPDATED] Dùng màu viền làm nền thanh loader, tự động hợp với theme */
+  background-color: var(--border-color); 
+  
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -29,15 +35,21 @@
   left: 0;
   height: 100%;
   width: 100%;
-  background-color: var(--primary-color); /* Đồng bộ màu chủ đạo */
+  
+  /* [KEEP] Giữ nguyên màu chủ đạo */
+  background-color: var(--primary-color); 
+  
   transform-origin: left;
   animation: indeterminate 1.5s infinite cubic-bezier(0.65, 0.81, 0.73, 0.4);
 }
 
-/* Text trạng thái (Low profile) */
+/* Text trạng thái */
 .splash-text {
   margin-top: 15px;
-  color: rgba(255, 255, 255, 0.4); /* Chữ xám mờ */
+  
+  /* [UPDATED] Dùng màu text phụ của hệ thống */
+  color: var(--text-light); 
+  
   font-family: var(--font-main);
   font-size: 0.8rem;
   font-weight: 400;
@@ -45,7 +57,7 @@
   text-transform: uppercase;
 }
 
-/* Hiệu ứng chạy vô tận */
+/* Hiệu ứng chạy vô tận (Giữ nguyên) */
 @keyframes indeterminate {
   0% {
     left: -35%;
