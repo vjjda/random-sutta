@@ -1,4 +1,6 @@
 /* Path: web/assets/css/layout/_drawer.css */
+
+/* --- TRIGGER BUTTON (Nút mở Drawer ở Header) --- */
 #filter-container {
   margin-bottom: 15px;
 }
@@ -7,10 +9,12 @@
   background: transparent;
   border: none;
   color: var(--text-light);
-  padding: 5px 15px 5px 15px;
+  padding: 5px 15px;
   opacity: 0.2;
   display: inline-flex;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .icon-trigger:hover,
@@ -22,7 +26,6 @@
 
 .icon-trigger.open {
   transform: rotate(180deg);
-  padding: 5px 15px 5px 15px;
 }
 
 .icon-trigger svg {
@@ -30,36 +33,195 @@
   height: 20px;
 }
 
+/* --- DRAWER CONTAINER --- */
 #filter-drawer {
-  padding: 15px;
+  /* [UPDATED] Thêm padding-top lớn hơn chút để label không bị sát trần quá */
+  padding: 20px 15px 15px 15px;
   border-radius: var(--radius-md);
   animation: slideDown 0.3s ease-out;
-  background-color: var(--bg-drawer); /* [NEW] Thêm background cho drawer */
+  
+  background-color: var(--bg-drawer);
   border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-soft);
+  
+  /* [IMPORTANT] Để neo nút Theme ở góc */
+  position: relative; 
 }
 
+/* [NEW] THEME TOGGLE BUTTON (Absolute Top-Right) */
+#btn-theme-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  
+  background: transparent;
+  border: 1px solid transparent; /* Viền trong suốt để tránh nhảy layout khi hover */
+  color: var(--text-muted);
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 5; /* Nằm trên các layer khác */
+}
+
+#btn-theme-toggle:hover {
+  background-color: var(--bg-card); /* Nổi lên khi hover */
+  border-color: var(--border-light);
+  color: var(--primary-color);
+  transform: rotate(15deg); /* Hiệu ứng xoay nhẹ vui mắt */
+  box-shadow: var(--shadow-soft);
+}
+
+.filter-label {
+  font-size: 0.85em;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  /* Tránh label bị nút theme đè lên nếu màn hình quá nhỏ */
+  margin-right: 30px; 
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* --- FILTER BUTTONS --- */
 .filter-btn {
-  background-color: var(--bg-card); /* [REFACTORED] was #e8e0d9 */
-  color: var(--text-muted);         /* [REFACTORED] was #5d4037 */
+  background-color: var(--bg-card); 
+  color: var(--text-muted);         
   border: 1px solid var(--border-color);
+  
   padding: 6px 14px;
   font-size: 0.9rem;
   border-radius: var(--radius-sm);
   font-weight: 500;
-  transition: background-color 0.2s, color 0.2s;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .filter-btn:hover {
-  background-color: var(--bg-hover); /* [REFACTORED] was #d7ccc0 */
+  background-color: var(--bg-hover);
   color: var(--primary-color);
   border-color: var(--primary-color);
 }
 
 .filter-btn.active {
   background-color: var(--primary-color);
-  color: #fff; /* Chữ trắng trên nền primary luôn ổn */
+  color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   border-color: var(--primary-color);
+}
+
+/* --- TEXT BUTTONS (More) --- */
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.text-btn:hover {
+  opacity: 1;
+}
+
+/* --- OFFLINE MANAGER SECTION --- */
+#offline-wrapper {
+  margin-top: 15px;
+  padding-top: 0;
+  border-top: 1px solid var(--border-color);
+  
+  position: relative;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  
+  margin-left: -15px;
+  margin-right: -15px;
+  margin-bottom: -15px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.offline-btn {
+  background: transparent;
+  border: none;
+  width: 100%;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+
+#btn-update-offline {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+#btn-update-offline:hover {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+}
+
+#btn-update-offline svg {
+  opacity: 0.6;
+  transition: transform 0.3s ease;
+}
+
+#btn-update-offline:hover svg {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+/* --- OFFLINE STATES --- */
+
+/* 1. Syncing */
+#offline-wrapper.syncing .offline-btn {
+  color: var(--primary-color);
+  pointer-events: none;
+}
+#offline-wrapper.syncing svg {
+  animation: spin 1s linear infinite;
+}
+#offline-wrapper.syncing #btn-update-offline {
+  display: none;
 }
 
 /* 2. Ready */
@@ -75,7 +237,7 @@
 }
 
 #offline-wrapper.ready .offline-btn:hover {
-  background-color: rgba(139, 69, 19, 0.08);
+  background-color: var(--bg-hover);
   color: var(--primary-color);
 }
 
@@ -101,10 +263,6 @@
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
