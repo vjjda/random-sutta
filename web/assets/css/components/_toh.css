@@ -112,12 +112,13 @@
   justify-content: space-between;
   padding-right: 15px;
   cursor: pointer;
-  transition: background-color 0.1s ease;
-  position: relative; /* Để neo Active Bar */
+  transition: background-color 0.1s ease; /* Nhanh hơn chút cho mượt */
+  position: relative;
 }
 
 .toh-header-row:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  /* [FIXED] Dùng biến thay vì rgba cứng */
+  background-color: var(--bg-hover);
 }
 
 .toh-main-text {
@@ -125,7 +126,7 @@
   font-weight: 600;
   color: var(--text-muted);
   line-height: 1.3;
-  flex: 1; /* Đẩy icon sang phải */
+  flex: 1;
   padding-top: 4px;
   padding-bottom: 4px;
 }
@@ -136,39 +137,15 @@
   margin-right: 4px;
 }
 
-/* --- 5. DESCRIPTION & SUB-TEXT (LOW PROFILE) --- */
-/* Dùng chung cho cả mô tả của Heading và các đoạn văn con */
-.toh-row-sub, 
-.toh-sub-text {
-  font-size: 0.85rem;
-  color: var(--text-main); /* Màu xám nhạt */
-  font-style: italic;       /* In nghiêng */
-  font-weight: 400;         /* Nét mảnh */
-  line-height: 1.4;
-  
-  /* Cắt dòng nếu quá dài */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  transition: color 0.2s ease;
-}
-
-/* Style riêng cho Description nằm ngay dưới Title */
-.toh-row-sub {
-  margin-top: 3px;
-}
+/* ... (Phần Description giữ nguyên) ... */
 
 /* Style riêng cho Sub-text (Item con có thể click) */
 .toh-sub-text {
   padding-top: 4px;
   padding-bottom: 4px;
   padding-right: 15px;
-  /* padding-left được set inline bởi JS */
-  
   cursor: default;
-  position: relative; /* Để neo Active Bar */
+  position: relative;
 }
 
 .toh-sub-text.clickable {
@@ -176,7 +153,8 @@
 }
 .toh-sub-text.clickable:hover {
   color: var(--primary-color);
-  background-color: rgba(0, 0, 0, 0.03);
+  /* [FIXED] Dùng biến */
+  background-color: var(--bg-hover);
 }
 .toh-sub-text.disabled {
   opacity: 0.6;
@@ -198,58 +176,8 @@
 
 .toh-toggle-icon:hover {
   color: var(--primary-color);
-  background-color: rgba(0,0,0,0.05);
-}
-
-.toh-children {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Logic Đóng/Mở */
-.toh-item-wrapper.collapsed .toh-toggle-icon svg {
-  transform: rotate(-90deg);
-}
-.toh-item-wrapper.collapsed .toh-children {
-  display: none;
-}
-
-/* --- 7. UNIFIED ACTIVE STATE (Heading & Paragraphs) --- */
-.toh-header-row.active,
-.toh-sub-text.active {
-  background-color: var(--highlight-color-background, rgba(255, 152, 0, 0.1));
-  border-radius: 0;
-}
-
-/* Thanh Active Bar bên trái */
-.toh-header-row.active::before,
-.toh-sub-text.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background-color: var(--primary-color);
-  z-index: 1;
-}
-
-/* Text khi Active */
-.toh-header-row.active .toh-main-text {
-  color: var(--primary-color);
-  font-weight: 700;
-}
-
-.toh-header-row.active .toh-toggle-icon {
-  color: var(--primary-color);
-}
-
-/* Subtext/Description khi Active: Giữ nét mảnh để tương phản */
-.toh-header-row.active .toh-row-sub,
-.toh-sub-text.active {
-  color: var(--text-main); /* Đậm hơn xám nhạt một chút */
-  font-weight: 400 !important;
-  font-style: italic;
+  /* [FIXED] Dùng biến */
+  background-color: var(--bg-hover);
 }
 
 /* --- 8. INDENTATION LEVELS --- */

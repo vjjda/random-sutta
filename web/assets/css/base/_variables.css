@@ -1,31 +1,32 @@
 /* Path: web/assets/css/base/_variables.css */
 :root {
   /* =========================================
-     1. PRIMITIVE PALETTE (Warm Tones Focus)
+     1. PRIMITIVE PALETTE
      ========================================= */
   
-  /* Brand Colors (Earthy Brown) */
+  /* Brand Colors */
   --primitive-brown-900: #3e2723;
-  --primitive-brown-500: #8b4513; 
+  --primitive-brown-700: #5d4037;
+  --primitive-brown-500: #8b4513; /* Nâu đất chủ đạo */
   --primitive-brown-400: #a0522d;
+  --primitive-brown-300: #d7ccc8; /* Nâu be sáng (Dùng cho text dark mode) */
 
   /* LIGHT NEUTRALS (Paper) */
-  --primitive-paper-50:  #fbf8f3; /* Giấy trắng ngà ấm */
-  --primitive-paper-100: #f2efe9;
-  --primitive-paper-300: #e0dcd5;
+  --primitive-paper-50:  #fdfbf7;
+  --primitive-paper-100: #f5f2eb;
+  --primitive-paper-300: #eaddcf;
   
-  /* DARK NEUTRALS (Warm Charcoal - Khắc phục lỗi màu lạnh) */
-  /* Thay vì #121212 (đen chết), dùng màu than pha nâu */
-  --primitive-night-900: #1a1918; /* Nền chính: Đen nâu cực đậm */
-  --primitive-night-800: #242220; /* Nền phụ: Sáng hơn chút */
-  --primitive-night-700: #33302e; /* Border tối */
+  /* DARK NEUTRALS (Warm Charcoal) */
+  --primitive-night-900: #1a1918; 
+  --primitive-night-800: #262423;
+  --primitive-night-700: #383533;
   
   /* TEXT COLORS */
-  --primitive-ink-900:   #2b221b; /* Light mode text */
+  --primitive-ink-900:   #2b221b; 
   --primitive-ink-700:   #5c5550;
   
-  --primitive-ivory-900: #e8e6e3; /* Dark mode text (Trắng kem, không phải trắng tinh) */
-  --primitive-ivory-500: #a8a4a0; /* Dark mode muted */
+  --primitive-ivory-900: #ececec; 
+  --primitive-ivory-500: #a09c98;
 
   /* =========================================
      2. SEMANTIC TOKENS (Light Theme Default)
@@ -39,7 +40,9 @@
   --bg-body:             var(--primitive-paper-50);
   --bg-card:             #ffffff;
   --bg-drawer:           var(--primitive-paper-100);
-  --bg-hover:            rgba(139, 69, 19, 0.05);
+  
+  /* [HOVER LIGHT MODE] Nâu nhạt 6% - Đủ rõ trên nền giấy trắng */
+  --bg-hover:            rgba(139, 69, 19, 0.06);
 
   /* Typography */
   --text-main:           var(--primitive-ink-900);
@@ -60,11 +63,9 @@
   --highlight-color-background: rgba(139, 69, 19, 0.08);
   --highlight-color-segment:    rgba(255, 167, 38, 0.15);
 
-  /* [CHANGED] TYPOGRAPHY: Chuyển sang Serif để tăng tính "Contemplative" */
-  /* Ưu tiên các font có chân đẹp, fallback về sans-serif nếu cần */
-  --font-main: "Merriweather", "Georgia", "Times New Roman", serif; 
-  /* Font cho Pali/Kinh kệ giữ nguyên sans để dễ đọc các ký tự đặc biệt, hoặc cũng có thể đổi sang serif */
-  --font-sutta: "Noto Serif", "Gentium Plus", "Times New Roman", serif; 
+  /* Font: Sans-serif Clean */
+  --font-main: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", sans-serif;
+  --font-sutta: "Noto Sans", "Segoe UI", sans-serif; 
 
   /* Spacing */
   --container-width: 800px;
@@ -73,36 +74,45 @@
 }
 
 /* =========================================
-   3. DARK THEME OVERRIDES (Warm & Cozy)
+   3. DARK THEME OVERRIDES
    ========================================= */
 [data-theme="dark"] {
-  /* Backgrounds: Dùng hệ màu Night pha nâu */
+  /* Backgrounds */
   --bg-body:             var(--primitive-night-900);
   --bg-card:             var(--primitive-night-800);
-  --bg-drawer:           #1f1d1b; 
-  --bg-hover:            rgba(255, 236, 179, 0.08); /* Hover ánh vàng nhẹ */
+  --bg-drawer:           #201e1d; 
+  
+  /* [UPDATED] Fix Hover không rõ ràng */
+  /* Sử dụng màu TRẮNG pha loãng 12% thay vì màu nâu. 
+     Trên nền đen, nó sẽ tạo hiệu ứng "bật đèn" nhẹ (lighten), 
+     giúp item nổi bật rõ ràng mà không bị ám màu lạ. */
+  --bg-hover:            rgba(255, 255, 255, 0.12);
 
-  /* Text: Dùng màu Ivory (ngà) thay vì trắng toát */
+  /* Text */
   --text-main:           var(--primitive-ivory-900);
   --text-muted:          var(--primitive-ivory-500);
-  --text-light:          #6b6661;
+  --text-light:          #757575;
   
-  --text-pali:           #bcaaa4; /* Nâu nhạt */
+  --text-pali:           #bcaaa4; 
   --text-eng:            var(--primitive-ivory-900);
 
   /* Borders */
   --border-color:        var(--primitive-night-700);
-  --border-light:        #2a2826;
+  --border-light:        #33302e;
 
-  /* Primary: Sáng hơn và ấm hơn trên nền tối */
-  --primary-color:       #d7ccc8; /* Nâu be sáng */
-  --primary-hover:       #efebe9;
+  /* [USER REQUEST] Primary về lại màu Nâu Gốc */
+  /* Dùng màu nâu 500 (gốc) có thể hơi tối, tôi dùng nâu 400 hoặc 300 để sáng hơn chút cho dễ đọc */
+  /* Nếu bạn thích đúng màu nâu gốc: var(--primitive-brown-500) */
+  --primary-color:       var(--primitive-brown-400); /* Nâu sáng (Light Brown) - Dễ đọc trên nền tối hơn #8b4513 */
+  --primary-hover:       #d7ccc8;
 
-  /* Shadows: Đậm hơn để tạo chiều sâu */
+  /* Shadows */
   --shadow-soft:         0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-card:         0 6px 20px rgba(0, 0, 0, 0.6);
   
   /* Highlights */
-  --highlight-color-background: rgba(255, 255, 255, 0.03);
-  --highlight-color-segment:    rgba(255, 179, 0, 0.15); /* Vàng hổ phách */
+  /* Background highlight (khi active) cũng cần sáng hơn một chút so với hover */
+  --highlight-color-background: rgba(255, 255, 255, 0.08);
+  /* Segment highlight (đoạn văn đang chọn) dùng màu vàng/cam nhẹ để tạo điểm nhấn khác biệt */
+  --highlight-color-segment:    rgba(255, 179, 0, 0.15); 
 }

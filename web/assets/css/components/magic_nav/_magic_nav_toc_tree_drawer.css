@@ -46,13 +46,15 @@
   display: flex;
   align-items: stretch;
   padding-right: 5px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  /* [FIXED] Dùng border-light thay vì màu cứng */
+  border-bottom: 1px solid var(--border-light); 
   background-color: transparent;
-  /* [IMPORTANT] Để định vị thanh active bar tuyệt đối theo row này */
   position: relative;
+  transition: background-color 0.1s ease;
 }
 .toc-header-row:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  /* [FIXED] Dùng biến */
+  background-color: var(--bg-hover);
 }
 
 /* Active State cho Row (Branch) */
@@ -138,17 +140,16 @@
 }
 
 .toc-item {
-  /* Padding-left inline bởi JS */
   padding-top: 8px;
   padding-bottom: 8px;
   padding-right: 10px;
   cursor: pointer;
   transition: background 0.1s;
-  /* [IMPORTANT] Relative để neo thanh active bar */
   position: relative;
 }
 .toc-item:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  /* [FIXED] Dùng biến */
+  background-color: var(--bg-hover);
 }
 
 /* Active State cho Leaf */
