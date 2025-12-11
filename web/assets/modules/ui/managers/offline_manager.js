@@ -1,6 +1,7 @@
 // Path: web/assets/modules/ui/managers/offline_manager.js
 import { SuttaRepository } from '../../data/sutta_repository.js';
 import { getLogger } from '../../utils/logger.js';
+import { AppConfig } from '../../core/app_config.js';
 
 const logger = getLogger("OfflineManager");
 const APP_VERSION = "dev-placeholder";
@@ -16,7 +17,6 @@ export const OfflineManager = {
         const btnOffline = document.getElementById("btn-download-offline");
         const btnUpdate = document.getElementById("btn-update-offline");
 
-        // Delayed check
         setTimeout(() => {
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(() => this.runSmartBackgroundDownload());
@@ -40,16 +40,38 @@ export const OfflineManager = {
         if (btnUpdate) {
             btnUpdate.addEventListener("click", async (e) => {
                 e.stopPropagation();
-                if (confirm("Reset cache and reload?")) {
-                    localStorage.removeItem('sutta_offline_version');
+                if (confirm("Reset cache and reload? (Your settings will be saved)")) {
+                    
+                    // 1. Backup Settings
+                    const backup = {};
+                    if (AppConfig.PERSISTENT_SETTINGS) {
+                        AppConfig.PERSISTENT_SETTINGS.forEach(key => {
+                            const val = localStorage.getItem(key);
+                            if (val !== null) backup[key] = val;
+                        });
+                    }
+
+                    // 2. Factory Reset
+                    localStorage.clear();
+
+                    // 3. Restore Settings
+                    Object.entries(backup).forEach(([key, val]) => {
+                        localStorage.setItem(key, val);
+                    });
+                    
+                    logger.info("Reset", "Settings restored:", Object.keys(backup));
+
+                    // 4. Cleanup SW & Cache
                     if ('serviceWorker' in navigator) {
                         const regs = await navigator.serviceWorker.getRegistrations();
                         for (const reg of regs) await reg.unregister();
                     }
+               
                     if ('caches' in window) {
                         const keys = await caches.keys();
                         for (const key of keys) await caches.delete(key);
                     }
+             
                     window.location.reload();
                 }
             });
@@ -64,7 +86,6 @@ export const OfflineManager = {
         const current = APP_VERSION.replace('v', '');
         
         label.textContent = `v${current}`;
-        
         setTimeout(() => {
             label.textContent = originalText;
         }, 3000);
@@ -88,7 +109,6 @@ export const OfflineManager = {
 
         logger.info("BackgroundDL", "Downloading...");
         this.setUIState("syncing", "Syncing...", ICONS.SYNC, 0);
-        
         if (btnOffline) btnOffline.disabled = true;
 
         try {
@@ -109,7 +129,6 @@ export const OfflineManager = {
     },
 
     setUIState(state, text, iconSvg, percent = 0) {
-        // [UPDATED] ID Selector mới: drawer-footer
         const footer = document.getElementById("drawer-footer");
         const btnOffline = document.getElementById("btn-download-offline");
         const btnUpdate = document.getElementById("btn-update-offline");
@@ -126,7 +145,7 @@ export const OfflineManager = {
             
             if (labelSpan) labelSpan.textContent = text;
             if (iconSpan) iconSpan.innerHTML = iconSvg;
-            
+
             if (state === 'syncing') {
                 btnOffline.disabled = true;
                 btnOffline.style.cursor = 'wait';
