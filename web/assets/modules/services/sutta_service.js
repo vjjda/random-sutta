@@ -32,13 +32,19 @@ export const SuttaService = {
             [hintBook, hintChunk] = loc;
         }
 
+        // --- ENVIRONMENT CHECK ---
         const isFileProtocol = window.location.protocol === 'file:';
         const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
-        const shouldBuildSuperToc = isFileProtocol || isOfflineReady;
+        
+        // [CHANGED] Chiến lược mới:
+        // 1. Luôn tải TPK để có Breadcrumb đẹp.
+        // 2. Chỉ gộp cây (Heavy Merge) khi thực sự Offline hoặc File Protocol.
+        const shouldFetchTpk = true; // Luôn tải vì nó nhẹ (45KB)
+        const shouldMergeTree = isFileProtocol || isOfflineReady; // Chỉ gộp khi cần thiết
 
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
-            shouldBuildSuperToc ? SuttaRepository.fetchMeta('tpk') : Promise.resolve(null)
+            shouldFetchTpk ? SuttaRepository.fetchMeta('tpk') : Promise.resolve(null)
         ];
         if (hintChunk !== null) {
             promises.push(SuttaRepository.fetchContentChunk(hintBook, hintChunk));
@@ -58,20 +64,19 @@ export const SuttaService = {
             };
         }
 
+        // --- RESOLVE STRUCTURE ---
+        // Truyền cờ shouldMergeTree vào Strategy thay vì shouldBuildSuperToc cũ
         const { tree: finalTree, contextMeta: finalContextMeta } = 
-            await StructureStrategy.resolveContext(bookMeta, uid, shouldBuildSuperToc);
+            await StructureStrategy.resolveContext(bookMeta, uid, shouldMergeTree);
 
-        // --- CONTENT EXTRACTION (DEBUGGED) ---
+        // --- CONTENT EXTRACTION ---
         let content = null;
         if (contentChunk) {
-            // Case 1: Direct Content (Leaf)
             if (contentChunk[uid]) {
                 content = contentChunk[uid];
             } 
-            // Case 2: Subleaf / Range Extraction
             else if (metaEntry.parent_uid) {
                 const parentUid = metaEntry.parent_uid;
-                
                 if (contentChunk[parentUid]) {
                     const parentContent = contentChunk[parentUid];
                     const extractKey = metaEntry.extract_id || uid;
@@ -81,21 +86,14 @@ export const SuttaService = {
                         logger.error("loadSutta", `Extraction failed. Parent '${parentUid}' found, but extract '${extractKey}' returned null.`);
                     }
                 } else {
-                    // --- DEBUG LOGGING ---
-                    // Log lý do tại sao không tìm thấy parent_uid trong chunk
                     logger.warn("loadSutta", `Parent '${parentUid}' NOT found in Chunk ${hintChunk}.`);
-                    const chunkKeys = Object.keys(contentChunk);
-                    // Tìm xem có key nào gần giống không (ví dụ an1.394-574 vs an1.394)
-                    const similar = chunkKeys.find(k => k.startsWith(parentUid.split('.')[0]));
-                    logger.info("loadSutta", `Available keys in chunk (sample): ${chunkKeys.slice(0, 5).join(', ')}... (Total: ${chunkKeys.length})`);
-                    if (similar) logger.info("loadSutta", `Did you mean '${similar}'?`);
-                    // ---------------------
                 }
             } else {
                 logger.warn("loadSutta", `No content for ${uid} and no parent_uid defined.`);
             }
         }
 
+        // --- NAVIGATION ---
         const nav = metaEntry.nav || {};
         const navMeta = {};
         const neighborsToFetch = [];
@@ -138,11 +136,16 @@ export const SuttaService = {
             content: content,
             root_title: bookMeta.super_book_title || bookMeta.title,
             book_title: bookMeta.title,
+            
             tree: finalTree, 
             bookStructure: finalTree, 
             contextMeta: finalContextMeta,
+            
+            // [IMPORTANT] Luôn trả về dữ liệu Super nếu tải được
+            // Frontend sẽ dùng cái này để vẽ Breadcrumb
             superTree: superMeta ? superMeta.tree : null,
             superMeta: superMeta ? superMeta.meta : null,
+            
             nav: nav,
             navMeta: navMeta
         };

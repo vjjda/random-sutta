@@ -81,8 +81,8 @@
 @media (max-width: 600px) {
   .b-blurb {
     font-size: 0.9rem;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
+    /* -webkit-line-clamp: 3;
+    line-clamp: 3; */
   }
 }
 
