@@ -36,7 +36,7 @@
   padding: 0 4px;
 }
 
-/* Shared Icon Button Style (Dùng chung cho cả update & zoom) */
+/* Shared Icon Button Style (DÃ¹ng chung cho cáº£ update & zoom) */
 .icon-only-btn {
   background: transparent;
   border: none;
@@ -48,7 +48,6 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  /* [UPDATED] Thêm transform để animation mượt hơn */
   transition: background-color 0.2s, transform 0.1s; 
 }
 
@@ -57,9 +56,8 @@
   color: var(--primary-color);
 }
 
-/* [NEW] Hiệu ứng nhấn (Active State) */
 .icon-only-btn:active {
-  transform: scale(0.9); /* Thu nhỏ nhẹ khi nhấn */
+  transform: scale(0.9);
   background-color: var(--highlight-color-background);
 }
 
@@ -79,11 +77,10 @@
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
-  
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
+  padding: 6px 4px;
   border-radius: 4px;
   transition: all 0.2s;
 }
@@ -103,11 +100,6 @@
   display: block;
 }
 
-/* 2. Update Button -> Reusing .icon-only-btn styles above but keeping ID specific logic if needed */
-#btn-update-offline {
-  /* Inherits .icon-only-btn */
-}
-
 /* --- RIGHT GROUP: THEME TOGGLE --- */
 .theme-toggle-group {
   grid-column: 3;
@@ -120,23 +112,23 @@
 /* [UPDATED] Minimalist Theme Button */
 #btn-theme-toggle {
   background: transparent;
-  border: none; /* Xóa viền */
+  border: none; /* XÃ³a viá»n */
   color: var(--text-muted);
   width: 32px;
   height: 32px;
-  border-radius: 50%; /* Vẫn giữ radius để hiệu ứng hover tròn trịa */
+  border-radius: 50%; /* Váº«n giá»¯ radius Ä‘á»ƒ hiá»‡u á»©ng hover trÃ²n trá»‹a */
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s ease;
   opacity: 0.6;
-  /* Mờ nhẹ khi không tương tác để low-profile hơn */
+  /* Má» nháº¹ khi khÃ´ng tÆ°Æ¡ng tÃ¡c Ä‘á»ƒ low-profile hÆ¡n */
 }
 
 #btn-theme-toggle:hover {
   background-color: transparent;
-  /* Không hiện nền */
+  /* KhÃ´ng hiá»‡n ná»n */
   color: var(--primary-color);
   opacity: 1;
   transform: rotate(15deg);
