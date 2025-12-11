@@ -28,6 +28,11 @@
   font-weight: 500;
   transition: all 0.2s ease;
   cursor: pointer;
+/* [NEW] Disable Browser Default Callouts */
+  -webkit-touch-callout: none; /* iOS Safari disable magnifier/menu */
+  -webkit-user-select: none;   /* Safari/Chrome disable text select */
+  user-select: none;           /* Standard disable text select */
+  touch-action: pan-y;         /* Explicitly allow vertical scroll but handle horizontal/tap ourselves */
 }
 
 .filter-btn:hover {
