@@ -158,35 +158,39 @@
 }
 
 /* Sub Text */
-.toh-sub-text {
+.toh-row-sub {
   font-size: 0.85rem;
-  color: var(--text-muted);
-  line-height: 1.3;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  padding-right: 15px;
-  padding-left: 15px;  /* Base left padding (Level 1 default) */
+  color: var(--text-light); /* Chuyển sang màu xám nhạt (#888) */
+  font-style: italic;       /* In nghiêng để phân biệt với tiêu đề */
+  font-weight: 400;         /* Nét mảnh */
+  line-height: 1.4;         /* Tăng khoảng cách dòng cho dễ đọc */
+  margin-top: 3px;          /* Tách nhẹ khỏi tiêu đề trên */
   
-  /* Line Clamp */
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 2;    /* Giới hạn 2 dòng cho gọn */
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   
-  cursor: default;
-  transition: background-color 0.1s ease;
-  /* [QUAN TRỌNG] Position relative để neo thanh Active Bar */
-  position: relative;
-}
-.toh-sub-text.clickable {
-  cursor: pointer;
-}
-.toh-sub-text.clickable:hover {
-  color: var(--primary-color);
-  background-color: rgba(0, 0, 0, 0.03);
+  transition: color 0.2s ease;
 }
 
+/* Định nghĩa riêng cho subtext nằm bên trong Main Text (Trường hợp Heading Description) */
+.toh-main-text .toh-row-sub {
+  /* Ghi đè inline style nếu có */
+  font-weight: 400 !important; 
+  opacity: 0.9;
+}
+
+/* [ACTIVE STATE ADJUSTMENT] */
+/* Khi Active: Tiêu đề đậm, nhưng Subtext vẫn giữ nét thường để không bị nặng nề */
+.toh-header-row.active .toh-row-sub,
+.toh-item.active .toh-row-sub {
+  color: var(--text-main); /* Đổi màu đậm hơn chút cho dễ đọc trên nền highlight */
+  font-weight: 400 !important; /* KHÔNG in đậm theo cha */
+  font-style: italic;
+  opacity: 1;
+}
 /* [UNIFIED ACTIVE STATE] */
 /* Gộp chung active cho cả Header Row (Headings) và Sub Text (Paragraphs) */
 .toh-header-row.active,
