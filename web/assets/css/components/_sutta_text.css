@@ -90,3 +90,62 @@ p {
   line-height: 1.3;
   margin-top: 2px;
 }
+
+/* [NEW] Context Footer (See also) Styling */
+.sutta-context-footer {
+  margin-top: 60px; /* Cách xa nội dung bài kinh một chút */
+  padding-top: 20px;
+  border-top: 1px dashed var(--border-light); /* Đường ngăn cách nhẹ nhàng */
+  
+  /* Flex Column & Align Right */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; 
+  text-align: right;
+}
+
+/* Dòng 1: Label "See also" (Muted nhất) */
+.ctx-label {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-style: italic;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+/* Button Wrapper */
+.ctx-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* Đảm bảo text bên trong cũng căn phải */
+  
+  transition: transform 0.2s ease, opacity 0.2s;
+}
+
+.ctx-link:hover {
+  transform: translateX(-5px); /* Hiệu ứng trượt nhẹ sang trái khi hover */
+  opacity: 0.9;
+}
+
+/* Dòng 2: Acronym (Điểm nhấn chính) */
+.ctx-acronym {
+  font-family: var(--font-main);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1.2;
+}
+
+/* Dòng 3: Title (Bình thường) */
+.ctx-title {
+  font-family: var(--font-sutta);
+  font-size: 0.95rem;
+  color: var(--text-main);
+  margin-top: 2px;
+}
