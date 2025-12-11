@@ -111,6 +111,50 @@
   display: flex;
   align-items: center;
   padding-right: 5px;
+  /* [NEW] Để định vị slider tuyệt đối so với group này */
+  position: relative; 
+}
+
+/* [NEW] Sepia Slider Panel */
+#sepia-control-panel {
+  position: absolute;
+  right: 40px; /* Hiển thị bên trái của nút theme */
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--bg-card);
+  padding: 5px 10px;
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  animation: fadeIn 0.2s ease-out;
+  z-index: 10;
+}
+
+#sepia-control-panel.hidden {
+  display: none;
+}
+
+/* Slider Input Styling */
+#sepia-slider {
+  -webkit-appearance: none;
+  width: 80px;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  outline: none;
+}
+
+#sepia-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 
 /* [UPDATED] Minimalist Theme Button */
