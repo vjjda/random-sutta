@@ -116,6 +116,15 @@ p {
   display: block; /* Force block để text-align hoạt động nếu là span */
 }
 
+/* [NEW] Segment Highlight Animation */
+.highlight {
+  background-color: var(--highlight-color-segment);
+  transition: background-color 0.5s ease;
+  border-radius: 4px;
+  /* Thêm chút padding để màu nền không dính sát chữ */
+  box-shadow: 0 0 0 2px var(--highlight-color-segment); 
+}
+
 /* [NEW] Context Footer (See also) Styling */
 .sutta-context-footer {
   margin-top: 60px; /* Cách xa nội dung bài kinh một chút */

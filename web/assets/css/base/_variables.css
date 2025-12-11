@@ -33,7 +33,7 @@
 
   /* [NEW] Typography Scale */
   --text-scale:          1;
-
+  --text-link:           var(--primitive-brown-500);
   /* Colors */
   --primary-color:       var(--primitive-brown-500);
   --primary-hover:       var(--primitive-brown-400);
@@ -87,6 +87,7 @@
   --text-light:          #757575;
   --text-pali:           #bcaaa4;
   --text-eng:            var(--primitive-ivory-900);
+  --text-link:           #ffb74d; /* Màu hổ phách sáng (Amber 300/400) */
   
   /* Borders */
   --border-color:        var(--primitive-night-700);

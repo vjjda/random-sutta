@@ -26,6 +26,18 @@ button {
   transition: all 0.2s ease;
 }
 
+/* [NEW] Global Link Styles */
+a {
+  color: var(--text-link);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  text-decoration: underline;
+  opacity: 0.9;
+}
+
 .hidden {
   display: none !important;
 }
