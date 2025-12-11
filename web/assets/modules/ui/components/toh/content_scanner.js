@@ -8,26 +8,18 @@ export const ContentScanner = {
      * @returns {Object} { mode: 'headings'|'paragraphs'|'none', items: Array }
      */
     scan(container) {
+        // ... (Giữ nguyên logic scan headings và paragraphs) ...
         // 1. Chiến lược A: Tìm Heading cấu trúc (h2 trở lên)
         const headings = container.querySelectorAll("h2, h3, h4, h5");
-        
         if (headings.length >= 2) {
-            // [LOGIC MỚI] Kiểm tra sự phân bố của các heading trong các article
             const uniqueArticleIds = new Set();
-            
             headings.forEach(h => {
-                // Tìm thẻ article gần nhất bao ngoài heading đó
                 const parentArticle = h.closest('article');
                 if (parentArticle && parentArticle.id) {
                     uniqueArticleIds.add(parentArticle.id);
                 }
             });
-
-            // Chỉ sử dụng prefix nếu danh sách heading nằm trên NHIỀU article khác nhau.
-            // (Ví dụ: Dhp có dhp1, dhp2... thì size > 1 -> Cần hiện prefix)
-            // (Ví dụ: DN2 chỉ có article id="dn2" bao trùm -> size == 1 -> Không hiện prefix)
             const useArticlePrefix = uniqueArticleIds.size > 1;
-
             return {
                 mode: 'headings',
                 items: Array.from(headings).map((h, index) => 
@@ -43,7 +35,6 @@ export const ContentScanner = {
         paragraphs.forEach(p => {
             const firstSeg = p.querySelector(".segment");
             if (firstSeg && firstSeg.id) {
-                // Kiểm tra text rỗng
                 if (firstSeg.textContent.trim().length > 0) {
                     validItems.push(this._parseParagraph(firstSeg));
                 }
@@ -58,14 +49,11 @@ export const ContentScanner = {
     },
 
     _parseHeading(heading, index, useArticlePrefix) {
-        // Tự động gán ID nếu thiếu để chức năng cuộn hoạt động
         if (!heading.id) {
             heading.id = `toh-heading-${index}`;
         }
 
         let prefix = null;
-
-        // Chỉ lấy Article ID làm prefix nếu cờ useArticlePrefix = true
         if (useArticlePrefix) {
             const parent = heading.closest('article');
             if (parent && parent.id) {
@@ -73,12 +61,13 @@ export const ContentScanner = {
             }
         }
 
-        // [NEW] Extract first sentence of ALL following paragraphs until next heading
         const subTexts = [];
+        let description = null; // [NEW] Biến chứa câu mô tả (từ đoạn văn đầu tiên)
+        let isFirstContentFound = false; // Cờ đánh dấu đã tìm thấy đoạn đầu chưa
+
         let nextElem = heading.nextElementSibling;
         
         while (nextElem) {
-            // Stop if we hit another heading
             if (/^H[1-6]$/i.test(nextElem.tagName)) {
                 break;
             }
@@ -87,7 +76,6 @@ export const ContentScanner = {
                 const rawSub = getCleanTextContent(nextElem);
                 if (rawSub) {
                     let subText = "";
-                    // Take first sentence or truncate
                     const dotIndex = rawSub.indexOf('.');
                     if (dotIndex !== -1 && dotIndex < 100) {
                         subText = rawSub.substring(0, dotIndex + 1);
@@ -95,7 +83,6 @@ export const ContentScanner = {
                         subText = rawSub.substring(0, 80) + (rawSub.length > 80 ? "..." : "");
                     }
                     
-                    // Find ID for linking
                     let paraId = null;
                     const segment = nextElem.querySelector('.segment');
                     if (segment && segment.id) {
@@ -104,17 +91,22 @@ export const ContentScanner = {
                         paraId = nextElem.id;
                     }
 
-                    // Extract Prefix
-                    let paraNum = "";
-                    if (paraId) {
-                        paraNum = extractParagraphNumber(paraId);
-                        // Check Evam
-                        if (nextElem.querySelector('.evam') || nextElem.closest('.evam')) {
-                            paraNum = "";
+                    // [UPDATED LOGIC] Phân loại: Mô tả hay Item con?
+                    if (!isFirstContentFound) {
+                        // Đây là đoạn văn đầu tiên -> Làm Description cho Heading
+                        description = subText; // Lấy text trơn, không prefix
+                        isFirstContentFound = true;
+                    } else {
+                        // Đây là các đoạn văn tiếp theo -> Làm Item con trong danh sách
+                        let paraNum = "";
+                        if (paraId) {
+                            paraNum = extractParagraphNumber(paraId);
+                            if (nextElem.querySelector('.evam') || nextElem.closest('.evam')) {
+                                paraNum = "";
+                            }
                         }
+                        subTexts.push({ id: paraId, text: subText, prefix: paraNum });
                     }
-
-                    subTexts.push({ id: paraId, text: subText, prefix: paraNum });
                 }
             }
             nextElem = nextElem.nextElementSibling;
@@ -125,14 +117,13 @@ export const ContentScanner = {
             text: getCleanTextContent(heading),
             levelClass: `toh-${heading.tagName.toLowerCase()}`, 
             prefix: prefix,
-            subTexts: subTexts // [UPDATED] Return array of objects
+            description: description, // [NEW] Trả về description
+            subTexts: subTexts 
         };
     },
 
     _parseParagraph(segment) {
         let paraNum = extractParagraphNumber(segment.id);
-        
-        // [CHECK EVAM] Bỏ số nếu là đoạn 'Evam'
         if (segment.querySelector('.evam') || segment.closest('.evam')) {
             paraNum = "";
         }
@@ -141,7 +132,6 @@ export const ContentScanner = {
         const rawText = getCleanTextContent(segment);
         if (rawText) text = rawText;
 
-        // Cắt ngắn nếu quá dài
         if (text.length > 60) {
             text = text.substring(0, 60) + "...";
         }
