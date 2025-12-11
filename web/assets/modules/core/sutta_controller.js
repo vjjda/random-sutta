@@ -3,7 +3,8 @@ import { SuttaService } from '../services/sutta_service.js';
 import { RandomBuffer } from '../services/random_buffer.js';
 import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
-import { getActiveFilters, generateBookParam } from '../ui/components/filters.js';
+// [FIXED] Import từ filters/index.js
+import { FilterComponent } from '../ui/components/filters/index.js'; 
 import { initCommentPopup } from '../ui/components/popup.js';
 import { Scroller } from '../ui/common/scroller.js';
 import { getLogger } from '../utils/logger.js';
@@ -13,6 +14,7 @@ const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
+    // ... (Giữ nguyên logic options/history/transition) ...
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
 
@@ -41,16 +43,11 @@ export const SuttaController = {
         }
     }
 
-    // [UPDATED LOGIC] Xác định khi nào cần thêm prefix cho scrollTarget
-    // Chỉ thêm prefix nếu scrollTarget thuần túy là số (segment number, vd: "1.2")
-    // Nếu scrollTarget có chữ cái (vd: "an1.395-401"), coi nó là ID tuyệt đối và giữ nguyên.
     if (scrollTarget && !scrollTarget.includes(':')) {
-        // Regex: Chỉ chứa số và dấu chấm (Segment Number)
         const isSegmentNumber = /^[\d\.]+$/.test(scrollTarget);
         if (isSegmentNumber) {
             scrollTarget = `${suttaId}:${scrollTarget}`;
         }
-        // Ngược lại, nếu là "an1.395-401", giữ nguyên để querySelector('#an1.395-401') hoạt động đúng.
     }
 
     logger.info('loadSutta', `Request: ${suttaId} ${scrollTarget ? '(Target: ' + scrollTarget + ')' : ''}`);
@@ -65,15 +62,11 @@ export const SuttaController = {
             return false;
         }
 
-        // [UPDATED] Alias Handling: Redirect kèm Hash
         if (result.isAlias) {
-            logger.info('loadSutta', `Alias redirect -> ${result.targetUid} #${result.hashId || ''}`);
-            
             let redirectId = result.targetUid;
             if (result.hashId) {
                 redirectId += `#${result.hashId}`;
             }
-            
             this.loadSutta(redirectId, true, 0, { transition: false });
             return true;
         }
@@ -83,7 +76,8 @@ export const SuttaController = {
         console.timeEnd('⏱️ Render');
         
         if (success && shouldUpdateUrl) {
-             const bookParam = generateBookParam();
+             // [UPDATED] Dùng FilterComponent để lấy param
+             const bookParam = FilterComponent.generateBookParam();
              Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, currentScroll);
         }
         return success;
@@ -106,7 +100,9 @@ export const SuttaController = {
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     console.time('🚀 Total Random Process');
     hideComment();
-    const filters = getActiveFilters();
+    
+    // [UPDATED] Dùng FilterComponent để lấy active filters
+    const filters = FilterComponent.getActiveFilters();
     
     console.time('🎲 Selection');
     const payload = await RandomBuffer.getPayload(filters);

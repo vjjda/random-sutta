@@ -1,6 +1,6 @@
 // Path: web/assets/modules/ui/components/filters/filter_view.js
 // [FIXED] Đường dẫn import lùi 3 cấp
-import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../../../data/constants.js';
+import { PRIMARY_BOOKS, SECONDARY_BOOKS } from '../../../../data/constants.js';
 
 export const FilterView = {
     render(containerIds, state, callbacks) {
@@ -62,12 +62,14 @@ export const FilterView = {
         btn.style.touchAction = "pan-y"; 
         btn.dataset.bookId = bookId;
 
+        // Label Logic
         if (["dn", "mn", "sn", "an"].includes(bookId)) {
             btn.textContent = bookId.toUpperCase();
         } else {
             btn.textContent = bookId.charAt(0).toUpperCase() + bookId.slice(1);
         }
 
+        // Gắn sự kiện (Gestures)
         if (callbacks.attachGestures) {
             callbacks.attachGestures(btn, bookId);
         }

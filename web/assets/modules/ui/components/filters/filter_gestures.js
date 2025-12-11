@@ -5,7 +5,6 @@ let dragTargetState = true;
 let longPressTimer = null;
 
 export const FilterGestures = {
-    // Đăng ký các sự kiện Global (Window)
     initGlobalHandlers(onDragMove, onDragEnd) {
         if (window._filterGesturesInit) return;
         window._filterGesturesInit = true;
@@ -14,7 +13,7 @@ export const FilterGestures = {
             clearTimeout(longPressTimer);
             if (isDragging) {
                 isDragging = false;
-                onDragEnd(); // Callback cập nhật URL
+                onDragEnd(); // Commit changes (Update URL)
             }
         };
 
@@ -22,7 +21,7 @@ export const FilterGestures = {
         window.addEventListener("touchend", endDrag);
 
         window.addEventListener("touchmove", (e) => {
-            // Di chuyển thì hủy Long Press
+            // Di chuyển ngón tay -> Hủy Long Press (chuyển sang thao tác cuộn/swipe)
             if (longPressTimer) clearTimeout(longPressTimer);
 
             if (!isDragging) return;
@@ -33,14 +32,12 @@ export const FilterGestures = {
             if (target && target.classList.contains("filter-btn")) {
                 const bId = target.dataset.bookId;
                 if (bId) {
-                    // Callback xử lý logic toggle (nhưng không update URL)
                     onDragMove(bId, dragTargetState);
                 }
             }
         }, { passive: true });
     },
 
-    // Gắn sự kiện cho từng nút
     attachToButton(btn, bookId, currentStateFn, onToggle, onSolo) {
         
         const startDrag = (e) => {
@@ -48,7 +45,7 @@ export const FilterGestures = {
 
             isDragging = true;
             
-            // 1. Setup Long Press (Solo Mode)
+            // 1. Setup Long Press (Solo Mode - 800ms)
             longPressTimer = setTimeout(() => {
                 onSolo(bookId);
                 isDragging = false; // Ngắt drag sau khi solo
@@ -56,16 +53,14 @@ export const FilterGestures = {
 
             // 2. Setup Drag State (Toggle Mode)
             const currentActive = currentStateFn(bookId);
-            dragTargetState = !currentActive; // Mục tiêu là đảo ngược trạng thái hiện tại
+            dragTargetState = !currentActive; // Đảo ngược trạng thái
             
-            // Apply ngay lập tức
             onToggle(bookId, dragTargetState); 
         };
 
         const onEnter = (e) => {
             if (isDragging) {
-                // Drag chuột sang nút khác -> Hủy Long Press cũ
-                clearTimeout(longPressTimer);
+                clearTimeout(longPressTimer); // Hủy Long Press khi drag sang nút khác
                 onToggle(bookId, dragTargetState);
             }
         };
@@ -74,7 +69,6 @@ export const FilterGestures = {
         btn.addEventListener("touchstart", startDrag, { passive: true });
         btn.addEventListener("mouseenter", onEnter);
         
-        // Chặn click mặc định để tránh conflict
         btn.addEventListener("click", (e) => e.preventDefault());
     }
 };

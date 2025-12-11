@@ -1,5 +1,4 @@
 // Path: web/assets/modules/ui/components/filters/index.js
-// Giữ nguyên file này, đường dẫn import Router đã đúng
 import { Router } from '../../../core/router.js';
 import { FilterState } from './filter_state.js';
 import { FilterView } from './filter_view.js';

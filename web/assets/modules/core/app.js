@@ -4,7 +4,7 @@ import { SuttaController } from './sutta_controller.js';
 import { SuttaService } from '../services/sutta_service.js';
 import { RandomBuffer } from '../services/random_buffer.js';
 import { setupLogging, LogLevel, getLogger } from '../utils/logger.js';
-// [CHANGED] Import từ module filters mới
+// [FIXED] Import từ filters/index.js thay vì filters.js
 import { FilterComponent } from '../ui/components/filters/index.js'; 
 import { setupQuickNav } from '../ui/components/search.js';
 import { OfflineManager } from '../ui/managers/offline_manager.js';
@@ -15,6 +15,7 @@ const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
+    // ... (Giữ nguyên logic init)
     console.time('🚀 App Start to Ready');
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
@@ -27,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     OfflineManager.init();
     ThemeManager.init();
     
-    // [CHANGED] Gọi init từ Component mới
+    // [UPDATED] Gọi FilterComponent
     FilterComponent.init(); 
     
     setupQuickNav((query) => SuttaController.loadSutta(query));
@@ -39,14 +40,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const statusDiv = document.getElementById("status"); 
     const navHeader = document.getElementById("nav-header");
     
-    // [MOVED] Hàm ẩn splash được tách ra để gọi sau
     const hideSplashScreen = () => {
         const splashScreen = document.getElementById("splash-screen");
         if (splashScreen) {
             splashScreen.style.opacity = '0';
             setTimeout(() => {
                 splashScreen.remove();
-            }, 500); // Khớp với transition trong CSS
+            }, 500);
         }
     };
 
@@ -54,34 +54,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         console.time('📡 Service Init');
-        await SuttaService.init(); 
+        await SuttaService.init();
         console.timeEnd('📡 Service Init');
-
-        // [REMOVED] KHÔNG ẩn splash ở đây nữa.
-        // Giữ splash đè lên cho đến khi load content xong.
 
         navHeader.classList.remove("hidden");
         randomBtn.disabled = false;
 
         const initialParams = Router.getParams();
-
         if (initialParams.q) {
             let loadId = initialParams.q;
             if (window.location.hash) loadId += window.location.hash;
             
             console.time('⏱️ Direct Load Total');
-            // Chờ load xong mới đi tiếp
             await SuttaController.loadSutta(loadId, true);
             console.timeEnd('⏱️ Direct Load Total');
             
             RandomBuffer.startBackgroundWork();
         } else {
             RandomBuffer.startBackgroundWork();
-            // [UPDATED] Thêm await để chờ random load xong mới ẩn splash
             await SuttaController.loadRandomSutta(true);
         }
         
-        // [NEW] Giờ mới ẩn Splash -> Chuyển cảnh mượt mà từ Logo sang Nội dung
         hideSplashScreen();
         console.timeEnd('🚀 App Start to Ready');
 
@@ -91,8 +84,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             statusDiv.textContent = "Error loading database.";
             statusDiv.style.color = "#ff6b6b"; 
         }
-        // Nếu lỗi thì vẫn phải ẩn splash để user thấy báo lỗi (hoặc xử lý hiển thị lỗi trên splash)
-        // Ở đây ta cứ ẩn đi để hiện giao diện fallback nếu có
         hideSplashScreen();
     }
 

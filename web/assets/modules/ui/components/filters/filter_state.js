@@ -1,12 +1,10 @@
 // Path: web/assets/modules/ui/components/filters/filter_state.js
 // [FIXED] Đường dẫn import lùi 3 cấp để về modules/data
-import { PRIMARY_BOOKS } from '../../../data/constants.js';
+import { PRIMARY_BOOKS } from '../../../../data/constants.js';
 
-// State nội bộ
 const filterSet = new Set();
 
 export const FilterState = {
-    // ... (Giữ nguyên logic cũ) ...
     initFromUrl(bParam) {
         filterSet.clear();
         let initialBooks = new Set();
@@ -34,6 +32,7 @@ export const FilterState = {
         filterSet.delete(bookId);
     },
 
+    // Chế độ Solo: Chỉ giữ 1 cuốn
     setSolo(bookId) {
         filterSet.clear();
         filterSet.add(bookId);
@@ -47,6 +46,7 @@ export const FilterState = {
         const active = Array.from(filterSet);
         const defaults = PRIMARY_BOOKS;
 
+        // Nếu tắt hết -> Trả về null (Total Random)
         if (active.length === 0) return null;
 
         if (active.length !== defaults.length) {
