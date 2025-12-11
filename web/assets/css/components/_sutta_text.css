@@ -27,39 +27,21 @@ h1.sutta-title .pli {
   font-weight: normal;
 }
 
-h2,
-h3,
-h4,
-h5,
-h6 {
-  color: var(--text-main);
-  line-height: 1.4;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-}
-
-h2 {
-  font-size: 1.5rem;
-}
-h3 {
-  font-size: 1.3rem;
-}
-h4 {
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-h5 {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  font-style: italic;
-}
-h6 {
-  font-size: 1rem;
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-light);
+/* [NEW] Override cho Pali Promoted trong Heading
+   Độ ưu tiên cao hơn (0-3-1) sẽ đè được rule trên (0-2-1).
+   Sử dụng 'inherit' để nó tự động giống hệt style của H1 (tức là giống tiếng Anh).
+*/
+h1.sutta-title .pli.promoted,
+h2 .pli.promoted,
+h3 .pli.promoted,
+h4 .pli.promoted,
+h5 .pli.promoted,
+h6 .pli.promoted {
+  font-size: 1em;       /* Bằng kích thước Heading cha */
+  color: inherit;       /* Lấy màu của Heading cha (text-main) */
+  font-weight: inherit; /* Lấy độ đậm của Heading cha (bold) */
+  font-style: normal;   /* Bỏ in nghiêng */
+  font-family: inherit; /* Dùng font của Heading */
 }
 
 .evam {
