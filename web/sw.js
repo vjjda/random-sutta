@@ -1,8 +1,7 @@
 // Path: web/sw.js
 
-// [REVERTED] Giữ nguyên placeholder để Release System tự replace
+// [IMPORTANT] Giữ nguyên placeholder này để Release System tự động replace bằng version tag thật
 const CACHE_NAME = "sutta-cache-dev-placeholder";
-
 console.log(`[SW] Startup (${CACHE_NAME})`);
 
 const SHELL_ASSETS = [
@@ -20,9 +19,9 @@ const SHELL_ASSETS = [
   "./assets/icons/web-app-manifest-192x192.png",
   "./assets/icons/web-app-manifest-512x512.png",
   
-  // Fonts
-  "./assets/fonts/NotoSans-VariableFont_wdth,wght.ttf",
-  "./assets/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf",
+  // Fonts (Đã sửa đường dẫn đúng)
+  "./assets/fonts/NotoSans-Regular.ttf",
+  "./assets/fonts/NotoSans-Italic.ttf",
 
   // Data
   "./assets/modules/data/constants.js",
@@ -30,7 +29,6 @@ const SHELL_ASSETS = [
   // [AUTO_GENERATED_ASSETS]
 ];
 
-// ... (Các phần logic install, activate, fetch giữ nguyên không đổi) ...
 self.addEventListener("install", (event) => {
   console.log(`[SW] Installing ${CACHE_NAME}...`);
   self.skipWaiting();
@@ -69,8 +67,7 @@ self.addEventListener("fetch", (event) => {
         try {
           const cache = await caches.open(CACHE_NAME);
           
-          // [FIX] Thử tìm cả "index.html" VÀ "/" (root)
-          // Chrome Android đôi khi lưu App Shell dưới dạng root "/" thay vì file cụ thể
+          // Thử tìm "index.html" hoặc "/"
           let cachedResponse = await cache.match("./index.html");
           if (!cachedResponse) {
               cachedResponse = await cache.match("./");
@@ -78,10 +75,8 @@ self.addEventListener("fetch", (event) => {
           
           if (cachedResponse) return cachedResponse;
           
-          // Fallback nếu chưa cache (Lần đầu truy cập)
           return await fetch(request);
         } catch (e) {
-          // Fallback cuối cùng
           return new Response("Offline (App Shell Missing)", { status: 408 });
         }
       })()
@@ -93,14 +88,12 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      
-      // [FIX] ignoreSearch: true để match được app.js?v=... với app.js trong cache
+      // ignoreSearch: true để match được app.js?v=...
       const cachedResponse = await cache.match(request, { ignoreSearch: true });
       if (cachedResponse) return cachedResponse;
 
       try {
         const networkResponse = await fetch(request);
-        // Chỉ cache các request hợp lệ (http/https), bỏ qua chrome-extension://...
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             cache.put(request, networkResponse.clone());
         }
