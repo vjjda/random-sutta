@@ -51,6 +51,10 @@
   transition: background-color 0.2s, transform 0.1s; 
 }
 
+#btn-update-offline.icon-only-btn {
+  margin-right: -3px;
+}
+
 .icon-only-btn:hover {
   background-color: var(--bg-hover);
   color: var(--primary-color);
