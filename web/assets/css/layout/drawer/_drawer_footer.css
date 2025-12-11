@@ -111,50 +111,103 @@
   display: flex;
   align-items: center;
   padding-right: 5px;
-  /* [NEW] Để định vị slider tuyệt đối so với group này */
+  /* Quan trọng: Để neo vị trí tuyệt đối cho panel con */
   position: relative; 
 }
 
-/* [NEW] Sepia Slider Panel */
+/* [NEW] Vertical Sepia Panel (Drop Down) */
 #sepia-control-panel {
   position: absolute;
-  right: 40px; /* Hiển thị bên trái của nút theme */
-  top: 50%;
-  transform: translateY(-50%);
+  /* Đẩy xuống dưới nút theme */
+  top: 100%; 
+  /* Căn giữa so với nút theme (giả định nút 32px, panel 40px -> lệch -4px) */
+  right: 6px;
+  width: 30px;
+  height: 140px; /* Chiều cao đủ cho slider dọc */
   background-color: var(--bg-card);
-  padding: 5px 10px;
-  border-radius: 20px;
-  box-shadow: var(--shadow-soft);
   border: 1px solid var(--border-light);
+  border-radius: 20px; /* Bo tròn hình viên thuốc */
+  box-shadow: var(--shadow-hover); /* Đổ bóng đậm hơn để nổi bật */
   display: flex;
   align-items: center;
-  animation: fadeIn 0.2s ease-out;
-  z-index: 10;
+  justify-content: center;
+  z-index: 100; /* Đè lên các thành phần khác */
+  
+  /* Hiệu ứng trượt xuống */
+  transform-origin: top center;
+  animation: dropDownFade 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes dropDownFade {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px) scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
 }
 
 #sepia-control-panel.hidden {
   display: none;
 }
 
-/* Slider Input Styling */
+/* [NEW] Vertical Slider Styling */
 #sepia-slider {
+  /* Xóa style mặc định */
   -webkit-appearance: none;
-  width: 80px;
-  height: 4px;
+  appearance: none;
+  
+  /* Kích thước Logic (trước khi xoay) */
+  width: 110px; /* Chiều dài thanh trượt */
+  height: 40px; /* Vùng bấm cảm ứng rộng cho dễ kéo */
+  background: transparent;
+  
+  /* Xoay dọc: -90 độ để dưới là Min, trên là Max */
+  transform: rotate(-90deg);
+  cursor: pointer;
+  margin-right: 15p;
+}
+
+/* --- Webkit Track & Thumb (Chrome, Safari, Edge) --- */
+#sepia-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px; /* Độ dày thanh track */
   background: var(--border-light);
-  border-radius: 2px;
-  outline: none;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
 #sepia-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  height: 20px;
+  width: 20px;
   border-radius: 50%;
   background: var(--primary-color);
+  border: 3px solid var(--bg-card); /* Viền trắng/đen để tách nền */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  
+  /* Căn giữa thumb vào track: (TrackHeight - ThumbHeight) / 2 */
+  margin-top: -7px; 
+}
+
+/* --- Firefox Track & Thumb --- */
+#sepia-slider::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
   cursor: pointer;
-  border: 2px solid var(--bg-card);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+#sepia-slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border: 3px solid var(--bg-card);
+  border-radius: 50%;
+  background: var(--primary-color);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
 /* [UPDATED] Minimalist Theme Button */
