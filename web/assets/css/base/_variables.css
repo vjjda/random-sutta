@@ -9,7 +9,8 @@
   --primitive-brown-700: #5d4037;
   --primitive-brown-500: #8b4513; /* Nâu đất chủ đạo */
   --primitive-brown-400: #a0522d;
-  --primitive-brown-300: #d7ccc8; /* Nâu be sáng (Dùng cho text dark mode) */
+  --primitive-brown-300: #d7ccc8;
+  /* Nâu be sáng (Dùng cho text dark mode) */
 
   /* LIGHT NEUTRALS (Paper) */
   --primitive-paper-50:  #fdfbf7;
@@ -20,17 +21,18 @@
   --primitive-night-900: #1a1918; 
   --primitive-night-800: #262423;
   --primitive-night-700: #383533;
-  
   /* TEXT COLORS */
   --primitive-ink-900:   #2b221b; 
   --primitive-ink-700:   #5c5550;
   
   --primitive-ivory-900: #ececec; 
   --primitive-ivory-500: #a09c98;
-
   /* =========================================
      2. SEMANTIC TOKENS (Light Theme Default)
      ========================================= */
+
+  /* [NEW] Typography Scale */
+  --text-scale:          1;
 
   /* Colors */
   --primary-color:       var(--primitive-brown-500);
@@ -40,29 +42,23 @@
   --bg-body:             var(--primitive-paper-50);
   --bg-card:             #ffffff;
   --bg-drawer:           var(--primitive-paper-100);
-  
   /* [HOVER LIGHT MODE] Nâu nhạt 6% - Đủ rõ trên nền giấy trắng */
   --bg-hover:            rgba(139, 69, 19, 0.06);
-
   /* Typography */
   --text-main:           var(--primitive-ink-900);
   --text-muted:          var(--primitive-ink-700);
   --text-light:          #888888;
-  
   --text-pali:           var(--primitive-ink-700);
   --text-eng:            var(--primitive-ink-900);
-  
   /* UI Elements */
   --border-color:        var(--primitive-paper-300);
   --border-light:        #eceae5;
   
   --shadow-soft:         0 2px 10px rgba(62, 39, 35, 0.05);
   --shadow-card:         0 4px 15px rgba(62, 39, 35, 0.08);
-
   /* Highlights */
   --highlight-color-background: rgba(139, 69, 19, 0.08);
   --highlight-color-segment:    rgba(255, 167, 38, 0.15);
-
   /* Font: Sans-serif Clean */
   --font-main: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", sans-serif;
   --font-sutta: "Noto Sans", "Segoe UI", sans-serif; 
@@ -80,22 +76,19 @@
   /* Backgrounds */
   --bg-body:             var(--primitive-night-900);
   --bg-card:             var(--primitive-night-800);
-  --bg-drawer:           #201e1d; 
-  
+  --bg-drawer:           #201e1d;
   /* [UPDATED] Fix Hover không rõ ràng */
-  /* Sử dụng màu TRẮNG pha loãng 12% thay vì màu nâu. 
+  /* Sử dụng màu TRẮNG pha loãng 12% thay vì màu nâu.
      Trên nền đen, nó sẽ tạo hiệu ứng "bật đèn" nhẹ (lighten), 
-     giúp item nổi bật rõ ràng mà không bị ám màu lạ. */
+     giúp item nổi bật rõ ràng mà không bị ám màu lạ.
+  */
   --bg-hover:            rgba(255, 255, 255, 0.12);
-
   /* Text */
   --text-main:           var(--primitive-ivory-900);
   --text-muted:          var(--primitive-ivory-500);
   --text-light:          #757575;
-  
-  --text-pali:           #bcaaa4; 
+  --text-pali:           #bcaaa4;
   --text-eng:            var(--primitive-ivory-900);
-
   /* Borders */
   --border-color:        var(--primitive-night-700);
   --border-light:        #33302e;
@@ -103,16 +96,15 @@
   /* [USER REQUEST] Primary về lại màu Nâu Gốc */
   /* Dùng màu nâu 500 (gốc) có thể hơi tối, tôi dùng nâu 400 hoặc 300 để sáng hơn chút cho dễ đọc */
   /* Nếu bạn thích đúng màu nâu gốc: var(--primitive-brown-500) */
-  --primary-color:       var(--primitive-brown-400); /* Nâu sáng (Light Brown) - Dễ đọc trên nền tối hơn #8b4513 */
+  --primary-color:       var(--primitive-brown-400);
+  /* Nâu sáng (Light Brown) - Dễ đọc trên nền tối hơn #8b4513 */
   --primary-hover:       #d7ccc8;
-
   /* Shadows */
   --shadow-soft:         0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-card:         0 6px 20px rgba(0, 0, 0, 0.6);
-  
   /* Highlights */
   /* Background highlight (khi active) cũng cần sáng hơn một chút so với hover */
   --highlight-color-background: rgba(255, 255, 255, 0.08);
   /* Segment highlight (đoạn văn đang chọn) dùng màu vàng/cam nhẹ để tạo điểm nhấn khác biệt */
-  --highlight-color-segment:    rgba(255, 179, 0, 0.15); 
+  --highlight-color-segment:    rgba(255, 179, 0, 0.15);
 }

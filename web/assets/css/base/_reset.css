@@ -4,6 +4,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* [UPDATED] Áp dụng Font Scaling lên root */
+html {
+  font-size: calc(100% * var(--text-scale));
+  transition: font-size 0.2s ease;
+}
+
 body {
   font-family: var(--font-main);
   background-color: var(--bg-body);

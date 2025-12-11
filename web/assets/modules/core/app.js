@@ -4,12 +4,13 @@ import { SuttaController } from './sutta_controller.js';
 import { SuttaService } from '../services/sutta_service.js';
 import { RandomBuffer } from '../services/random_buffer.js';
 import { setupLogging, LogLevel, getLogger } from '../utils/logger.js';
-// [FIXED] Import từ filters/index.js thay vì filters.js
 import { FilterComponent } from '../ui/components/filters/index.js'; 
 import { setupQuickNav } from '../ui/components/search.js';
 import { OfflineManager } from '../ui/managers/offline_manager.js';
 import { DrawerManager } from '../ui/managers/drawer_manager.js';
 import { ThemeManager } from '../ui/managers/theme_manager.js';
+// [NEW] Import FontSizeManager
+import { FontSizeManager } from '../ui/managers/font_size_manager.js';
 
 const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
@@ -27,6 +28,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     DrawerManager.init();
     OfflineManager.init();
     ThemeManager.init();
+    // [NEW] Init Font Size
+    FontSizeManager.init();
     
     // [UPDATED] Gọi FilterComponent
     FilterComponent.init(); 
@@ -39,7 +42,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const randomBtn = document.getElementById("btn-random");
     const statusDiv = document.getElementById("status"); 
     const navHeader = document.getElementById("nav-header");
-    
     const hideSplashScreen = () => {
         const splashScreen = document.getElementById("splash-screen");
         if (splashScreen) {
@@ -94,7 +96,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (currentParams.q) {
             let loadId = currentParams.q;
             if (window.location.hash) loadId += window.location.hash;
-            SuttaController.loadSutta(loadId, false, savedScroll, { transition: false });
+            SuttaController.loadSutta(loadId, false, savedScroll, { 
+                transition: false });
         } else {
             SuttaController.loadRandomSutta(false); 
         }
