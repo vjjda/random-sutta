@@ -73,7 +73,7 @@ p {
 
 .segment {
   display: block;
-  margin-bottom: 0;
+  margin-bottom: 4px;
 }
 .pli {
   font-family: var(--font-sutta);
@@ -81,8 +81,8 @@ p {
   font-style: italic;
   font-size: 0.95em;
   display: block;
-  margin-bottom: 4px;
-}
+  /* margin-bottom: 0;
+} */
 .eng {
   color: var(--text-eng);
   font-weight: 400;
@@ -93,9 +93,9 @@ p {
 
 /* [NEW] Context Footer (See also) Styling */
 .sutta-context-footer {
-  margin-top: 0; /* Cách xa nội dung bài kinh một chút */
+  margin-top: 60px; /* Cách xa nội dung bài kinh một chút */
   padding-top: 20px;
-  border-top: 1px none var(--border-light); /* Đường ngăn cách nhẹ nhàng */
+  border-top: 1px dashed var(--border-light); /* Đường ngăn cách nhẹ nhàng */
   
   /* Flex Column & Align Right */
   display: flex;
@@ -129,14 +129,14 @@ p {
 }
 
 .ctx-link:hover {
-  /* transform: translateX(-5px); /* Hiệu ứng trượt nhẹ sang trái khi hover */
-  opacity: 0.7; */
+  transform: translateX(-5px); /* Hiệu ứng trượt nhẹ sang trái khi hover */
+  opacity: 0.9;
 }
 
 /* Dòng 2: Acronym (Điểm nhấn chính) */
 .ctx-acronym {
   font-family: var(--font-main);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--primary-color);
   line-height: 1.2;
@@ -145,7 +145,7 @@ p {
 /* Dòng 3: Title (Bình thường) */
 .ctx-title {
   font-family: var(--font-sutta);
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-size: 0.95rem;
+  color: var(--text-main);
   margin-top: 2px;
 }
