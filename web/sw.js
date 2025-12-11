@@ -4,6 +4,7 @@
 const CACHE_NAME = "sutta-cache-dev-placeholder";
 console.log(`[SW] Startup (${CACHE_NAME})`);
 
+// Danh sách file bắt buộc phải có để App chạy offline
 const SHELL_ASSETS = [
   "./",
   "./index.html",
@@ -29,115 +30,138 @@ const SHELL_ASSETS = [
   // [AUTO_GENERATED_ASSETS]
 ];
 
+// 1. INSTALL: Tải và cache toàn bộ Shell Assets
 self.addEventListener("install", (event) => {
   console.log(`[SW] Installing ${CACHE_NAME}...`);
+  // Kích hoạt ngay lập tức, không chờ tab đóng
   self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      console.log("[SW] Caching shell assets...");
       return cache.addAll(SHELL_ASSETS);
     })
   );
 });
 
+// 2. ACTIVATE: Dọn dẹp cache cũ và claim clients
 self.addEventListener("activate", (event) => {
   console.log(`[SW] Activating ${CACHE_NAME}...`);
-  self.clients.claim();
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log("[SW] Deleting old cache:", cache);
-            return caches.delete(cache);
-          }
-        })
-      );
-    })
+    Promise.all([
+      // Claim clients để SW kiểm soát page ngay lập tức mà không cần reload
+      self.clients.claim(),
+      // Xóa cache cũ
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cache) => {
+            if (cache !== CACHE_NAME) {
+              console.log("[SW] Deleting old cache:", cache);
+              return caches.delete(cache);
+            }
+          })
+        );
+      })
+    ])
   );
 });
 
+// 3. FETCH: Xử lý request
 self.addEventListener("fetch", (event) => {
   const request = event.request;
+  
+  // Chỉ xử lý GET request
   if (request.method !== "GET") return;
 
-  // [STRATEGY 1] App Shell for Navigation (Fix Refresh Issue)
-  // Xử lý request điều hướng (Refresh, nhập URL)
+  // [CHIẾN LƯỢC 1] App Shell cho Navigation (Fix lỗi Refresh Offline)
+  // Áp dụng khi trình duyệt điều hướng (F5, nhập URL, click link)
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
         try {
           const cache = await caches.open(CACHE_NAME);
           
-          // 1. Cố gắng tìm index.html trong cache (App Shell)
-          // QUAN TRỌNG: ignoreSearch: true giúp match được ngay cả khi URL có query string (vd: /?q=mn1)
-          let cachedResponse = await cache.match("./index.html", { ignoreSearch: true });
+          // A. Thử tìm chính request đó trong cache (bỏ qua query param ?q=...)
+          // Ví dụ: http://.../?q=mn1 -> tìm http://.../
+          let cachedResponse = await cache.match(request, { ignoreSearch: true });
           
-          // 2. Fallback: Nếu không thấy index.html, thử tìm root "./"
+          // B. Nếu không thấy, thử tìm đích danh "index.html"
           if (!cachedResponse) {
-              cachedResponse = await cache.match("./", { ignoreSearch: true });
+             cachedResponse = await cache.match("index.html");
           }
           
-          // 3. OFFLINE FIRST: Nếu tìm thấy trong cache, trả về ngay lập tức
+          // C. Nếu vẫn không thấy, thử tìm "./" (Root)
+          if (!cachedResponse) {
+             cachedResponse = await cache.match("./");
+          }
+
+          // D. Nếu tìm thấy bất kỳ cái nào, trả về ngay (OFFLINE FIRST)
           if (cachedResponse) {
               return cachedResponse;
           }
           
-          // 4. Chỉ khi KHÔNG có trong cache mới gọi mạng
+          // E. Nếu không có trong cache, buộc phải gọi mạng
+          console.log("[SW] Nav not in cache, fetching:", request.url);
           return await fetch(request);
 
         } catch (e) {
-          // 5. Nếu mạng lỗi và cache rỗng -> Trả về trang lỗi Offline giả lập (Status 200)
-          // Trả về 200 thay vì 408/500 để trình duyệt Android không hiển thị màn hình "No Internet" (Dino)
-          return new Response(
-            `<!DOCTYPE html>
-             <html lang="en">
-               <head>
-                 <meta charset="UTF-8">
-                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                 <title>Offline</title>
-                 <style>
-                   body { font-family: sans-serif; text-align: center; padding: 40px 20px; color: #555; }
-                   h1 { color: #d35400; margin-bottom: 10px; }
-                   p { margin-bottom: 20px; }
-                   button { padding: 10px 20px; background: #d35400; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
-                 </style>
-               </head>
-               <body>
-                 <h1>You are Offline</h1>
-                 <p>The application shell is missing from the cache.</p>
-                 <button onclick="window.location.reload()">Retry Connection</button>
-               </body>
-             </html>`, 
-            { 
-              status: 200,
-              headers: { "Content-Type": "text/html" }
-            }
-          );
+          console.error("[SW] Fetch failed:", e);
+          
+          // F. Mạng lỗi và Cache rỗng -> Trả về trang lỗi giả lập
+          // Status 200 giúp tránh màn hình "Dino" của trình duyệt
+          const errorHtml = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Offline</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding: 40px 20px; color: #333; }
+                    h1 { color: #d35400; margin-bottom: 10px; }
+                    p { margin-bottom: 20px; line-height: 1.5; }
+                    button { padding: 12px 24px; background: #d35400; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+                    button:active { opacity: 0.8; }
+                </style>
+            </head>
+            <body>
+                <h1>You are Offline</h1>
+                <p>The application shell data is missing from your device.<br>Please check your internet connection.</p>
+                <button onclick="window.location.reload()">Retry Connection</button>
+            </body>
+            </html>`;
+
+          return new Response(errorHtml, { 
+              status: 200, 
+              headers: { "Content-Type": "text/html" } 
+          });
         }
       })()
     );
     return;
   }
 
-  // [STRATEGY 2] Stale-While-Revalidate / Cache First for Assets
+  // [CHIẾN LƯỢC 2] Cache First cho Assets (JS, CSS, Images...)
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
-      // ignoreSearch: true để match được các file có version param (ví dụ: app.js?v=...)
-      const cachedResponse = await cache.match(request, { ignoreSearch: true });
       
-      // Ưu tiên trả về Cache ngay lập tức
+      // 1. Tìm trong cache trước (bỏ qua search param để match version tag ?v=...)
+      const cachedResponse = await cache.match(request, { ignoreSearch: true });
       if (cachedResponse) return cachedResponse;
 
+      // 2. Nếu không có, gọi mạng và cache lại
       try {
         const networkResponse = await fetch(request);
-        // Chỉ cache những response hợp lệ (HTTP 200) và type basic
+        
+        // Chỉ cache những response thành công và đúng loại
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             cache.put(request, networkResponse.clone());
         }
         return networkResponse;
       } catch (error) {
-        // Fallback đơn giản cho assets khi offline
+        // Fallback đơn giản cho asset
+        console.log("[SW] Asset fetch failed:", request.url);
         return new Response("Offline", { status: 408 });
       }
     })()
