@@ -86,7 +86,7 @@ p {
 .eng {
   color: var(--text-eng);
   font-weight: 400;
-  color: var(--text-muted);
+  color: var(--text-main);
   line-height: 1.3;
   margin-top: 2px;
 }
