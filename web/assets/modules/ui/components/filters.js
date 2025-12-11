@@ -5,8 +5,9 @@ import { Router } from '../../core/router.js';
 const filterSet = new Set();
 let isDragging = false;
 let dragTargetState = true; 
-let longPressTimer = null; // [NEW] Timer cho Long Press
+let longPressTimer = null;
 
+// ... (Các hàm getActiveFilters, generateBookParam, updateBookState giữ nguyên) ...
 export function getActiveFilters() {
   return Array.from(filterSet);
 }
@@ -15,7 +16,6 @@ export function generateBookParam() {
   const active = Array.from(filterSet);
   const defaults = PRIMARY_BOOKS;
   
-  // Nếu active rỗng -> Trả về null (để Router xóa param ?b=, kích hoạt Total Random)
   if (active.length === 0) return null;
 
   if (active.length !== defaults.length) {
@@ -35,9 +35,6 @@ function updateBookState(bookId, btnElement, forceState = null, updateRouter = t
 
   if (currentState === newState) return;
 
-  // [UPDATED] Đã XÓA đoạn logic chặn tắt nút cuối cùng
-  // if (!newState && filterSet.size <= 1 && currentState) return; 
-
   if (newState) {
     filterSet.add(bookId);
     btnElement.classList.add("active");
@@ -52,13 +49,10 @@ function updateBookState(bookId, btnElement, forceState = null, updateRouter = t
   }
 }
 
-// [NEW] Chế độ Solo: Tắt hết, chỉ bật 1 cái
 function setSoloFilter(targetBookId) {
-    // 1. Logic Data
     filterSet.clear();
     filterSet.add(targetBookId);
 
-    // 2. Logic UI (Update toàn bộ nút)
     const allBtns = document.querySelectorAll('.filter-btn');
     allBtns.forEach(btn => {
         if (btn.dataset.bookId === targetBookId) {
@@ -68,11 +62,9 @@ function setSoloFilter(targetBookId) {
         }
     });
 
-    // 3. Router
     const bookParam = generateBookParam();
     Router.updateURL(null, bookParam);
     
-    // Rung nhẹ phản hồi (nếu thiết bị hỗ trợ)
     if (navigator.vibrate) navigator.vibrate(50);
 }
 
@@ -82,6 +74,7 @@ function createFilterButton(bookId, container, isDefaultActive) {
   btn.style.touchAction = "pan-y"; 
   btn.dataset.bookId = bookId;
 
+  // Capitalize logic: DN, MN, SN, AN -> Uppercase. Others -> Title Case.
   if (["dn", "mn", "sn", "an"].includes(bookId)) {
     btn.textContent = bookId.toUpperCase();
   } else {
@@ -93,22 +86,17 @@ function createFilterButton(bookId, container, isDefaultActive) {
     filterSet.add(bookId);
   }
 
-  // --- LOGIC SWIPE + LONG PRESS ---
-
+  // --- LOGIC SWIPE + LONG PRESS (Giữ nguyên) ---
   const startDrag = (e) => {
     if (e.type === 'mousedown' && e.button !== 0) return;
 
     isDragging = true;
     
-    // [NEW] Setup Long Press Timer (800ms)
     longPressTimer = setTimeout(() => {
-        // Nếu timer chạy xong tức là người dùng vẫn giữ tay -> Kích hoạt Solo
         setSoloFilter(bookId);
-        isDragging = false; // Ngắt trạng thái drag để không update lại khi thả tay
+        isDragging = false;
     }, 800);
 
-    // Vẫn thực hiện toggle ngay lập tức cho phản hồi nhanh (Snappy UI)
-    // (Nếu sau đó Long Press kích hoạt, nó sẽ override trạng thái này)
     const currentActive = filterSet.has(bookId);
     dragTargetState = !currentActive;
     updateBookState(bookId, btn, dragTargetState, false); 
@@ -116,7 +104,6 @@ function createFilterButton(bookId, container, isDefaultActive) {
 
   const onEnter = (e) => {
     if (isDragging) {
-      // Nếu di chuột sang nút khác -> Hủy Long Press của nút cũ
       clearTimeout(longPressTimer); 
       updateBookState(bookId, btn, dragTargetState, false);
     }
@@ -133,11 +120,10 @@ function createFilterButton(bookId, container, isDefaultActive) {
   container.appendChild(btn);
 }
 
+// ... (Hàm setupGlobalDragHandlers giữ nguyên) ...
 function setupGlobalDragHandlers() {
     const endDrag = () => {
-        // [NEW] Luôn xóa timer khi thả tay
         clearTimeout(longPressTimer);
-
         if (isDragging) {
             isDragging = false;
             const bookParam = generateBookParam();
@@ -149,9 +135,7 @@ function setupGlobalDragHandlers() {
     window.addEventListener("touchend", endDrag);
 
     window.addEventListener("touchmove", (e) => {
-        // [NEW] Nếu di chuyển ngón tay -> Hủy Long Press (chuyển sang thao tác cuộn hoặc swipe)
         if (longPressTimer) clearTimeout(longPressTimer);
-
         if (!isDragging) return;
 
         const touch = e.touches[0];
@@ -166,6 +150,7 @@ function setupGlobalDragHandlers() {
     }, { passive: true });
 }
 
+// [UPDATED] Hàm initFilters với logic chia hàng
 export function initFilters() {
   const primaryDiv = document.getElementById("primary-filters");
   const secondaryDiv = document.getElementById("secondary-filters");
@@ -178,28 +163,49 @@ export function initFilters() {
       window._filterDragSetup = true;
   }
 
+  // Reset content
   primaryDiv.innerHTML = "";
   secondaryDiv.innerHTML = "";
   filterSet.clear();
   
+  // 1. Tạo 2 hàng riêng biệt cho Primary Filters
+  // Hàng 1: Các bộ Nikaya chính (DN, MN, SN, AN)
+  const rowNikayas = document.createElement("div");
+  rowNikayas.className = "filter-row"; // Sử dụng lại class CSS có sẵn để căn giữa và gap
+
+  // Hàng 2: Các cuốn còn lại (Tiểu bộ)
+  const rowOthers = document.createElement("div");
+  rowOthers.className = "filter-row";
+
   const params = new URLSearchParams(window.location.search);
   const bParam = params.get("b");
   let initialBooks = new Set();
-  let hasSecondaryActive = false;
   
   if (bParam) {
     const booksFromUrl = bParam.toLowerCase().split(",").map((s) => s.trim());
     booksFromUrl.forEach((b) => initialBooks.add(b));
   } else {
-    // Mặc định ban đầu vẫn chọn Primary
     PRIMARY_BOOKS.forEach((b) => initialBooks.add(b));
   }
 
+  // Phân loại sách vào đúng hàng
+  const mainNikayas = ["dn", "mn", "sn", "an"];
+
   PRIMARY_BOOKS.forEach((book) => {
     const isActive = initialBooks.has(book);
-    createFilterButton(book, primaryDiv, isActive);
+    if (mainNikayas.includes(book)) {
+        createFilterButton(book, rowNikayas, isActive);
+    } else {
+        createFilterButton(book, rowOthers, isActive);
+    }
   });
+
+  // Append 2 hàng vào container chính
+  primaryDiv.appendChild(rowNikayas);
+  primaryDiv.appendChild(rowOthers);
   
+  // Xử lý Secondary Books (Hàng ẩn)
+  let hasSecondaryActive = false;
   SECONDARY_BOOKS.forEach((book) => {
     const isActive = initialBooks.has(book);
     if (isActive) hasSecondaryActive = true;
