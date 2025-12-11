@@ -63,22 +63,26 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   // [STRATEGY] App Shell for Navigation
-  // Nếu là yêu cầu tải trang (HTML), luôn trả về index.html từ cache.
-  // Điều này giúp App chạy Offline kể cả khi URL có query params (/?q=...)
-  // hoặc khi người dùng refresh trang.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
         try {
           const cache = await caches.open(CACHE_NAME);
-          const cachedResponse = await cache.match("./index.html");
+          
+          // [FIX] Thử tìm cả "index.html" VÀ "/" (root)
+          // Chrome Android đôi khi lưu App Shell dưới dạng root "/" thay vì file cụ thể
+          let cachedResponse = await cache.match("./index.html");
+          if (!cachedResponse) {
+              cachedResponse = await cache.match("./");
+          }
+          
           if (cachedResponse) return cachedResponse;
           
-          // Fallback nếu chưa cache index.html (lần đầu truy cập)
+          // Fallback nếu chưa cache (Lần đầu truy cập)
           return await fetch(request);
         } catch (e) {
-          // Fallback cuối cùng nếu cả cache và mạng đều lỗi
-          return new Response("Offline", { status: 408 });
+          // Fallback cuối cùng
+          return new Response("Offline (App Shell Missing)", { status: 408 });
         }
       })()
     );
