@@ -21,6 +21,7 @@ export const FilterGestures = {
         window.addEventListener("touchend", endDrag);
 
         window.addEventListener("touchmove", (e) => {
+            // Di chuyển ngón tay -> Hủy Long Press (chuyển sang thao tác cuộn/swipe)
             if (longPressTimer) clearTimeout(longPressTimer);
 
             if (!isDragging) return;
@@ -44,20 +45,22 @@ export const FilterGestures = {
 
             isDragging = true;
             
+            // [UPDATED] Giảm thời gian Long Press xuống 500ms (nhạy hơn)
             longPressTimer = setTimeout(() => {
                 onSolo(bookId);
-                isDragging = false; 
-            }, 800);
+                isDragging = false; // Ngắt drag sau khi solo
+            }, 500);
 
+            // 2. Setup Drag State (Toggle Mode)
             const currentActive = currentStateFn(bookId);
-            dragTargetState = !currentActive; 
+            dragTargetState = !currentActive; // Đảo ngược trạng thái
             
             onToggle(bookId, dragTargetState); 
         };
 
         const onEnter = (e) => {
             if (isDragging) {
-                clearTimeout(longPressTimer); 
+                clearTimeout(longPressTimer); // Hủy Long Press khi drag sang nút khác
                 onToggle(bookId, dragTargetState);
             }
         };
@@ -68,7 +71,7 @@ export const FilterGestures = {
         
         btn.addEventListener("click", (e) => e.preventDefault());
 
-        // [NEW] Disable Context Menu (Popup) on Long Press
+        // Disable Context Menu (Popup) on Long Press
         btn.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
