@@ -2,7 +2,6 @@
 
 let isDragging = false;
 let dragTargetState = true; 
-let longPressTimer = null;
 
 export const FilterGestures = {
     initGlobalHandlers(onDragMove, onDragEnd) {
@@ -10,7 +9,6 @@ export const FilterGestures = {
         window._filterGesturesInit = true;
 
         const endDrag = () => {
-            clearTimeout(longPressTimer);
             if (isDragging) {
                 isDragging = false;
                 onDragEnd(); // Commit changes (Update URL)
@@ -21,9 +19,6 @@ export const FilterGestures = {
         window.addEventListener("touchend", endDrag);
 
         window.addEventListener("touchmove", (e) => {
-            // Di chuyển ngón tay -> Hủy Long Press (chuyển sang thao tác cuộn/swipe)
-            if (longPressTimer) clearTimeout(longPressTimer);
-
             if (!isDragging) return;
 
             const touch = e.touches[0];
@@ -39,39 +34,45 @@ export const FilterGestures = {
     },
 
     attachToButton(btn, bookId, currentStateFn, onToggle, onSolo) {
-        
-        const startDrag = (e) => {
+        let lastTapTime = 0; // Scoped variable for Double Tap detection
+
+        const handleStart = (e) => {
             if (e.type === 'mousedown' && e.button !== 0) return;
 
-            isDragging = true;
+            const now = Date.now();
+            const timeDiff = now - lastTapTime;
             
-            // [UPDATED] Giảm thời gian Long Press xuống 500ms (nhạy hơn)
-            longPressTimer = setTimeout(() => {
+            // [NEW] Double Tap Logic (< 300ms)
+            if (timeDiff < 300 && timeDiff > 0) {
                 onSolo(bookId);
-                isDragging = false; // Ngắt drag sau khi solo
-            }, 500);
+                isDragging = false; // Prevent dragging conflict
+                lastTapTime = 0;    // Reset
+                return;
+            }
+            
+            lastTapTime = now;
 
-            // 2. Setup Drag State (Toggle Mode)
+            // Single Tap / Drag Start Logic
+            isDragging = true;
             const currentActive = currentStateFn(bookId);
-            dragTargetState = !currentActive; // Đảo ngược trạng thái
+            dragTargetState = !currentActive; 
             
             onToggle(bookId, dragTargetState); 
         };
 
         const onEnter = (e) => {
             if (isDragging) {
-                clearTimeout(longPressTimer); // Hủy Long Press khi drag sang nút khác
                 onToggle(bookId, dragTargetState);
             }
         };
 
-        btn.addEventListener("mousedown", startDrag);
-        btn.addEventListener("touchstart", startDrag, { passive: true });
+        btn.addEventListener("mousedown", handleStart);
+        btn.addEventListener("touchstart", handleStart, { passive: true });
         btn.addEventListener("mouseenter", onEnter);
         
         btn.addEventListener("click", (e) => e.preventDefault());
-
-        // Disable Context Menu (Popup) on Long Press
+        
+        // Disable Context Menu để trải nghiệm app-like hơn (Optional)
         btn.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
