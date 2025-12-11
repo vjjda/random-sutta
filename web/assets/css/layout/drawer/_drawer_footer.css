@@ -162,12 +162,18 @@
   /* Kích thước Logic (trước khi xoay) */
   width: 110px; /* Chiều dài thanh trượt */
   height: 40px; /* Vùng bấm cảm ứng rộng cho dễ kéo */
+  
   background: transparent;
   
   /* Xoay dọc: -90 độ để dưới là Min, trên là Max */
   transform: rotate(-90deg);
   cursor: pointer;
-  margin-right: 15p;
+  
+  /* [FIXED] Sửa lỗi typo 15p -> 15px */
+  margin-right: 15px;
+
+  /* [CRITICAL FIX] Ngăn chặn hành vi cuộn trang khi chạm vào slider */
+  touch-action: none;
 }
 
 /* --- Webkit Track & Thumb (Chrome, Safari, Edge) --- */
