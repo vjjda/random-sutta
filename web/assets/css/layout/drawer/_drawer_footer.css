@@ -1,22 +1,21 @@
 /* Path: web/assets/css/layout/drawer/_drawer_footer.css */
 
-/* --- FOOTER CONTAINER (System Toolbar) --- */
+/* --- FOOTER CONTAINER --- */
 #drawer-footer {
   margin-top: 15px;
-  padding: 0 10px;
+  padding: 0 15px;
   border-top: 1px solid var(--border-color);
-  background-color: var(--bg-drawer); /* Nền tiệp màu drawer */
+  background-color: var(--bg-drawer);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
   
-  height: 52px;
+  height: 54px; /* Tăng nhẹ chiều cao để thoáng hơn */
   
-  /* GRID LAYOUT: 1fr - auto - 1fr */
-  /* Giúp phần tử giữa (Offline) luôn ở chính giữa drawer, bất kể chiều rộng của nút Theme */
+  /* GRID LAYOUT: Giữ widget ở chính giữa tuyệt đối */
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   
-  /* Reset margin âm từ container cha */
+  /* Reset margin âm */
   margin-left: -15px;
   margin-right: -15px;
   margin-bottom: -15px;
@@ -24,26 +23,56 @@
 
 /* --- CENTER GROUP: OFFLINE WIDGET --- */
 .offline-widget {
-  grid-column: 2; /* Nằm cột giữa */
+  grid-column: 2;
   display: flex;
   align-items: center;
-  gap: 8px; /* Khoảng cách giữa các thành phần */
+  /* Khoảng cách giữa Nút Update và Nút Chính */
+  /* Logic cân bằng: Gap (4px) + Padding-left của main-btn (6px) = 10px */
+  gap: 4px; 
 }
 
-/* 1. Status/Action Button (Chứa Icon + Label) */
+/* 1. Update Button (Bên trái) */
+#btn-update-offline {
+  background: transparent;
+  border: none;
+  color: var(--text-light); /* Nhạt hơn để không tranh chấp với text */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+#btn-update-offline:hover {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+  transform: rotate(180deg); /* Hiệu ứng xoay khi hover */
+}
+
+/* 2. Status/Action Button (Label + Icon) */
 .offline-main-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem; /* Tăng nhẹ cỡ chữ */
   font-weight: 500;
   cursor: pointer;
   
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: 4px;
+  
+  /* Khoảng cách giữa Text và Icon Check */
+  /* Logic cân bằng: Set cứng 10px để khớp với bên trái */
+  gap: 10px; 
+  
+  /* Padding để tăng vùng bấm nhưng vẫn giữ cân đối */
+  padding: 6px 8px 6px 6px; 
+  border-radius: 6px;
   transition: all 0.2s;
 }
 
@@ -53,38 +82,18 @@
 }
 
 .offline-main-btn .icon svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: block;
-  /* Icon căn chỉnh */
-}
-
-/* 2. Update Button (Nút Refresh) */
-#btn-update-offline {
-  background: transparent;
-  border: none;
-  color: var(--text-light);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-#btn-update-offline:hover {
-  background-color: var(--bg-hover);
-  color: var(--primary-color);
+  stroke-width: 2.5; /* Icon check đậm hơn chút cho rõ */
 }
 
 /* --- RIGHT GROUP: THEME TOGGLE --- */
 .theme-toggle-group {
-  grid-column: 3; /* Nằm cột phải */
-  justify-self: end; /* Neo sang phải */
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
-  padding-right: 5px;
 }
 
 #btn-theme-toggle {
@@ -106,9 +115,10 @@
   border-color: var(--primary-color);
   color: var(--primary-color);
   transform: rotate(15deg);
+  box-shadow: var(--shadow-soft);
 }
 
-/* --- STATES (Logic hiển thị) --- */
+/* --- STATES --- */
 
 /* Syncing */
 #drawer-footer.syncing .offline-main-btn {
@@ -131,8 +141,7 @@
   color: var(--text-muted);
 }
 #drawer-footer.ready .icon svg {
-  stroke: #4caf50; /* Màu xanh lá cho dấu check */
-  stroke-width: 2.5;
+  stroke: #4caf50; /* Màu xanh lá */
 }
 #drawer-footer.ready #btn-update-offline {
   display: flex;
@@ -146,6 +155,7 @@
   display: none;
 }
 
+/* Helpers */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
