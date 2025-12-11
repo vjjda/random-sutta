@@ -10,13 +10,13 @@
 
 .b-card-link {
   display: block;
-  background-color: #fff;
+  background-color: var(--bg-card); /* [REFACTORED] was #fff */
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--text-main);
   transition: all 0.2s ease;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-soft); /* [REFACTORED] use variable */
   overflow: hidden;
 }
 .b-card-link:hover {
@@ -69,7 +69,7 @@
 
 .b-blurb {
   font-size: 0.95rem;
-  color: #555;
+  color: var(--text-muted); /* [REFACTORED] was #555 */
   line-height: 1.5;
   margin-top: 5px;
   /* display: -webkit-box;
@@ -91,16 +91,17 @@
   justify-content: flex-end;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px dashed #f0f0f0;
+  border-top: 1px dashed var(--border-light); /* [REFACTORED] was #f0f0f0 */
 }
+
 .b-badge {
   font-family: monospace;
   font-size: 0.8rem;
   color: var(--text-light);
-  background-color: #f5f5f5;
+  background-color: var(--bg-body); /* [REFACTORED] was #f5f5f5 */
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-light); /* [REFACTORED] was #eee */
   white-space: nowrap;
   max-width: 100%;
   overflow: hidden;
@@ -120,17 +121,9 @@
 
 .branch-hero-title {
   font-size: 1.8rem;
-  color: var(--primary-color); /* Dùng màu nâu chủ đạo */
+  color: var(--primary-color);
   margin-bottom: 5px;
   line-height: 1.3;
-}
-
-.branch-hero-original {
-  font-family: var(--font-sutta);
-  font-size: 1.1rem;
-  color: var(--text-light);
-  font-style: italic;
-  margin-bottom: 15px;
 }
 
 .branch-hero-blurb {
@@ -138,24 +131,12 @@
   color: var(--text-main);
   line-height: 1.6;
   margin-bottom: 20px;
-  /* Tạo nền nhẹ để tách biệt blurb với danh sách bên dưới */
-  background-color: var(--bg-body);
+  /* Tạo nền nhẹ để tách biệt */
+  background-color: var(--bg-drawer); /* [REFACTORED] was var(--bg-body), dùng bg-drawer cho đậm hơn chút */
   padding: 15px 20px;
   border-radius: 8px;
-  display: inline-block; /* Ôm theo nội dung nếu ngắn */
-  text-align: left; /* Blurb thường dài nên canh trái dễ đọc hơn */
-}
-
-/* Responsive cho Blurb trên mobile */
-@media (max-width: 600px) {
-  .branch-hero-title {
-    font-size: 1.5rem;
-  }
-  .branch-hero-blurb {
-    font-size: 0.95rem;
-    padding: 12px 15px;
-    text-align: left;
-  }
+  display: inline-block;
+  text-align: left;
 }
 
 .branch-hero-divider {

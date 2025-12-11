@@ -10,7 +10,7 @@
 
 h1.sutta-title {
   text-align: center;
-  color: #2c3e50;
+  color: var(--text-main); /* [REFACTORED] was #2c3e50 */
   margin-bottom: 30px;
   line-height: 1.3;
 }
@@ -86,142 +86,7 @@ p {
 .eng {
   color: var(--text-eng);
   font-weight: 400;
-}
-
-.endsection,
-.endsutta,
-.endvagga {
-  text-align: center;
-  margin-top: 30px;
-  margin-bottom: 20px;
-  font-style: italic;
   color: var(--text-muted);
-}
-.endsutta {
-  font-weight: bold;
-  color: var(--text-main);
-}
-
-/* Highlight System (Mặc định cho Block - thẻ P/DIV) */
-.highlight {
-  border-left: 5px solid var(--primary-color);
-  background-color: var(--highlight-color-background);
-  /* [LEFT] Đang là 15px */
-  padding-left: 10px;
-  margin-left: -10px;
-
-  /* [RIGHT - FIX] Tăng từ 5px lên 15px cho cân xứng với bên trái */
-  padding-right: 10px;
-  margin-right: -10px;
-  transition: background-color 0.5s ease, box-shadow 0.5s ease;
-  box-shadow: none;
-  border-radius: 0;
-}
-
-.segment:target {
-  animation: none;
-}
-
-.segment.highlight {
-  background-color: var(--highlight-color-segment);
-  box-shadow: 0px 0px 0px 5px var(--highlight-color-segment);
-  border-left: none;
-  position: relative;
-  z-index: 1;
-  border-radius: 4px;
-}
-
-/* [UPDATED] Fix lỗi không highlight Pali */
-/* Áp dụng cho các thẻ span bao ngoài (thường dùng trong Verse/Template) */
-span.highlight,
-.segment-text.highlight {
-  /* Reset border của block highlight */
-  border-left: none;
-  margin-left: 0;
-
-  padding: 4px 10px;
-  margin: 2px -10px;
-
-  /* Style Highlight */
-  background-color: var(--highlight-color-segment);
-  box-shadow: 0 0 0 1px var(--highlight-color-segment); /* Viền nhẹ thay vì shadow loè */
-  /* border-radius: 6px; */
-
-  display: inline-block;
-  width: 100%; /* Chiếm hết chiều ngang cho đẹp đội hình */
-  box-sizing: border-box; /* Để padding không làm vỡ width */
-
-  text-decoration: none;
-}
-
-/* Tinh chỉnh nhỏ cho Pali bên trong đoạn highlight để không bị vỡ lề */
-.segment-text.highlight .pli {
-  margin-bottom: 2px; /* Giảm khoảng cách giữa Pali/Eng khi đang highlight */
-}
-
-.sutta-context-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* Căn phải toàn bộ container */
-  width: 100%;
-  
-  margin-top: 60px; /* Tăng khoảng cách với nội dung chính */
-  margin-bottom: 20px;
-  padding-top: 15px;
-  
-  /* border-top: 1px solid var(--border-light); */
-  font-family: var(--font-main);
-}
-
-/* Layer 1: Label "See also" - Nhỏ nhất, mờ nhất */
-.sutta-context-footer .ctx-label {
-  font-style: italic;
-  font-size: 0.75rem; /* Rất nhỏ */
-  color: var(--text-light); /* Màu xám nhạt */
-  margin-bottom: 6px;
-  display: block;
-}
-
-/* Container của nút bấm: Chứa Acronym và Title */
-.sutta-context-footer .ctx-link {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  
-  display: flex;
-  flex-direction: column; /* Xếp Acronym và Title dọc */
-  align-items: flex-end;  /* Căn phải nội dung bên trong */
-  text-align: right;
-  
-  transition: opacity 0.2s ease;
-}
-
-.sutta-context-footer .ctx-link:hover {
-  opacity: 0.7; /* Hiệu ứng hover nhẹ */
-}
-
-/* Layer 2: Acronym (AN 1.7) - Điểm nhấn chính */
-.sutta-context-footer .ctx-acronym {
-  font-size: 0.95rem; /* Vừa phải, không quá to */
-  font-weight: 700;   /* Đậm */
-  color: var(--primary-color); /* Màu nâu theme */
   line-height: 1.3;
-}
-
-/* Layer 3: Title (What Occupies...) - Bổ trợ */
-.sutta-context-footer .ctx-title {
-  font-size: 0.85rem; /* Nhỏ hơn acronym chút xíu */
-  font-weight: 400;   /* Nét thường */
-  color: var(--text-muted); /* Màu xám đen, đậm hơn label nhưng nhạt hơn acronym */
-  line-height: 1.3;
-  margin-top: 2px;    /* Tách nhẹ khỏi acronym */
-}
-
-/* Mobile Responsive */
-@media (max-width: 400px) {
-  .sutta-context-footer .ctx-title {
-    max-width: 250px; /* Giới hạn chiều rộng để text dài tự xuống dòng đẹp hơn */
-  }
+  margin-top: 2px;
 }

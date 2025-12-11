@@ -1,6 +1,6 @@
 /* Path: web/assets/css/components/_popup.css */
 .comment-marker {
-  color: #d35400;
+  color: var(--primary-color); /* [REFACTORED] was #d35400 */
   font-weight: bold;
   cursor: pointer;
   font-size: 0.75em;
@@ -10,7 +10,7 @@
   user-select: none;
 }
 .comment-marker:hover {
-  background-color: #ffe0b2;
+  background-color: var(--highlight-color-segment); /* [REFACTORED] was #ffe0b2 */
   border-radius: 50%;
 }
 
@@ -24,9 +24,11 @@
   max-height: 50vh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background-color: var(--bg-card);
-  border-left: 5px solid #d35400;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 -5px 15px rgba(0, 0, 0, 0.05);
+  
+  background-color: var(--bg-card); /* Đã dùng biến, giữ nguyên */
+  border-left: 5px solid var(--primary-color); /* [REFACTORED] was #d35400 */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 0 -5px 15px rgba(0, 0, 0, 0.05);
+  
   padding: 20px 40px 20px 25px;
   border-radius: 10px 10px 0 0;
   z-index: 1000;
@@ -37,18 +39,12 @@
   opacity: 1;
 }
 
-#comment-popup::-webkit-scrollbar {
-  width: 6px;
-}
-#comment-popup::-webkit-scrollbar-track {
-  background: transparent;
-}
 #comment-popup::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--border-color); /* [REFACTORED] was rgba(0,0,0,0.2) */
   border-radius: 10px;
 }
 #comment-popup::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.3);
+background-color: var(--text-light); /* [REFACTORED] */
 }
 
 #comment-popup.hidden {
