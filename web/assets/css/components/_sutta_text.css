@@ -73,7 +73,7 @@ p {
 
 .segment {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .pli {
   font-family: var(--font-sutta);
@@ -81,14 +81,39 @@ p {
   font-style: italic;
   font-size: 0.95em;
   display: block;
-  /* margin-bottom: 0;
-} */
+  margin-bottom: 2px;
+}
+
 .eng {
   color: var(--text-eng);
   font-weight: 400;
   color: var(--text-main);
   line-height: 1.3;
-  margin-top: 2px;
+  margin-top: 0;
+}
+
+/* [NEW] Centered End Markers */
+.endsutta,
+.endsegment,
+.endvagga,
+.endsection { /* Thêm .endsection phòng trường hợp dữ liệu dùng tên này */
+  text-align: center;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  
+  /* Style nhẹ nhàng */
+  color: var(--text-light);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Đảm bảo text bên trong (nếu có thẻ con) cũng được center */
+.endsutta *,
+.endsegment *,
+.endvagga * {
+  text-align: center;
+  display: block; /* Force block để text-align hoạt động nếu là span */
 }
 
 /* [NEW] Context Footer (See also) Styling */
