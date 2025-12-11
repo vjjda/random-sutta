@@ -1,73 +1,89 @@
 /* Path: web/assets/css/base/_variables.css */
 :root {
   /* =========================================
-     1. PRIMITIVE PALETTE
+     1. PRIMITIVE PALETTE (Nguyên liệu thô)
      ========================================= */
+  
+  /* NEUTRALS: WHITE & PAPER (Nền sáng) */
+  --primitive-white:       #ffffff;
+  --primitive-paper-50:    #fdfbf7;
+  --primitive-paper-100:   #f5f2eb;
+  --primitive-paper-200:   #eceae5; /* Dùng cho border light */
+  --primitive-paper-300:   #eaddcf;
+  
+  /* NEUTRALS: NIGHT (Nền tối) */
+  --primitive-night-900:   #1a1918; /* Body Dark */
+  --primitive-night-800:   #262423; /* Card Dark */
+  --primitive-night-700:   #383533; 
+  --primitive-night-600:   #33302e; /* Border Dark */
+  --primitive-night-500:   #201e1d; /* Drawer Dark */
 
-  /* Brand Colors */
-  --primitive-brown-900: #3e2723;
-  --primitive-brown-700: #5d4037;
-  --primitive-brown-500: #8b4513; /* Nâu đất chủ đạo */
-  --primitive-brown-warm: #ba6b45;
-  --primitive-brown-400: #a0522d;
-  --primitive-brown-300: #d7ccc8;
-  /* Nâu be sáng (Dùng cho text dark mode) */
+  /* BRAND: BROWN (Màu chủ đạo & Text Pali) */
+  --primitive-brown-900:   #3e2723;
+  --primitive-brown-700:   #5d4037;
+  --primitive-brown-500:   #8b4513; /* Primary */
+  --primitive-brown-400:   #a0522d; /* Primary Hover Light */
+  --primitive-brown-warm:  #ba6b45; /* Primary Hover Dark */
+  --primitive-brown-200:   #bcaaa4; /* [Refined] Pali Text Dark */
+  --primitive-brown-100:   #d7ccc8; /* Lighter brown */
 
-  /* LIGHT NEUTRALS (Paper) */
-  --primitive-paper-50: #fdfbf7;
-  --primitive-paper-100: #f5f2eb;
-  --primitive-paper-300: #eaddcf;
+  /* TEXT: INK (Dành cho nền sáng) */
+  --primitive-ink-900:     #2b221b; /* Main Text */
+  --primitive-ink-700:     #5c5550; /* Muted / Pali */
+  --primitive-ink-400:     #888888; /* Light Text */
 
-  /* DARK NEUTRALS (Warm Charcoal) */
-  --primitive-night-900: #1a1918;
-  --primitive-night-800: #262423;
-  --primitive-night-700: #383533;
-  /* TEXT COLORS */
-  --primitive-ink-900: #2b221b;
-  --primitive-ink-700: #5c5550;
+  /* TEXT: IVORY (Dành cho nền tối) - [NEW FULL SCALE] */
+  --primitive-ivory-900:   #ececec; /* High contrast */
+  --primitive-ivory-800:   #dedede; /* [NEW] Softer Main Text */
+  --primitive-ivory-700:   #d0d0d0;
+  --primitive-ivory-600:   #b0b0b0;
+  --primitive-ivory-500:   #a09c98; /* Muted Text */
+  --primitive-ivory-400:   #757575; /* Light Text */
 
-  --primitive-ivory-900: #ececec;
-  --primitive-ivory-800: #dedede;
-  --primitive-ivory-500: #a09c98;
+  /* ACCENTS */
+  --primitive-amber-300:   #ffb74d; /* Link Dark */
+
   /* =========================================
      2. SEMANTIC TOKENS (Light Theme Default)
      ========================================= */
 
-  /* [NEW] Typography Scale */
-  --text-scale: 1;
-  --text-link: var(--primitive-brown-500);
-  /* Colors */
-  --primary-color: var(--primitive-brown-500);
-  --primary-hover: var(--primitive-brown-400);
+  /* Typography Scale */
+  --text-scale:            1;
+
+  /* Functional Colors */
+  --primary-color:         var(--primitive-brown-500);
+  --primary-hover:         var(--primitive-brown-400);
+  --text-link:             var(--primitive-brown-500);
 
   /* Backgrounds */
-  --bg-body: var(--primitive-paper-50);
-  --bg-card: #ffffff;
-  --bg-drawer: var(--primitive-paper-100);
-  /* [HOVER LIGHT MODE] Nâu nhạt 6% - Đủ rõ trên nền giấy trắng */
-  --bg-hover: rgba(139, 69, 19, 0.06);
+  --bg-body:               var(--primitive-paper-50);
+  --bg-card:               var(--primitive-white);     /* Was #ffffff */
+  --bg-drawer:             var(--primitive-paper-100);
+  --bg-hover:              rgba(139, 69, 19, 0.06);    /* Keep RGBA for opacity effects */
+
   /* Typography */
-  --text-main: var(--primitive-ink-900);
-  --text-muted: var(--primitive-ink-700);
-  --text-light: #888888;
-  --text-pali: var(--primitive-ink-700);
-  --text-eng: var(--primitive-ink-900);
-  /* UI Elements */
-  --border-color: var(--primitive-paper-300);
-  --border-light: #eceae5;
+  --text-main:             var(--primitive-ink-900);
+  --text-muted:            var(--primitive-ink-700);
+  --text-light:            var(--primitive-ink-400);   /* Was #888888 */
+  
+  --text-pali:             var(--primitive-ink-700);
+  --text-eng:              var(--primitive-ink-900);
 
-  --shadow-soft: 0 2px 10px rgba(62, 39, 35, 0.05);
-  --shadow-card: 0 4px 15px rgba(62, 39, 35, 0.08);
-  --shadow-hover: 0 12px 24px rgba(62, 39, 35, 0.15);
-  /* Highlights */
+  /* Borders & UI */
+  --border-color:          var(--primitive-paper-300);
+  --border-light:          var(--primitive-paper-200); /* Was #eceae5 */
+  
+  /* Shadows & Highlights (Keep RGBA for blending) */
+  --shadow-soft:           0 2px 10px rgba(62, 39, 35, 0.05);
+  --shadow-card:           0 4px 15px rgba(62, 39, 35, 0.08);
+  --shadow-hover:          0 12px 24px rgba(62, 39, 35, 0.15);
+  
   --highlight-color-background: rgba(139, 69, 19, 0.08);
-  --highlight-color-segment: rgba(255, 167, 38, 0.15);
-  /* Font: Sans-serif Clean */
-  --font-main: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto",
-    "Helvetica Neue", sans-serif;
-  --font-sutta: "Noto Sans", "Segoe UI", sans-serif;
+  --highlight-color-segment:    rgba(255, 167, 38, 0.15);
 
-  /* Spacing */
+  /* Fonts & Spacing */
+  --font-main: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", sans-serif;
+  --font-sutta: "Noto Sans", "Segoe UI", sans-serif; 
   --container-width: 800px;
   --radius-md: 8px;
   --radius-sm: 4px;
@@ -78,37 +94,34 @@
    ========================================= */
 [data-theme="dark"] {
   /* Backgrounds */
-  --bg-body: var(--primitive-night-900);
-  --bg-card: var(--primitive-night-800);
-  --bg-drawer: #201e1d;
-
-  /* [UPDATED] Fix Hover không rõ ràng */
-  --bg-hover: rgba(255, 255, 255, 0.12);
+  --bg-body:               var(--primitive-night-900);
+  --bg-card:               var(--primitive-night-800);
+  --bg-drawer:             var(--primitive-night-500); /* Was #201e1d */
+  --bg-hover:              rgba(255, 255, 255, 0.12);
 
   /* Text */
-  --text-main: var(--primitive-ivory-800);
-  --text-muted: var(--primitive-ivory-500);
-  --text-light: #757575;
-  --text-pali: #bcaaa4;
-  --text-eng: var(--primitive-ivory-900);
-  --text-link: #ffb74d; /* Màu hổ phách sáng (Amber 300/400) */
-
+  --text-main:             var(--primitive-ivory-800); /* [UPDATED] Softer than 900 */
+  --text-muted:            var(--primitive-ivory-500);
+  --text-light:            var(--primitive-ivory-400); /* Was #757575 */
+  
+  --text-pali:             var(--primitive-brown-200); /* Was #bcaaa4 */
+  --text-eng:              var(--primitive-ivory-800);
+  --text-link:             var(--primitive-amber-300); /* Was #ffb74d */
+  
   /* Borders */
-  --border-color: var(--primitive-night-700);
-  --border-light: #33302e;
+  --border-color:          var(--primitive-night-700);
+  --border-light:          var(--primitive-night-600); /* Was #33302e */
 
-  /* [USER REQUEST] Primary về lại màu Nâu Gốc */
-  --primary-color: var(--primitive-brown-400); /* #a0522d */
-
-  /* [CHANGED] Màu hover mới: Giữ sắc nâu, không bị bạc */
-  --primary-hover: var(--primitive-brown-warm);
+  /* Primary */
+  --primary-color:         var(--primitive-brown-400);
+  --primary-hover:         var(--primitive-brown-warm);
 
   /* Shadows */
-  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.6);
-  --shadow-hover: 0 12px 30px rgba(0, 0, 0, 0.8);
+  --shadow-soft:           0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-card:           0 6px 20px rgba(0, 0, 0, 0.6);
+  --shadow-hover:          0 12px 30px rgba(0, 0, 0, 0.8);
 
   /* Highlights */
   --highlight-color-background: rgba(255, 255, 255, 0.08);
-  --highlight-color-segment: rgba(255, 179, 0, 0.15);
+  --highlight-color-segment:    rgba(255, 179, 0, 0.15);
 }
