@@ -2,6 +2,8 @@
 
 let isDragging = false;
 let dragTargetState = true;
+// [NEW] Biến toàn cục để lưu thời điểm chạm cảm ứng cuối cùng
+let globalLastTouchTime = 0; 
 
 export const FilterGestures = {
     initGlobalHandlers(onDragMove, onDragEnd) {
@@ -11,7 +13,7 @@ export const FilterGestures = {
         const endDrag = () => {
             if (isDragging) {
                 isDragging = false;
-                onDragEnd(); // Commit changes (Update URL)
+                onDragEnd(); 
             }
         };
         window.addEventListener("mouseup", endDrag);
@@ -19,10 +21,8 @@ export const FilterGestures = {
 
         window.addEventListener("touchmove", (e) => {
             if (!isDragging) return;
-
             const touch = e.touches[0];
             const target = document.elementFromPoint(touch.clientX, touch.clientY);
-
             if (target && target.classList.contains("filter-btn")) {
                 const bId = target.dataset.bookId;
                 if (bId) {
@@ -33,27 +33,40 @@ export const FilterGestures = {
     },
 
     attachToButton(btn, bookId, currentStateFn, onToggle, onSolo) {
-        let lastTapTime = 0; // Scoped variable for Double Tap detection
+        let lastTapTime = 0; 
 
         const handleStart = (e) => {
+            const now = Date.now();
+
+            // [CRITICAL FIX] CHẶN GHOST CLICKS
+            // Nếu đây là sự kiện chuột (mousedown) nhưng vừa mới có sự kiện cảm ứng (touchstart)
+            // xảy ra trong vòng 800ms trước đó -> Bỏ qua ngay lập tức.
+            if (e.type === 'mousedown' && (now - globalLastTouchTime < 800)) {
+                return;
+            }
+
+            // Nếu đây là sự kiện cảm ứng, cập nhật thời gian chạm toàn cục
+            if (e.type === 'touchstart') {
+                globalLastTouchTime = now;
+            }
+
             if (e.type === 'mousedown' && e.button !== 0) return;
             
-            const now = Date.now();
             const timeDiff = now - lastTapTime;
             
-            // [UPDATED] Tinh chỉnh độ nhạy
-            // 1. Giảm xuống 250ms: Để tránh nhầm lẫn khi người dùng toggle nhanh (tắt/bật liên tục)
-            // 2. Thêm > 50ms: Để lọc bỏ các cú chạm bị rung tay (micro-touches) trên màn hình cảm ứng
+            // Logic Double Tap: 
+            // - Phải nhỏ hơn 250ms (nhanh)
+            // - Phải lớn hơn 50ms (để tránh rung tay/nhiễu phần cứng)
             if (timeDiff < 250 && timeDiff > 50) {
                 onSolo(bookId);
-                isDragging = false; // Prevent dragging conflict
-                lastTapTime = 0;    // Reset
+                isDragging = false; 
+                lastTapTime = 0;    
                 return;
             }
             
             lastTapTime = now;
 
-            // Single Tap / Drag Start Logic
+            // Single Tap Logic
             isDragging = true;
             const currentActive = currentStateFn(bookId);
             dragTargetState = !currentActive; 
@@ -72,7 +85,6 @@ export const FilterGestures = {
         btn.addEventListener("mouseenter", onEnter);
         
         btn.addEventListener("click", (e) => e.preventDefault());
-        
         btn.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation();
