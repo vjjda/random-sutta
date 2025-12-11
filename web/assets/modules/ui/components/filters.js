@@ -4,7 +4,8 @@ import { Router } from '../../core/router.js';
 
 const filterSet = new Set();
 let isDragging = false;
-let dragTargetState = true; // true = force Turn ON, false = force Turn OFF
+let dragTargetState = true; 
+let longPressTimer = null; // [NEW] Timer cho Long Press
 
 export function getActiveFilters() {
   return Array.from(filterSet);
@@ -13,9 +14,14 @@ export function getActiveFilters() {
 export function generateBookParam() {
   const active = Array.from(filterSet);
   const defaults = PRIMARY_BOOKS;
+  
+  // Nếu active rỗng -> Trả về null (để Router xóa param ?b=, kích hoạt Total Random)
+  if (active.length === 0) return null;
+
   if (active.length !== defaults.length) {
     return active.join(",");
   }
+
   const activeSetCheck = new Set(active);
   for (let book of defaults) {
     if (!activeSetCheck.has(book)) return active.join(",");
@@ -23,24 +29,14 @@ export function generateBookParam() {
   return null;
 }
 
-/**
- * Toggle trạng thái một cuốn sách (Visual Only hoặc Full Update)
- * @param {string} bookId 
- * @param {HTMLElement} btnElement 
- * @param {boolean|null} forceState - Nếu null thì toggle đảo chiều, nếu true/false thì ép trạng thái
- * @param {boolean} updateRouter - Có cập nhật URL ngay không? (False khi đang drag)
- */
 function updateBookState(bookId, btnElement, forceState = null, updateRouter = true) {
   const currentState = filterSet.has(bookId);
   const newState = (forceState !== null) ? forceState : !currentState;
 
-  // Nếu trạng thái không đổi thì không làm gì (tối ưu khi drag qua lại)
   if (currentState === newState) return;
 
-  // Logic an toàn: Không cho phép tắt hết tất cả (giữ lại ít nhất 1)
-  if (!newState && filterSet.size <= 1 && currentState) {
-      return; 
-  }
+  // [UPDATED] Đã XÓA đoạn logic chặn tắt nút cuối cùng
+  // if (!newState && filterSet.size <= 1 && currentState) return; 
 
   if (newState) {
     filterSet.add(bookId);
@@ -56,12 +52,35 @@ function updateBookState(bookId, btnElement, forceState = null, updateRouter = t
   }
 }
 
+// [NEW] Chế độ Solo: Tắt hết, chỉ bật 1 cái
+function setSoloFilter(targetBookId) {
+    // 1. Logic Data
+    filterSet.clear();
+    filterSet.add(targetBookId);
+
+    // 2. Logic UI (Update toàn bộ nút)
+    const allBtns = document.querySelectorAll('.filter-btn');
+    allBtns.forEach(btn => {
+        if (btn.dataset.bookId === targetBookId) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // 3. Router
+    const bookParam = generateBookParam();
+    Router.updateURL(null, bookParam);
+    
+    // Rung nhẹ phản hồi (nếu thiết bị hỗ trợ)
+    if (navigator.vibrate) navigator.vibrate(50);
+}
+
 function createFilterButton(bookId, container, isDefaultActive) {
   const btn = document.createElement("button");
   btn.className = "filter-btn";
-  // Thêm thuộc tính này để CSS có thể chặn scroll trình duyệt khi touch nếu cần
   btn.style.touchAction = "pan-y"; 
-  btn.dataset.bookId = bookId; // Để truy xuất ID khi dùng elementFromPoint
+  btn.dataset.bookId = bookId;
 
   if (["dn", "mn", "sn", "an"].includes(bookId)) {
     btn.textContent = bookId.toUpperCase();
@@ -74,27 +93,31 @@ function createFilterButton(bookId, container, isDefaultActive) {
     filterSet.add(bookId);
   }
 
-  // --- LOGIC SWIPE / DRAG TO TOGGLE ---
+  // --- LOGIC SWIPE + LONG PRESS ---
 
-  // 1. Mouse/Touch Down: Bắt đầu phiên kéo
   const startDrag = (e) => {
-    // Chỉ xử lý chuột trái hoặc touch
     if (e.type === 'mousedown' && e.button !== 0) return;
 
     isDragging = true;
     
-    // Xác định trạng thái mục tiêu dựa trên nút đầu tiên được bấm
-    // Nếu nút đang bật -> Mục tiêu là Tắt (và ngược lại)
+    // [NEW] Setup Long Press Timer (800ms)
+    longPressTimer = setTimeout(() => {
+        // Nếu timer chạy xong tức là người dùng vẫn giữ tay -> Kích hoạt Solo
+        setSoloFilter(bookId);
+        isDragging = false; // Ngắt trạng thái drag để không update lại khi thả tay
+    }, 800);
+
+    // Vẫn thực hiện toggle ngay lập tức cho phản hồi nhanh (Snappy UI)
+    // (Nếu sau đó Long Press kích hoạt, nó sẽ override trạng thái này)
     const currentActive = filterSet.has(bookId);
     dragTargetState = !currentActive;
-
-    // Áp dụng ngay cho nút đầu tiên
-    updateBookState(bookId, btn, dragTargetState, false); // false = chưa update URL
+    updateBookState(bookId, btn, dragTargetState, false); 
   };
 
-  // 2. Mouse Enter: Xử lý khi chuột lướt qua nút khác (Desktop)
   const onEnter = (e) => {
     if (isDragging) {
+      // Nếu di chuột sang nút khác -> Hủy Long Press của nút cũ
+      clearTimeout(longPressTimer); 
       updateBookState(bookId, btn, dragTargetState, false);
     }
   };
@@ -103,22 +126,18 @@ function createFilterButton(bookId, container, isDefaultActive) {
   btn.addEventListener("touchstart", startDrag, { passive: true });
   btn.addEventListener("mouseenter", onEnter);
 
-  // Click thuần túy (để đảm bảo update URL nếu chỉ click 1 cái rồi thả)
   btn.addEventListener("click", (e) => {
-      // Logic click đã được xử lý ở mousedown/mouseup global, 
-      // ta prevent default click để tránh conflict
       e.preventDefault();
   });
 
   container.appendChild(btn);
 }
 
-/**
- * Xử lý global events để hỗ trợ Touch Drag (Mobile) và Mouse Up
- */
 function setupGlobalDragHandlers() {
-    // Global Up: Kết thúc kéo -> Cập nhật URL 1 lần duy nhất
     const endDrag = () => {
+        // [NEW] Luôn xóa timer khi thả tay
+        clearTimeout(longPressTimer);
+
         if (isDragging) {
             isDragging = false;
             const bookParam = generateBookParam();
@@ -129,11 +148,12 @@ function setupGlobalDragHandlers() {
     window.addEventListener("mouseup", endDrag);
     window.addEventListener("touchend", endDrag);
 
-    // Global Touch Move: Mobile không có 'mouseenter', phải tính toán tọa độ
     window.addEventListener("touchmove", (e) => {
+        // [NEW] Nếu di chuyển ngón tay -> Hủy Long Press (chuyển sang thao tác cuộn hoặc swipe)
+        if (longPressTimer) clearTimeout(longPressTimer);
+
         if (!isDragging) return;
 
-        // Lấy phần tử tại vị trí ngón tay
         const touch = e.touches[0];
         const target = document.elementFromPoint(touch.clientX, touch.clientY);
 
@@ -143,7 +163,7 @@ function setupGlobalDragHandlers() {
                 updateBookState(bId, target, dragTargetState, false);
             }
         }
-    }, { passive: true }); // passive true để vẫn cho phép scroll màn hình nếu vuốt dọc
+    }, { passive: true });
 }
 
 export function initFilters() {
@@ -153,7 +173,6 @@ export function initFilters() {
 
   if (!primaryDiv || !secondaryDiv) return;
 
-  // Setup Global Listeners (Chỉ chạy 1 lần)
   if (!window._filterDragSetup) {
       setupGlobalDragHandlers();
       window._filterDragSetup = true;
@@ -172,6 +191,7 @@ export function initFilters() {
     const booksFromUrl = bParam.toLowerCase().split(",").map((s) => s.trim());
     booksFromUrl.forEach((b) => initialBooks.add(b));
   } else {
+    // Mặc định ban đầu vẫn chọn Primary
     PRIMARY_BOOKS.forEach((b) => initialBooks.add(b));
   }
 
