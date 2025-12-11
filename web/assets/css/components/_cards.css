@@ -106,3 +106,61 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+
+/* [NEW] Branch Hero Section */
+.branch-hero {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.branch-hero-title {
+  font-size: 1.8rem;
+  color: var(--primary-color); /* Dùng màu nâu chủ đạo */
+  margin-bottom: 5px;
+  line-height: 1.3;
+}
+
+.branch-hero-original {
+  font-family: var(--font-sutta);
+  font-size: 1.1rem;
+  color: var(--text-light);
+  font-style: italic;
+  margin-bottom: 15px;
+}
+
+.branch-hero-blurb {
+  font-size: 1rem;
+  color: var(--text-main);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  /* Tạo nền nhẹ để tách biệt blurb với danh sách bên dưới */
+  background-color: var(--bg-body);
+  padding: 15px 20px;
+  border-radius: 8px;
+  display: inline-block; /* Ôm theo nội dung nếu ngắn */
+  text-align: left; /* Blurb thường dài nên canh trái dễ đọc hơn */
+}
+
+/* Responsive cho Blurb trên mobile */
+@media (max-width: 600px) {
+  .branch-hero-title {
+    font-size: 1.5rem;
+  }
+  .branch-hero-blurb {
+    font-size: 0.95rem;
+    padding: 12px 15px;
+    text-align: left;
+  }
+}
+
+.branch-hero-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border-light), transparent);
+  width: 80%;
+  margin: 0 auto;
+}
