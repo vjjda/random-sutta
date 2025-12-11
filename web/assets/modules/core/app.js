@@ -8,6 +8,7 @@ import { initFilters } from '../ui/components/filters.js';
 import { setupQuickNav } from '../ui/components/search.js';
 import { OfflineManager } from '../ui/managers/offline_manager.js';
 import { DrawerManager } from '../ui/managers/drawer_manager.js';
+import { ThemeManager } from '../ui/managers/theme_manager.js'; // [NEW]
 
 const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
@@ -23,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     DrawerManager.init();
     OfflineManager.init();
+    ThemeManager.init(); // [NEW] Khởi tạo Theme
     initFilters();
     setupQuickNav((query) => SuttaController.loadSutta(query));
 

@@ -1,38 +1,28 @@
 /* Path: web/assets/css/layout/_container.css */
 #sutta-container {
-  background: var(--bg-card);
-  padding: 20px 40px 40px 40px;
-  /* border-radius: 8px; */
-  /* box-shadow: var(--shadow-soft); */
+  /* [CHANGED] Flat & Immersive Mode */
+  background: transparent; /* Hoặc var(--bg-body) */
+  
+  /* Xóa bỏ các hiệu ứng thẻ nổi cũ */
+  border-top: none; 
+  box-shadow: none;
+  
+  /* Giữ lại padding để văn bản không dính mép màn hình */
+  padding: 20px 40px 60px 40px; 
+  
   min-height: 300px;
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
   max-width: 100%;
-  border-top: 0.5px solid var(--border-color);
 }
 
-#sutta-container img,
-#sutta-container table {
-  max-width: 100%;
-  height: auto;
-}
-
-.placeholder {
-  text-align: center;
-  color: var(--text-light);
-  margin-top: 40px;
-}
-
-/* Responsive Styles */
+/* Tinh chỉnh responsive để tối ưu không gian trên mobile */
 @media (max-width: 600px) {
   body {
-    padding: 0 10px 20px 10px;
+    padding: 0; /* Cho phép body tràn ra sát mép thiết bị */
   }
   #sutta-container {
-    padding: 20px 15px;
-  }
-  #nav-title-display {
-    min-width: 140px;
+    padding: 20px 20px 80px 20px; /* Padding trong container */
   }
 }
