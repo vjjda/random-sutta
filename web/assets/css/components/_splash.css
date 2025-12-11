@@ -1,0 +1,62 @@
+/* Path: web/assets/css/components/_splash.css */
+
+#splash-screen {
+  position: fixed;
+  inset: 0; /* Full screen */
+  background-color: #121212; /* Màu tối sang trọng (Dark Charcoal) */
+  z-index: 9999; /* Luôn nằm trên cùng */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease-out; /* Hiệu ứng mờ dần khi tắt */
+}
+
+/* Container của thanh loader */
+.splash-loader-box {
+  width: 200px;
+  height: 2px; /* Thanh mảnh */
+  background-color: rgba(255, 255, 255, 0.1); /* Nền thanh mờ */
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Thanh chạy bên trong */
+.splash-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background-color: var(--primary-color); /* Đồng bộ màu chủ đạo */
+  transform-origin: left;
+  animation: indeterminate 1.5s infinite cubic-bezier(0.65, 0.81, 0.73, 0.4);
+}
+
+/* Text trạng thái (Low profile) */
+.splash-text {
+  margin-top: 15px;
+  color: rgba(255, 255, 255, 0.4); /* Chữ xám mờ */
+  font-family: var(--font-main);
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Hiệu ứng chạy vô tận */
+@keyframes indeterminate {
+  0% {
+    left: -35%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -90%;
+  }
+  100% {
+    left: 100%;
+    right: -90%;
+  }
+}
