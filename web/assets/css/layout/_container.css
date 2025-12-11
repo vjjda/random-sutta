@@ -4,12 +4,11 @@
   background: transparent; /* Hoặc var(--bg-body) */
   
   /* Xóa bỏ các hiệu ứng thẻ nổi cũ */
-  border-top: none; 
+  border-top: 1px solid var(--border-color);
   box-shadow: none;
   
   /* Giữ lại padding để văn bản không dính mép màn hình */
-  padding: 20px 40px 60px 40px; 
-  
+  padding: 20px 40px 60px 40px;
   min-height: 300px;
   overflow-wrap: break-word;
   word-wrap: break-word;
@@ -23,6 +22,6 @@
     padding: 0; /* Cho phép body tràn ra sát mép thiết bị */
   }
   #sutta-container {
-    padding: 20px 20px 80px 20px; /* Padding trong container */
+    padding: 30px 20px 80px 20px; /* Padding trong container */
   }
 }
