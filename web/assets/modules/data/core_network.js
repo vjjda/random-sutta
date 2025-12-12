@@ -3,43 +3,50 @@ import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("CoreNetwork");
 
-/**
- * Core Network Utilities
- * Xử lý Fetch, Caching và Error Handling ở mức thấp.
- */
 export const CoreNetwork = {
     
-    /**
-     * Tải JSON từ URL.
-     * @param {string} url 
-     * @returns {Promise<any|null>} Parsed JSON hoặc null nếu lỗi
-     */
     async fetchJson(url) {
         try {
             const response = await fetch(url);
             if (!response.ok) {
-                if (response.status === 404) {
-                    logger.debug("fetchJson", `Not found: ${url}`);
-                    return null;
-                }
+                if (response.status === 404) return null;
                 throw new Error(`HTTP ${response.status}`);
             }
             return await response.json();
         } catch (e) {
-            logger.error("fetchJson", `Failed to load ${url}`, e);
+            // [IGNORE] Không log lỗi fetch file:// vì đây là hành vi dự kiến
+            if (!url.startsWith('http')) return null;
+            logger.warn("fetchJson", `Fetch failed: ${url}`);
             return null;
         }
     },
 
-    /**
-     * Kiểm tra xem URL đã có trong Cache chưa (dành cho logic Offline).
-     * @param {string} url 
-     * @returns {Promise<boolean>}
-     */
+    // [NEW] JSONP Loader cho môi trường file://
+    loadScript(url) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = true;
+            
+            script.onload = () => {
+                script.remove(); // Dọn dẹp DOM
+                resolve(true);
+            };
+            
+            script.onerror = (e) => {
+                script.remove();
+                logger.error("loadScript", `Failed to load script: ${url}`);
+                reject(new Error(`Script load error: ${url}`));
+            };
+            
+            document.head.appendChild(script);
+        });
+    },
+
     async isCached(url) {
+        // ... (Giữ nguyên logic cache check)
         if (!('caches' in self)) return false;
         try {
-            // Tìm trong tất cả các cache key
             const keys = await caches.keys();
             for (const key of keys) {
                 const cache = await caches.open(key);
@@ -47,42 +54,23 @@ export const CoreNetwork = {
                 if (match) return true;
             }
             return false;
-        } catch (e) {
-            return false;
-        }
+        } catch (e) { return false; }
     },
 
-    /**
-     * Tải hàng loạt URL và đưa vào Cache (dùng cho tính năng Download Offline).
-     * @param {string[]} urls - Danh sách URL cần cache
-     * @param {string} cacheName - Tên cache bucket
-     * @param {Function} onProgress - Callback (current, total) => void
-     */
     async cacheBatch(urls, cacheName, onProgress) {
-        if (!('caches' in self)) {
-            logger.warn("cacheBatch", "Cache API not supported");
-            return;
-        }
-
+        // ... (Giữ nguyên logic cache batch)
+        if (!('caches' in self)) return;
         const cache = await caches.open(cacheName);
         let completed = 0;
         const total = urls.length;
-
-        // Chia nhỏ batch để tránh nghẽn mạng (Chunk size = 10)
         const chunkSize = 10;
         for (let i = 0; i < total; i += chunkSize) {
             const chunk = urls.slice(i, i + chunkSize);
-            
             await Promise.all(chunk.map(async (url) => {
                 try {
-                    // Chỉ fetch nếu chưa có trong cache này
                     const match = await cache.match(url);
-                    if (!match) {
-                        await cache.add(url);
-                    }
-                } catch (e) {
-                    logger.warn("cacheBatch", `Failed to cache ${url}`, e);
-                } finally {
+                    if (!match) await cache.add(url);
+                } catch (e) {} finally {
                     completed++;
                     if (onProgress) onProgress(completed, total);
                 }
