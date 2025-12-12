@@ -130,3 +130,8 @@ noedit:
 	@git add . && git commit --amend --no-edit
 undo:
 	@git reset --soft HEAD~1
+
+# [Thêm vào cuối Makefile]
+live:
+	@echo "🔥 Starting Live Reload Server..."
+	$(PYTHON) src/live_server.py
