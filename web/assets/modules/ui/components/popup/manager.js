@@ -6,7 +6,7 @@ import { getLogger } from '../../../utils/logger.js';
 import { SuttaService } from '../../../services/sutta_service.js';
 import { LeafRenderer } from '../../views/renderers/leaf_renderer.js';
 import { AppConfig } from '../../../core/app_config.js';
-// [NEW] Import helper lấy text sạch
+// [IMPORTANT] Import helper xử lý text
 import { getCleanTextContent } from '../toh/text_utils.js';
 
 const logger = getLogger("PopupManager");
@@ -40,8 +40,7 @@ export const PopupManager = {
                 } else {
                     if (QuicklookLayer.isVisible() && !document.getElementById("quicklook-popup").contains(e.target)) {
                         QuicklookLayer.hide();
-                    } 
-                    else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
+                    } else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
                         this.hideAll();
                     }
                 }
@@ -67,6 +66,7 @@ export const PopupManager = {
         const layout = AppConfig.POPUP_LAYOUT;
         if (layout) {
             const root = document.documentElement;
+            // Áp dụng biến CSS từ Config
             root.style.setProperty('--popup-comment-height', `${layout.COMMENT_HEIGHT_VH}vh`);
             root.style.setProperty('--popup-quicklook-top', `${layout.QUICKLOOK_TOP_OFFSET_PX}px`);
         }
@@ -79,7 +79,7 @@ export const PopupManager = {
         this.state.comments = Array.from(markers).map(marker => ({
             id: marker.closest('.segment')?.id,
             text: marker.dataset.comment,
-            // [IMPORTANT] Lưu reference tới element để lấy text sau này
+            // Lưu element segment cha để lấy text context
             element: marker.closest('.segment') 
         }));
         this.state.currentIndex = -1;
@@ -120,8 +120,9 @@ export const PopupManager = {
 
             if (!uid) return;
 
-            // [NEW] Get context text from current comment's segment
+            // [FIXED] Logic lấy context text
             let contextText = "Context unavailable";
+            // Đảm bảo currentIndex hợp lệ và comment tồn tại
             if (this.state.currentIndex !== -1 && this.state.comments[this.state.currentIndex]) {
                 const currentSeg = this.state.comments[this.state.currentIndex].element;
                 if (currentSeg) {
@@ -129,11 +130,10 @@ export const PopupManager = {
                 }
             }
 
-            // Show Loading with Context
             QuicklookLayer.show(
                 '<div style="text-align:center; padding: 20px;">Loading...</div>', 
                 uid.toUpperCase(), 
-                contextText // Pass context
+                contextText // Truyền text vào header
             );
 
             const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
@@ -141,11 +141,10 @@ export const PopupManager = {
             if (data && data.content) {
                 const renderRes = LeafRenderer.render(data);
                 
-                // Show Real Content with Context
                 QuicklookLayer.show(
                     renderRes.html, 
                     data.book_title || uid.toUpperCase(),
-                    contextText // Pass context again
+                    contextText // Cập nhật lại header sau khi load xong
                 );
                 
                 if (hash) {
