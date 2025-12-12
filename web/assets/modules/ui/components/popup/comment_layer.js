@@ -23,16 +23,27 @@ export const CommentLayer = {
             callbacks.onClose();
         });
 
-        this.elements.btnPrev.addEventListener("click", () => callbacks.onNavigate(-1));
-        this.elements.btnNext.addEventListener("click", () => callbacks.onNavigate(1));
+        if (this.elements.btnPrev) {
+            this.elements.btnPrev.addEventListener("click", () => callbacks.onNavigate(-1));
+        }
+        if (this.elements.btnNext) {
+            this.elements.btnNext.addEventListener("click", () => callbacks.onNavigate(1));
+        }
 
-        // Intercept Links -> Quicklook
+        // [FIXED] Intercept Links -> Quicklook Logic
         this.elements.content.addEventListener("click", (e) => {
             const link = e.target.closest("a");
             if (link && link.href) {
-                // Kiểm tra nếu là link nội bộ (suttacentral hoặc relative)
-                if (link.href.includes("suttacentral.net") || !link.href.startsWith("http")) {
-                    e.preventDefault();
+                // Logic nhận diện link cần Quicklook:
+                // 1. Link gốc SuttaCentral
+                // 2. Link nội bộ do Processor tạo ra (có chứa ?q=)
+                // 3. Link relative (không bắt đầu bằng http)
+                const isSuttaCentral = link.href.includes("suttacentral.net");
+                const isInternalQuery = link.href.includes("?q=");
+                const isRelative = !link.href.startsWith("http");
+
+                if (isSuttaCentral || isInternalQuery || isRelative) {
+                    e.preventDefault(); // Chặn chuyển trang ngay lập tức
                     e.stopPropagation();
                     callbacks.onLinkClick(link.href);
                 }
@@ -41,38 +52,41 @@ export const CommentLayer = {
 
         // Swipe Gestures
         let startX = 0, startY = 0;
-        this.elements.popupBody.addEventListener("touchstart", (e) => {
-            startX = e.changedTouches[0].screenX;
-            startY = e.changedTouches[0].screenY;
-        }, { passive: true });
+        if (this.elements.popupBody) {
+            this.elements.popupBody.addEventListener("touchstart", (e) => {
+                startX = e.changedTouches[0].screenX;
+                startY = e.changedTouches[0].screenY;
+            }, { passive: true });
 
-        this.elements.popupBody.addEventListener("touchend", (e) => {
-            const diffX = e.changedTouches[0].screenX - startX;
-            const diffY = e.changedTouches[0].screenY - startY;
-            if (Math.abs(diffX) > 50 && Math.abs(diffY) < 30) {
-                callbacks.onNavigate(diffX > 0 ? -1 : 1);
-            }
-        }, { passive: true });
+            this.elements.popupBody.addEventListener("touchend", (e) => {
+                const diffX = e.changedTouches[0].screenX - startX;
+                const diffY = e.changedTouches[0].screenY - startY;
+                if (Math.abs(diffX) > 50 && Math.abs(diffY) < 30) {
+                    callbacks.onNavigate(diffX > 0 ? -1 : 1);
+                }
+            }, { passive: true });
+        }
     },
 
     show(text, index, total) {
+        if (!this.elements.content) return;
         this.elements.content.innerHTML = text;
         this.elements.popup.classList.remove("hidden");
         this._updateNav(index, total);
     },
 
     hide() {
-        this.elements.popup.classList.add("hidden");
+        this.elements.popup?.classList.add("hidden");
     },
 
     isVisible() {
-        return !this.elements.popup.classList.contains("hidden");
+        return this.elements.popup && !this.elements.popup.classList.contains("hidden");
     },
 
     _updateNav(index, total) {
-        if (total === 0) return;
+        if (total === 0 || !this.elements.infoLabel) return;
         this.elements.infoLabel.textContent = `${index + 1} / ${total}`;
-        this.elements.btnPrev.disabled = index <= 0;
-        this.elements.btnNext.disabled = index >= total - 1;
+        if (this.elements.btnPrev) this.elements.btnPrev.disabled = index <= 0;
+        if (this.elements.btnNext) this.elements.btnNext.disabled = index >= total - 1;
     }
 };

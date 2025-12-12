@@ -2,7 +2,7 @@
 import { CommentLayer } from './comment_layer.js';
 import { QuicklookLayer } from './quicklook_layer.js';
 import { Scroller } from '../../common/scroller.js';
-import { getLogger } from '../../../../utils/logger.js';
+import { getLogger } from '../../../utils/logger.js';
 import { SuttaService } from '../../../services/sutta_service.js';
 import { LeafRenderer } from '../../views/renderers/leaf_renderer.js';
 
@@ -27,7 +27,7 @@ export const PopupManager = {
             onDeepLink: (href) => this._navigateToMain(href)
         });
 
-        // Global Event for Markers
+        // Global Event for Markers (Main View)
         const container = document.getElementById("sutta-container");
         if (container) {
             container.addEventListener("click", (e) => {
@@ -36,7 +36,7 @@ export const PopupManager = {
                     const text = e.target.dataset.comment;
                     this._openComment(text);
                 } else {
-                    // Click outside -> Close all layers logic
+                    // Click outside -> Close logic (Priority: Quicklook -> Comment)
                     if (QuicklookLayer.isVisible() && !document.getElementById("quicklook-popup").contains(e.target)) {
                         QuicklookLayer.hide();
                     } else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
@@ -62,7 +62,7 @@ export const PopupManager = {
     _openComment(text) {
         this.state.currentIndex = this.state.comments.findIndex(c => c.text === text);
         CommentLayer.show(text, this.state.currentIndex, this.state.comments.length);
-        QuicklookLayer.hide(); // Đóng Quicklook nếu đang mở cái cũ
+        QuicklookLayer.hide(); 
     },
 
     _navigateComment(dir) {
@@ -75,77 +75,87 @@ export const PopupManager = {
         CommentLayer.show(item.text, nextIdx, this.state.comments.length);
         if (item.id) Scroller.scrollToId(item.id);
         
-        QuicklookLayer.hide(); // Đóng Quicklook khi chuyển comment
+        QuicklookLayer.hide();
     },
 
-    // --- LOGIC: QUICKLOOK ---
+    // --- LOGIC: QUICKLOOK (CORE PHASE 2) ---
     async _handleCommentLink(href) {
         try {
-            // Parse UID from href (vd: /mn1/en/sujato#1.1)
-            // Logic đơn giản hóa: Lấy param q hoặc trích từ path
             let uid = "";
             let hash = "";
             
-            // 1. URL Object parsing
+            // 1. Parse URL an toàn (xử lý cả link tương đối)
             const urlObj = new URL(href, window.location.origin);
             
+            // Ưu tiên lấy từ query param ?q= (Format nội bộ)
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
-            } else {
-                // Fallback: Parse path segments
-                // ex: /mn1/en/sujato
+            } 
+            // Fallback cho link SuttaCentral gốc (/mn1/en/sujato)
+            else {
                 const parts = urlObj.pathname.split('/').filter(p => p);
-                // Giả định part đầu tiên là UID nếu không phải các path hệ thống
                 if (parts.length > 0) uid = parts[0];
             }
-            hash = urlObj.hash; // e.g. #mn1:2.3
+            hash = urlObj.hash; 
 
             if (!uid) return;
 
-            QuicklookLayer.show("Loading...", uid.toUpperCase());
+            // 2. Hiện Popup Loading ngay lập tức để phản hồi người dùng
+            QuicklookLayer.show('<div style="text-align:center; padding: 20px;">Loading...</div>', uid.toUpperCase());
 
-            // 2. Fetch Data (Lightweight)
-            // Ta dùng loadSutta nhưng không render ra main view
+            // 3. Fetch Data "Lightweight"
+            // Gọi loadSutta nhưng KHÔNG render ra main view, chỉ lấy data
             const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
             
             if (data && data.content) {
-                // 3. Render HTML (Chỉ lấy phần content, không lấy footer/header)
+                // 4. Render HTML độc lập
                 const renderRes = LeafRenderer.render(data);
                 
-                // 4. Inject & Scroll
+                // 5. Inject vào Quicklook Popup
                 QuicklookLayer.show(renderRes.html, data.book_title || uid.toUpperCase());
                 
+                // 6. Scroll đến vị trí hash (nếu có)
                 if (hash) {
-                    // Scroll bên trong Quicklook body
-                    const targetId = hash.substring(1);
-                    const qBody = document.querySelector("#quicklook-popup .popup-body");
+                    const targetId = hash.substring(1); // Bỏ dấu #
+                    // Cần delay nhẹ để DOM kịp render
                     setTimeout(() => {
-                        const el = qBody.querySelector(`[id="${targetId}"]`);
-                        if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
-                    }, 100);
+                        const qBody = document.querySelector("#quicklook-popup .popup-body");
+                        const el = qBody?.querySelector(`[id="${targetId}"]`);
+                        if (el) {
+                            el.scrollIntoView({ block: "start", behavior: "smooth" });
+                            // Highlight nhẹ để người dùng biết đang ở đâu
+                            el.style.backgroundColor = "var(--highlight-color-segment)";
+                            setTimeout(() => el.style.backgroundColor = "", 2000);
+                        }
+                    }, 150);
                 }
             } else {
-                QuicklookLayer.show("Content not found.", "Error");
+                QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
             }
 
         } catch (e) {
             logger.error("Quicklook", e);
-            QuicklookLayer.show("Failed to load preview.", "Error");
+            QuicklookLayer.show('<p class="error-message">Failed to load preview.</p>', "Error");
         }
     },
 
     _navigateToMain(href) {
-        // Chuyển từ Quicklook sang Main View
+        // Chuyển từ Quicklook sang Main View (Deep Link)
         QuicklookLayer.hide();
         CommentLayer.hide();
         
-        // Giả lập click link (hoặc gọi loadSutta)
-        // Vì href có thể phức tạp, ta dùng window.loadSutta nếu parse được
-        // Ở đây để đơn giản ta parse lại
         try {
             const urlObj = new URL(href, window.location.origin);
+            let uid = "";
+            
             if (urlObj.searchParams.has("q")) {
-                let uid = urlObj.searchParams.get("q");
+                uid = urlObj.searchParams.get("q");
+            } else {
+                const parts = urlObj.pathname.split('/').filter(p => p);
+                if (parts.length > 0) uid = parts[0];
+            }
+
+            if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
                 window.loadSutta(uid, true, 0);
             }
