@@ -1,27 +1,28 @@
 /* Path: web/assets/css/layout/_container.css */
 #sutta-container {
   /* [CHANGED] Flat & Immersive Mode */
-  background: transparent; /* Hoặc var(--bg-body) */
+  background: transparent;
   
   /* Xóa bỏ các hiệu ứng thẻ nổi cũ */
   border-top: 1px solid var(--border-color);
   box-shadow: none;
   
-  /* Giữ lại padding để văn bản không dính mép màn hình */
+  /* Layout Spacing Only */
   padding: 20px 40px 60px 40px;
   min-height: 300px;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  word-break: break-word;
-  max-width: 100%;
+  
+  /* Lưu ý: Các thuộc tính xử lý text wrap đã được chuyển sang 
+     class .sutta-text-view trong file _sutta_text.css */
 }
 
 /* Tinh chỉnh responsive để tối ưu không gian trên mobile */
 @media (max-width: 600px) {
   body {
-    padding: 0; /* Cho phép body tràn ra sát mép thiết bị */
+    padding: 0;
+    /* Cho phép body tràn ra sát mép thiết bị */
   }
   #sutta-container {
-    padding: 30px 20px 80px 20px; /* Padding trong container */
+    padding: 30px 20px 80px 20px;
+    /* Padding trong container */
   }
 }

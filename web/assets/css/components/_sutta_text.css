@@ -1,12 +1,27 @@
 /* Path: web/assets/css/components/_sutta_text.css */
-#sutta-container ul {
+
+/* [NEW] Shared Class cho vùng hiển thị nội dung kinh (Main & Popup) */
+.sutta-text-view {
+  /* Text Wrapping & Safety */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* Reset list style bên trong vùng text */
+.sutta-text-view ul {
   list-style-type: none;
   padding-left: 0;
   margin: 0;
 }
-#sutta-container header ul {
+
+/* Ẩn meta lists trong header nếu có */
+.sutta-text-view header ul {
   display: none;
 }
+
+/* --- TYPOGRAPHY (Global for Sutta Text) --- */
 
 h1.sutta-title {
   text-align: center;
