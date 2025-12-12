@@ -4,7 +4,6 @@ import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { getLogger } from '../utils/logger.js';
 import { RandomHelper } from './random_helper.js';
 import { StructureStrategy } from './structure_strategy.js';
-
 const logger = getLogger("SuttaService");
 
 // [NEW] Helper: Tìm node trong cây cấu trúc dựa trên UID
@@ -15,7 +14,7 @@ function findNodeInTree(structure, targetId) {
         for (const child of structure) {
             // Nếu con là string và khớp ID -> Trả về "LEAF" (để phân biệt với null)
             if (typeof child === 'string') {
-                if (child === targetId) return "LEAF"; 
+                if (child === targetId) return "LEAF";
             } else {
                 // Nếu con là object, đệ quy
                 const res = findNodeInTree(child, targetId);
@@ -28,7 +27,6 @@ function findNodeInTree(structure, targetId) {
     if (typeof structure === 'object') {
         // Nếu tìm thấy key khớp -> Trả về nội dung bên trong (Value)
         if (structure[targetId]) return structure[targetId];
-        
         // Nếu không, tìm trong các con
         for (const key in structure) {
             const res = findNodeInTree(structure[key], targetId);
@@ -42,14 +40,11 @@ function findNodeInTree(structure, targetId) {
 // Trả về UID của con duy nhất nếu có, ngược lại trả về null
 function getSingleChildTarget(nodeContent) {
     if (!nodeContent || nodeContent === "LEAF") return null;
-
     // Trường hợp 1: Array có đúng 1 phần tử [ "dn" ] hoặc [ { "kn": ... } ]
     if (Array.isArray(nodeContent) && nodeContent.length === 1) {
         const child = nodeContent[0];
-        
         // Con là String -> OK (VD: "dn")
         if (typeof child === 'string') return child;
-        
         // Con là Object có 1 key -> OK (VD: { "kn": [...] })
         if (typeof child === 'object') {
             const keys = Object.keys(child);
@@ -99,8 +94,15 @@ export const SuttaService = {
         const isFileProtocol = window.location.protocol === 'file:';
         const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
         
+        // [FIX] Kiểm tra thêm biến global __DB_INDEX__
+        // Biến này được inject bởi 'offline_converter.py' trong quá trình build offline.
+        // Nếu nó tồn tại, nghĩa là ta đang chạy bản dev-offline (dù là trên http hay file://).
+        const isOfflineBuild = !!window.__DB_INDEX__;
+
         const shouldFetchTpk = true; 
-        const shouldMergeTree = isFileProtocol || isOfflineReady; 
+        
+        // [UPDATED] Merge tree nếu là File Protocol HOẶC đã cache Offline HOẶC là bản Build Offline
+        const shouldMergeTree = isFileProtocol || isOfflineReady || isOfflineBuild;
 
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
@@ -162,7 +164,8 @@ export const SuttaService = {
                     logger.warn("loadSutta", `Parent '${parentUid}' NOT found in Chunk ${hintChunk}.`);
                 }
             } else {
-                // Chỉ warn nếu đây là Leaf mà không có content. Branch thì không cần content.
+                // Chỉ warn nếu đây là Leaf mà không có content.
+                // Branch thì không cần content.
                 if (metaEntry.type === 'leaf' || metaEntry.type === 'subleaf') {
                      logger.warn("loadSutta", `No content for ${uid} and no parent_uid defined.`);
                 }
