@@ -30,51 +30,76 @@ def _get_base_uid(uid: str) -> str:
     base = base.split(':')[0]
     return base.lower()
 
-def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_acc: List[Tuple[str, str, str]]) -> str:
+# [UPDATED] Tuple chứ 7 phần tử cho báo cáo chi tiết
+# (sutta, segment, link_origin, mentioned_url, anchor_text, miss_uid, hash_id)
+MissingItem = Tuple[str, str, str, str, str, str, str]
+
+def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_acc: List[MissingItem]) -> str:
     if not text or "suttacentral.net" not in text:
         return text
 
-    # [SIMPLIFIED REGEX]
-    # 1. Domain: https://suttacentral.net/
-    # 2. Group 1 (UID): [a-zA-Z0-9\.-]+ (Bắt UID ngay sau domain)
-    # 3. Group 2 (Tail): [^"'\s]* (Nuốt hết phần còn lại cho đến khi gặp dấu nháy hoặc khoảng trắng)
-    pattern = r"https?://suttacentral\.net/([a-zA-Z0-9\.-]+)([^\"'\s]*)"
+    # [NEW REGEX] Capture full <a> tag context
+    # Gr 1: Prefix (<a ... href=')
+    # Gr 2: Full URL
+    # Gr 3: Raw UID capture
+    # Gr 4: URL Tail (path + hash)
+    # Gr 5: Suffix (' ... >)
+    # Gr 6: Anchor Text
+    # Gr 7: Closing Tag (</a>)
+    pattern = r"(<a\b[^>]*href=['\"])(https?://suttacentral\.net/([a-zA-Z0-9\.-]+)([^'\"\s]*))(['\"][^>]*>)(.*?)(</a>)"
     
     def repl(match):
-        uid_raw = match.group(1) 
-        url_tail = match.group(2) # Chứa path (/lzh/taisho) và hash (#segment)
+        prefix = match.group(1)
+        full_url = match.group(2)
+        uid_raw = match.group(3)
+        url_tail = match.group(4)
+        suffix = match.group(5)
+        anchor_text = match.group(6)
+        closing = match.group(7)
         
         target_uid = _get_base_uid(uid_raw)
         
-        # Tìm Fragment trong phần đuôi (nếu có)
-        fragment = ""
+        # Extract Hash
+        hash_id = ""
         hash_match = re.search(r"#([a-zA-Z0-9\.\:-]+)", url_tail)
         if hash_match:
-            fragment = hash_match.group(1)
+            hash_id = hash_match.group(1)
 
-        # Check Existence
+        # 1. Check Valid
         if target_uid in _WORKER_VALID_UIDS:
-            new_link = f"index.html?q={target_uid}"
-            if fragment:
-                new_link += f"#{fragment}"
-            return new_link
+            new_href = f"index.html?q={target_uid}"
+            if hash_id:
+                new_href += f"#{hash_id}"
+            # Reconstruct tag with internal link
+            return f"{prefix}{new_href}{suffix}{anchor_text}{closing}"
         
-        # [BROADENED CHECK] Logic cảnh báo nới lỏng
-        # Điều kiện: Bắt đầu bằng chữ cái VÀ chứa ít nhất 1 chữ số
-        # Ví dụ khớp: mn1, ea31.1, pli-tv-bi-vb-pc1
-        # Ví dụ bỏ qua: home, about, discussion
+        # 2. Log Missing (Nếu là link kinh điển hợp lệ)
         if re.match(r"^[a-z]", target_uid, re.I) and any(c.isdigit() for c in target_uid):
-             # Log warning ra console
-             logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing link '{target_uid}'")
-             missing_acc.append((current_sutta_id, segment_id, target_uid))
+             logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing '{target_uid}' ({anchor_text})")
+             
+             # Construct Source Link (Link của đoạn hiện tại trên SC)
+             # Format: https://suttacentral.net/{sutta}/en/sujato/{segment}
+             # Lưu ý: segment_id thường là "mn4:2.3", ta giữ nguyên hoặc chỉ lấy phần sau ":" tùy nhu cầu.
+             # Ở đây dùng nguyên segment_id để chính xác nhất.
+             source_link = f"https://suttacentral.net/{current_sutta_id}/en/sujato/{segment_id}"
+
+             missing_acc.append((
+                 current_sutta_id,  # sutta
+                 segment_id,        # segment
+                 source_link,       # link (source)
+                 full_url,          # mentioned
+                 anchor_text,       # anchor_text
+                 target_uid,        # miss_uid
+                 hash_id            # hash_id
+             ))
         
-        return match.group(0)
+        return match.group(0) # Keep original
 
-    return re.sub(pattern, repl, text)
+    return re.sub(pattern, repl, text, flags=re.IGNORECASE)
 
-def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]], List[Tuple[str, str, str]]]:
+def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]], List[MissingItem]]:
     sutta_id, root_path, trans_path, html_path, comment_path, author_uid = args
-    missing_refs: List[Tuple[str, str, str]] = []
+    missing_refs: List[MissingItem] = []
     
     try:
         if not html_path:

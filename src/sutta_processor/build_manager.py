@@ -22,6 +22,9 @@ from .logic.range_expander import generate_vinaya_variants, expand_range_ids
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
 
+# Định nghĩa lại Type cho khớp
+MissingItem = Tuple[str, str, str, str, str, str, str]
+
 class BuildManager:
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
@@ -67,7 +70,8 @@ class BuildManager:
 
         write_book_file(group, book_obj, dry_run=True) 
 
-    def _write_missing_report(self, missing_items: List[Tuple[str, str, str]]) -> Optional[str]:
+    # [UPDATED] Format 7 cột
+    def _write_missing_report(self, missing_items: List[MissingItem]) -> Optional[str]:
         if not missing_items:
             return None
         
@@ -77,9 +81,15 @@ class BuildManager:
         
         try:
             with open(report_path, "w", encoding="utf-8") as f:
-                f.write("Sutta_UID\tSegment_ID\tMissing_Target_UID\n")
+                # Header chuẩn
+                f.write("sutta\tsegment\tlink\tmentioned\tanchor_text\tmiss_uid\thash_id\n")
+                
+                # Data Rows
                 for item in missing_items:
-                    f.write(f"{item[0]}\t{item[1]}\t{item[2]}\n")
+                    # item structure: (sutta, segment, link, mentioned, anchor, miss_uid, hash)
+                    row = f"{item[0]}\t{item[1]}\t{item[2]}\t{item[3]}\t{item[4]}\t{item[5]}\t{item[6]}\n"
+                    f.write(row)
+                    
             return f"⚠️  Missing Links Report: {report_path} ({len(missing_items)} items)"
         except Exception as e:
             logger.error(f"❌ Failed to write missing report: {e}")
@@ -108,11 +118,9 @@ class BuildManager:
     def run(self) -> None:
         self._prepare_environment()
         
-        # 1. Generate Tasks
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
-        # [UPDATED] Xây dựng Universe từ Task List + Names Map (Branch Aware)
         task_based_uids: Set[str] = set()
         active_roots: Set[str] = set()
 
@@ -121,7 +129,6 @@ class BuildManager:
             self.book_progress[group] = 0
             self.buffers[group] = {}
             
-            # Extract Root ID (e.g. "sutta/mn" -> "mn")
             root_id = group.split('/')[-1]
             active_roots.add(root_id)
 
@@ -132,19 +139,14 @@ class BuildManager:
 
         logger.info(f"   🔍 Active Roots: {', '.join(sorted(active_roots))}")
 
-        # Start with confirmed leaves
         expanded_universe = set(task_based_uids)
         
-        # [NEW] Add Branches/Nodes from Metadata based on Active Roots
-        # Quét toàn bộ metadata, nếu UID bắt đầu bằng một trong các Active Root -> Add vào Universe
         logger.info("   🔮 Expanding Validation Universe (Branches & Aliases)...")
         
         count_branches = 0
         for uid in self.names_map:
-            # Skip if already added (optimization)
             if uid in expanded_universe:
                 continue
-                
             for root in active_roots:
                 if uid.startswith(root):
                     expanded_universe.add(uid)
@@ -153,8 +155,6 @@ class BuildManager:
         
         logger.info(f"      -> Added {count_branches} branch/structural UIDs from Metadata.")
 
-        # Expand Aliases & Ranges (Cho cả Leaf và Branch vừa thêm)
-        # Lưu ý: Convert sang list để tránh lỗi "Set changed size during iteration"
         current_uids = list(expanded_universe)
         for uid in current_uids:
             variants = generate_vinaya_variants(uid)
@@ -168,7 +168,6 @@ class BuildManager:
         valid_uids_universe = frozenset(expanded_universe)
         logger.info(f"✨ Validation Universe prepared: {len(valid_uids_universe)} valid targets.")
 
-        # 2. Execute Workers
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
         
