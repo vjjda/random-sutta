@@ -122,3 +122,11 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type d -name ".pytest_cache" -exec rm -rf {} +
 	@echo "✅ Clean complete."
+
+# ==============================================================================
+# Git
+# ==============================================================================
+noedit:
+	@git add . && git commit --amend --no-edit
+undo:
+	@git reset --soft HEAD~1
