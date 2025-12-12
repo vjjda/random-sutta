@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 import sys
+import socket
 from pathlib import Path
 from typing import List, Dict, Any
 from livereload import Server # type: ignore
@@ -46,6 +47,17 @@ SERVERS_CONFIG: List[Dict[str, Any]] = [
 
 logger = setup_logging("MultiServer")
 
+def get_lan_ip() -> str:
+    """Lấy địa chỉ IP mạng Lan để hiển thị cho tiện."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
 def start_server_instance(config: Dict[str, Any]) -> None:
     """Hàm worker để chạy một instance server trong luồng riêng."""
     try:
@@ -61,20 +73,18 @@ def start_server_instance(config: Dict[str, Any]) -> None:
         
         # Thiết lập theo dõi file
         for pattern in config["watch"]:
-            # Pattern cần là đường dẫn tương đối hoặc tuyệt đối string
-            # Ở đây ta dùng relative path từ Project Root để dễ quản lý
             watch_path = str(PROJECT_ROOT / pattern) if "*" not in pattern else pattern
             server.watch(watch_path)
 
-        logger.info(f"🚀 [{name}] Serving at http://localhost:{port}")
+        # [UPDATED] Bind to 0.0.0.0 to allow LAN access
+        logger.info(f"🚀 [{name}] Serving at http://0.0.0.0:{port}")
         
-        # Chặn output của từng server để tránh spam console quá nhiều
         server.serve(
             root=str(root_path),
             port=port,
-            host="localhost",
+            host="0.0.0.0",  # [CHANGED] Allow external connections
             restart_delay=1,
-            open_url_delay=None  # Không tự mở tab trình duyệt
+            open_url_delay=None 
         )
     except Exception as e:
         logger.error(f"❌ [{config['name']}] Error: {e}")
@@ -83,7 +93,10 @@ def run_orchestrator() -> None:
     """Chạy tất cả server song song."""
     threads = []
     
-    logger.info("🔥 Starting Multi-Port Live Server...")
+    lan_ip = get_lan_ip()
+    logger.info("🔥 Starting Omni-Channel Server (LAN Access Enabled)...")
+    logger.info(f"👉 Local:   http://localhost:[port]")
+    logger.info(f"👉 Network: http://{lan_ip}:[port]")
     logger.info("   (Press Ctrl+C to stop all servers)")
 
     # 1. Khởi tạo các luồng
@@ -91,7 +104,7 @@ def run_orchestrator() -> None:
         t = threading.Thread(target=start_server_instance, args=(config,), daemon=True)
         threads.append(t)
         t.start()
-        time.sleep(0.5) # Delay nhỏ để log in ra đẹp hơn
+        time.sleep(0.5) 
 
     # 2. Giữ main thread sống để hứng Ctrl+C
     try:
