@@ -5,7 +5,6 @@ import { Scroller } from '../../common/scroller.js';
 import { getLogger } from '../../../utils/logger.js';
 import { SuttaService } from '../../../services/sutta_service.js';
 import { LeafRenderer } from '../../views/renderers/leaf_renderer.js';
-// [UPDATED] Import AppConfig
 import { AppConfig } from '../../../core/app_config.js';
 
 const logger = getLogger("PopupManager");
@@ -17,12 +16,12 @@ export const PopupManager = {
     },
 
     init() {
-        // [UPDATED] Apply Layout Config
         this._applyLayoutConfig();
 
         // Init Layer 1: Comments
         CommentLayer.init({
-            onClose: () => CommentLayer.hide(),
+            // [UPDATED] Khi đóng Comment, đóng luôn cả Quicklook (Reset toàn bộ)
+            onClose: () => this.hideAll(),
             onNavigate: (dir) => this._navigateComment(dir),
             onLinkClick: (href) => this._handleCommentLink(href)
         });
@@ -32,7 +31,7 @@ export const PopupManager = {
             onDeepLink: (href) => this._navigateToMain(href)
         });
 
-        // Global Event for Markers (Main View)
+        // Global Event for Markers
         const container = document.getElementById("sutta-container");
         if (container) {
             container.addEventListener("click", (e) => {
@@ -41,24 +40,46 @@ export const PopupManager = {
                     const text = e.target.dataset.comment;
                     this._openComment(text);
                 } else {
+                    // Click outside -> Close logic
+                    // Priority 1: Nếu Quicklook đang mở và click ra ngoài nó -> Chỉ đóng Quicklook
                     if (QuicklookLayer.isVisible() && !document.getElementById("quicklook-popup").contains(e.target)) {
                         QuicklookLayer.hide();
-                    } else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
-                        CommentLayer.hide();
+                    } 
+                    // Priority 2: Nếu Comment đang mở và click ra ngoài nó -> Đóng tất cả (vì Quicklook neo theo Comment)
+                    else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
+                        this.hideAll();
                     }
                 }
             });
         }
+
+        // [RESTORED] Keyboard Support (ESC & Arrows)
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                // Ưu tiên đóng Quicklook trước nếu đang mở
+                if (QuicklookLayer.isVisible()) {
+                    QuicklookLayer.hide();
+                } 
+                // Nếu chỉ có Comment mở thì đóng Comment
+                else if (CommentLayer.isVisible()) {
+                    this.hideAll();
+                }
+            }
+            
+            // Chỉ điều hướng bằng mũi tên khi Comment mở VÀ Quicklook đang đóng
+            // (Để tránh xung đột nếu sau này Quicklook cũng cần scroll ngang)
+            if (CommentLayer.isVisible() && !QuicklookLayer.isVisible()) {
+                if (e.key === "ArrowLeft") this._navigateComment(-1);
+                if (e.key === "ArrowRight") this._navigateComment(1);
+            }
+        });
     },
 
-    // [NEW] Helper áp dụng cấu hình layout
     _applyLayoutConfig() {
         const layout = AppConfig.POPUP_LAYOUT;
         if (layout) {
             const root = document.documentElement;
-            // Set chiều cao comment popup (đơn vị vh)
             root.style.setProperty('--popup-comment-height', `${layout.COMMENT_HEIGHT_VH}vh`);
-            // Set khoảng cách top cho quicklook (đơn vị px)
             root.style.setProperty('--popup-quicklook-top', `${layout.QUICKLOOK_TOP_OFFSET_PX}px`);
         }
     },
@@ -120,7 +141,7 @@ export const PopupManager = {
                 QuicklookLayer.show(renderRes.html, data.book_title || uid.toUpperCase());
                 
                 if (hash) {
-                    let targetId = hash.substring(1); // Remove '#'
+                    let targetId = hash.substring(1); 
                     if (targetId && !targetId.includes(':')) {
                         const isSegmentNumber = /^[\d\.]+$/.test(targetId);
                         if (isSegmentNumber) {
