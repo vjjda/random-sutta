@@ -48,7 +48,15 @@ export const Router = {
       // Logic pushState giữ nguyên, suttaId luôn có giá trị
       const stateId = suttaId || params.get("q");
 
-      if (newUrl !== window.location.search + window.location.hash) {
+      // [UPDATED] Normalized comparison to avoid duplicate pushes
+      // Create relative URL string from current location for comparison
+      const currentRelativeUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      
+      // Decode both to handle encoded chars like %20 vs space discrepancies
+      // But usually pathname and search are consistent. 
+      // Main issue is ensure we don't push if exact same.
+      
+      if (newUrl !== currentRelativeUrl) {
          window.history.pushState({ suttaId: stateId, scrollY: 0 }, "", newUrl);
       }
     } catch (e) {

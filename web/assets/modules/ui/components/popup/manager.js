@@ -26,7 +26,8 @@ export const PopupManager = {
         });
 
         QuicklookLayer.init({
-            onDeepLink: (href) => this._navigateToMain(href)
+            onDeepLink: (href) => this._navigateToMain(href),
+            onOpenOriginal: (href) => this._handleExternalLink(href)
         });
 
         const container = document.getElementById("sutta-container");
@@ -59,6 +60,49 @@ export const PopupManager = {
                 if (e.key === "ArrowRight") this._navigateComment(1);
             }
         });
+    },
+
+    saveState() {
+        try {
+            const currentState = window.history.state || {};
+            const popupState = {
+                commentIndex: CommentLayer.isVisible() ? this.state.currentIndex : -1,
+                quicklookUrl: QuicklookLayer.isVisible() ? QuicklookLayer.elements.externalLinkBtn.href : null
+            };
+            window.history.replaceState({ ...currentState, popupState }, document.title, window.location.href);
+        } catch (e) {
+            logger.error("StateSave", e);
+        }
+    },
+
+    async restoreState() {
+        try {
+            const state = window.history.state;
+            if (!state || !state.popupState) return;
+
+            const { commentIndex, quicklookUrl } = state.popupState;
+
+            // Restore Comment
+            if (commentIndex !== undefined && commentIndex !== -1) {
+                if (this.state.comments.length > 0 && commentIndex < this.state.comments.length) {
+                    this.state.currentIndex = commentIndex;
+                    const item = this.state.comments[commentIndex];
+                    CommentLayer.show(item.text, commentIndex, this.state.comments.length, this._getCurrentContextText());
+                }
+            }
+
+            // Restore Quicklook
+            if (quicklookUrl) {
+                await this._handleCommentLink(quicklookUrl, true);
+            }
+        } catch (e) {
+            logger.error("StateRestore", e);
+        }
+    },
+
+    _handleExternalLink(href) {
+        this.saveState();
+        this._navigateToMain(href);
     },
 
     _applyLayoutConfig() {
@@ -112,7 +156,7 @@ export const PopupManager = {
         QuicklookLayer.hide();
     },
 
-    async _handleCommentLink(href) {
+    async _handleCommentLink(href, isRestoring = false) {
         try {
             let uid = "";
             let hash = "";
@@ -149,6 +193,11 @@ export const PopupManager = {
                     : `<span class="ql-uid-badge">${acronym}</span>`;
 
                 QuicklookLayer.show(renderRes.html, displayTitle, href);
+                
+                // [FIXED] Do not hide comment layer if we are just opening a link from it (unless mobile space is tight, but behavior requested is to keep state)
+                // Actually, logic was: CommentLayer calls onLinkClick -> _handleCommentLink.
+                // We want BOTH visible if screen permits, or at least logically open.
+                // Previously, logic didn't hide CommentLayer here implicitly, which is good.
                 
                 if (hash) {
                     let targetId = hash.substring(1); 

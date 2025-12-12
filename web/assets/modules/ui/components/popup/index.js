@@ -5,7 +5,8 @@ export function initPopupSystem() {
     PopupManager.init();
     return {
         scan: () => PopupManager.scanComments(),
-        hideAll: () => PopupManager.hideAll()
+        hideAll: () => PopupManager.hideAll(),
+        restore: () => PopupManager.restoreState()
     };
 }
 

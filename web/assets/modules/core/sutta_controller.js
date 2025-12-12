@@ -73,6 +73,7 @@ export const SuttaController = {
         // [UPDATED] Gọi scan qua API mới
         if (success) {
             PopupAPI.scan();
+            PopupAPI.restore();
         }
 
         if (success && shouldUpdateUrl) {

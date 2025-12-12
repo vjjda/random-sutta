@@ -19,6 +19,16 @@ export const QuicklookLayer = {
             e.stopPropagation();
             this.hide();
         });
+
+        if (this.elements.externalLinkBtn) {
+            this.elements.externalLinkBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (callbacks.onOpenOriginal && this.elements.externalLinkBtn.href) {
+                    callbacks.onOpenOriginal(this.elements.externalLinkBtn.href);
+                }
+            });
+        }
         
         this.elements.content.addEventListener("click", (e) => {
              const link = e.target.closest("a");
