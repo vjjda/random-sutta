@@ -31,7 +31,7 @@ export const QuicklookLayer = {
 
     show(htmlContent, title = "Preview", sourceUrl = null) {
         if (this.elements.title) {
-            this.elements.title.textContent = title;
+            this.elements.title.innerHTML = title;
         }
         this.elements.content.innerHTML = htmlContent;
         

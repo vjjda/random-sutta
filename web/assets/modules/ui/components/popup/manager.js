@@ -138,13 +138,15 @@ export const PopupManager = {
             if (data && data.content) {
                 const renderRes = LeafRenderer.render(data);
                 
-                // [UPDATED] Construct Full Title for Header
+                // [UPDATED] Construct Rich Title for Header
                 const meta = data.meta || {};
                 const acronym = meta.acronym || uid.toUpperCase();
-                const title = meta.translated_title || meta.original_title || "";
+                const titleText = meta.translated_title || meta.original_title || "";
                 
-                // Format: "MN 10: Satipatthana Sutta" hoặc chỉ "MN 10" nếu không có title
-                const displayTitle = title ? `${acronym}: ${title}` : acronym;
+                // HTML format to separate styling
+                const displayTitle = titleText 
+                    ? `<span class="ql-uid-badge">${acronym}</span><span class="ql-sutta-title">${titleText}</span>` 
+                    : `<span class="ql-uid-badge">${acronym}</span>`;
 
                 QuicklookLayer.show(renderRes.html, displayTitle, href);
                 

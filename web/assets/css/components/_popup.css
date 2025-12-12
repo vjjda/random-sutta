@@ -133,6 +133,38 @@
   transform: none; 
 }
 
+/* [NEW] Quicklook Title Layout */
+#quicklook-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0; /* Enable truncation for flex children */
+}
+
+.ql-uid-badge {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+  font-family: var(--font-sutta); /* Or monospace for technical look */
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.ql-sutta-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 .ql-header-content {
   flex: 1;
@@ -226,10 +258,10 @@
 /* --- QUICKLOOK FAB --- */
 .quicklook-fab {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
-  width: 32px; /* Large touch target */
-  height: 32px;
+  bottom: 10px;
+  right: 10px;
+  width: 20px; /* Large touch target */
+  height: 20px;
   background-color: transparent;
   border-radius: 50%;
   display: flex;
@@ -242,7 +274,7 @@
   box-shadow: none; /* No shadow as requested */
   
   /* [CONFIG] Adjust dot size here */
-  --dot-size: 6px; 
+  --dot-size: 6px;
 }
 
 /* The visual solid dot */
