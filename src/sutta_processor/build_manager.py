@@ -112,27 +112,51 @@ class BuildManager:
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
-        # [FIXED] Xây dựng Universe từ Task List thực tế (Chính xác 100%)
-        # Chỉ những gì được lên lịch build mới được coi là hợp lệ
+        # [UPDATED] Xây dựng Universe từ Task List + Names Map (Branch Aware)
         task_based_uids: Set[str] = set()
-        
+        active_roots: Set[str] = set()
+
         for group, tasks in book_tasks.items():
             self.book_totals[group] = len(tasks)
             self.book_progress[group] = 0
             self.buffers[group] = {}
+            
+            # Extract Root ID (e.g. "sutta/mn" -> "mn")
+            root_id = group.split('/')[-1]
+            active_roots.add(root_id)
+
             for task in tasks:
-                # task[0] là UID (sutta_id)
                 task_based_uids.add(task[0])
                 all_tasks.append(task)
                 self.sutta_group_map[task[0]] = group
 
-        logger.info(f"   🔍 Identified {len(task_based_uids)} UIDs scheduled for build.")
+        logger.info(f"   🔍 Active Roots: {', '.join(sorted(active_roots))}")
 
-        # Expand Universe từ danh sách thực tế này
+        # Start with confirmed leaves
         expanded_universe = set(task_based_uids)
         
-        logger.info("   🔮 Expanding Validation Universe (Aliases & Ranges)...")
-        for uid in task_based_uids:
+        # [NEW] Add Branches/Nodes from Metadata based on Active Roots
+        # Quét toàn bộ metadata, nếu UID bắt đầu bằng một trong các Active Root -> Add vào Universe
+        logger.info("   🔮 Expanding Validation Universe (Branches & Aliases)...")
+        
+        count_branches = 0
+        for uid in self.names_map:
+            # Skip if already added (optimization)
+            if uid in expanded_universe:
+                continue
+                
+            for root in active_roots:
+                if uid.startswith(root):
+                    expanded_universe.add(uid)
+                    count_branches += 1
+                    break
+        
+        logger.info(f"      -> Added {count_branches} branch/structural UIDs from Metadata.")
+
+        # Expand Aliases & Ranges (Cho cả Leaf và Branch vừa thêm)
+        # Lưu ý: Convert sang list để tránh lỗi "Set changed size during iteration"
+        current_uids = list(expanded_universe)
+        for uid in current_uids:
             variants = generate_vinaya_variants(uid)
             if variants:
                 expanded_universe.update(variants)
