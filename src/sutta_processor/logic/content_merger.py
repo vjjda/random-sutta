@@ -7,11 +7,15 @@ from typing import Dict, Optional, Tuple, Any, FrozenSet, List
 
 logger = logging.getLogger("SuttaProcessor.Logic.Merger")
 
+# [UPDATED] Biến Global cho Worker
 _WORKER_VALID_UIDS: FrozenSet[str] = frozenset()
+_WORKER_FIX_MAP: Dict[Tuple[str, str, str], Any] = {}
 
-def init_worker(valid_uids: FrozenSet[str]) -> None:
-    global _WORKER_VALID_UIDS
+# [UPDATED] Nhận thêm fix_map
+def init_worker(valid_uids: FrozenSet[str], fix_map: Dict[Tuple[str, str, str], Any]) -> None:
+    global _WORKER_VALID_UIDS, _WORKER_FIX_MAP
     _WORKER_VALID_UIDS = valid_uids
+    _WORKER_FIX_MAP = fix_map
 
 def load_json(path: Path) -> Dict[str, str]:
     if not path or not path.exists():
@@ -30,70 +34,72 @@ def _get_base_uid(uid: str) -> str:
     base = base.split(':')[0]
     return base.lower()
 
-# [UPDATED] Tuple chứ 7 phần tử cho báo cáo chi tiết
-# (sutta, segment, link_origin, mentioned_url, anchor_text, miss_uid, hash_id)
+# Type alias cho báo cáo
 MissingItem = Tuple[str, str, str, str, str, str, str]
 
 def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_acc: List[MissingItem]) -> str:
     if not text or "suttacentral.net" not in text:
         return text
 
-    # [NEW REGEX] Capture full <a> tag context
-    # Gr 1: Prefix (<a ... href=')
-    # Gr 2: Full URL
-    # Gr 3: Raw UID capture
-    # Gr 4: URL Tail (path + hash)
-    # Gr 5: Suffix (' ... >)
-    # Gr 6: Anchor Text
-    # Gr 7: Closing Tag (</a>)
     pattern = r"(<a\b[^>]*href=['\"])(https?://suttacentral\.net/([a-zA-Z0-9\.-]+)([^'\"\s]*))(['\"][^>]*>)(.*?)(</a>)"
     
     def repl(match):
         prefix = match.group(1)
-        full_url = match.group(2)
+        full_url = match.group(2) # Key: mentioned
         uid_raw = match.group(3)
         url_tail = match.group(4)
         suffix = match.group(5)
         anchor_text = match.group(6)
         closing = match.group(7)
         
-        target_uid = _get_base_uid(uid_raw)
+        # --- 1. Logic Check Fix (Ưu tiên cao nhất) ---
+        fix_key = (current_sutta_id, segment_id, full_url)
+        if fix_key in _WORKER_FIX_MAP:
+            fix_data = _WORKER_FIX_MAP[fix_key]
+            fixed_uid = fix_data["target_uid"]
+            
+            # Chỉ áp dụng fix nếu UID đích có trong database của chúng ta
+            if fixed_uid in _WORKER_VALID_UIDS:
+                fixed_hash = fix_data["hash_id"]
+                new_anchor = fix_data["anchor_text"] or anchor_text # Dùng text mới nếu có, ko thì giữ cũ
+                
+                new_href = f"index.html?q={fixed_uid}"
+                if fixed_hash:
+                    new_href += f"#{fixed_hash}"
+                
+                # Return fixed tag
+                return f"{prefix}{new_href}{suffix}{new_anchor}{closing}"
         
-        # Extract Hash
+        # --- 2. Logic Normal ---
+        target_uid = _get_base_uid(uid_raw)
         hash_id = ""
         hash_match = re.search(r"#([a-zA-Z0-9\.\:-]+)", url_tail)
         if hash_match:
             hash_id = hash_match.group(1)
 
-        # 1. Check Valid
         if target_uid in _WORKER_VALID_UIDS:
             new_href = f"index.html?q={target_uid}"
             if hash_id:
                 new_href += f"#{hash_id}"
-            # Reconstruct tag with internal link
             return f"{prefix}{new_href}{suffix}{anchor_text}{closing}"
         
-        # 2. Log Missing (Nếu là link kinh điển hợp lệ)
+        # --- 3. Logic Report Missing ---
         if re.match(r"^[a-z]", target_uid, re.I) and any(c.isdigit() for c in target_uid):
-             logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing '{target_uid}' ({anchor_text})")
+             logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing '{target_uid}'")
              
-             # Construct Source Link (Link của đoạn hiện tại trên SC)
-             # Format: https://suttacentral.net/{sutta}/en/sujato/{segment}
-             # Lưu ý: segment_id thường là "mn4:2.3", ta giữ nguyên hoặc chỉ lấy phần sau ":" tùy nhu cầu.
-             # Ở đây dùng nguyên segment_id để chính xác nhất.
              source_link = f"https://suttacentral.net/{current_sutta_id}/en/sujato/{segment_id}"
 
              missing_acc.append((
-                 current_sutta_id,  # sutta
-                 segment_id,        # segment
-                 source_link,       # link (source)
-                 full_url,          # mentioned
-                 anchor_text,       # anchor_text
-                 target_uid,        # miss_uid
-                 hash_id            # hash_id
+                 current_sutta_id, 
+                 segment_id, 
+                 source_link, 
+                 full_url, 
+                 anchor_text, 
+                 target_uid, 
+                 hash_id
              ))
         
-        return match.group(0) # Keep original
+        return match.group(0) # Keep external
 
     return re.sub(pattern, repl, text, flags=re.IGNORECASE)
 
