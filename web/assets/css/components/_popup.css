@@ -1,6 +1,12 @@
 /* Path: web/assets/css/components/_popup.css */
 
 /* --- SHARED STYLES --- */
+:root {
+  /* Default values (sẽ được JS ghi đè từ AppConfig) */
+  --popup-comment-height: 40vh;
+  --popup-quicklook-top: 70px;
+}
+
 .popup-container {
   position: fixed;
   left: 50%;
@@ -53,39 +59,36 @@
 /* --- COMMENT POPUP (Layer 1 - Bottom - Primary) --- */
 #comment-popup {
   bottom: 0;
-  /* Giới hạn chiều cao cố định là 40% màn hình */
-  max-height: 40vh; 
-  height: 40vh; /* Force height để layout ổn định với Quicklook */
+  /* [UPDATED] Sử dụng biến CSS */
+  max-height: var(--popup-comment-height); 
+  height: var(--popup-comment-height);
   
   border-radius: var(--radius-popup) var(--radius-popup) 0 0;
   border-left: 5px solid var(--primary-color);
-  z-index: 1020; /* Cao hơn Quicklook để luôn nổi bên trên */
+  z-index: 1020; 
 }
 
 /* --- QUICKLOOK POPUP (Layer 2 - Top - Secondary) --- */
-/* [UPDATED] Phủ kín phần trên màn hình */
 #quicklook-popup {
-  top: 0; 
-  /* Chừa lại đúng 40vh ở dưới đáy cho Comment Popup */
-  bottom: 40vh; 
+  /* [UPDATED] Sử dụng biến CSS */
+  top: var(--popup-quicklook-top); 
+  bottom: var(--popup-comment-height); 
   
-  height: auto; /* Tự động fill khoảng trống giữa top và bottom */
-  max-height: none; /* Bỏ giới hạn cũ */
+  height: auto; 
+  max-height: none; 
   
-  /* Bỏ bo góc để tạo cảm giác liền mạch */
   border-radius: 0; 
   border-left: 5px solid var(--primitive-amber-300);
-  border-bottom: 2px solid var(--border-color); /* Đường kẻ ngăn cách với Comment */
+  border-bottom: 2px solid var(--border-color); 
   
-  z-index: 1010; /* Thấp hơn Comment */
-  box-shadow: none; /* Bỏ shadow để trông phẳng hơn */
+  z-index: 1010; 
+  box-shadow: none; 
 }
 
-/* Animation cho Quicklook: Fade in tại chỗ */
 #quicklook-popup.hidden {
   opacity: 0;
   pointer-events: none;
-  transform: none; /* Không trượt, chỉ ẩn hiện */
+  transform: none; 
 }
 
 .quicklook-header {

@@ -5,6 +5,8 @@ import { Scroller } from '../../common/scroller.js';
 import { getLogger } from '../../../utils/logger.js';
 import { SuttaService } from '../../../services/sutta_service.js';
 import { LeafRenderer } from '../../views/renderers/leaf_renderer.js';
+// [UPDATED] Import AppConfig
+import { AppConfig } from '../../../core/app_config.js';
 
 const logger = getLogger("PopupManager");
 
@@ -15,6 +17,9 @@ export const PopupManager = {
     },
 
     init() {
+        // [UPDATED] Apply Layout Config
+        this._applyLayoutConfig();
+
         // Init Layer 1: Comments
         CommentLayer.init({
             onClose: () => CommentLayer.hide(),
@@ -43,6 +48,18 @@ export const PopupManager = {
                     }
                 }
             });
+        }
+    },
+
+    // [NEW] Helper áp dụng cấu hình layout
+    _applyLayoutConfig() {
+        const layout = AppConfig.POPUP_LAYOUT;
+        if (layout) {
+            const root = document.documentElement;
+            // Set chiều cao comment popup (đơn vị vh)
+            root.style.setProperty('--popup-comment-height', `${layout.COMMENT_HEIGHT_VH}vh`);
+            // Set khoảng cách top cho quicklook (đơn vị px)
+            root.style.setProperty('--popup-quicklook-top', `${layout.QUICKLOOK_TOP_OFFSET_PX}px`);
         }
     },
 
@@ -84,7 +101,6 @@ export const PopupManager = {
             let hash = "";
             
             const urlObj = new URL(href, window.location.origin);
-            
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
             } else {
@@ -103,12 +119,8 @@ export const PopupManager = {
                 const renderRes = LeafRenderer.render(data);
                 QuicklookLayer.show(renderRes.html, data.book_title || uid.toUpperCase());
                 
-                // [UPDATED] Normalized Segment ID Logic
                 if (hash) {
                     let targetId = hash.substring(1); // Remove '#'
-                    
-                    // Logic chuẩn hóa ID giống SuttaController:
-                    // Nếu hash chỉ là số (11.1) mà không có prefix (mn49:), ta tự ghép vào.
                     if (targetId && !targetId.includes(':')) {
                         const isSegmentNumber = /^[\d\.]+$/.test(targetId);
                         if (isSegmentNumber) {
@@ -118,7 +130,6 @@ export const PopupManager = {
 
                     setTimeout(() => {
                         const qBody = document.querySelector("#quicklook-popup .popup-body");
-                        // Tìm element với ID đã chuẩn hóa
                         const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
                         
                         if (targetEl && qBody) {
@@ -127,10 +138,8 @@ export const PopupManager = {
 
                             qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
                             targetEl.classList.add('highlight');
-                        } else {
-                            logger.warn("Quicklook", `Target element not found for hash: ${hash} (Normalized: ${targetId})`);
                         }
-                    }, 100); // Tăng delay nhẹ để đảm bảo DOM render xong
+                    }, 100);
                 }
             } else {
                 QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
@@ -145,18 +154,15 @@ export const PopupManager = {
     _navigateToMain(href) {
         QuicklookLayer.hide();
         CommentLayer.hide();
-        
         try {
             const urlObj = new URL(href, window.location.origin);
             let uid = "";
-            
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
             } else {
                 const parts = urlObj.pathname.split('/').filter(p => p);
                 if (parts.length > 0) uid = parts[0];
             }
-
             if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
                 window.loadSutta(uid, true, 0);

@@ -9,20 +9,23 @@ export const AppConfig = {
     TOAST_DURATION: 3000,
     MAGIC_NAV_COOLDOWN: 60000,
 
-    // [UPDATED] Sepia / Night Shift Configuration
+    // [NEW] Popup Layout Configuration
+    POPUP_LAYOUT: {
+        // Chiều cao của Comment Popup (chiếm bao nhiêu % màn hình)
+        // Quicklook sẽ tự động chiếm phần còn lại (trừ đi phần Top Offset)
+        COMMENT_HEIGHT_VH: 40, 
+        
+        // Khoảng cách từ đỉnh màn hình xuống Quicklook Popup (để tránh Header)
+        // Đơn vị: px
+        QUICKLOOK_TOP_OFFSET_PX: 70 
+    },
+
+    // Sepia / Night Shift Configuration
     SEPIA: {
         MAX_CSS_LIGHT: 50,
         MAX_CSS_DARK: 100,
-        
-        // [NEW] Cấu hình màu ấm (Night Shift)
-        // Hệ số xoay màu (Hue Rotate): 
-        // -0.5 là mức cam vừa phải. -1.0 sẽ rất đỏ. 0 là vàng chanh (sepia gốc).
         HUE_COEFF: -0.25, 
-        
-        // Độ bão hòa (Saturate):
-        // 1.0 là bình thường. >1.0 giúp màu cam rực rỡ hơn, chữ đen rõ hơn.
         SATURATE: 1.0,
-
         STORAGE_KEY_PREFIX: "sutta_sepia_"
     },
 
