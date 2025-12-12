@@ -6,16 +6,15 @@ import { getLogger } from '../utils/logger.js';
 const logger = getLogger("SuttaRepository");
 const DB_PATH = "assets/db";
 
-// Buffer tạm để hứng dữ liệu từ các file .js (JSONP)
+// Buffer vùng nhớ cho JSONP (Offline Mode)
 const dataBuffer = {};
 
-// Setup Global Loader để các file .js gọi vào
+// Thiết lập cổng giao tiếp toàn cục cho các file .js data gọi vào
 window.__DB_LOADER__ = {
     receive: (key, data) => {
-        // key ví dụ: "mn_chunk_0"
         dataBuffer[key] = data;
     },
-    // Các hàm getter cũ (nếu cần tương thích ngược)
+    // Backward compatibility helpers
     getMeta: (id) => null,
     getContent: (id) => null
 };
@@ -23,7 +22,21 @@ window.__DB_LOADER__ = {
 export const SuttaRepository = {
     
     async init() {
-        logger.info("Init", "Repository ready.");
+        if (this._isOfflineBuild()) {
+            logger.info("Init", "Detected OFFLINE BUILD mode (JSONP Strategy).");
+        } else {
+            logger.info("Init", "Detected ONLINE mode (Fetch Strategy).");
+        }
+    },
+
+    // --- UTILS ---
+
+    /**
+     * Kiểm tra xem đây có phải là bản Build Offline hay không.
+     * Dựa vào biến toàn cục do `offline_converter.py` inject vào index.html.
+     */
+    _isOfflineBuild() {
+        return !!window.__DB_INDEX__;
     },
 
     _getBucketId(uid) {
@@ -32,59 +45,63 @@ export const SuttaRepository = {
             hash = ((hash << 5) + hash) + uid.charCodeAt(i);
             hash = hash & 0xFFFFFFFF; 
         }
-        return String((hash >>> 0) % 20);
+        const unsignedHash = hash >>> 0;
+        return String(unsignedHash % 20);
     },
 
-    // --- STRATEGY SWITCHER ---
-    // Kiểm tra xem có đang ở chế độ Offline Build (có index global) không
-    _isOfflineBuild() {
-        return !!window.__DB_INDEX__;
-    },
-
+    /**
+     * [CORE LOGIC] Hàm tải dữ liệu thông minh.
+     * Tự động chọn cách tải dựa trên môi trường build.
+     */
     async _loadData(category, filenameWithoutExt) {
-        // 1. Nếu là Offline Build -> Load file .js
+        // TRƯỜNG HỢP 1: Bản Build Offline (Chạy file:// hoặc localhost:8002)
+        // Dữ liệu nằm trong file .js, load bằng thẻ script
         if (this._isOfflineBuild()) {
-            // Check buffer xem có sẵn chưa
+            // Kiểm tra bộ đệm
             if (dataBuffer[filenameWithoutExt]) {
                 return dataBuffer[filenameWithoutExt];
             }
 
-            // Load script: assets/db/content/mn_chunk_0.js
             const scriptUrl = `${DB_PATH}/${category}/${filenameWithoutExt}.js`;
             try {
+                // CoreNetwork.loadScript hoạt động tốt trên cả file:// và http://
                 await CoreNetwork.loadScript(scriptUrl);
-                // Sau khi load xong, script sẽ tự gọi __DB_LOADER__.receive để đẩy data vào buffer
+                
+                // Sau khi script chạy xong, nó sẽ gọi __DB_LOADER__.receive để đẩy data vào buffer
                 const data = dataBuffer[filenameWithoutExt];
                 if (data) return data;
-                throw new Error("Data not found in buffer after script load");
+                throw new Error(`Data buffer empty after loading ${scriptUrl}`);
             } catch (e) {
-                logger.error("LoadData", `Failed to load JS: ${scriptUrl}`, e);
+                logger.error("LoadData", `Failed to load JS resource: ${filenameWithoutExt}`, e);
                 return null;
             }
         } 
         
-        // 2. Nếu là Online / Dev Server -> Fetch file .json
+        // TRƯỜNG HỢP 2: Bản Online (Chạy localhost:8001 hoặc Web)
+        // Dữ liệu nằm trong file .json, load bằng fetch
         else {
             const jsonUrl = `${DB_PATH}/${category}/${filenameWithoutExt}.json`;
             return await CoreNetwork.fetchJson(jsonUrl);
         }
     },
 
+    // --- PUBLIC API ---
+
     async resolveLocation(uid) {
         if (!uid) return null;
         const cleanUid = uid.toLowerCase().trim();
 
-        // Ưu tiên Global Index (Offline Build)
+        // Ưu tiên 1: Tra cứu Index Tĩnh (Offline Build)
         if (window.__DB_INDEX__) {
             const loc = window.__DB_INDEX__[cleanUid];
             return loc || null;
         }
 
-        // Online Split Index
+        // Ưu tiên 2: Tra cứu Index Động (Online Build)
+        // Tải bucket index tương ứng
         const bucketId = this._getBucketId(cleanUid);
-        const indexUrl = `${DB_PATH}/index/${bucketId}.json`;
+        const bucketData = await this._loadData("index", bucketId); // Sử dụng _loadData để linh hoạt
         
-        const bucketData = await CoreNetwork.fetchJson(indexUrl);
         if (bucketData && bucketData[cleanUid]) {
             return bucketData[cleanUid];
         }
@@ -92,7 +109,6 @@ export const SuttaRepository = {
     },
 
     async fetchMeta(bookId) {
-        // Tự động chọn chiến lược .js hay .json
         return await this._loadData("meta", bookId);
     },
 
@@ -114,15 +130,25 @@ export const SuttaRepository = {
     },
 
     async downloadAll(onProgress) {
-        // ... (Giữ nguyên logic download bundle zip cho bản Online)
-        // ...
-        // Logic ZipLoader...
+        // [OPTIMIZATION] Nếu là bản Offline Build thì không cần download gì cả
+        if (this._isOfflineBuild()) {
+            logger.info("Sync", "Offline Build detected. Data is already local.");
+            if (onProgress) onProgress(100, 100);
+            return;
+        }
+
         logger.info("Sync", "Starting Bundle Download...");
-        // Kiểm tra JSZip...
         if (typeof JSZip === 'undefined') throw new Error("JSZip missing");
         
         const CACHE_NAME = (await caches.keys()).find(k => k.startsWith('sutta-cache-')) || 'sutta-cache-temp';
-        await ZipLoader.importBundleToCache(`${DB_PATH}/db_bundle.zip`, CACHE_NAME, `${DB_PATH}/`, onProgress);
+        
+        // Gọi Core Script để xử lý Zip
+        await ZipLoader.importBundleToCache(
+            `${DB_PATH}/db_bundle.zip`, 
+            CACHE_NAME, 
+            `${DB_PATH}/`, 
+            onProgress
+        );
         
         const extraCache = await caches.open(CACHE_NAME);
         await extraCache.add('assets/modules/data/constants.js');
