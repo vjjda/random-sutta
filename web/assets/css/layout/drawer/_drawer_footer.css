@@ -125,7 +125,7 @@
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 20px; /* Bo tròn hình viên thuốc */
-  box-shadow: var(--shadow-hover); /* Đổ bóng đậm hơn để nổi bật */
+  box-shadow: var(--shadow-soft); /* Đổ bóng đậm hơn để nổi bật */
   display: flex;
   align-items: center;
   justify-content: center;
