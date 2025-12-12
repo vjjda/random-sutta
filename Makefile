@@ -17,7 +17,7 @@ help:
 	@echo "⚙️  BUILD & DEV:"
 	@echo "  make dry     - Chạy Sutta Processor (Dry Run, không ghi file)"
 	@echo "  make data     - Chạy Sutta Processor (JSON -> Assets)"
-	@echo "  make build          - Chạy Full Build (Data + Release)"
+	@echo "  make full          - Chạy Full Build (Data + Release)"
 	@echo "  make dev            - Server Web gốc (Source)  -> http://localhost:8000"
 	@echo "  make dev-on     - Server Build Online      -> http://localhost:8001"
 	@echo "  make dev-off    - Server Build Offline     -> http://localhost:8002"
@@ -57,7 +57,7 @@ data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
 
-build:
+full:
 	@echo "🧠 Full Build (Data + Release)..."
 	$(PYTHON) -m src.sutta_processor
 	$(PYTHON) -m src.release_system
