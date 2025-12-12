@@ -13,7 +13,7 @@ export const AppConfig = {
     POPUP_LAYOUT: {
         // Chiều cao của Comment Popup (chiếm bao nhiêu % màn hình)
         // Quicklook sẽ tự động chiếm phần còn lại (trừ đi phần Top Offset)
-        COMMENT_HEIGHT_VH: 30, 
+        COMMENT_HEIGHT_VH: 40, 
         
         // Khoảng cách từ đỉnh màn hình xuống Quicklook Popup (để tránh Header)
         // Đơn vị: px

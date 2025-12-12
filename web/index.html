@@ -359,10 +359,12 @@
     </div>
 
     <div id="comment-popup" class="popup-container hidden">
-      <div id="comment-context-header" class="comment-header">...</div>
+      <div class="comment-header">
+        <div id="comment-context-header" class="comment-header-text">...</div>
+        <button id="close-comment" class="header-close-btn">×</button>
+      </div>
       
       <div class="popup-body">
-        <button id="close-comment" class="popup-close-btn" aria-label="Close">×</button>
         <div id="comment-content"></div>
       </div>
       
@@ -379,7 +381,10 @@
 
     <div id="quicklook-popup" class="popup-container hidden">
       <div class="quicklook-header">
-        <span id="quicklook-title" class="ql-title">Preview</span>
+        <div class="ql-header-content">
+          <div id="quicklook-context" class="ql-context">Context text...</div>
+          <div id="quicklook-ref" class="ql-ref">Reference</div>
+        </div>
         <button id="close-quicklook" class="header-close-btn">×</button>
       </div>
       <div class="popup-body">
