@@ -71,7 +71,7 @@ dev:
 # Server cho bản Build Online - Port 8001
 # Yêu cầu: Phải chạy 'make release' trước để có thư mục build
 dev-on:
-	@echo "🌍 Starting BUILD ONLINE Server..."
+	@echo "� Starting BUILD ONLINE Server..."
 	@echo "   👉 http://localhost:8001/"
 	$(PYTHON) -m http.server 8001 --directory build/dev-online
 
@@ -135,3 +135,8 @@ undo:
 live:
 	@echo "🔥 Starting Live Reload Server..."
 	$(PYTHON) src/live_server.py
+
+# [NEW] Multi-port Live Server
+serve:
+	@echo "🌐 Starting Omni-Channel Server..."
+	$(PYTHON) src/multi_server.py
