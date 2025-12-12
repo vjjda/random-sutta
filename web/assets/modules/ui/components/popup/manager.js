@@ -36,8 +36,6 @@ export const PopupManager = {
                     const text = e.target.dataset.comment;
                     this._openComment(text);
                 } else {
-                    // Click outside -> Close logic
-                    // Priority: Close Quicklook first if open, else close Comment
                     if (QuicklookLayer.isVisible() && !document.getElementById("quicklook-popup").contains(e.target)) {
                         QuicklookLayer.hide();
                     } else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
@@ -86,6 +84,7 @@ export const PopupManager = {
             let hash = "";
             
             const urlObj = new URL(href, window.location.origin);
+            
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
             } else {
@@ -102,32 +101,36 @@ export const PopupManager = {
             
             if (data && data.content) {
                 const renderRes = LeafRenderer.render(data);
-                
-                // Inject Content
                 QuicklookLayer.show(renderRes.html, data.book_title || uid.toUpperCase());
                 
-                // [UPDATED] Instant Scroll & Highlight Logic
+                // [UPDATED] Normalized Segment ID Logic
                 if (hash) {
-                    const targetId = hash.substring(1);
-                    // Dùng setTimeout 0 để chờ DOM render xong
+                    let targetId = hash.substring(1); // Remove '#'
+                    
+                    // Logic chuẩn hóa ID giống SuttaController:
+                    // Nếu hash chỉ là số (11.1) mà không có prefix (mn49:), ta tự ghép vào.
+                    if (targetId && !targetId.includes(':')) {
+                        const isSegmentNumber = /^[\d\.]+$/.test(targetId);
+                        if (isSegmentNumber) {
+                            targetId = `${uid}:${targetId}`;
+                        }
+                    }
+
                     setTimeout(() => {
                         const qBody = document.querySelector("#quicklook-popup .popup-body");
+                        // Tìm element với ID đã chuẩn hóa
                         const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
                         
                         if (targetEl && qBody) {
-                            // 1. Instant Jump: Tính toán offset và gán thẳng scrollTop
-                            // Trừ đi một khoảng padding (ví dụ 60px) để không bị sát mép trên
                             const offsetTop = targetEl.offsetTop;
                             qBody.scrollTop = offsetTop - 60;
 
-                            // 2. Apply Highlight
-                            // Xóa highlight cũ trong popup này (nếu có)
                             qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
-                            
-                            // Thêm class highlight (sử dụng CSS có sẵn)
                             targetEl.classList.add('highlight');
+                        } else {
+                            logger.warn("Quicklook", `Target element not found for hash: ${hash} (Normalized: ${targetId})`);
                         }
-                    }, 0);
+                    }, 100); // Tăng delay nhẹ để đảm bảo DOM render xong
                 }
             } else {
                 QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
@@ -142,15 +145,18 @@ export const PopupManager = {
     _navigateToMain(href) {
         QuicklookLayer.hide();
         CommentLayer.hide();
+        
         try {
             const urlObj = new URL(href, window.location.origin);
             let uid = "";
+            
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
             } else {
                 const parts = urlObj.pathname.split('/').filter(p => p);
                 if (parts.length > 0) uid = parts[0];
             }
+
             if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
                 window.loadSutta(uid, true, 0);
