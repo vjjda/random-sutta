@@ -8,12 +8,17 @@ logger = logging.getLogger("SuttaProcessor.Logic.RangeExpander")
 ARTICLE_ID_PATTERN = re.compile(r"<article[^>]*\sid=['\"]([^'\"]+)['\"]", re.IGNORECASE)
 RANGE_PATTERN = re.compile(r"^(.*?)(\d+)[-–](\d+)$")
 
-# Định nghĩa các quy tắc Regex cho Vinaya
+# Định nghĩa các quy tắc Regex cho Vinaya (Thứ tự ưu tiên: Cụ thể -> Khái quát)
 VINAYA_REGEX_RULES = [
+    # 1. Bhikkhuni Vibhanga (pli-tv-bi-vb-pj1 -> ipj1)
     (re.compile(r"^pli-tv-bi-vb-(.+)$"), r"i\1"),
+    # 2. Bhikkhu Vibhanga (pli-tv-bu-vb-pj1 -> pj1)
     (re.compile(r"^pli-tv-bu-vb-(.+)$"), r"\1"),
+    # 3. General Bhikkhuni (pli-tv-bi-pc1 -> ipc1)
     (re.compile(r"^pli-tv-bi-(.+)$"), r"i\1"),
+    # 4. General Bhikkhu (pli-tv-bu-pc1 -> pc1)
     (re.compile(r"^pli-tv-bu-(.+)$"), r"\1"),
+    # 5. General Vinaya (pli-tv-kd1 -> kd1)
     (re.compile(r"^pli-tv-(.+)$"), r"\1"),
 ]
 
@@ -47,7 +52,6 @@ def expand_range_ids(uid: str) -> List[str]:
         return _expand_alias_ids(prefix, start, end)
     return []
 
-# ... (Giữ nguyên phần còn lại của file: _extract_unique_article_ids, generate_vinaya_variants, generate_subleaf_shortcuts) ...
 def _extract_unique_article_ids(content: Dict[str, Any]) -> List[str]:
     found_ids = []
     seen_ids = set()
@@ -70,12 +74,21 @@ def _generate_smart_acronym(parent_acronym: str, start: int, end: int, replaceme
     return new_acronym if new_acronym != parent_acronym else ""
 
 def generate_vinaya_variants(uid: str) -> Set[str]:
+    """
+    [PUBLIC] Sinh ra biến thể tên gọi (Alias) dựa trên quy tắc Vinaya.
+    Chỉ lấy biến thể match đầu tiên (độ ưu tiên cao nhất).
+    """
     variants = set()
     for pattern, replacement in VINAYA_REGEX_RULES:
         if pattern.match(uid):
             alias = pattern.sub(replacement, uid)
             if alias and alias != uid:
                 variants.add(alias)
+            
+            # [OPTIMIZATION] Stop at first match (Priority Rule)
+            # Đảm bảo chỉ sinh ra 1 alias tốt nhất, tránh sinh alias rác từ các rule chung chung phía sau.
+            break
+            
     return variants
 
 def generate_subleaf_shortcuts(
@@ -89,6 +102,7 @@ def generate_subleaf_shortcuts(
     article_ids = _extract_unique_article_ids(content)
     root_range_info = _parse_range_string(root_uid)
 
+    # --- CASE A: SINGLE LEAF ---
     if len(article_ids) <= 1:
         ordered_structure_ids.append(root_uid)
         
@@ -106,6 +120,7 @@ def generate_subleaf_shortcuts(
                     "hash_id": None
                 }
 
+    # --- CASE B: MULTI SUBLEAFS ---
     else:
         logger.debug(f"   🌿 HTML Articles Detected: {root_uid} -> {len(article_ids)} subleafs")
 
@@ -140,6 +155,11 @@ def generate_subleaf_shortcuts(
                         "hash_id": sub_uid
                     }
 
+    # =================================================================
+    # [UNIVERSAL POST-PROCESS] SINH BIẾN THỂ VINAYA
+    # =================================================================
+    
+    # 1. Sinh biến thể cho Root UID
     root_variants = generate_vinaya_variants(root_uid)
     for var_uid in root_variants:
         if var_uid not in result_meta:
@@ -149,6 +169,7 @@ def generate_subleaf_shortcuts(
                 "hash_id": None
             }
 
+    # 2. Sinh biến thể cho TẤT CẢ items hiện có
     current_keys = list(result_meta.keys())
     
     for item_uid in current_keys:
