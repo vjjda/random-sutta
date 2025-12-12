@@ -3,18 +3,13 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Any, FrozenSet
+from typing import Dict, Optional, Tuple, Any, FrozenSet, List
 
 logger = logging.getLogger("SuttaProcessor.Logic.Merger")
 
-# [OPTIMIZATION] Biến Global để lưu Universe trong memory của từng Worker Process
-# Tránh việc phải serialize/unpickle cho từng task
 _WORKER_VALID_UIDS: FrozenSet[str] = frozenset()
 
 def init_worker(valid_uids: FrozenSet[str]) -> None:
-    """
-    Hàm khởi tạo chạy 1 lần duy nhất khi Worker Process khởi động.
-    """
     global _WORKER_VALID_UIDS
     _WORKER_VALID_UIDS = valid_uids
 
@@ -35,10 +30,8 @@ def _get_base_uid(uid: str) -> str:
     base = base.split(':')[0]
     return base.lower()
 
-def _sanitize_links(text: str, current_sutta_id: str, segment_id: str) -> str:
-    """
-    Sử dụng _WORKER_VALID_UIDS global để check.
-    """
+# [UPDATED] Thêm tham số missing_acc (List) để thu thập lỗi
+def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_acc: List[Tuple[str, str, str]]) -> str:
     if not text or "suttacentral.net" not in text:
         return text
 
@@ -50,27 +43,32 @@ def _sanitize_links(text: str, current_sutta_id: str, segment_id: str) -> str:
         
         target_uid = _get_base_uid(uid_raw)
         
-        # [OPTIMIZATION] Check trên biến Global (O(1) lookup, zero copy overhead)
         if target_uid in _WORKER_VALID_UIDS:
             new_link = f"index.html?q={target_uid}"
             if fragment:
                 new_link += f"#{fragment}"
             return new_link
         
+        # [UPDATED] Logic thu thập lỗi
         if re.match(r"^[a-z]+[\d\.]+", target_uid):
-             logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Link to '{target_uid}' missing in offline data.")
+             # 1. Log cảnh báo (DEBUG để đỡ rác màn hình nếu nhiều)
+             logger.debug(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing '{target_uid}'")
+             
+             # 2. Thêm vào danh sách báo cáo (Sutta, Segment, MissingTarget)
+             missing_acc.append((current_sutta_id, segment_id, target_uid))
         
         return match.group(0)
 
     return re.sub(pattern, repl, text)
 
-# [UPDATED SIGNATURE] Bỏ valid_uids khỏi args
-def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]]]:
+# [UPDATED] Return type thêm List[Tuple...]
+def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]], List[Tuple[str, str, str]]]:
     sutta_id, root_path, trans_path, html_path, comment_path, author_uid = args
+    missing_refs: List[Tuple[str, str, str]] = [] # Accumulator cho task này
     
     try:
         if not html_path:
-            return "skipped", sutta_id, None
+            return "skipped", sutta_id, None, []
 
         data_root = load_json(root_path)
         data_trans = load_json(trans_path)
@@ -102,21 +100,22 @@ def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Option
             if eng: entry["eng"] = eng
             if html: entry["html"] = html
             
-            # [UPDATED] Không cần truyền valid_uids nữa
-            if comm: entry["comm"] = _sanitize_links(comm, sutta_id, key)
+            # [UPDATED] Truyền missing_refs vào
+            if comm: entry["comm"] = _sanitize_links(comm, sutta_id, key, missing_refs)
             
             segments_dict[key] = entry
 
         if not has_content:
-             return "skipped", sutta_id, None
+             return "skipped", sutta_id, None, []
 
         final_data = {
             "author_uid": author_uid,
             "data": segments_dict 
         }
 
-        return "success", sutta_id, final_data
+        # [UPDATED] Return thêm missing_refs
+        return "success", sutta_id, final_data, missing_refs
 
     except Exception as e:
         logger.error(f"Error processing {sutta_id}: {e}")
-        return "error", sutta_id, None
+        return "error", sutta_id, None, []
