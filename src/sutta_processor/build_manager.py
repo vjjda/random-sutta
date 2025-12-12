@@ -8,7 +8,7 @@ from typing import Dict, List, Any
 # [UPDATED IMPORTS]
 from .shared.app_config import (
     STAGE_PROCESSED_DIR, 
-    LEGACY_DIST_BOOKS_DIR, # Giữ lại để tham khảo nếu cần, hoặc xóa nếu không dùng
+    LEGACY_DIST_BOOKS_DIR, 
 )
 from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
@@ -18,7 +18,7 @@ from .logic.super_generator import generate_super_book_data
 from .output.asset_generator import write_book_file
 # [NEW OPTIMIZER]
 from .optimizer import run_optimizer
-from .output.zip_generator import create_db_bundle # [NEW]
+from .output.zip_generator import create_db_bundle
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
 
@@ -66,7 +66,6 @@ class BuildManager:
             self.processed_book_ids.append(book_obj["id"])
 
         # Chỉ ghi JSON vào Staging Area (processed/)
-        # Không ghi JS cũ nữa
         write_book_file(group, book_obj, dry_run=True) 
 
     def run(self) -> None:
@@ -76,12 +75,22 @@ class BuildManager:
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
+        # [NEW] Chuẩn bị danh sách UID hợp lệ (Universe)
+        # Sử dụng frozenset để đảm bảo bất biến và tối ưu khi truyền qua process
+        valid_uids_universe = frozenset(self.names_map.keys())
+        logger.info(f"✨ Validation Universe prepared: {len(valid_uids_universe)} known UIDs.")
+
         for group_name, tasks in book_tasks.items():
             self.book_totals[group_name] = len(tasks)
             self.book_progress[group_name] = 0
             self.buffers[group_name] = {}
             for task in tasks:
-                all_tasks.append(task)
+                # [UPDATED] Inject valid_uids_universe vào cuối tuple args
+                # task cũ: (uid, root, trans, html, comm, author)
+                # task mới: (..., valid_uids_universe)
+                expanded_task = task + (valid_uids_universe,)
+                
+                all_tasks.append(expanded_task)
                 self.sutta_group_map[task[0]] = group_name
 
         # 2. Execute Workers
@@ -114,7 +123,8 @@ class BuildManager:
         # 4. Run Optimizer (The Real Work)
         logger.info("⚡ Transforming processed data to Optimized DB...")
         run_optimizer(dry_run=self.dry_run)
-        # [NEW] 5. Create DB Bundle (Chỉ chạy khi không dry-run)
+        
+        # 5. Create DB Bundle (Chỉ chạy khi không dry-run)
         if not self.dry_run:
             create_db_bundle()
         logger.info("✅ All processing tasks completed.")
