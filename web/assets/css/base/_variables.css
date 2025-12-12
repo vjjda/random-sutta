@@ -7,20 +7,20 @@
 /* Noto Sans Regular */
 @font-face {
   font-family: "Noto Sans";
-  src: url("../../fonts/NotoSans-Regular.ttf") format("truetype");
+  /* [UPDATED] Dùng WOFF2 thay vì TTF */
+  src: url("../../fonts/NotoSans-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
-  /* [OPTIMIZATION] Hiển thị font hệ thống trước, swap khi tải xong */
   font-display: swap;
 }
 
 /* Noto Sans Italic (Dùng cho chữ Pāli) */
 @font-face {
   font-family: "Noto Sans";
-  src: url("../../fonts/NotoSans-Italic.ttf") format("truetype");
+  /* [UPDATED] Dùng WOFF2 thay vì TTF */
+  src: url("../../fonts/NotoSans-Italic.woff2") format("woff2");
   font-weight: 400;
   font-style: italic;
-  /* [OPTIMIZATION] Hiển thị font hệ thống trước, swap khi tải xong */
   font-display: swap;
 }
 
