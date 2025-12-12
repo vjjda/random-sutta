@@ -1,12 +1,11 @@
 # Path: src/sutta_processor/__main__.py
 import sys
 import argparse
-# [NEW] Import logging config
+import logging # [FIXED] Import logging module
 from src.logging_config import setup_logging
 from .build_manager import BuildManager
 
 def main() -> None:
-    # [CHANGED] Sử dụng config chung
     setup_logging("SuttaProcessor")
     
     parser = argparse.ArgumentParser(description="Sutta Data Processor")
