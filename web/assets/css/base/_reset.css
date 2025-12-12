@@ -4,10 +4,19 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* [UPDATED] Áp dụng Font Scaling lên root */
+/* [UPDATED] Áp dụng Font Scaling và Warm Filter (Night Shift Style) */
 html {
   font-size: calc(100% * var(--text-scale));
-  filter: sepia(var(--sepia-amount));
+  
+  /* [WARM FILTER LOGIC]
+     - sepia(...): Tạo nền tảng màu vàng nâu (loại bỏ ánh sáng xanh).
+     - hue-rotate(...): Xoay màu vàng sang màu cam/đỏ ấm áp hơn.
+       Công thức: hue-rotate( sepia% * -0.5deg )
+       Ví dụ: Sepia 50% -> Hue -25deg -> Màu cam ấm.
+     - saturate(...): Tăng nhẹ bão hòa để chữ không bị nhạt nhòa trong nền cam.
+  */
+  filter: sepia(var(--sepia-amount)) hue-rotate(calc(var(--sepia-amount) * -0.5deg));
+  
   transition: font-size 0.2s ease, filter 0.2s ease;
 }
 
