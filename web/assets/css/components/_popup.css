@@ -2,7 +2,6 @@
 
 /* --- SHARED STYLES --- */
 :root {
-  /* Default values (sẽ được JS ghi đè từ AppConfig) */
   --popup-comment-height: 40vh;
   --popup-quicklook-top: 70px;
 }
@@ -32,7 +31,8 @@
   padding: var(--popup-padding-mobile);
   overflow-y: auto;
   overscroll-behavior: contain;
-  flex: 1;
+  flex: 1; /* Quan trọng: Để body co giãn chiếm phần còn lại */
+  min-height: 0; /* Fix flexbox scroll bug */
 }
 
 @media (min-width: 600px) {
@@ -40,6 +40,7 @@
 }
 
 .popup-close-btn {
+  /* Nút đóng cho Comment Popup (float bên trong body) */
   float: right;
   margin: -5px -5px 5px 10px;
   background: none;
@@ -56,10 +57,26 @@
   border-radius: 50%;
 }
 
-/* --- COMMENT POPUP (Layer 1 - Bottom - Primary) --- */
+/* Nút đóng cho Quicklook Header (flex item) */
+.header-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  color: var(--text-muted);
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  margin-right: -5px;
+}
+.header-close-btn:hover {
+  color: var(--primary-color);
+  background-color: var(--bg-hover);
+  border-radius: 50%;
+}
+
+/* --- COMMENT POPUP (Layer 1) --- */
 #comment-popup {
   bottom: 0;
-  /* [FIXED] Dùng biến thay vì cứng 40vh */
   max-height: var(--popup-comment-height); 
   height: var(--popup-comment-height);
   
@@ -68,9 +85,24 @@
   z-index: 1020; 
 }
 
-/* --- QUICKLOOK POPUP (Layer 2 - Top - Secondary) --- */
+/* [NEW] Header cho Comment Popup (Hiển thị Segment Text) */
+.comment-header {
+  padding: 8px 15px;
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--bg-body);
+  font-family: var(--font-sutta); /* Dùng font bài kinh */
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--text-muted);
+  
+  /* Truncate 1 dòng để không chiếm diện tích */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- QUICKLOOK POPUP (Layer 2) --- */
 #quicklook-popup {
-  /* [FIXED] Dùng biến cho top và bottom */
   top: var(--popup-quicklook-top); 
   bottom: var(--popup-comment-height); 
   
@@ -91,53 +123,27 @@
   transform: none; 
 }
 
-/* Header riêng cho Quicklook */
+/* [UPDATED] Quicklook Header (Chỉ hiển thị Title) */
 .quicklook-header {
-  padding: 8px 15px;
+  padding: 10px 15px;
   border-bottom: 1px solid var(--border-light);
   background-color: var(--bg-body);
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
 }
 
-.ql-header-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.ql-context {
+.ql-title {
   font-family: var(--font-main);
   font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-main);
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.ql-ref {
-  font-size: 0.8rem;
-  color: var(--text-light);
-  font-weight: 500;
+  font-weight: 700;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.quicklook-header .popup-close-btn {
-  margin: -4px -5px 0 0;
-  font-size: 1.6rem;
-  color: var(--text-muted);
 }
 
 /* --- NAV BAR --- */

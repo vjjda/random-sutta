@@ -6,7 +6,6 @@ import { getLogger } from '../../../utils/logger.js';
 import { SuttaService } from '../../../services/sutta_service.js';
 import { LeafRenderer } from '../../views/renderers/leaf_renderer.js';
 import { AppConfig } from '../../../core/app_config.js';
-// [IMPORTANT] Import helper xử lý text
 import { getCleanTextContent } from '../toh/text_utils.js';
 
 const logger = getLogger("PopupManager");
@@ -66,7 +65,6 @@ export const PopupManager = {
         const layout = AppConfig.POPUP_LAYOUT;
         if (layout) {
             const root = document.documentElement;
-            // Áp dụng biến CSS từ Config
             root.style.setProperty('--popup-comment-height', `${layout.COMMENT_HEIGHT_VH}vh`);
             root.style.setProperty('--popup-quicklook-top', `${layout.QUICKLOOK_TOP_OFFSET_PX}px`);
         }
@@ -79,15 +77,26 @@ export const PopupManager = {
         this.state.comments = Array.from(markers).map(marker => ({
             id: marker.closest('.segment')?.id,
             text: marker.dataset.comment,
-            // Lưu element segment cha để lấy text context
             element: marker.closest('.segment') 
         }));
         this.state.currentIndex = -1;
     },
 
+    // [NEW] Helper lấy text segment hiện tại
+    _getCurrentContextText() {
+        if (this.state.currentIndex !== -1 && this.state.comments[this.state.currentIndex]) {
+            const currentSeg = this.state.comments[this.state.currentIndex].element;
+            if (currentSeg) {
+                return getCleanTextContent(currentSeg);
+            }
+        }
+        return "";
+    },
+
     _openComment(text) {
         this.state.currentIndex = this.state.comments.findIndex(c => c.text === text);
-        CommentLayer.show(text, this.state.currentIndex, this.state.comments.length);
+        // Truyền contextText vào CommentLayer
+        CommentLayer.show(text, this.state.currentIndex, this.state.comments.length, this._getCurrentContextText());
         QuicklookLayer.hide(); 
     },
 
@@ -98,7 +107,10 @@ export const PopupManager = {
         this.state.currentIndex = nextIdx;
         const item = this.state.comments[nextIdx];
         
-        CommentLayer.show(item.text, nextIdx, this.state.comments.length);
+        // Truyền contextText mới vào CommentLayer
+        // Cần gọi _getCurrentContextText() sau khi update currentIndex
+        CommentLayer.show(item.text, nextIdx, this.state.comments.length, this._getCurrentContextText());
+        
         if (item.id) Scroller.scrollToId(item.id);
         
         QuicklookLayer.hide();
@@ -120,20 +132,10 @@ export const PopupManager = {
 
             if (!uid) return;
 
-            // [FIXED] Logic lấy context text
-            let contextText = "Context unavailable";
-            // Đảm bảo currentIndex hợp lệ và comment tồn tại
-            if (this.state.currentIndex !== -1 && this.state.comments[this.state.currentIndex]) {
-                const currentSeg = this.state.comments[this.state.currentIndex].element;
-                if (currentSeg) {
-                    contextText = getCleanTextContent(currentSeg);
-                }
-            }
-
+            // Show Loading - Chỉ hiển thị Acronym/UID
             QuicklookLayer.show(
                 '<div style="text-align:center; padding: 20px;">Loading...</div>', 
-                uid.toUpperCase(), 
-                contextText // Truyền text vào header
+                uid.toUpperCase()
             );
 
             const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
@@ -141,11 +143,13 @@ export const PopupManager = {
             if (data && data.content) {
                 const renderRes = LeafRenderer.render(data);
                 
-                QuicklookLayer.show(
-                    renderRes.html, 
-                    data.book_title || uid.toUpperCase(),
-                    contextText // Cập nhật lại header sau khi load xong
-                );
+                // Show Content - Ưu tiên Acronym hoặc Translated Title
+                let displayTitle = data.book_title || uid.toUpperCase();
+                if (data.meta && data.meta.acronym) {
+                    displayTitle = data.meta.acronym;
+                }
+
+                QuicklookLayer.show(renderRes.html, displayTitle);
                 
                 if (hash) {
                     let targetId = hash.substring(1); 
@@ -170,7 +174,7 @@ export const PopupManager = {
                     }, 100);
                 }
             } else {
-                QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error", contextText);
+                QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
             }
 
         } catch (e) {

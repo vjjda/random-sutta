@@ -17,7 +17,6 @@ export const QuicklookLayer = {
             this.hide();
         });
         
-        // Click link trong Quicklook -> Load main page luôn
         this.elements.content.addEventListener("click", (e) => {
              const link = e.target.closest("a");
              if (link && link.href) {
@@ -27,15 +26,17 @@ export const QuicklookLayer = {
         });
     },
 
+    // [UPDATED] Đơn giản hóa, chỉ hiển thị title
     show(htmlContent, title = "Preview") {
-        this.elements.title.textContent = title;
+        if (this.elements.title) {
+            this.elements.title.textContent = title;
+        }
         this.elements.content.innerHTML = htmlContent;
         this.elements.popup.classList.remove("hidden");
     },
 
     hide() {
         this.elements.popup?.classList.add("hidden");
-        // Clear content để tiết kiệm bộ nhớ
         if (this.elements.content) this.elements.content.innerHTML = "";
     },
     

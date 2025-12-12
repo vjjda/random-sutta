@@ -8,6 +8,9 @@ export const CommentLayer = {
         this.elements = {
             popup: document.getElementById("comment-popup"),
             content: document.getElementById("comment-content"),
+            // [NEW] Element hiển thị context
+            headerContext: document.getElementById("comment-context-header"),
+            
             closeBtn: document.getElementById("close-comment"),
             btnPrev: document.getElementById("btn-comment-prev"),
             btnNext: document.getElementById("btn-comment-next"),
@@ -17,7 +20,6 @@ export const CommentLayer = {
 
         if (!this.elements.popup) return;
 
-        // Events
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             callbacks.onClose();
@@ -30,27 +32,21 @@ export const CommentLayer = {
             this.elements.btnNext.addEventListener("click", () => callbacks.onNavigate(1));
         }
 
-        // [FIXED] Intercept Links -> Quicklook Logic
         this.elements.content.addEventListener("click", (e) => {
             const link = e.target.closest("a");
             if (link && link.href) {
-                // Logic nhận diện link cần Quicklook:
-                // 1. Link gốc SuttaCentral
-                // 2. Link nội bộ do Processor tạo ra (có chứa ?q=)
-                // 3. Link relative (không bắt đầu bằng http)
                 const isSuttaCentral = link.href.includes("suttacentral.net");
                 const isInternalQuery = link.href.includes("?q=");
                 const isRelative = !link.href.startsWith("http");
 
                 if (isSuttaCentral || isInternalQuery || isRelative) {
-                    e.preventDefault(); // Chặn chuyển trang ngay lập tức
+                    e.preventDefault();
                     e.stopPropagation();
                     callbacks.onLinkClick(link.href);
                 }
             }
         });
 
-        // Swipe Gestures
         let startX = 0, startY = 0;
         if (this.elements.popupBody) {
             this.elements.popupBody.addEventListener("touchstart", (e) => {
@@ -68,9 +64,17 @@ export const CommentLayer = {
         }
     },
 
-    show(text, index, total) {
+    // [UPDATED] Nhận thêm contextText
+    show(text, index, total, contextText = "") {
         if (!this.elements.content) return;
+        
         this.elements.content.innerHTML = text;
+        
+        // Hiển thị text của segment gốc lên header
+        if (this.elements.headerContext) {
+            this.elements.headerContext.textContent = contextText ? `"${contextText}"` : "";
+        }
+
         this.elements.popup.classList.remove("hidden");
         this._updateNav(index, total);
     },

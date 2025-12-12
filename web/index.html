@@ -359,6 +359,8 @@
     </div>
 
     <div id="comment-popup" class="popup-container hidden">
+      <div id="comment-context-header" class="comment-header">...</div>
+      
       <div class="popup-body">
         <button id="close-comment" class="popup-close-btn" aria-label="Close">×</button>
         <div id="comment-content"></div>
@@ -377,8 +379,8 @@
 
     <div id="quicklook-popup" class="popup-container hidden">
       <div class="quicklook-header">
-        <span id="quicklook-title">Preview</span>
-        <button id="close-quicklook" class="popup-close-btn" style="float:none; margin:0;">×</button>
+        <span id="quicklook-title" class="ql-title">Preview</span>
+        <button id="close-quicklook" class="header-close-btn">×</button>
       </div>
       <div class="popup-body">
         <div id="quicklook-content" class="sutta-text-view">Loading...</div>
