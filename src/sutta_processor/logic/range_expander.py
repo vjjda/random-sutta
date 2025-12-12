@@ -38,6 +38,17 @@ def _parse_range_string(uid: str) -> Optional[Tuple[str, int, int]]:
 def _expand_alias_ids(prefix: str, start: int, end: int) -> List[str]:
     return [f"{prefix}{i}" for i in range(start, end + 1)]
 
+# [NEW] Public hàm này để BuildManager sử dụng
+def expand_range_ids(uid: str) -> List[str]:
+    """
+    [PUBLIC] Phân tích UID dạng range (dhp383-423) và trả về danh sách các ID con.
+    """
+    range_info = _parse_range_string(uid)
+    if range_info:
+        prefix, start, end = range_info
+        return _expand_alias_ids(prefix, start, end)
+    return []
+
 def _extract_unique_article_ids(content: Dict[str, Any]) -> List[str]:
     found_ids = []
     seen_ids = set()
@@ -91,7 +102,6 @@ def generate_subleaf_shortcuts(
             prefix, start, end = root_range_info
             aliases = _expand_alias_ids(prefix, start, end)
             if len(aliases) > 0:
-                # [UPDATED] Log level DEBUG
                 logger.debug(f"   ✨ Single Leaf Range Expansion: {root_uid} -> {len(aliases)} aliases")
 
             for alias_id in aliases:
@@ -104,7 +114,6 @@ def generate_subleaf_shortcuts(
 
     # --- CASE B: MULTI SUBLEAFS ---
     else:
-        # [UPDATED] Log level DEBUG
         logger.debug(f"   🌿 HTML Articles Detected: {root_uid} -> {len(article_ids)} subleafs")
 
         for sub_uid in article_ids:
