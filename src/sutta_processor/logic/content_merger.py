@@ -34,11 +34,10 @@ def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_a
     if not text or "suttacentral.net" not in text:
         return text
 
-    # [UPDATED REGEX] Nới lỏng điều kiện
-    # Group 1: UID (Bắt buộc) - [a-zA-Z0-9\.-]+
-    # Non-capturing group (?:/[^#\"']*)?: Phần path tùy chọn (lang/author), chấp nhận mọi ký tự trừ #, ", '
-    # Group 2: Fragment (Tùy chọn) - (?:#([a-zA-Z0-9\.\:-]+))?
-    pattern = r"https://suttacentral\.net/([a-zA-Z0-9\.-]+)(?:/[^#\"']*)?(?:#([a-zA-Z0-9\.\:-]+))?"
+    # [REFINED REGEX]
+    # 1. https? -> Bắt cả http và https
+    # 2. Path: (?:/[^#\"'\s]*)? -> Chấp nhận path nhưng dừng nếu gặp khoảng trắng, #, ", '
+    pattern = r"https?://suttacentral\.net/([a-zA-Z0-9\.-]+)(?:/[^#\"'\s]*)?(?:#([a-zA-Z0-9\.\:-]+))?"
     
     def repl(match):
         uid_raw = match.group(1) 
@@ -46,6 +45,7 @@ def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_a
         
         target_uid = _get_base_uid(uid_raw)
         
+        # Check Existence
         if target_uid in _WORKER_VALID_UIDS:
             new_link = f"index.html?q={target_uid}"
             if fragment:
@@ -53,8 +53,10 @@ def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_a
             return new_link
         
         # Logic thu thập lỗi
+        # Regex này bắt các UID kinh điển (chữ + số/chấm), ví dụ: mn1, ea31.1, pli-tv-bi-vb...
         if re.match(r"^[a-z]+[\d\.]+", target_uid):
-             logger.debug(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing '{target_uid}'")
+             # [FIXED] Chuyển lên WARNING để hiện ra console
+             logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing link '{target_uid}'")
              missing_acc.append((current_sutta_id, segment_id, target_uid))
         
         return match.group(0)
