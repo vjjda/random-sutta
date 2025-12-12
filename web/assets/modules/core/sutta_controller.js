@@ -4,15 +4,18 @@ import { RandomBuffer } from '../services/random_buffer.js';
 import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
 import { FilterComponent } from '../ui/components/filters/index.js'; 
-import { PopupManager, initCommentPopup } from '../ui/components/popup.js';
+// [UPDATED] Import API từ Popup System
+import { initPopupSystem } from '../ui/components/popup/index.js';
 import { Scroller } from '../ui/common/scroller.js';
 import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaController");
-const { hideComment } = initCommentPopup();
+// Lấy API từ system
+const PopupAPI = initPopupSystem();
 
 export const SuttaController = {
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
+    // ... (Giữ nguyên)
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
 
@@ -27,10 +30,9 @@ export const SuttaController = {
         } catch (e) {}
     }
 
-    hideComment(); // Đảm bảo popup tắt khi chuyển bài
+    PopupAPI.hideAll(); // [UPDATED]
 
     let suttaId;
-    // ... (Giữ nguyên logic parse ID) ...
     let scrollTarget = null;
     if (typeof input === 'object') {
         suttaId = input.uid;
@@ -60,7 +62,6 @@ export const SuttaController = {
         }
 
         if (result.isAlias) {
-            // ... (Logic Alias) ...
             let redirectId = result.targetUid;
             if (result.hashId) redirectId += `#${result.hashId}`;
             this.loadSutta(redirectId, true, 0, { transition: false });
@@ -69,9 +70,9 @@ export const SuttaController = {
         
         const success = await renderSutta(suttaId, result, options);
         
-        // [NEW] Scan comment markers sau khi render thành công
+        // [UPDATED] Gọi scan qua API mới
         if (success) {
-            PopupManager.scanComments();
+            PopupAPI.scan();
         }
 
         if (success && shouldUpdateUrl) {
@@ -81,7 +82,6 @@ export const SuttaController = {
         return success;
     };
 
-    // ... (Giữ nguyên logic scroll/transition) ...
     if (isTransition) {
         await Scroller.transitionTo(performRender, scrollTarget);
     } else {
@@ -97,8 +97,7 @@ export const SuttaController = {
   },
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
-    console.time('🚀 Total Random Process');
-    hideComment();
+    PopupAPI.hideAll(); // [UPDATED]
     
     const filters = FilterComponent.getActiveFilters();
     const payload = await RandomBuffer.getPayload(filters);

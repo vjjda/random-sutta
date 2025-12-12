@@ -9,14 +9,15 @@ import { setupQuickNav } from '../ui/components/search.js';
 import { OfflineManager } from '../ui/managers/offline_manager.js';
 import { DrawerManager } from '../ui/managers/drawer_manager.js';
 import { ThemeManager } from '../ui/managers/theme_manager.js';
-// [NEW] Import FontSizeManager
 import { FontSizeManager } from '../ui/managers/font_size_manager.js';
+// [UPDATED] Import Popup System
+import { initPopupSystem } from '../ui/components/popup/index.js';
 
 const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // ... (Giữ nguyên logic init)
+    // ... (Giữ nguyên)
     console.time('🚀 App Start to Ready');
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     window.scrollTo(0, 0);
@@ -28,11 +29,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     DrawerManager.init();
     OfflineManager.init();
     ThemeManager.init();
-    // [NEW] Init Font Size
     FontSizeManager.init();
     
-    // [UPDATED] Gọi FilterComponent
     FilterComponent.init(); 
+    
+    // [UPDATED] Init Popup System (Thay cho initCommentPopup)
+    initPopupSystem();
     
     setupQuickNav((query) => SuttaController.loadSutta(query));
 
@@ -40,8 +42,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.triggerRandomSutta = () => SuttaController.loadRandomSutta(true);
 
     const randomBtn = document.getElementById("btn-random");
-    const statusDiv = document.getElementById("status"); 
+    const statusDiv = document.getElementById("status");
     const navHeader = document.getElementById("nav-header");
+    
+    // ... (Phần còn lại giữ nguyên) ...
     const hideSplashScreen = () => {
         const splashScreen = document.getElementById("splash-screen");
         if (splashScreen) {
@@ -96,8 +100,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (currentParams.q) {
             let loadId = currentParams.q;
             if (window.location.hash) loadId += window.location.hash;
-            SuttaController.loadSutta(loadId, false, savedScroll, { 
-                transition: false });
+            SuttaController.loadSutta(loadId, false, savedScroll, { transition: false });
         } else {
             SuttaController.loadRandomSutta(false); 
         }

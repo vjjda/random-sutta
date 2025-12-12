@@ -358,20 +358,30 @@
       </div>
     </div>
 
-    <div id="comment-popup" class="hidden">
+    <div id="comment-popup" class="popup-container hidden">
       <div class="popup-body">
-        <button id="close-comment" aria-label="Close">×</button>
+        <button id="close-comment" class="popup-close-btn" aria-label="Close">×</button>
         <div id="comment-content"></div>
       </div>
       
       <div class="popup-nav-bar">
-        <button id="btn-comment-prev" class="popup-nav-btn" title="Previous Comment">
+        <button id="btn-comment-prev" class="popup-nav-btn" title="Previous">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
         <span id="comment-index-info" class="popup-nav-info">0 / 0</span>
-        <button id="btn-comment-next" class="popup-nav-btn" title="Next Comment">
+        <button id="btn-comment-next" class="popup-nav-btn" title="Next">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
+      </div>
+    </div>
+
+    <div id="quicklook-popup" class="popup-container hidden">
+      <div class="quicklook-header">
+        <span id="quicklook-title">Preview</span>
+        <button id="close-quicklook" class="popup-close-btn" style="float:none; margin:0;">×</button>
+      </div>
+      <div class="popup-body">
+        <div id="quicklook-content">Loading...</div>
       </div>
     </div>
 
