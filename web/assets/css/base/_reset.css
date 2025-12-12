@@ -4,16 +4,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* [UPDATED] Áp dụng Font Scaling và Warm Filter (Night Shift Style) */
+/* [UPDATED] Áp dụng Font Scaling và Warm Filter (Configurable) */
 html {
   font-size: calc(100% * var(--text-scale));
   
+  /* Fallback values phòng khi JS chưa kịp load */
+  --sepia-val: 0;
+  --sepia-hue-coeff: -0.5;
+  --sepia-saturate: 1.1;
+
   /* [WARM FILTER LOGIC]
-     - sepia: Nhân với 1% để thành giá trị phần trăm (VD: 35 * 1% = 35%).
-     - hue-rotate: Nhân với -0.5deg để thành độ (VD: 35 * -0.5deg = -17.5deg).
-     - saturate: Tăng bão hòa 10% để màu cam rực rỡ hơn chút, tránh bị xỉn.
+     Dynamic Calculation from Config
   */
-  filter: sepia(calc(var(--sepia-val) * 1%)) hue-rotate(calc(var(--sepia-val) * -0.5deg)) saturate(1.1);
+  filter: 
+    sepia(calc(var(--sepia-val) * 1%)) 
+    hue-rotate(calc(var(--sepia-val) * var(--sepia-hue-coeff) * 1deg)) 
+    saturate(var(--sepia-saturate));
   
   transition: font-size 0.2s ease, filter 0.2s ease;
 }

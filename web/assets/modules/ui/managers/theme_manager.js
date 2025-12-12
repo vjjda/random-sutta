@@ -17,6 +17,11 @@ export const ThemeManager = {
         const sepiaPanel = document.getElementById("sepia-control-panel");
         const sepiaSlider = document.getElementById("sepia-slider");
 
+        // [NEW] Inject Config vào CSS Root Variables
+        // Giúp CSS calc() sử dụng được các thông số từ app_config.js
+        document.documentElement.style.setProperty('--sepia-hue-coeff', AppConfig.SEPIA.HUE_COEFF);
+        document.documentElement.style.setProperty('--sepia-saturate', AppConfig.SEPIA.SATURATE);
+
         // 1. Load Initial State
         const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         const storedTheme = localStorage.getItem(this.CONFIG.STORAGE_KEY_THEME);
@@ -37,7 +42,7 @@ export const ThemeManager = {
         const updateSepiaVisuals = (sliderValue, theme) => {
             const cssValue = sliderToCss(sliderValue, theme);
             
-            // [FIXED] Truyền số nguyên, không kèm đơn vị %
+            // Truyền giá trị thô (unitless) để CSS tự tính toán
             document.documentElement.style.setProperty('--sepia-val', cssValue);
             
             if (sepiaSlider && sepiaSlider.value != sliderValue) {
@@ -62,6 +67,7 @@ export const ThemeManager = {
             updateSepiaVisuals(savedSepia, theme);
         };
 
+        // --- Init Run ---
         applyTheme(currentTheme);
 
         // --- Event Listeners ---
