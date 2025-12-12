@@ -7,7 +7,9 @@ export const QuicklookLayer = {
             popup: document.getElementById("quicklook-popup"),
             content: document.getElementById("quicklook-content"),
             title: document.getElementById("quicklook-title"),
-            closeBtn: document.getElementById("close-quicklook")
+            closeBtn: document.getElementById("close-quicklook"),
+            // [NEW] Cache element body để xử lý scroll
+            popupBody: document.querySelector("#quicklook-popup .popup-body")
         };
 
         if (!this.elements.popup) return;
@@ -26,13 +28,17 @@ export const QuicklookLayer = {
         });
     },
 
-    // [UPDATED] Đơn giản hóa, chỉ hiển thị title
     show(htmlContent, title = "Preview") {
         if (this.elements.title) {
             this.elements.title.textContent = title;
         }
         this.elements.content.innerHTML = htmlContent;
         this.elements.popup.classList.remove("hidden");
+
+        // [FIXED] Reset scroll position lên đầu khi load nội dung mới
+        if (this.elements.popupBody) {
+            this.elements.popupBody.scrollTop = 0;
+        }
     },
 
     hide() {
