@@ -19,6 +19,16 @@ export const CommentLayer = {
 
         if (!this.elements.popup) return;
 
+        // [FIXED] Transform vertical scroll to horizontal scroll for header text
+        if (this.elements.headerContext) {
+            this.elements.headerContext.addEventListener("wheel", (e) => {
+                if (this.elements.headerContext.scrollWidth > this.elements.headerContext.clientWidth) {
+                    e.preventDefault();
+                    this.elements.headerContext.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
+        }
+
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             callbacks.onClose();
