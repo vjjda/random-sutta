@@ -143,14 +143,14 @@
 }
 
 .ql-uid-badge {
-  background-color: var(--bg-hover);
+  /* background-color: var(--bg-hover); */
   color: var(--primary-color);
-  font-family: var(--font-sutta); /* Or monospace for technical look */
+  font-family: var(--font-main); /* Or monospace for technical look */
   font-weight: 700;
-  font-size: 0.8rem;
-  padding: 3px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border-light);
+  font-size: 0.95rem;
+  /* padding: 3px 8px; */
+  /* border-radius: 6px; */
+  /* border: 1px solid var(--border-light); */
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: 0.5px;

@@ -64,6 +64,8 @@ export const CommentLayer = {
         
         if (this.elements.headerContext) {
             this.elements.headerContext.textContent = contextText ? `"${contextText}"` : "";
+            // [FIXED] Reset header horizontal scroll
+            this.elements.headerContext.scrollLeft = 0;
         }
 
         this.elements.popup.classList.remove("hidden");
