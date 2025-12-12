@@ -16,7 +16,6 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
   opacity: 1;
 }
 
@@ -245,7 +244,6 @@
   justify-content: center;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 .popup-nav-btn:hover:not(:disabled) { background-color: var(--bg-hover); color: var(--primary-color); border-color: var(--primary-color); }
 .popup-nav-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
@@ -270,7 +268,6 @@
   cursor: pointer;
   z-index: 20;
   opacity: 0.4;
-  transition: opacity 0.3s ease, transform 0.2s ease;
   box-shadow: none; /* No shadow as requested */
   
   /* [CONFIG] Adjust dot size here */
@@ -285,7 +282,6 @@
   height: var(--dot-size);
   border-radius: 50%;
   background-color: var(--text-muted); /* Solid, low profile color */
-  transition: background-color 0.2s;
 }
 
 .quicklook-fab:hover {

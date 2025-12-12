@@ -15,8 +15,6 @@
   border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--text-main);
-  /* [TWEAK] Transition mượt mà cho cả transform và shadow */
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-shadow: var(--shadow-soft);
   overflow: hidden;
   position: relative;
