@@ -7,6 +7,17 @@ from typing import Dict, Optional, Tuple, Any, FrozenSet
 
 logger = logging.getLogger("SuttaProcessor.Logic.Merger")
 
+# [OPTIMIZATION] Biến Global để lưu Universe trong memory của từng Worker Process
+# Tránh việc phải serialize/unpickle cho từng task
+_WORKER_VALID_UIDS: FrozenSet[str] = frozenset()
+
+def init_worker(valid_uids: FrozenSet[str]) -> None:
+    """
+    Hàm khởi tạo chạy 1 lần duy nhất khi Worker Process khởi động.
+    """
+    global _WORKER_VALID_UIDS
+    _WORKER_VALID_UIDS = valid_uids
+
 def load_json(path: Path) -> Dict[str, str]:
     if not path or not path.exists():
         return {}
@@ -20,19 +31,13 @@ def natural_keys(text: str):
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
 def _get_base_uid(uid: str) -> str:
-    """
-    Trích xuất Base UID (vd: 'mn1' từ 'mn1#2.3').
-    Loại bỏ anchor (#...) và segment id (:...).
-    """
     base = uid.split('#')[0]
     base = base.split(':')[0]
     return base.lower()
 
-# [UPDATED] Thêm tham số segment_id vào để log chi tiết
-def _sanitize_links(text: str, valid_uids: FrozenSet[str], current_sutta_id: str, segment_id: str) -> str:
+def _sanitize_links(text: str, current_sutta_id: str, segment_id: str) -> str:
     """
-    Chuyển đổi link SuttaCentral sang link nội bộ nều UID đích tồn tại trong valid_uids.
-    Log cảnh báo ra Console kèm Segment ID cụ thể.
+    Sử dụng _WORKER_VALID_UIDS global để check.
     """
     if not text or "suttacentral.net" not in text:
         return text
@@ -45,14 +50,13 @@ def _sanitize_links(text: str, valid_uids: FrozenSet[str], current_sutta_id: str
         
         target_uid = _get_base_uid(uid_raw)
         
-        # Check Existence
-        if target_uid in valid_uids:
+        # [OPTIMIZATION] Check trên biến Global (O(1) lookup, zero copy overhead)
+        if target_uid in _WORKER_VALID_UIDS:
             new_link = f"index.html?q={target_uid}"
             if fragment:
                 new_link += f"#{fragment}"
             return new_link
         
-        # [UPDATED] Log chi tiết Segment ID
         if re.match(r"^[a-z]+[\d\.]+", target_uid):
              logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Link to '{target_uid}' missing in offline data.")
         
@@ -60,8 +64,9 @@ def _sanitize_links(text: str, valid_uids: FrozenSet[str], current_sutta_id: str
 
     return re.sub(pattern, repl, text)
 
-def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str], FrozenSet[str]]) -> Tuple[str, str, Optional[Dict[str, Any]]]:
-    sutta_id, root_path, trans_path, html_path, comment_path, author_uid, valid_uids = args
+# [UPDATED SIGNATURE] Bỏ valid_uids khỏi args
+def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Optional[Path], Optional[str]]) -> Tuple[str, str, Optional[Dict[str, Any]]]:
+    sutta_id, root_path, trans_path, html_path, comment_path, author_uid = args
     
     try:
         if not html_path:
@@ -97,8 +102,8 @@ def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Option
             if eng: entry["eng"] = eng
             if html: entry["html"] = html
             
-            # [UPDATED] Truyền thêm key (segment id)
-            if comm: entry["comm"] = _sanitize_links(comm, valid_uids, sutta_id, key)
+            # [UPDATED] Không cần truyền valid_uids nữa
+            if comm: entry["comm"] = _sanitize_links(comm, sutta_id, key)
             
             segments_dict[key] = entry
 
