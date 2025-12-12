@@ -3,8 +3,6 @@ import { CoreNetwork } from './core_network.js';
 import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaRepository");
-
-// Cấu hình đường dẫn dữ liệu
 const DB_PATH = "assets/db";
 
 export const SuttaRepository = {
@@ -13,26 +11,13 @@ export const SuttaRepository = {
         logger.info("Init", "Repository ready.");
     },
 
-    /**
-     * [FIXED] Tính toán Bucket ID cho Split Index.
-     * Thuật toán: DJB2 Hash (Unsigned 32-bit).
-     * Phải khớp tuyệt đối với logic Python _get_bucket_id.
-     */
     _getBucketId(uid) {
         let hash = 5381;
         for (let i = 0; i < uid.length; i++) {
-            // hash * 33 + c
             hash = ((hash << 5) + hash) + uid.charCodeAt(i);
-            // JS bitwise operators always return signed 32-bit integers
             hash = hash & 0xFFFFFFFF; 
         }
-        
-        // [CRITICAL FIX] Ép kiểu về Unsigned 32-bit integer bằng (>>> 0)
-        // Python: 0xFFFFFFF6 -> 4294967286 (Unsigned)
-        // JS cũ:  0xFFFFFFF6 -> -10 (Signed) -> Math.abs(-10) = 10 (SAI)
-        // JS mới: -10 >>> 0  -> 4294967286 (Unsigned) -> Mod 20 = 6 (ĐÚNG)
         const unsignedHash = hash >>> 0;
-        
         return String(unsignedHash % 20);
     },
 
@@ -40,24 +25,18 @@ export const SuttaRepository = {
         if (!uid) return null;
         const cleanUid = uid.toLowerCase().trim();
 
-        // 1. Offline Global Index
         if (window.__DB_INDEX__) {
             const loc = window.__DB_INDEX__[cleanUid];
             return loc || null;
         }
 
-        // 2. Online Split Index
         const bucketId = this._getBucketId(cleanUid);
         const indexUrl = `${DB_PATH}/index/${bucketId}.json`;
         
-        // Fetch bucket tương ứng
         const bucketData = await CoreNetwork.fetchJson(indexUrl);
         if (bucketData && bucketData[cleanUid]) {
             return bucketData[cleanUid];
         }
-
-        // Nếu vẫn không thấy dù đã tính đúng bucket -> Có thể file chưa được build hoặc uid sai
-        logger.warn("resolveLocation", `UID ${cleanUid} not found in bucket ${bucketId}`);
         return null;
     },
 
@@ -92,32 +71,71 @@ export const SuttaRepository = {
         return results;
     },
 
+    /**
+     * [UPDATED] Sync Logic:
+     * 1. Crawl TPK -> Book IDs -> Cache Meta.
+     * 2. Fetch Index Buckets -> Parse Chunk IDs -> Cache Content.
+     */
     async downloadAll(onProgress) {
         logger.info("Sync", "Starting Bundle Download...");
-        const urlsToCache = ['assets/modules/data/constants.js'];
+        const urlsToCache = new Set(['assets/modules/data/constants.js']);
+        const uniqueChunks = new Set(); // Lưu trữ các chunk cần tải: "mn_chunk_0"
 
         try {
+            // PHASE 1: Discovery via TPK Tree
             const tpk = await this.fetchMeta('tpk');
             if (tpk) {
-                urlsToCache.push(`${DB_PATH}/meta/tpk.json`);
+                urlsToCache.add(`${DB_PATH}/meta/tpk.json`);
+                
                 const collectBooks = (node, list) => {
                     if (typeof node === 'string') list.push(node);
                     else if (Array.isArray(node)) node.forEach(c => collectBooks(c, list));
                     else if (typeof node === 'object') Object.values(node).forEach(v => collectBooks(v, list));
                 };
+                
                 const books = [];
                 collectBooks(tpk.tree, books);
                 
-                books.forEach(bid => urlsToCache.push(`${DB_PATH}/meta/${bid}.json`));
-                for (let i = 0; i < 20; i++) {
-                    urlsToCache.push(`${DB_PATH}/index/${i}.json`);
-                }
+                // Add Meta files
+                books.forEach(bid => urlsToCache.add(`${DB_PATH}/meta/${bid}.json`));
             }
+
+            // PHASE 2: Index & Chunk Discovery
+            // Chúng ta phải fetch Index về để đọc nội dung, tìm ra các Chunk ID
+            const bucketUrls = [];
+            for (let i = 0; i < 20; i++) {
+                bucketUrls.push(`${DB_PATH}/index/${i}.json`);
+                urlsToCache.add(`${DB_PATH}/index/${i}.json`);
+            }
+
+            // Fetch song song các index để parse chunk
+            await Promise.all(bucketUrls.map(async (url) => {
+                const data = await CoreNetwork.fetchJson(url);
+                if (data) {
+                    Object.values(data).forEach(loc => {
+                        // loc format: [book_id, chunk_idx]
+                        if (Array.isArray(loc) && loc.length === 2 && loc[1] !== null) {
+                            const [bookId, chunkIdx] = loc;
+                            uniqueChunks.add(`${bookId}_chunk_${chunkIdx}`);
+                        }
+                    });
+                }
+            }));
+
+            // Add Content files to cache list
+            uniqueChunks.forEach(chunkName => {
+                urlsToCache.add(`${DB_PATH}/content/${chunkName}.json`);
+            });
+
+            logger.info("Sync", `Discovered ${urlsToCache.size} files to cache.`);
+
         } catch (e) {
             logger.error("Sync", "Failed to crawl data", e);
+            throw e; // Ném lỗi để UI hiển thị trạng thái Error
         }
 
+        // PHASE 3: Batch Caching
         const CACHE_NAME = (await caches.keys()).find(k => k.startsWith('sutta-cache-')) || 'sutta-cache-temp';
-        await CoreNetwork.cacheBatch(urlsToCache, CACHE_NAME, onProgress);
+        await CoreNetwork.cacheBatch(Array.from(urlsToCache), CACHE_NAME, onProgress);
     }
 };
