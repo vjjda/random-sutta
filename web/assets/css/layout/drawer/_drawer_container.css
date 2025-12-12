@@ -36,15 +36,14 @@
 /* --- DRAWER MAIN SHELL --- */
 #filter-drawer {
   padding: 15px;
-  border-radius: var(--radius-md);
+  /* border-radius: var(--radius-md); */
   animation: slideDown 0.3s ease-out;
-  
-  background-color: var(--bg-drawer);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-soft);
+  /* background-color: var(--bg-drawer); */
+  /* border: 1px solid var(--border-light); */
+  /* box-shadow: var(--shadow-soft); */
   
   /* Cần relative để các thành phần con định vị nếu cần */
-  position: relative; 
+  position: relative;
 }
 
 @keyframes slideDown {
