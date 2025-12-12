@@ -1,5 +1,6 @@
 // Path: web/assets/modules/data/sutta_repository.js
 import { CoreNetwork } from './core_network.js';
+import { ZipLoader } from './zip_loader.js'; // [NEW] Import Core Script
 import { getLogger } from '../utils/logger.js';
 
 const logger = getLogger("SuttaRepository");
@@ -72,71 +73,28 @@ export const SuttaRepository = {
     },
 
     /**
-     * [FIXED] Sync Logic (Zip Strategy):
-     * 1. Download `db_bundle.zip` (One Request).
-     * 2. Unzip using JSZip.
-     * 3. Put all files into Cache Storage.
+     * [REFACTORED] Download All Logic
+     * Sử dụng ZipLoader để xử lý phần phức tạp.
      */
     async downloadAll(onProgress) {
         logger.info("Sync", "Starting Bundle Download...");
         
-        // 1. Kiểm tra JSZip
-        if (typeof JSZip === 'undefined') {
-            throw new Error("JSZip library not loaded");
-        }
-
-        // 2. Tải file Zip
-        const zipUrl = `${DB_PATH}/db_bundle.zip`;
-        const response = await fetch(zipUrl);
-        
-        if (!response.ok) {
-            throw new Error(`Failed to download bundle: ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        
-        // 3. Giải nén
-        logger.info("Sync", "Unzipping bundle...");
-        const zip = await JSZip.loadAsync(blob);
-        const files = Object.keys(zip.files).filter(filename => !zip.files[filename].dir);
-        
-        const total = files.length;
-        let processed = 0;
-
-        // 4. Mở Cache
+        // 1. Xác định Cache Name hiện tại
         const CACHE_NAME = (await caches.keys()).find(k => k.startsWith('sutta-cache-')) || 'sutta-cache-temp';
-        const cache = await caches.open(CACHE_NAME);
-
-        // 5. Lưu từng file vào Cache
-        // Chia nhỏ batch để không làm đơ UI (Chunk size = 20 file)
-        const batchSize = 20;
         
-        for (let i = 0; i < total; i += batchSize) {
-            const batch = files.slice(i, i + batchSize);
-            
-            await Promise.all(batch.map(async (filename) => {
-                const fileData = await zip.file(filename).async("string"); // JSON content
-                
-                // Tạo Response giả lập để lưu vào Cache
-                const mockResponse = new Response(fileData, {
-                    headers: { 'Content-Type': 'application/json' },
-                    status: 200,
-                    statusText: 'OK'
-                });
+        // 2. Gọi Core Script để xử lý Zip
+        // - URL Zip: assets/db/db_bundle.zip
+        // - Path Prefix: assets/db/ (Vì trong zip là meta/mn.json, cần thành assets/db/meta/mn.json)
+        await ZipLoader.importBundleToCache(
+            `${DB_PATH}/db_bundle.zip`,
+            CACHE_NAME,
+            `${DB_PATH}/`, 
+            onProgress
+        );
 
-                // Đường dẫn lưu cache phải khớp với đường dẫn fetch thực tế
-                // Zip structure: "meta/mn.json" -> URL: "assets/db/meta/mn.json"
-                const cacheUrl = `${DB_PATH}/${filename}`;
-                await cache.put(cacheUrl, mockResponse);
-            }));
-
-            processed += batch.length;
-            if (onProgress) onProgress(Math.min(processed, total), total);
-        }
-        
-        // Cache thêm constants.js (nằm ngoài zip) để đảm bảo shell
-        await cache.add('assets/modules/data/constants.js');
-
-        logger.info("Sync", `Successfully cached ${total} files from bundle.`);
+        // 3. Cache thêm các file lẻ bên ngoài Zip (nếu cần)
+        // constants.js là file quan trọng không nằm trong bundle
+        const extraCache = await caches.open(CACHE_NAME);
+        await extraCache.add('assets/modules/data/constants.js');
     }
 };
