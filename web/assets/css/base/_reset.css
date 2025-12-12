@@ -9,13 +9,11 @@ html {
   font-size: calc(100% * var(--text-scale));
   
   /* [WARM FILTER LOGIC]
-     - sepia(...): Tạo nền tảng màu vàng nâu (loại bỏ ánh sáng xanh).
-     - hue-rotate(...): Xoay màu vàng sang màu cam/đỏ ấm áp hơn.
-       Công thức: hue-rotate( sepia% * -0.5deg )
-       Ví dụ: Sepia 50% -> Hue -25deg -> Màu cam ấm.
-     - saturate(...): Tăng nhẹ bão hòa để chữ không bị nhạt nhòa trong nền cam.
+     - sepia: Nhân với 1% để thành giá trị phần trăm (VD: 35 * 1% = 35%).
+     - hue-rotate: Nhân với -0.5deg để thành độ (VD: 35 * -0.5deg = -17.5deg).
+     - saturate: Tăng bão hòa 10% để màu cam rực rỡ hơn chút, tránh bị xỉn.
   */
-  filter: sepia(var(--sepia-amount)) hue-rotate(calc(var(--sepia-amount) * -0.5deg));
+  filter: sepia(calc(var(--sepia-val) * 1%)) hue-rotate(calc(var(--sepia-val) * -0.5deg)) saturate(1.1);
   
   transition: font-size 0.2s ease, filter 0.2s ease;
 }

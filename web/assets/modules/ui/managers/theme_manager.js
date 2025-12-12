@@ -5,7 +5,6 @@ import { getLogger } from '../../utils/logger.js';
 const logger = getLogger("ThemeManager");
 
 export const ThemeManager = {
-    // Cấu hình được lấy từ AppConfig để dễ tune
     CONFIG: {
         STORAGE_KEY_THEME: "sutta_theme",
     },
@@ -28,35 +27,29 @@ export const ThemeManager = {
 
         const getSepiaStorageKey = (theme) => `${AppConfig.SEPIA.STORAGE_KEY_PREFIX}${theme}`;
 
-        // Hàm tính toán: Map từ Slider (0-100) sang CSS (0-MAX tùy theo theme)
         const sliderToCss = (sliderValue, theme) => {
             const maxCss = theme === 'dark' 
                 ? AppConfig.SEPIA.MAX_CSS_DARK 
                 : AppConfig.SEPIA.MAX_CSS_LIGHT;
-            
             return (sliderValue / 100) * maxCss;
         };
 
-        // Hàm cập nhật giao diện (CSS Variable + Slider Position)
         const updateSepiaVisuals = (sliderValue, theme) => {
             const cssValue = sliderToCss(sliderValue, theme);
             
-            // Cập nhật biến CSS
-            document.documentElement.style.setProperty('--sepia-amount', `${cssValue}%`);
+            // [FIXED] Truyền số nguyên, không kèm đơn vị %
+            document.documentElement.style.setProperty('--sepia-val', cssValue);
             
-            // Cập nhật vị trí slider
             if (sepiaSlider && sepiaSlider.value != sliderValue) {
                 sepiaSlider.value = sliderValue;
             }
         };
 
         const applyTheme = (theme) => {
-            // 1. Set Attribute
             document.documentElement.setAttribute("data-theme", theme);
             localStorage.setItem(this.CONFIG.STORAGE_KEY_THEME, theme);
             currentTheme = theme;
             
-            // 2. Icon Toggle
             if (theme === "dark") {
                 iconMoon?.classList.add("hidden");
                 iconSun?.classList.remove("hidden");
@@ -65,16 +58,13 @@ export const ThemeManager = {
                 iconSun?.classList.add("hidden");
             }
 
-            // 3. Load Sepia riêng cho theme này
             const savedSepia = localStorage.getItem(getSepiaStorageKey(theme)) || 0;
             updateSepiaVisuals(savedSepia, theme);
         };
 
-        // --- Init Run ---
         applyTheme(currentTheme);
 
         // --- Event Listeners ---
-
         if (btn) {
             let lastTapTime = 0;
             let clickTimer = null;
@@ -82,7 +72,6 @@ export const ThemeManager = {
 
             const handleAction = (e) => {
                 const now = Date.now();
-                // Anti-ghost click
                 if (e.type === 'mousedown' && (now - globalLastTouchTime < 800)) return;
                 if (e.type === 'touchstart') globalLastTouchTime = now;
                 
@@ -90,25 +79,18 @@ export const ThemeManager = {
 
                 const timeDiff = now - lastTapTime;
                 
-                // Logic Double Tap (50ms < diff < 300ms)
                 if (timeDiff < 300 && timeDiff > 50) {
                     if (clickTimer) clearTimeout(clickTimer);
-                    
-                    // Toggle Slider
                     if (sepiaPanel) {
                         sepiaPanel.classList.toggle("hidden");
                         logger.info("Gesture", "Double tap -> Toggle Sepia Panel");
                     }
-                    
                     lastTapTime = 0;
                 } else {
-                    // Single Tap (Delayed)
                     lastTapTime = now;
                     clickTimer = setTimeout(() => {
                         const newTheme = currentTheme === "light" ? "dark" : "light";
                         applyTheme(newTheme);
-                        
-                        // Tự động ẩn slider khi đổi theme (UX choice)
                         if (sepiaPanel && !sepiaPanel.classList.contains("hidden")) {
                             sepiaPanel.classList.add("hidden");
                         }
@@ -121,17 +103,13 @@ export const ThemeManager = {
             btn.addEventListener("click", (e) => e.preventDefault());
         }
 
-        // --- Slider Logic ---
         if (sepiaSlider) {
             sepiaSlider.addEventListener("input", (e) => {
                 const val = e.target.value;
-                // 1. Cập nhật visual ngay lập tức với Max của theme hiện tại
                 updateSepiaVisuals(val, currentTheme);
-                // 2. Lưu vào key riêng của theme hiện tại
                 localStorage.setItem(getSepiaStorageKey(currentTheme), val);
             });
 
-            // Ẩn khi click ra ngoài
             document.addEventListener("click", (e) => {
                 if (!sepiaPanel.classList.contains("hidden") && 
                     !sepiaPanel.contains(e.target) && 

@@ -87,7 +87,7 @@
 
   /* Typography Scale */
   --text-scale: 1;
-  --sepia-amount: 0%;
+  --sepia-val: 0%;
 
   /* Functional Colors */
   --primary-color: var(--primitive-brown-500);
