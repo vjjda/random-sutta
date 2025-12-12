@@ -3,9 +3,8 @@ import { SuttaService } from '../services/sutta_service.js';
 import { RandomBuffer } from '../services/random_buffer.js';
 import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
-// [FIXED] Import từ filters/index.js
 import { FilterComponent } from '../ui/components/filters/index.js'; 
-import { initCommentPopup } from '../ui/components/popup.js';
+import { PopupManager, initCommentPopup } from '../ui/components/popup.js';
 import { Scroller } from '../ui/common/scroller.js';
 import { getLogger } from '../utils/logger.js';
 
@@ -14,7 +13,6 @@ const { hideComment } = initCommentPopup();
 
 export const SuttaController = {
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
-    // ... (Giữ nguyên logic options/history/transition) ...
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
 
@@ -29,9 +27,10 @@ export const SuttaController = {
         } catch (e) {}
     }
 
-    hideComment();
+    hideComment(); // Đảm bảo popup tắt khi chuyển bài
 
     let suttaId;
+    // ... (Giữ nguyên logic parse ID) ...
     let scrollTarget = null;
     if (typeof input === 'object') {
         suttaId = input.uid;
@@ -50,12 +49,10 @@ export const SuttaController = {
         }
     }
 
-    logger.info('loadSutta', `Request: ${suttaId} ${scrollTarget ? '(Target: ' + scrollTarget + ')' : ''}`);
+    logger.info('loadSutta', `Request: ${suttaId}`);
 
     const performRender = async () => {
-        console.time('⏱️ Data Fetch');
         const result = await SuttaService.loadSutta(suttaId);
-        console.timeEnd('⏱️ Data Fetch');
         
         if (!result) {
             renderSutta(suttaId, null, null, options);
@@ -63,26 +60,28 @@ export const SuttaController = {
         }
 
         if (result.isAlias) {
+            // ... (Logic Alias) ...
             let redirectId = result.targetUid;
-            if (result.hashId) {
-                redirectId += `#${result.hashId}`;
-            }
+            if (result.hashId) redirectId += `#${result.hashId}`;
             this.loadSutta(redirectId, true, 0, { transition: false });
             return true;
         }
         
-        console.time('⏱️ Render');
         const success = await renderSutta(suttaId, result, options);
-        console.timeEnd('⏱️ Render');
         
+        // [NEW] Scan comment markers sau khi render thành công
+        if (success) {
+            PopupManager.scanComments();
+        }
+
         if (success && shouldUpdateUrl) {
-             // [UPDATED] Dùng FilterComponent để lấy param
              const bookParam = FilterComponent.generateBookParam();
              Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, currentScroll);
         }
         return success;
     };
 
+    // ... (Giữ nguyên logic scroll/transition) ...
     if (isTransition) {
         await Scroller.transitionTo(performRender, scrollTarget);
     } else {
@@ -101,21 +100,15 @@ export const SuttaController = {
     console.time('🚀 Total Random Process');
     hideComment();
     
-    // [UPDATED] Dùng FilterComponent để lấy active filters
     const filters = FilterComponent.getActiveFilters();
-    
-    console.time('🎲 Selection');
     const payload = await RandomBuffer.getPayload(filters);
-    console.timeEnd('🎲 Selection');
 
     if (!payload) {
       alert("Database loading or no suttas found.");
-      console.timeEnd('🚀 Total Random Process');
       return;
     }
     
-    logger.info('loadRandom', `Selected: ${payload.uid} (Fast Path Active)`);
+    logger.info('loadRandom', `Selected: ${payload.uid}`);
     await this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
-    console.timeEnd('🚀 Total Random Process');
   }
 };
