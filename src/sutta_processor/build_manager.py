@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple, Optional, Set
 
 from .shared.app_config import (
     STAGE_PROCESSED_DIR, 
@@ -67,7 +67,6 @@ class BuildManager:
 
         write_book_file(group, book_obj, dry_run=True) 
 
-    # [UPDATED] Return message string instead of logging immediately
     def _write_missing_report(self, missing_items: List[Tuple[str, str, str]]) -> Optional[str]:
         if not missing_items:
             return None
@@ -86,7 +85,6 @@ class BuildManager:
             logger.error(f"❌ Failed to write missing report: {e}")
             return None
 
-    # [UPDATED] Return message string instead of logging immediately
     def _write_generated_report(self) -> Optional[str]:
         if not self.all_generated_items:
             return None
@@ -110,14 +108,31 @@ class BuildManager:
     def run(self) -> None:
         self._prepare_environment()
         
+        # 1. Generate Tasks
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
-        base_uids = set(self.names_map.keys())
-        expanded_universe = set(base_uids)
+        # [FIXED] Xây dựng Universe từ Task List thực tế (Chính xác 100%)
+        # Chỉ những gì được lên lịch build mới được coi là hợp lệ
+        task_based_uids: Set[str] = set()
+        
+        for group, tasks in book_tasks.items():
+            self.book_totals[group] = len(tasks)
+            self.book_progress[group] = 0
+            self.buffers[group] = {}
+            for task in tasks:
+                # task[0] là UID (sutta_id)
+                task_based_uids.add(task[0])
+                all_tasks.append(task)
+                self.sutta_group_map[task[0]] = group
+
+        logger.info(f"   🔍 Identified {len(task_based_uids)} UIDs scheduled for build.")
+
+        # Expand Universe từ danh sách thực tế này
+        expanded_universe = set(task_based_uids)
         
         logger.info("   🔮 Expanding Validation Universe (Aliases & Ranges)...")
-        for uid in base_uids:
+        for uid in task_based_uids:
             variants = generate_vinaya_variants(uid)
             if variants:
                 expanded_universe.update(variants)
@@ -129,14 +144,7 @@ class BuildManager:
         valid_uids_universe = frozenset(expanded_universe)
         logger.info(f"✨ Validation Universe prepared: {len(valid_uids_universe)} valid targets.")
 
-        for group_name, tasks in book_tasks.items():
-            self.book_totals[group_name] = len(tasks)
-            self.book_progress[group_name] = 0
-            self.buffers[group_name] = {}
-            for task in tasks:
-                all_tasks.append(task)
-                self.sutta_group_map[task[0]] = group_name
-
+        # 2. Execute Workers
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
         
@@ -167,7 +175,6 @@ class BuildManager:
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
-        # [UPDATED] Capture report messages instead of logging now
         missing_msg = self._write_missing_report(all_missing_links)
         generated_msg = self._write_generated_report()
 
@@ -184,7 +191,6 @@ class BuildManager:
         
         logger.info("✅ All processing tasks completed.")
         
-        # [NEW] Print Reports at the very end
         if generated_msg:
             logger.info(generated_msg)
         if missing_msg:
