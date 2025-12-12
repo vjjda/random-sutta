@@ -3,15 +3,15 @@ import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 
 from .shared.app_config import (
     STAGE_PROCESSED_DIR, 
-    LEGACY_DIST_BOOKS_DIR, 
+    LEGACY_DIST_BOOKS_DIR,
+    PROJECT_ROOT # [NEW] Cần root path để ghi vào tmp/
 )
 from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
-# [UPDATED] Import init_worker
 from .logic.content_merger import process_worker, init_worker
 from .logic.structure import build_book_data
 from .logic.super_generator import generate_super_book_data
@@ -65,6 +65,28 @@ class BuildManager:
 
         write_book_file(group, book_obj, dry_run=True) 
 
+    # [NEW] Helper ghi báo cáo
+    def _write_missing_report(self, missing_items: List[Tuple[str, str, str]]) -> None:
+        if not missing_items:
+            logger.info("🎉 No missing links found!")
+            return
+        
+        tmp_dir = PROJECT_ROOT / "tmp"
+        tmp_dir.mkdir(exist_ok=True)
+        report_path = tmp_dir / "missing_links.tsv"
+        
+        try:
+            logger.warning(f"⚠️ Found {len(missing_items)} missing links. Writing report to {report_path}...")
+            with open(report_path, "w", encoding="utf-8") as f:
+                # Header
+                f.write("Sutta_UID\tSegment_ID\tMissing_Target_UID\n")
+                # Data
+                for item in missing_items:
+                    f.write(f"{item[0]}\t{item[1]}\t{item[2]}\n")
+            logger.info(f"✅ Report saved: {report_path}")
+        except Exception as e:
+            logger.error(f"❌ Failed to write missing report: {e}")
+
     def run(self) -> None:
         self._prepare_environment()
         
@@ -72,7 +94,6 @@ class BuildManager:
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
-        # Prepare Universe
         base_uids = set(self.names_map.keys())
         expanded_universe = set(base_uids)
         
@@ -87,22 +108,23 @@ class BuildManager:
                 expanded_universe.update(range_ids)
         
         valid_uids_universe = frozenset(expanded_universe)
-        logger.info(f"✨ Validation Universe prepared: {len(valid_uids_universe)} valid targets (Base: {len(base_uids)}).")
+        logger.info(f"✨ Validation Universe prepared: {len(valid_uids_universe)} valid targets.")
 
         for group_name, tasks in book_tasks.items():
             self.book_totals[group_name] = len(tasks)
             self.book_progress[group_name] = 0
             self.buffers[group_name] = {}
             for task in tasks:
-                # [UPDATED] Không inject universe vào task nữa
                 all_tasks.append(task)
                 self.sutta_group_map[task[0]] = group_name
 
         # 2. Execute Workers
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
+        
+        # [NEW] Accumulator cho toàn bộ missing links
+        all_missing_links = []
 
-        # [UPDATED] Sử dụng initializer để truyền universe 1 lần cho mỗi worker
         with ProcessPoolExecutor(
             max_workers=workers, 
             initializer=init_worker, 
@@ -112,7 +134,13 @@ class BuildManager:
             
             for i, future in enumerate(as_completed(futures)):
                 try:
-                    res_status, res_sid, content = future.result()
+                    # [UPDATED] Unpack thêm missing_refs
+                    res_status, res_sid, content, missing_refs = future.result()
+                    
+                    # Collect missing
+                    if missing_refs:
+                        all_missing_links.extend(missing_refs)
+
                     target_group = self.sutta_group_map.get(res_sid)
                     
                     if target_group:
@@ -123,6 +151,9 @@ class BuildManager:
 
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
+
+        # [NEW] Xuất báo cáo sau khi chạy xong worker
+        self._write_missing_report(all_missing_links)
 
         # 3. Generate Super Book
         if self.processed_book_ids:
