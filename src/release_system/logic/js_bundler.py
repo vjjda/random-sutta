@@ -2,7 +2,6 @@
 import logging
 import re
 import shutil
-import os
 from pathlib import Path
 from typing import List
 
@@ -19,14 +18,16 @@ def _cleanup_modules(base_dir: Path) -> None:
 
 def _wrap_in_iife(content: str, file_name: str) -> str:
     # 1. Tìm các biến được export inline (vd: export const Router = ...)
-    export_pattern = r'export\s+(async\s+)?(?:function|class|const|let|var)\s+([a-zA-Z0-9_$]+)'
-    matches = re.findall(export_pattern, content)
+    # Group 2: Name
+    export_decl_pattern = r'export\s+(async\s+)?(function|class|const|let|var)\s+([a-zA-Z0-9_$]+)'
+    matches = re.findall(export_decl_pattern, content)
     
-    exports = [m[1] for m in matches]
+    exports = [m[2] for m in matches]
     
     # 2. Xóa từ khóa 'export' ở đầu dòng khai báo
-    cleaned_content = re.sub(r'^export\s+', '', content, flags=re.MULTILINE)
-    
+    # Chỉ xóa chữ export, giữ lại const/function...
+    cleaned_content = re.sub(r'^export\s+(?=(?:async\s+)?(?:function|class|const|let|var))', '', content, flags=re.MULTILINE)
+
     # 3. Expose ra global window
     expose_code = ""
     if exports:
@@ -57,34 +58,26 @@ def bundle_javascript(base_dir: Path) -> bool:
             file_path = base_dir / rel_path
             
             with open(file_path, "r", encoding="utf-8") as f:
-                raw_lines = f.readlines()
+                content = f.read()
             
-            # [FIXED] Bộ lọc thông minh hơn cho Barrel/Gateway files
-            filtered_lines = []
-            for line in raw_lines:
-                s_line = line.strip()
-                
-                # 1. Bỏ dòng import
-                if s_line.startswith("import "): continue
-                
-                # 2. Bỏ dòng Re-export (export ... from ...) -> Gây lỗi cú pháp nếu giữ lại 'from'
-                if s_line.startswith("export ") and " from " in s_line: continue
-                
-                # 3. Bỏ dòng export all (*)
-                if s_line.startswith("export *"): continue
-                
-                # 4. Bỏ dòng export { A, B } (Named exports độc lập)
-                # Vì ta ưu tiên export inline (export const A). 
-                # Nếu file chỉ có export {} thì coi như nó là file cấu hình/gateway, ko cần nội dung trong bundle.
-                if s_line.startswith("export {"): continue
-
-                filtered_lines.append(line)
-
-            file_content_str = "".join(filtered_lines)
+            # --- PHASE 1: PRE-PROCESSING (Regex) ---
+            # [FIXED] Dùng Regex DOTALL để xử lý import/export nhiều dòng
             
-            # Chỉ bọc IIFE nếu file còn nội dung thực thi
-            if file_content_str.strip():
-                iife_block = _wrap_in_iife(file_content_str, rel_path)
+            # 1. Remove all 'import ...' statements
+            content = re.sub(r'import\s+.*?from\s+[\'"].*?[\'"];?', '', content, flags=re.DOTALL)
+            content = re.sub(r'import\s+[\'"].*?[\'"];?', '', content, flags=re.DOTALL) # Side-effect imports
+
+            # 2. Remove 'export ... from ...' (Re-exports từ Gateway)
+            # Đây chính là nguyên nhân gây lỗi cú pháp
+            content = re.sub(r'export\s+.*?from\s+[\'"].*?[\'"];?', '', content, flags=re.DOTALL)
+
+            # 3. Remove empty 'export {};'
+            content = re.sub(r'export\s*\{\s*\}\s*;?', '', content)
+
+            # --- PHASE 2: WRAP ---
+            # Chỉ bọc nếu còn nội dung có nghĩa
+            if content.strip():
+                iife_block = _wrap_in_iife(content, rel_path)
                 combined_content.append(iife_block)
 
         with open(bundle_path, "w", encoding="utf-8") as f:
