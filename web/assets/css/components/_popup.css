@@ -46,21 +46,19 @@
   color: var(--text-muted);
   
   /* Kích thước thống nhất cho cả 2 popup */
-  width: 40px; 
-  height: 40px;
-  font-size: 1.8rem;
+  width: 30px;
+  height: 30px;
+  font-size: 1.5rem;
   line-height: 1;
-  
   display: flex;
   align-items: center;
   justify-content: center;
-  
   cursor: pointer;
   border-radius: 50%;
   flex-shrink: 0; /* Không bị co lại khi text dài */
   
   /* Căn chỉnh vị trí so với padding của header */
-  margin-right: -10px; 
+  margin-right: -10px;
   margin-top: -4px;
 }
 
@@ -74,7 +72,7 @@
 .comment-header, 
 .quicklook-header {
   padding: 10px 15px;
-  border-bottom: 1px solid var(--border-light);
+  /* border-bottom: 1px solid var(--border-light); */
   background-color: var(--bg-body);
   display: flex;
   justify-content: space-between;
@@ -86,12 +84,11 @@
 /* --- COMMENT POPUP (Layer 1) --- */
 #comment-popup {
   bottom: 0;
-  max-height: var(--popup-comment-height); 
+  max-height: var(--popup-comment-height);
   height: var(--popup-comment-height);
-  
-  border-radius: var(--radius-popup) var(--radius-popup) 0 0;
+  /* border-radius: var(--radius-popup) var(--radius-popup) 0 0; */
   border-left: 5px solid var(--primary-color);
-  z-index: 1020; 
+  z-index: 1020;
 }
 
 /* Style riêng cho text trong Comment Header */
@@ -113,17 +110,14 @@
 
 /* --- QUICKLOOK POPUP (Layer 2) --- */
 #quicklook-popup {
-  top: var(--popup-quicklook-top); 
-  bottom: var(--popup-comment-height); 
-  
-  height: auto; 
-  max-height: none; 
-  border-radius: 0; 
-  border-left: 5px solid var(--primitive-amber-300);
-  border-bottom: 2px solid var(--border-color); 
-  
-  z-index: 1010; 
-  box-shadow: none; 
+  top: var(--popup-quicklook-top);
+  bottom: var(--popup-comment-height);
+  height: auto;
+  max-height: none;
+  border-radius: 0;
+  border-left: 5px solid var(--primitive-brown-300);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 1010;
 }
 
 #quicklook-popup.hidden {
@@ -132,9 +126,6 @@
   transform: none; 
 }
 
-.quicklook-header {
-  /* Các thuộc tính layout đã được gộp ở trên */
-}
 
 .ql-header-content {
   flex: 1;
@@ -174,17 +165,25 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  border-top: 1px solid var(--border-light);
-  background-color: var(--bg-body);
-  user-select: none;
+  /* border-top: 1px solid var(--border-light);
+  /* background-color: var(--bg-body); */
+  user-select: none; */
 }
 
 .popup-nav-info { font-size: 0.8rem; color: var(--text-light); font-family: monospace; }
 
 .popup-nav-btn {
-  background: none; border: 1px solid var(--border-light); border-radius: 50%;
-  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-  color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
+  background: none;
+  border: 1px none var(--border-light);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 .popup-nav-btn:hover:not(:disabled) { background-color: var(--bg-hover); color: var(--primary-color); border-color: var(--primary-color); }
 .popup-nav-btn:disabled { opacity: 0.3; cursor: default; }

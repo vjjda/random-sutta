@@ -7,7 +7,6 @@
 /* Noto Sans Regular */
 @font-face {
   font-family: "Noto Sans";
-  /* Đi từ css/base/ ra assets/fonts/ */
   src: url("../../fonts/NotoSans-Regular.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
@@ -34,69 +33,60 @@
   --primitive-paper-100: #f5f2eb;
   --primitive-paper-200: #eceae5; /* Dùng cho border light */
   --primitive-paper-300: #eaddcf;
+
   /* NEUTRALS: NIGHT (Nền tối) */
   --primitive-night-900: #1a1918; /* Body Dark */
-  --primitive-night-800: #262423;
-  /* Card Dark */
+  --primitive-night-800: #262423; /* Card Dark */
   --primitive-night-700: #383533;
   --primitive-night-600: #33302e; /* Border Dark */
-  --primitive-night-500: #201e1d;
-  /* Drawer Dark */
+  --primitive-night-500: #201e1d; /* Drawer Dark */
 
-  /* BRAND: BROWN (Màu chủ đạo & Text Pali) */
   /* BRAND: BROWN (Màu chủ đạo & Text Pali) - Expanded Scale */
-  --primitive-brown-950: #311f1c;
-  /* Deep Coffee */
+  --primitive-brown-950: #311f1c; /* Deep Coffee */
   --primitive-brown-900: #3e2723; /* Dark Brown (Anchor) */
-  --primitive-brown-800: #4d332d;
-  /* Shadow / Dark Border */
+  --primitive-brown-800: #4d332d; /* Shadow / Dark Border */
   --primitive-brown-700: #5d4037; /* Dark UI Elements (Anchor) */
-  --primitive-brown-600: #744225;
-  /* Hover Dark */
+  --primitive-brown-600: #744225; /* Hover Dark */
   --primitive-brown-500: #8b4513; /* Primary Brand Color (SaddleBrown - Anchor) */
-  --primitive-brown-400: #a0522d;
-  /* Primary Hover (Sienna - Anchor) */
-  --primitive-brown-300: #ae7e68;
-  /* [Refined Warm] Button Borders / Accents */
+  --primitive-brown-400: #a0522d; /* Primary Hover (Sienna - Anchor) */
+  --primitive-brown-300: #ae7e68; /* [Refined Warm] Button Borders / Accents */
   --primitive-brown-200: #bcaaa4; /* Muted Pali Text (Anchor) */
-  --primitive-brown-100: #d7ccc8;
-  /* Lighter borders / Backgrounds (Anchor) */
+  --primitive-brown-100: #d7ccc8; /* Lighter borders / Backgrounds (Anchor) */
   --primitive-brown-50: #ebe5e3; /* Very Light Wash / Tint */
-  --primitive-brown-warm: #ba6b45;
-  /* Primary Hover Dark */
+  --primitive-brown-warm: #ba6b45; /* Primary Hover Dark */
 
   /* TEXT: INK (Dành cho nền sáng) */
-  --primitive-ink-950: #221b15;
-  /* Deepest Ink */
+  --primitive-ink-950: #221b15; /* Deepest Ink */
   --primitive-ink-900: #2b221b; /* Main Text (Anchor) */
-  --primitive-ink-800: #433b35;
-  /* Primary Paragraph */
+  --primitive-ink-800: #433b35; /* Primary Paragraph */
   --primitive-ink-700: #5c5550; /* Muted / Pali (Anchor) */
-  --primitive-ink-600: #6a6662;
-  /* Secondary Text */
+  --primitive-ink-600: #6a6662; /* Secondary Text */
   --primitive-ink-500: #797775; /* Tertiary Text */
-  --primitive-ink-400: #888888;
-  /* Light Text / Icons (Anchor) */
+  --primitive-ink-400: #888888; /* Light Text / Icons (Anchor) */
   --primitive-ink-300: #a4a4a4; /* Disabled Text */
-  --primitive-ink-200: #c0c0c0;
-  /* Borders High Contrast */
+  --primitive-ink-200: #c0c0c0; /* Borders High Contrast */
   --primitive-ink-100: #dcdcdc; /* Borders Low Contrast */
-  --primitive-ink-50: #f9f9f9;
-  /* Background / Wash */
+  --primitive-ink-50: #f9f9f9;  /* Background / Wash */
 
   /* TEXT: IVORY (Dành cho nền tối) - [NEW FULL SCALE] */
-  --primitive-ivory-900: #ececec;
-  /* High contrast */
+  --primitive-ivory-900: #ececec; /* High contrast */
   --primitive-ivory-800: #dedede; /* [NEW] Softer Main Text */
   --primitive-ivory-700: #d0d0d0;
   --primitive-ivory-600: #b0b0b0;
-  --primitive-ivory-500: #a09c98;
-  /* Muted Text */
+  --primitive-ivory-500: #a09c98; /* Muted Text */
   --primitive-ivory-400: #757575; /* Light Text */
 
-  /* ACCENTS */
-  --primitive-amber-300: #ffb74d;
-  /* Link Dark */
+  /* [UPDATED] ACCENTS: AMBER SCALE (Full Range) */
+  --primitive-amber-50: #fff8e1;
+  --primitive-amber-100: #ffecb3;
+  --primitive-amber-200: #ffe082;
+  --primitive-amber-300: #ffd54f;
+  --primitive-amber-400: #ffca28;
+  --primitive-amber-500: #ffc107; /* Warning / Highlight */
+  --primitive-amber-600: #ffb300;
+  --primitive-amber-700: #ffa000;
+  --primitive-amber-800: #ff8f00;
+  --primitive-amber-900: #ff6f00;
 
   /* =========================================
      2. SEMANTIC TOKENS (Light Theme Default)
@@ -113,16 +103,14 @@
 
   /* Backgrounds */
   --bg-body: var(--primitive-paper-50);
-  --bg-card: var(--primitive-white); /* Was #ffffff */
+  --bg-card: var(--primitive-white); 
   --bg-drawer: var(--primitive-paper-100);
   --bg-hover: rgba(139, 69, 19, 0.06);
-  /* Keep RGBA for opacity effects */
 
   /* Typography */
   --text-main: var(--primitive-ink-900);
   --text-muted: var(--primitive-ink-700);
   --text-light: var(--primitive-ink-400);
-  /* Was #888888 */
 
   --text-pali: var(--primitive-ink-700);
   --text-eng: var(--primitive-ink-900);
@@ -130,25 +118,24 @@
   /* Borders & UI */
   --border-color: var(--primitive-paper-300);
   --border-light: var(--primitive-paper-200);
-  /* Was #eceae5 */
 
-  /* Shadows & Highlights (Keep RGBA for blending) */
+  /* Shadows & Highlights */
   --shadow-soft: 0 2px 10px rgba(62, 39, 35, 0.05);
   --shadow-card: 0 4px 15px rgba(62, 39, 35, 0.08);
   --shadow-hover: 0 12px 24px rgba(62, 39, 35, 0.15);
   --highlight-color-background: rgba(139, 69, 19, 0.08);
   --highlight-color-segment: rgba(255, 167, 38, 0.15);
+
   /* Fonts & Spacing */
   --font-main: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto",
     "Helvetica Neue", sans-serif;
-  /* [UPDATED] Sử dụng Font Noto Sans đã import */
   --font-sutta: "Noto Sans", "Segoe UI", sans-serif;
 
   --container-width: 800px;
   --radius-md: 8px;
   --radius-sm: 4px;
 
-  /* [NEW] POPUP & OVERLAY VARIABLES */
+  /* POPUP & OVERLAY VARIABLES */
   --z-popup: 1000;
   --z-toast: 2000;
   --radius-popup: 12px;
@@ -163,27 +150,25 @@
   /* Backgrounds */
   --bg-body: var(--primitive-night-900);
   --bg-card: var(--primitive-night-800);
-  --bg-drawer: var(--primitive-night-500); /* Was #201e1d */
+  --bg-drawer: var(--primitive-night-500);
   --bg-hover: rgba(255, 255, 255, 0.12);
 
   /* Text */
   --text-main: var(--primitive-ivory-800);
-  /* [UPDATED] Softer than 900 */
   --text-muted: var(--primitive-ivory-500);
-  --text-light: var(--primitive-ivory-400); /* Was #757575 */
-
+  --text-light: var(--primitive-ivory-400);
   --text-pali: var(--primitive-brown-200);
-  /* Was #bcaaa4 */
   --text-eng: var(--primitive-ivory-800);
-  --text-link: var(--primitive-amber-300); /* Was #ffb74d */
+  --text-link: var(--primitive-amber-800); /* Link dùng màu Amber 300 sáng */
 
   /* Borders */
   --border-color: var(--primitive-night-700);
-  --border-light: var(--primitive-night-600); /* Was #33302e */
+  --border-light: var(--primitive-night-600);
 
   /* Primary */
   --primary-color: var(--primitive-brown-400);
   --primary-hover: var(--primitive-brown-warm);
+
   /* Shadows */
   --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.6);
