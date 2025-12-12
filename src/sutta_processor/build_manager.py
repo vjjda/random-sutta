@@ -5,6 +5,7 @@ import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Dict, List, Any
 
+# [UPDATED IMPORTS]
 from .shared.app_config import (
     STAGE_PROCESSED_DIR, 
     LEGACY_DIST_BOOKS_DIR, 
@@ -15,11 +16,12 @@ from .logic.content_merger import process_worker
 from .logic.structure import build_book_data
 from .logic.super_generator import generate_super_book_data
 from .output.asset_generator import write_book_file
+# [NEW OPTIMIZER]
 from .optimizer import run_optimizer
 from .output.zip_generator import create_db_bundle
 
-# [NEW] Import logic sinh biến thể
-from .logic.range_expander import generate_vinaya_variants
+# [UPDATED] Import cả expand_range_ids
+from .logic.range_expander import generate_vinaya_variants, expand_range_ids
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
 
@@ -36,10 +38,12 @@ class BuildManager:
         self.sutta_group_map: Dict[str, str] = {}
 
     def _prepare_environment(self) -> None:
+        # [UPDATED] Clean Staging Directory
         if STAGE_PROCESSED_DIR.exists():
             shutil.rmtree(STAGE_PROCESSED_DIR)
         STAGE_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
         
+        # [OPTIONAL] Clean Legacy Output (nếu bạn muốn xóa sạch file cũ)
         if not self.dry_run and LEGACY_DIST_BOOKS_DIR.exists():
              shutil.rmtree(LEGACY_DIST_BOOKS_DIR)
              
@@ -64,6 +68,7 @@ class BuildManager:
         if book_obj and "id" in book_obj:
             self.processed_book_ids.append(book_obj["id"])
 
+        # Chỉ ghi JSON vào Staging Area (processed/)
         write_book_file(group, book_obj, dry_run=True) 
 
     def run(self) -> None:
@@ -78,12 +83,18 @@ class BuildManager:
         base_uids = set(self.names_map.keys())
         expanded_universe = set(base_uids)
         
-        logger.info("   🔮 Expanding Validation Universe (Aliases)...")
-        # Sinh thêm các biến thể Alias (cho Vinaya) để tránh báo lỗi giả
+        logger.info("   🔮 Expanding Validation Universe (Aliases & Ranges)...")
+        
         for uid in base_uids:
+            # 1. Expand Vinaya Variants (vd: pli-tv-bu-vb-pj1 -> pj1)
             variants = generate_vinaya_variants(uid)
             if variants:
                 expanded_universe.update(variants)
+            
+            # 2. [FIXED] Expand Range IDs (vd: dhp383-423 -> dhp406)
+            range_ids = expand_range_ids(uid)
+            if range_ids:
+                expanded_universe.update(range_ids)
         
         # Đóng băng để tối ưu bộ nhớ khi truyền qua process
         valid_uids_universe = frozenset(expanded_universe)
@@ -94,8 +105,11 @@ class BuildManager:
             self.book_progress[group_name] = 0
             self.buffers[group_name] = {}
             for task in tasks:
-                # Inject valid_uids_universe vào cuối
+                # [UPDATED] Inject valid_uids_universe vào cuối tuple args
+                # task cũ: (uid, root, trans, html, comm, author)
+                # task mới: (..., valid_uids_universe)
                 expanded_task = task + (valid_uids_universe,)
+                
                 all_tasks.append(expanded_task)
                 self.sutta_group_map[task[0]] = group_name
 
@@ -120,17 +134,17 @@ class BuildManager:
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
-        # 3. Generate Super Book
+        # 3. Generate Super Book (Staging)
         if self.processed_book_ids:
             super_book_data = generate_super_book_data(self.processed_book_ids)
             if super_book_data:
                 write_book_file("super", super_book_data, dry_run=True)
 
-        # 4. Optimizer
+        # 4. Run Optimizer (The Real Work)
         logger.info("⚡ Transforming processed data to Optimized DB...")
         run_optimizer(dry_run=self.dry_run)
         
-        # 5. Zip Bundle
+        # 5. Create DB Bundle (Chỉ chạy khi không dry-run)
         if not self.dry_run:
             create_db_bundle()
         logger.info("✅ All processing tasks completed.")
