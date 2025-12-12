@@ -146,7 +146,7 @@ export const PopupManager = {
                 // Format: "MN 10: Satipatthana Sutta" hoặc chỉ "MN 10" nếu không có title
                 const displayTitle = title ? `${acronym}: ${title}` : acronym;
 
-                QuicklookLayer.show(renderRes.html, displayTitle);
+                QuicklookLayer.show(renderRes.html, displayTitle, href);
                 
                 if (hash) {
                     let targetId = hash.substring(1); 

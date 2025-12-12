@@ -9,7 +9,8 @@ export const QuicklookLayer = {
             title: document.getElementById("quicklook-title"),
             closeBtn: document.getElementById("close-quicklook"),
             // [NEW] Cache element body để xử lý scroll
-            popupBody: document.querySelector("#quicklook-popup .popup-body")
+            popupBody: document.querySelector("#quicklook-popup .popup-body"),
+            externalLinkBtn: document.getElementById("btn-quicklook-open")
         };
 
         if (!this.elements.popup) return;
@@ -28,11 +29,23 @@ export const QuicklookLayer = {
         });
     },
 
-    show(htmlContent, title = "Preview") {
+    show(htmlContent, title = "Preview", sourceUrl = null) {
         if (this.elements.title) {
             this.elements.title.textContent = title;
         }
         this.elements.content.innerHTML = htmlContent;
+        
+        // Handle External Link Button
+        if (this.elements.externalLinkBtn) {
+            if (sourceUrl) {
+                this.elements.externalLinkBtn.href = sourceUrl;
+                this.elements.externalLinkBtn.classList.remove("hidden");
+            } else {
+                this.elements.externalLinkBtn.classList.add("hidden");
+                this.elements.externalLinkBtn.removeAttribute("href");
+            }
+        }
+
         this.elements.popup.classList.remove("hidden");
 
         // [FIXED] Reset scroll position lên đầu khi load nội dung mới

@@ -102,10 +102,17 @@
   /* Căn giữa dọc với nút close */
   align-self: center;
   
-  /* Truncate text */
+  /* Scrollable instead of truncate */
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  padding-right: 5px; /* Prevent text clipping at very end */
+}
+
+.comment-header-text::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 /* --- QUICKLOOK POPUP (Layer 2) --- */
@@ -161,19 +168,36 @@
 
 /* --- NAV BAR --- */
 .popup-nav-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 15px;
-  /* border-top: 1px solid var(--border-light);
-  /* background-color: var(--bg-body); */
-  user-select: none; */
+  background: transparent;
+  pointer-events: none; /* Allow clicks to pass through empty space */
+  z-index: 10;
 }
 
-.popup-nav-info { font-size: 0.8rem; color: var(--text-light); font-family: monospace; }
+/* Ensure controls are clickable and visible against text */
+.popup-nav-bar > * {
+  pointer-events: auto;
+  background-color: var(--bg-card); /* Match popup background */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* Lift effect */
+}
+
+.popup-nav-info { 
+  font-size: 0.8rem; 
+  color: var(--text-light); 
+  font-family: monospace;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
 
 .popup-nav-btn {
-  background: none;
+  background-color: var(--bg-card); /* Explicit bg */
   border: 1px none var(--border-light);
   border-radius: 50%;
   width: 36px;
@@ -186,7 +210,42 @@
   transition: all 0.2s ease;
 }
 .popup-nav-btn:hover:not(:disabled) { background-color: var(--bg-hover); color: var(--primary-color); border-color: var(--primary-color); }
-.popup-nav-btn:disabled { opacity: 0.3; cursor: default; }
+.popup-nav-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+/* Ensure content isn't hidden behind floating nav */
+#comment-popup .popup-body {
+  padding-bottom: 60px;
+}
+
+/* --- QUICKLOOK FAB --- */
+.quicklook-fab {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  width: 30px;
+  height: 30px;
+  background-color: var(--bg-card);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  z-index: 20;
+  opacity: 0.8;
+}
+
+.quicklook-fab:hover {
+  color: var(--primary-color);
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.quicklook-fab.hidden {
+  display: none;
+}
 
 .comment-marker {
   color: var(--primary-color); font-weight: bold; cursor: pointer; font-size: 0.75em;
