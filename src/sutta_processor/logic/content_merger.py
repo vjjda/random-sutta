@@ -34,17 +34,24 @@ def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_a
     if not text or "suttacentral.net" not in text:
         return text
 
-    # [REFINED REGEX]
-    # 1. https? -> Bắt cả http và https
-    # 2. Path: (?:/[^#\"'\s]*)? -> Chấp nhận path nhưng dừng nếu gặp khoảng trắng, #, ", '
-    pattern = r"https?://suttacentral\.net/([a-zA-Z0-9\.-]+)(?:/[^#\"'\s]*)?(?:#([a-zA-Z0-9\.\:-]+))?"
+    # [SIMPLIFIED REGEX]
+    # 1. Domain: https://suttacentral.net/
+    # 2. Group 1 (UID): [a-zA-Z0-9\.-]+ (Bắt UID ngay sau domain)
+    # 3. Group 2 (Tail): [^"'\s]* (Nuốt hết phần còn lại cho đến khi gặp dấu nháy hoặc khoảng trắng)
+    pattern = r"https?://suttacentral\.net/([a-zA-Z0-9\.-]+)([^\"'\s]*)"
     
     def repl(match):
         uid_raw = match.group(1) 
-        fragment = match.group(2)
+        url_tail = match.group(2) # Chứa path (/lzh/taisho) và hash (#segment)
         
         target_uid = _get_base_uid(uid_raw)
         
+        # Tìm Fragment trong phần đuôi (nếu có)
+        fragment = ""
+        hash_match = re.search(r"#([a-zA-Z0-9\.\:-]+)", url_tail)
+        if hash_match:
+            fragment = hash_match.group(1)
+
         # Check Existence
         if target_uid in _WORKER_VALID_UIDS:
             new_link = f"index.html?q={target_uid}"
@@ -52,10 +59,12 @@ def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_a
                 new_link += f"#{fragment}"
             return new_link
         
-        # Logic thu thập lỗi
-        # Regex này bắt các UID kinh điển (chữ + số/chấm), ví dụ: mn1, ea31.1, pli-tv-bi-vb...
-        if re.match(r"^[a-z]+[\d\.]+", target_uid):
-             # [FIXED] Chuyển lên WARNING để hiện ra console
+        # [BROADENED CHECK] Logic cảnh báo nới lỏng
+        # Điều kiện: Bắt đầu bằng chữ cái VÀ chứa ít nhất 1 chữ số
+        # Ví dụ khớp: mn1, ea31.1, pli-tv-bi-vb-pc1
+        # Ví dụ bỏ qua: home, about, discussion
+        if re.match(r"^[a-z]", target_uid, re.I) and any(c.isdigit() for c in target_uid):
+             # Log warning ra console
              logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing link '{target_uid}'")
              missing_acc.append((current_sutta_id, segment_id, target_uid))
         
