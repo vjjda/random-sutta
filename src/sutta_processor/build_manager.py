@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Tuple
 from .shared.app_config import (
     STAGE_PROCESSED_DIR, 
     LEGACY_DIST_BOOKS_DIR,
-    PROJECT_ROOT # [NEW] Cần root path để ghi vào tmp/
+    PROJECT_ROOT 
 )
 from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
@@ -33,6 +33,9 @@ class BuildManager:
         self.completed_files: List[str] = []
         self.processed_book_ids: List[str] = [] 
         self.sutta_group_map: Dict[str, str] = {}
+        
+        # [NEW] Danh sách tổng hợp items được sinh ra (Subleaf/Alias)
+        self.all_generated_items: List[Tuple[str, str, str, str]] = []
 
     def _prepare_environment(self) -> None:
         if STAGE_PROCESSED_DIR.exists():
@@ -58,14 +61,15 @@ class BuildManager:
 
     def _finalize_book(self, group: str) -> None:
         raw_data = self.buffers.get(group, {})
-        book_obj = build_book_data(group, raw_data, self.names_map)
+        
+        # [UPDATED] Pass list self.all_generated_items vào để thu thập
+        book_obj = build_book_data(group, raw_data, self.names_map, self.all_generated_items)
         
         if book_obj and "id" in book_obj:
             self.processed_book_ids.append(book_obj["id"])
 
         write_book_file(group, book_obj, dry_run=True) 
 
-    # [NEW] Helper ghi báo cáo
     def _write_missing_report(self, missing_items: List[Tuple[str, str, str]]) -> None:
         if not missing_items:
             logger.info("🎉 No missing links found!")
@@ -76,21 +80,38 @@ class BuildManager:
         report_path = tmp_dir / "missing_links.tsv"
         
         try:
-            logger.warning(f"⚠️ Found {len(missing_items)} missing links. Writing report to {report_path}...")
             with open(report_path, "w", encoding="utf-8") as f:
-                # Header
                 f.write("Sutta_UID\tSegment_ID\tMissing_Target_UID\n")
-                # Data
                 for item in missing_items:
                     f.write(f"{item[0]}\t{item[1]}\t{item[2]}\n")
-            logger.info(f"✅ Report saved: {report_path}")
+            logger.warning(f"⚠️ Report saved: {report_path} ({len(missing_items)} missing links)")
         except Exception as e:
             logger.error(f"❌ Failed to write missing report: {e}")
+
+    # [NEW] Helper ghi báo cáo generated items
+    def _write_generated_report(self) -> None:
+        if not self.all_generated_items:
+            return
+
+        tmp_dir = PROJECT_ROOT / "tmp"
+        tmp_dir.mkdir(exist_ok=True)
+        report_path = tmp_dir / "generated_items.tsv"
+        
+        try:
+            # Sort để dễ nhìn
+            sorted_items = sorted(self.all_generated_items, key=lambda x: x[0])
+            
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write("UID\tType\tParent/Target\tExtract/Hash\n")
+                for item in sorted_items:
+                    f.write(f"{item[0]}\t{item[1]}\t{item[2]}\t{item[3]}\n")
+            logger.info(f"📋 Generated Items Report saved: {report_path} ({len(sorted_items)} items)")
+        except Exception as e:
+            logger.error(f"❌ Failed to write generated report: {e}")
 
     def run(self) -> None:
         self._prepare_environment()
         
-        # 1. Generate Tasks
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
@@ -118,11 +139,9 @@ class BuildManager:
                 all_tasks.append(task)
                 self.sutta_group_map[task[0]] = group_name
 
-        # 2. Execute Workers
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
         
-        # [NEW] Accumulator cho toàn bộ missing links
         all_missing_links = []
 
         with ProcessPoolExecutor(
@@ -134,10 +153,8 @@ class BuildManager:
             
             for i, future in enumerate(as_completed(futures)):
                 try:
-                    # [UPDATED] Unpack thêm missing_refs
                     res_status, res_sid, content, missing_refs = future.result()
                     
-                    # Collect missing
                     if missing_refs:
                         all_missing_links.extend(missing_refs)
 
@@ -152,20 +169,19 @@ class BuildManager:
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
-        # [NEW] Xuất báo cáo sau khi chạy xong worker
         self._write_missing_report(all_missing_links)
+        
+        # [UPDATED] Xuất báo cáo generated items (Dữ liệu đã được collect trong quá trình _handle_task_completion -> _finalize_book)
+        self._write_generated_report()
 
-        # 3. Generate Super Book
         if self.processed_book_ids:
             super_book_data = generate_super_book_data(self.processed_book_ids)
             if super_book_data:
                 write_book_file("super", super_book_data, dry_run=True)
 
-        # 4. Optimizer
         logger.info("⚡ Transforming processed data to Optimized DB...")
         run_optimizer(dry_run=self.dry_run)
         
-        # 5. Zip Bundle
         if not self.dry_run:
             create_db_bundle()
         logger.info("✅ All processing tasks completed.")

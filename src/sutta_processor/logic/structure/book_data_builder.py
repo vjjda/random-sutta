@@ -1,5 +1,5 @@
 # Path: src/sutta_processor/logic/structure/book_data_builder.py
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
 from ...shared.domain_types import SuttaMeta
 from ..tree_utils import (
@@ -16,15 +16,11 @@ from .structure_expansion import expand_structure_with_subleaves
 def build_book_data(
     group_name: str, 
     raw_data: Dict[str, Any], 
-    names_map: Dict[str, SuttaMeta]
+    names_map: Dict[str, SuttaMeta],
+    generated_acc: List[Tuple[str, str, str, str]] = None # [NEW] Optional param
 ) -> Dict[str, Any]:
     """
     Xây dựng dữ liệu sách (Staging Phase).
-    Nhiệm vụ:
-    1. Load & Simplify Tree.
-    2. Expand Subleaves/Alias -> Build Meta.
-    3. Calculate Navigation (Rich Staging).
-    4. Package Content.
     """
     
     # 1. Load Tree
@@ -34,7 +30,8 @@ def build_book_data(
     meta_dict: Dict[str, Any] = {}
     
     # 2. Expand Structure & Build Base Meta
-    final_structure = expand_structure_with_subleaves(simple_tree, raw_data, names_map, meta_dict)
+    # [UPDATED] Pass accumulator
+    final_structure = expand_structure_with_subleaves(simple_tree, raw_data, names_map, meta_dict, generated_acc)
     
     # 3. Add Content Meta & Author
     content_dict = {}
@@ -42,7 +39,6 @@ def build_book_data(
         if not payload: continue
         content_dict[uid] = payload.get("data", {})
         
-        # Đảm bảo UID có trong meta (nếu chưa có)
         if uid not in meta_dict:
             ensure_meta_entry(uid, "leaf", names_map, meta_dict)
             
@@ -51,15 +47,12 @@ def build_book_data(
             meta_dict[uid]["author_uid"] = author
 
     # 4. Rich Staging: Calculate Navigation & Pool
-    # A. Reading Nav (Leaf/Subleaf)
     nav_sequence = extract_nav_sequence(final_structure, meta_dict)
     reading_nav_map = generate_navigation_map(nav_sequence)
     random_pool = generate_random_pool(nav_sequence)
     
-    # B. Branch Nav (Group/Chapter)
     branch_nav_map = generate_depth_navigation(final_structure, meta_dict)
     
-    # C. Merge & Inject
     full_nav_map = {**branch_nav_map, **reading_nav_map}
     
     for uid, nav_entry in full_nav_map.items():
