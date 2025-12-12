@@ -2,7 +2,6 @@
 
 /* --- SHARED STYLES --- */
 :root {
-  /* Default values (sẽ được JS ghi đè từ AppConfig) */
   --popup-comment-height: 40vh;
   --popup-quicklook-top: 70px;
 }
@@ -59,9 +58,8 @@
 /* --- COMMENT POPUP (Layer 1 - Bottom - Primary) --- */
 #comment-popup {
   bottom: 0;
-  /* [UPDATED] Sử dụng biến CSS */
-  max-height: var(--popup-comment-height); 
-  height: var(--popup-comment-height);
+  max-height: 40vh; 
+  height: 40vh;
   
   border-radius: var(--radius-popup) var(--radius-popup) 0 0;
   border-left: 5px solid var(--primary-color);
@@ -70,7 +68,6 @@
 
 /* --- QUICKLOOK POPUP (Layer 2 - Top - Secondary) --- */
 #quicklook-popup {
-  /* [UPDATED] Sử dụng biến CSS */
   top: var(--popup-quicklook-top); 
   bottom: var(--popup-comment-height); 
   
@@ -91,16 +88,59 @@
   transform: none; 
 }
 
+/* [UPDATED] Quicklook Header Styling */
 .quicklook-header {
-  padding: 10px 15px;
+  padding: 8px 15px; /* Giảm padding dọc một chút để tiết kiệm diện tích */
   border-bottom: 1px solid var(--border-light);
   background-color: var(--bg-body);
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--primary-color);
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start; /* Căn nút close lên trên cùng */
+  gap: 10px;
+}
+
+/* Container cho text trong header */
+.ql-header-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* Cho phép text truncate hoạt động */
+}
+
+/* Dòng 1: Ngữ cảnh (Segment gốc) - Quan trọng nhất */
+.ql-context {
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.3;
+  
+  /* Giới hạn hiển thị tối đa 2 dòng */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Dòng 2: Nguồn tham chiếu (Tên sách/sutta đích) - Phụ */
+.ql-ref {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Nút close chỉnh lại một chút cho cân đối với header mới */
+.quicklook-header .popup-close-btn {
+  margin: -4px -5px 0 0; /* Reset margin */
+  font-size: 1.6rem;
+  color: var(--text-muted);
 }
 
 /* --- NAV BAR --- */
