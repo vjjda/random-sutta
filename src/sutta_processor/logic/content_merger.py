@@ -5,7 +5,14 @@ import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Any
 
+# [NEW] Import Config để biết sách nào là nội bộ
+from ..shared.app_config import CONFIG_PRIMARY_BOOKS
+
 logger = logging.getLogger("SuttaProcessor.Logic.Merger")
+
+# Tạo set để tra cứu O(1)
+# Bao gồm cả các sách chính và các biến thể phổ biến nếu cần
+INTERNAL_BOOKS = set(CONFIG_PRIMARY_BOOKS)
 
 def load_json(path: Path) -> Dict[str, str]:
     if not path or not path.exists():
@@ -19,15 +26,35 @@ def load_json(path: Path) -> Dict[str, str]:
 def natural_keys(text: str):
     return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
 
+def _get_book_id(uid: str) -> str:
+    """Trích xuất mã sách từ UID (vd: mn1 -> mn, an1.1 -> an)."""
+    match = re.match(r"^([a-z]+)", uid.lower())
+    return match.group(1) if match else ""
+
 def _sanitize_links(text: str) -> str:
+    """
+    Chuyển đổi link SuttaCentral sang link nội bộ THÔNG MINH.
+    Chỉ chuyển đổi nếu sách đích nằm trong CONFIG_PRIMARY_BOOKS.
+    """
     if not text or "suttacentral.net" not in text:
         return text
 
+    # Pattern bắt link: https://suttacentral.net/{uid}/...
     pattern = r"https://suttacentral\.net/([a-zA-Z0-9\.-]+)/[^/]+/[^/#\"']+(?:#([a-zA-Z0-9\.\:-]+))?"
     
     def repl(match):
         uid = match.group(1)
         fragment = match.group(2)
+        
+        # [SMART CHECK] Kiểm tra xem UID này có thuộc sách nội bộ không
+        book_id = _get_book_id(uid)
+        
+        # Nếu sách KHÔNG nằm trong danh sách hỗ trợ -> Giữ nguyên link gốc
+        if book_id not in INTERNAL_BOOKS:
+            # Trả về toàn bộ chuỗi khớp ban đầu (không thay đổi)
+            return match.group(0)
+
+        # Nếu sách hỗ trợ -> Chuyển sang internal link
         new_link = f"index.html?q={uid}"
         if fragment:
             new_link += f"#{fragment}"
@@ -73,6 +100,8 @@ def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Option
             if pali: entry["pli"] = pali
             if eng: entry["eng"] = eng
             if html: entry["html"] = html
+            
+            # [UPDATED] Áp dụng sanitize links thông minh cho comment
             if comm: entry["comm"] = _sanitize_links(comm)
             
             segments_dict[key] = entry
