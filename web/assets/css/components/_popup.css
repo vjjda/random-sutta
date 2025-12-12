@@ -50,40 +50,44 @@
   border-radius: 50%;
 }
 
-/* --- COMMENT POPUP (Layer 1 - Bottom) --- */
+/* --- COMMENT POPUP (Layer 1 - Bottom - Primary) --- */
 #comment-popup {
   bottom: 0;
-  max-height: 45vh; /* [TWEAK] Tăng nhẹ chiều cao tối đa */
+  /* Giới hạn chiều cao cố định là 40% màn hình */
+  max-height: 40vh; 
+  height: 40vh; /* Force height để layout ổn định với Quicklook */
+  
   border-radius: var(--radius-popup) var(--radius-popup) 0 0;
   border-left: 5px solid var(--primary-color);
-  z-index: var(--z-popup); /* 1000 */
+  z-index: 1020; /* Cao hơn Quicklook để luôn nổi bên trên */
 }
 
-/* --- QUICKLOOK POPUP (Layer 2 - Top) --- */
-/* [UPDATED] Chuyển vị trí lên trên để không che Comment Popup */
+/* --- QUICKLOOK POPUP (Layer 2 - Top - Secondary) --- */
+/* [UPDATED] Phủ kín phần trên màn hình */
 #quicklook-popup {
-  top: 70px; /* Cách đỉnh 70px để tránh Header */
-  bottom: auto; /* Bỏ neo đáy */
+  top: 0; 
+  /* Chừa lại đúng 40vh ở dưới đáy cho Comment Popup */
+  bottom: 40vh; 
   
-  height: auto;
-  max-height: 45vh; /* Chiếm tối đa 45% màn hình phía trên */
+  height: auto; /* Tự động fill khoảng trống giữa top và bottom */
+  max-height: none; /* Bỏ giới hạn cũ */
   
-  border-radius: var(--radius-popup); /* Bo tròn toàn bộ vì nó treo lơ lửng */
+  /* Bỏ bo góc để tạo cảm giác liền mạch */
+  border-radius: 0; 
   border-left: 5px solid var(--primitive-amber-300);
-  z-index: calc(var(--z-popup) + 10); /* 1010 */
+  border-bottom: 2px solid var(--border-color); /* Đường kẻ ngăn cách với Comment */
   
-  /* Thêm bóng đổ nhẹ để tách biệt khỏi nền */
-  box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+  z-index: 1010; /* Thấp hơn Comment */
+  box-shadow: none; /* Bỏ shadow để trông phẳng hơn */
 }
 
-/* [NEW] Animation riêng cho Top Popup: Trượt lên khi ẩn */
+/* Animation cho Quicklook: Fade in tại chỗ */
 #quicklook-popup.hidden {
   opacity: 0;
-  transform: translate(-50%, -20px); /* Slide Up */
   pointer-events: none;
+  transform: none; /* Không trượt, chỉ ẩn hiện */
 }
 
-/* Header riêng cho Quicklook để hiển thị tiêu đề trang */
 .quicklook-header {
   padding: 10px 15px;
   border-bottom: 1px solid var(--border-light);
@@ -94,10 +98,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-radius: var(--radius-popup) var(--radius-popup) 0 0; /* Bo góc header */
 }
 
-/* --- NAV BAR (Shared) --- */
+/* --- NAV BAR --- */
 .popup-nav-bar {
   display: flex;
   justify-content: space-between;

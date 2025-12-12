@@ -36,7 +36,8 @@ export const PopupManager = {
                     const text = e.target.dataset.comment;
                     this._openComment(text);
                 } else {
-                    // Click outside -> Close logic (Priority: Quicklook -> Comment)
+                    // Click outside -> Close logic
+                    // Priority: Close Quicklook first if open, else close Comment
                     if (QuicklookLayer.isVisible() && !document.getElementById("quicklook-popup").contains(e.target)) {
                         QuicklookLayer.hide();
                     } else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
@@ -78,21 +79,16 @@ export const PopupManager = {
         QuicklookLayer.hide();
     },
 
-    // --- LOGIC: QUICKLOOK (CORE PHASE 2) ---
+    // --- LOGIC: QUICKLOOK ---
     async _handleCommentLink(href) {
         try {
             let uid = "";
             let hash = "";
             
-            // 1. Parse URL an toàn (xử lý cả link tương đối)
             const urlObj = new URL(href, window.location.origin);
-            
-            // Ưu tiên lấy từ query param ?q= (Format nội bộ)
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
-            } 
-            // Fallback cho link SuttaCentral gốc (/mn1/en/sujato)
-            else {
+            } else {
                 const parts = urlObj.pathname.split('/').filter(p => p);
                 if (parts.length > 0) uid = parts[0];
             }
@@ -100,34 +96,38 @@ export const PopupManager = {
 
             if (!uid) return;
 
-            // 2. Hiện Popup Loading ngay lập tức để phản hồi người dùng
             QuicklookLayer.show('<div style="text-align:center; padding: 20px;">Loading...</div>', uid.toUpperCase());
 
-            // 3. Fetch Data "Lightweight"
-            // Gọi loadSutta nhưng KHÔNG render ra main view, chỉ lấy data
             const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
             
             if (data && data.content) {
-                // 4. Render HTML độc lập
                 const renderRes = LeafRenderer.render(data);
                 
-                // 5. Inject vào Quicklook Popup
+                // Inject Content
                 QuicklookLayer.show(renderRes.html, data.book_title || uid.toUpperCase());
                 
-                // 6. Scroll đến vị trí hash (nếu có)
+                // [UPDATED] Instant Scroll & Highlight Logic
                 if (hash) {
-                    const targetId = hash.substring(1); // Bỏ dấu #
-                    // Cần delay nhẹ để DOM kịp render
+                    const targetId = hash.substring(1);
+                    // Dùng setTimeout 0 để chờ DOM render xong
                     setTimeout(() => {
                         const qBody = document.querySelector("#quicklook-popup .popup-body");
-                        const el = qBody?.querySelector(`[id="${targetId}"]`);
-                        if (el) {
-                            el.scrollIntoView({ block: "start", behavior: "smooth" });
-                            // Highlight nhẹ để người dùng biết đang ở đâu
-                            el.style.backgroundColor = "var(--highlight-color-segment)";
-                            setTimeout(() => el.style.backgroundColor = "", 2000);
+                        const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
+                        
+                        if (targetEl && qBody) {
+                            // 1. Instant Jump: Tính toán offset và gán thẳng scrollTop
+                            // Trừ đi một khoảng padding (ví dụ 60px) để không bị sát mép trên
+                            const offsetTop = targetEl.offsetTop;
+                            qBody.scrollTop = offsetTop - 60;
+
+                            // 2. Apply Highlight
+                            // Xóa highlight cũ trong popup này (nếu có)
+                            qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+                            
+                            // Thêm class highlight (sử dụng CSS có sẵn)
+                            targetEl.classList.add('highlight');
                         }
-                    }, 150);
+                    }, 0);
                 }
             } else {
                 QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
@@ -140,21 +140,17 @@ export const PopupManager = {
     },
 
     _navigateToMain(href) {
-        // Chuyển từ Quicklook sang Main View (Deep Link)
         QuicklookLayer.hide();
         CommentLayer.hide();
-        
         try {
             const urlObj = new URL(href, window.location.origin);
             let uid = "";
-            
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
             } else {
                 const parts = urlObj.pathname.split('/').filter(p => p);
                 if (parts.length > 0) uid = parts[0];
             }
-
             if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
                 window.loadSutta(uid, true, 0);
