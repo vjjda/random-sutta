@@ -25,8 +25,8 @@
 
 .b-card-link:hover {
   text-decoration: none;
-  border-color: var(--primary-color);
-  
+  /* border-color: var(--primary-color);
+   */
   /* [CHANGED] Zoom In effect instead of Lifting up */
   transform: scale(1.02); 
   
