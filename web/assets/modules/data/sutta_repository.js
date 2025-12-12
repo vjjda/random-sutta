@@ -72,70 +72,71 @@ export const SuttaRepository = {
     },
 
     /**
-     * [UPDATED] Sync Logic:
-     * 1. Crawl TPK -> Book IDs -> Cache Meta.
-     * 2. Fetch Index Buckets -> Parse Chunk IDs -> Cache Content.
+     * [FIXED] Sync Logic (Zip Strategy):
+     * 1. Download `db_bundle.zip` (One Request).
+     * 2. Unzip using JSZip.
+     * 3. Put all files into Cache Storage.
      */
     async downloadAll(onProgress) {
         logger.info("Sync", "Starting Bundle Download...");
-        const urlsToCache = new Set(['assets/modules/data/constants.js']);
-        const uniqueChunks = new Set(); // Lưu trữ các chunk cần tải: "mn_chunk_0"
-
-        try {
-            // PHASE 1: Discovery via TPK Tree
-            const tpk = await this.fetchMeta('tpk');
-            if (tpk) {
-                urlsToCache.add(`${DB_PATH}/meta/tpk.json`);
-                
-                const collectBooks = (node, list) => {
-                    if (typeof node === 'string') list.push(node);
-                    else if (Array.isArray(node)) node.forEach(c => collectBooks(c, list));
-                    else if (typeof node === 'object') Object.values(node).forEach(v => collectBooks(v, list));
-                };
-                
-                const books = [];
-                collectBooks(tpk.tree, books);
-                
-                // Add Meta files
-                books.forEach(bid => urlsToCache.add(`${DB_PATH}/meta/${bid}.json`));
-            }
-
-            // PHASE 2: Index & Chunk Discovery
-            // Chúng ta phải fetch Index về để đọc nội dung, tìm ra các Chunk ID
-            const bucketUrls = [];
-            for (let i = 0; i < 20; i++) {
-                bucketUrls.push(`${DB_PATH}/index/${i}.json`);
-                urlsToCache.add(`${DB_PATH}/index/${i}.json`);
-            }
-
-            // Fetch song song các index để parse chunk
-            await Promise.all(bucketUrls.map(async (url) => {
-                const data = await CoreNetwork.fetchJson(url);
-                if (data) {
-                    Object.values(data).forEach(loc => {
-                        // loc format: [book_id, chunk_idx]
-                        if (Array.isArray(loc) && loc.length === 2 && loc[1] !== null) {
-                            const [bookId, chunkIdx] = loc;
-                            uniqueChunks.add(`${bookId}_chunk_${chunkIdx}`);
-                        }
-                    });
-                }
-            }));
-
-            // Add Content files to cache list
-            uniqueChunks.forEach(chunkName => {
-                urlsToCache.add(`${DB_PATH}/content/${chunkName}.json`);
-            });
-
-            logger.info("Sync", `Discovered ${urlsToCache.size} files to cache.`);
-
-        } catch (e) {
-            logger.error("Sync", "Failed to crawl data", e);
-            throw e; // Ném lỗi để UI hiển thị trạng thái Error
+        
+        // 1. Kiểm tra JSZip
+        if (typeof JSZip === 'undefined') {
+            throw new Error("JSZip library not loaded");
         }
 
-        // PHASE 3: Batch Caching
+        // 2. Tải file Zip
+        const zipUrl = `${DB_PATH}/db_bundle.zip`;
+        const response = await fetch(zipUrl);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to download bundle: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        
+        // 3. Giải nén
+        logger.info("Sync", "Unzipping bundle...");
+        const zip = await JSZip.loadAsync(blob);
+        const files = Object.keys(zip.files).filter(filename => !zip.files[filename].dir);
+        
+        const total = files.length;
+        let processed = 0;
+
+        // 4. Mở Cache
         const CACHE_NAME = (await caches.keys()).find(k => k.startsWith('sutta-cache-')) || 'sutta-cache-temp';
-        await CoreNetwork.cacheBatch(Array.from(urlsToCache), CACHE_NAME, onProgress);
+        const cache = await caches.open(CACHE_NAME);
+
+        // 5. Lưu từng file vào Cache
+        // Chia nhỏ batch để không làm đơ UI (Chunk size = 20 file)
+        const batchSize = 20;
+        
+        for (let i = 0; i < total; i += batchSize) {
+            const batch = files.slice(i, i + batchSize);
+            
+            await Promise.all(batch.map(async (filename) => {
+                const fileData = await zip.file(filename).async("string"); // JSON content
+                
+                // Tạo Response giả lập để lưu vào Cache
+                const mockResponse = new Response(fileData, {
+                    headers: { 'Content-Type': 'application/json' },
+                    status: 200,
+                    statusText: 'OK'
+                });
+
+                // Đường dẫn lưu cache phải khớp với đường dẫn fetch thực tế
+                // Zip structure: "meta/mn.json" -> URL: "assets/db/meta/mn.json"
+                const cacheUrl = `${DB_PATH}/${filename}`;
+                await cache.put(cacheUrl, mockResponse);
+            }));
+
+            processed += batch.length;
+            if (onProgress) onProgress(Math.min(processed, total), total);
+        }
+        
+        // Cache thêm constants.js (nằm ngoài zip) để đảm bảo shell
+        await cache.add('assets/modules/data/constants.js');
+
+        logger.info("Sync", `Successfully cached ${total} files from bundle.`);
     }
 };
