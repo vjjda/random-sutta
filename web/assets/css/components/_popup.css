@@ -175,7 +175,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
+  padding: 5px 15px;
   background: transparent;
   pointer-events: none; /* Allow clicks to pass through empty space */
   z-index: 10;
@@ -220,27 +220,40 @@
 /* --- QUICKLOOK FAB --- */
 .quicklook-fab {
   position: absolute;
-  bottom: 15px;
-  right: 15px;
-  width: 30px;
-  height: 30px;
-  background-color: var(--bg-card);
+  bottom: 12px;
+  right: 12px;
+  width: 32px; /* Large touch target */
+  height: 32px;
+  background-color: transparent;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   cursor: pointer;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
   z-index: 20;
-  opacity: 0.8;
+  opacity: 0.4;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+  box-shadow: none; /* No shadow as requested */
+}
+
+/* The visual solid dot */
+.quicklook-fab::after {
+  content: '';
+  display: block;
+  width: 10px; /* Small visible size */
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--text-muted); /* Solid, low profile color */
+  transition: background-color 0.2s;
 }
 
 .quicklook-fab:hover {
-  color: var(--primary-color);
-  transform: scale(1.1);
   opacity: 1;
+  transform: scale(1.1);
+}
+
+.quicklook-fab:hover::after {
+  background-color: var(--primary-color);
 }
 
 .quicklook-fab.hidden {
