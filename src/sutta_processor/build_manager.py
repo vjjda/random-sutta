@@ -12,6 +12,8 @@ from .shared.app_config import (
 )
 from .ingestion.metadata_parser import load_names_map
 from .ingestion.file_crawler import generate_book_tasks
+# [UPDATED] Import loader
+from .ingestion.fix_loader import load_fix_map
 from .logic.content_merger import process_worker, init_worker
 from .logic.structure import build_book_data
 from .logic.super_generator import generate_super_book_data
@@ -22,13 +24,15 @@ from .logic.range_expander import generate_vinaya_variants, expand_range_ids
 
 logger = logging.getLogger("SuttaProcessor.BuildManager")
 
-# Định nghĩa lại Type cho khớp
+# MissingItem Type Alias
 MissingItem = Tuple[str, str, str, str, str, str, str]
 
 class BuildManager:
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
         self.names_map = load_names_map()
+        # [NEW] Load Fixes
+        self.fix_map = load_fix_map()
         
         self.buffers: Dict[str, Dict[str, Any]] = {}
         self.book_totals: Dict[str, int] = {}
@@ -70,7 +74,6 @@ class BuildManager:
 
         write_book_file(group, book_obj, dry_run=True) 
 
-    # [UPDATED] Format 7 cột
     def _write_missing_report(self, missing_items: List[MissingItem]) -> Optional[str]:
         if not missing_items:
             return None
@@ -81,15 +84,10 @@ class BuildManager:
         
         try:
             with open(report_path, "w", encoding="utf-8") as f:
-                # Header chuẩn
                 f.write("sutta\tsegment\tlink\tmentioned\tanchor_text\tmiss_uid\thash_id\n")
-                
-                # Data Rows
                 for item in missing_items:
-                    # item structure: (sutta, segment, link, mentioned, anchor, miss_uid, hash)
                     row = f"{item[0]}\t{item[1]}\t{item[2]}\t{item[3]}\t{item[4]}\t{item[5]}\t{item[6]}\n"
                     f.write(row)
-                    
             return f"⚠️  Missing Links Report: {report_path} ({len(missing_items)} items)"
         except Exception as e:
             logger.error(f"❌ Failed to write missing report: {e}")
@@ -105,7 +103,6 @@ class BuildManager:
         
         try:
             sorted_items = sorted(self.all_generated_items, key=lambda x: x[0])
-            
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write("UID\tType\tParent/Target\tExtract/Hash\n")
                 for item in sorted_items:
@@ -118,6 +115,7 @@ class BuildManager:
     def run(self) -> None:
         self._prepare_environment()
         
+        # 1. Generate Tasks
         book_tasks = generate_book_tasks(self.names_map)
         all_tasks = []
         
@@ -168,6 +166,7 @@ class BuildManager:
         valid_uids_universe = frozenset(expanded_universe)
         logger.info(f"✨ Validation Universe prepared: {len(valid_uids_universe)} valid targets.")
 
+        # 2. Execute Workers
         workers = os.cpu_count() or 4
         logger.info(f"🚀 Processing {len(all_tasks)} items with {workers} workers...")
         
@@ -176,7 +175,8 @@ class BuildManager:
         with ProcessPoolExecutor(
             max_workers=workers, 
             initializer=init_worker, 
-            initargs=(valid_uids_universe,)
+            # [UPDATED] Truyền thêm self.fix_map
+            initargs=(valid_uids_universe, self.fix_map)
         ) as executor:
             futures = [executor.submit(process_worker, task) for task in all_tasks]
             
