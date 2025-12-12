@@ -91,7 +91,8 @@ def generate_subleaf_shortcuts(
             prefix, start, end = root_range_info
             aliases = _expand_alias_ids(prefix, start, end)
             if len(aliases) > 0:
-                logger.info(f"   ✨ Single Leaf Range Expansion: {root_uid} -> {len(aliases)} aliases")
+                # [UPDATED] Log level DEBUG
+                logger.debug(f"   ✨ Single Leaf Range Expansion: {root_uid} -> {len(aliases)} aliases")
 
             for alias_id in aliases:
                 if alias_id == root_uid: continue
@@ -103,7 +104,8 @@ def generate_subleaf_shortcuts(
 
     # --- CASE B: MULTI SUBLEAFS ---
     else:
-        logger.info(f"   🌿 HTML Articles Detected: {root_uid} -> {len(article_ids)} subleafs")
+        # [UPDATED] Log level DEBUG
+        logger.debug(f"   🌿 HTML Articles Detected: {root_uid} -> {len(article_ids)} subleafs")
 
         for sub_uid in article_ids:
             ordered_structure_ids.append(sub_uid)
