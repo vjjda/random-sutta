@@ -12,11 +12,11 @@ def _resolve_path(base_dir: Path, current_file_rel: str, import_path: str) -> st
     """Resolve path relative to base_dir."""
     current_path_abs = base_dir / current_file_rel
     
-    # Resolve đường dẫn tuyệt đối
+    # Resolve absolute path
     target_full_path = (current_path_abs.parent / import_path).resolve()
     
     try:
-        # Tính đường dẫn tương đối so với base_dir (build/dev-offline)
+        # Calculate relative path from base_dir (build/dev-offline)
         rel_path = target_full_path.relative_to(base_dir.resolve())
         return str(rel_path).replace("\\", "/")
     except ValueError:
@@ -28,16 +28,15 @@ def _scan_dependencies(base_dir: Path, file_rel: str, graph: Dict[str, Set[str]]
     visited.add(file_rel)
     
     file_path = base_dir / file_rel
+    
+    # Fallback to .js extension if file not found
     if not file_path.exists():
-        # Thử fallback thêm đuôi .js nếu thiếu
         if not file_path.name.endswith(".js"):
              file_path = file_path.with_suffix(".js")
-             if not file_path.exists():
-                 logger.error(f"❌ File not found: {file_rel}")
-                 return
-        else:
-             logger.error(f"❌ File not found: {file_rel}")
-             return
+    
+    if not file_path.exists():
+        logger.error(f"❌ File not found: {file_rel}")
+        return
 
     if file_rel not in graph: graph[file_rel] = set()
 
@@ -45,22 +44,34 @@ def _scan_dependencies(base_dir: Path, file_rel: str, graph: Dict[str, Set[str]]
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
             
-        # [FIXED] Regex bắt cả 'import' và 'export ... from'
-        # Group 1: Path trong import ... from "..."
-        # Group 2: Path trong export ... from "..."
-        pattern = r'(?:import|export)\s+.*?from\s+[\'"](.*?)[\'"]'
-        matches = re.findall(pattern, content)
+        # [FIXED] Robust Regex to capture paths from:
+        # 1. import ... from "path"
+        # 2. export ... from "path"
+        # 3. import "path" (side-effects)
         
-        # Bắt thêm trường hợp import side-effect: import "./style.css"
-        side_effect_pattern = r'import\s+[\'"](.*?)[\'"]'
-        matches.extend(re.findall(side_effect_pattern, content))
+        # Use simpler regexes to catch the 'from "path"' part or 'import "path"'
+        patterns = [
+            r'from\s+[\'"]([^\'"]+)[\'"]',      # Matches 'from "./file.js"'
+            r'import\s+[\'"]([^\'"]+)[\'"]'     # Matches 'import "./file.js"'
+        ]
         
-        for import_path in matches:
-            # Chỉ xử lý relative import (bắt đầu bằng .)
+        found_paths = set()
+        for pat in patterns:
+            found_paths.update(re.findall(pat, content))
+        
+        for import_path in found_paths:
+            # Only process relative imports
             if not import_path.startswith("."): continue
             
             resolved_child = _resolve_path(base_dir, file_rel, import_path)
             
+            # Ensure .js extension for resolution key
+            if not resolved_child.endswith(".js"):
+                 child_path_obj = base_dir / resolved_child
+                 # Check if adding .js helps finding the file
+                 if not child_path_obj.exists() and (child_path_obj.parent / f"{child_path_obj.name}.js").exists():
+                     resolved_child += ".js"
+
             graph[file_rel].add(resolved_child)
             _scan_dependencies(base_dir, resolved_child, graph, visited)
             
@@ -74,12 +85,12 @@ def _topological_sort(graph: Dict[str, Set[str]]) -> List[str]:
 
     def visit(node):
         if node in temp_mark: 
-             logger.warning(f"🔄 Circular dependency detected at: {node}")
+             # Circular dependency detected, but we continue to generate partial bundle
              return
         if node in visited: return
         temp_mark.add(node)
         
-        # Sort dependencies để đảm bảo thứ tự determinism
+        # Sort dependencies to ensure deterministic order
         deps = sorted(list(graph.get(node, [])))
         for dep in deps: 
             visit(dep)
@@ -88,10 +99,10 @@ def _topological_sort(graph: Dict[str, Set[str]]) -> List[str]:
         visited.add(node)
         sorted_list.append(node)
 
-    # Sort keys để đảm bảo thứ tự determinism cho entry points
-    for key in sorted(list(graph.keys())): 
-        visit(key)
-        
+    # Sort keys for deterministic entry point processing
+    keys = sorted(list(graph.keys()))
+    for key in keys: visit(key)
+    
     return sorted_list
 
 def resolve_bundle_order(base_dir: Path) -> List[str]:

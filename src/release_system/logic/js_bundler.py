@@ -16,32 +16,61 @@ def _cleanup_modules(base_dir: Path) -> None:
         shutil.rmtree(modules_dir)
         logger.info("   🧹 Removed source modules directory: assets/modules/")
 
-def _wrap_in_iife(content: str, file_name: str) -> str:
-    # 1. Tìm các biến được export inline (vd: export const Router = ...)
-    # Group 2: Name
-    export_decl_pattern = r'export\s+(async\s+)?(function|class|const|let|var)\s+([a-zA-Z0-9_$]+)'
-    matches = re.findall(export_decl_pattern, content)
+def _process_file_content(content: str, file_name: str) -> str:
+    """
+    Process JS content:
+    1. Remove imports and re-exports.
+    2. Identify exports and create window assignments.
+    3. Strip 'export' keywords.
+    4. Wrap in IIFE.
+    """
     
-    exports = [m[2] for m in matches]
+    # --- 1. REMOVE IMPORTS & RE-EXPORTS ---
+    # Use re.DOTALL to handle multiline statements
     
-    # 2. Xóa từ khóa 'export' ở đầu dòng khai báo
-    # Chỉ xóa chữ export, giữ lại const/function...
-    cleaned_content = re.sub(r'^export\s+(?=(?:async\s+)?(?:function|class|const|let|var))', '', content, flags=re.MULTILINE)
+    # Remove 'import ... from ...;' 
+    content = re.sub(r'import\s+[\s\S]*?from\s+[\'"][^\'"]+[\'"];?', '', content)
+    
+    # Remove 'import "..."' (side-effects)
+    content = re.sub(r'import\s+[\'"][^\'"]+[\'"];?', '', content)
+    
+    # Remove 'export ... from ...' (Barrel/Gateway files)
+    content = re.sub(r'export\s+[\s\S]*?from\s+[\'"][^\'"]+[\'"];?', '', content)
+    
+    # --- 2. IDENTIFY EXPORTS ---
+    # Detect: export const X, export function Y, export class Z
+    # Capture Group 1: Name
+    # (?:...) is non-capturing group
+    decl_pattern = r'export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([a-zA-Z0-9_$]+)'
+    
+    exports = re.findall(decl_pattern, content)
 
-    # 3. Expose ra global window
+    # --- 3. REMOVE 'export' KEYWORD ---
+    # Replace 'export const' with 'const', etc.
+    # Lookahead ensures we only remove 'export' if followed by declaration keywords
+    content = re.sub(r'export\s+(?=(?:async\s+)?(?:function|class|const|let|var))', '', content)
+    
+    # Clean up any remaining 'export default' (not supported/used here, but safe to remove)
+    content = re.sub(r'export\s+default\s+', '', content)
+
+    # --- 4. GENERATE EXPOSE CODE ---
     expose_code = ""
     if exports:
-        assignments = [f"window.{name} = {name};" for name in exports]
-        expose_code = "\n    // [Bundler] Expose exports to global scope\n    " + "\n    ".join(assignments)
+        assignments = [f"    window.{name} = {name};" for name in exports]
+        expose_code = "\n    // [Bundler] Expose exports\n" + "\n".join(assignments)
+    
+    # --- 5. WRAP IIFE ---
+    # Only wrap if there is actual code left
+    if not content.strip():
+        return ""
 
-    iife_template = (
+    return (
         f"\n// --- Source: {file_name} --- \n"
         f"(() => {{\n"
-        f"{cleaned_content}"
+        f"{content}\n"
         f"{expose_code}\n"
         f"}})();\n"
     )
-    return iife_template
 
 def bundle_javascript(base_dir: Path) -> bool:
     file_list = resolve_bundle_order(base_dir)
@@ -58,27 +87,11 @@ def bundle_javascript(base_dir: Path) -> bool:
             file_path = base_dir / rel_path
             
             with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+                raw_content = f.read()
             
-            # --- PHASE 1: PRE-PROCESSING (Regex) ---
-            # [FIXED] Dùng Regex DOTALL để xử lý import/export nhiều dòng
-            
-            # 1. Remove all 'import ...' statements
-            content = re.sub(r'import\s+.*?from\s+[\'"].*?[\'"];?', '', content, flags=re.DOTALL)
-            content = re.sub(r'import\s+[\'"].*?[\'"];?', '', content, flags=re.DOTALL) # Side-effect imports
-
-            # 2. Remove 'export ... from ...' (Re-exports từ Gateway)
-            # Đây chính là nguyên nhân gây lỗi cú pháp
-            content = re.sub(r'export\s+.*?from\s+[\'"].*?[\'"];?', '', content, flags=re.DOTALL)
-
-            # 3. Remove empty 'export {};'
-            content = re.sub(r'export\s*\{\s*\}\s*;?', '', content)
-
-            # --- PHASE 2: WRAP ---
-            # Chỉ bọc nếu còn nội dung có nghĩa
-            if content.strip():
-                iife_block = _wrap_in_iife(content, rel_path)
-                combined_content.append(iife_block)
+            processed_block = _process_file_content(raw_content, rel_path)
+            if processed_block:
+                combined_content.append(processed_block)
 
         with open(bundle_path, "w", encoding="utf-8") as f:
             f.write("\n".join(combined_content))
@@ -89,4 +102,6 @@ def bundle_javascript(base_dir: Path) -> bool:
 
     except Exception as e:
         logger.error(f"❌ Bundling failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
