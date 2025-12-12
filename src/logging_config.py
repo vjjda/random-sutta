@@ -12,8 +12,8 @@ LOG_FILE = LOGS_DIR / "app.log"
 def setup_logging(module_name: str = None) -> logging.Logger:
     """
     Cấu hình logging chuẩn cho toàn bộ dự án.
-    - Console: Level INFO, format gọn.
-    - File: Level INFO, format chi tiết (kèm tên file, dòng), xoay vòng file 10MB.
+    - Console: Level INFO (Gọn gàng).
+    - File: Level DEBUG (Chi tiết, bao gồm cả log xử lý alias/subleaf).
     """
     # 1. Đảm bảo thư mục logs tồn tại
     LOGS_DIR.mkdir(exist_ok=True)
@@ -28,7 +28,7 @@ def setup_logging(module_name: str = None) -> logging.Logger:
                 "datefmt": "%H:%M:%S"
             },
             "detailed": {
-                # Thêm tên file và số dòng để debug dễ hơn trong file log
+                # Format chi tiết cho file log để debug
                 "format": "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
                 "datefmt": "%Y-%m-%d %H:%M:%S"
             }
@@ -37,7 +37,7 @@ def setup_logging(module_name: str = None) -> logging.Logger:
             "console": {
                 "class": "logging.StreamHandler",
                 "formatter": "standard",
-                "level": "INFO",
+                "level": "INFO",  # Console chỉ hiện INFO trở lên
                 "stream": "ext://sys.stdout"
             },
             "file": {
@@ -45,15 +45,15 @@ def setup_logging(module_name: str = None) -> logging.Logger:
                 "filename": str(LOG_FILE),
                 "mode": "a",
                 "maxBytes": 10 * 1024 * 1024, # 10 MB
-                "backupCount": 5,             # Giữ lại 5 file cũ
+                "backupCount": 5,
                 "formatter": "detailed",
-                "level": "INFO",
-                "encoding": "utf-8"           # Quan trọng để log Emoji không lỗi
+                "level": "DEBUG", # File lưu tất cả từ DEBUG trở lên
+                "encoding": "utf-8"
             }
         },
         "root": {
             "handlers": ["console", "file"],
-            "level": "INFO"
+            "level": "DEBUG" # Root level phải thấp nhất (DEBUG) để pass message cho handlers
         }
     }
 
