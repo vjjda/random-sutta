@@ -82,7 +82,6 @@ export const PopupManager = {
         this.state.currentIndex = -1;
     },
 
-    // [NEW] Helper lấy text segment hiện tại
     _getCurrentContextText() {
         if (this.state.currentIndex !== -1 && this.state.comments[this.state.currentIndex]) {
             const currentSeg = this.state.comments[this.state.currentIndex].element;
@@ -95,7 +94,6 @@ export const PopupManager = {
 
     _openComment(text) {
         this.state.currentIndex = this.state.comments.findIndex(c => c.text === text);
-        // Truyền contextText vào CommentLayer
         CommentLayer.show(text, this.state.currentIndex, this.state.comments.length, this._getCurrentContextText());
         QuicklookLayer.hide(); 
     },
@@ -107,8 +105,6 @@ export const PopupManager = {
         this.state.currentIndex = nextIdx;
         const item = this.state.comments[nextIdx];
         
-        // Truyền contextText mới vào CommentLayer
-        // Cần gọi _getCurrentContextText() sau khi update currentIndex
         CommentLayer.show(item.text, nextIdx, this.state.comments.length, this._getCurrentContextText());
         
         if (item.id) Scroller.scrollToId(item.id);
@@ -132,7 +128,6 @@ export const PopupManager = {
 
             if (!uid) return;
 
-            // Show Loading - Chỉ hiển thị Acronym/UID
             QuicklookLayer.show(
                 '<div style="text-align:center; padding: 20px;">Loading...</div>', 
                 uid.toUpperCase()
@@ -143,11 +138,13 @@ export const PopupManager = {
             if (data && data.content) {
                 const renderRes = LeafRenderer.render(data);
                 
-                // Show Content - Ưu tiên Acronym hoặc Translated Title
-                let displayTitle = data.book_title || uid.toUpperCase();
-                if (data.meta && data.meta.acronym) {
-                    displayTitle = data.meta.acronym;
-                }
+                // [UPDATED] Construct Full Title for Header
+                const meta = data.meta || {};
+                const acronym = meta.acronym || uid.toUpperCase();
+                const title = meta.translated_title || meta.original_title || "";
+                
+                // Format: "MN 10: Satipatthana Sutta" hoặc chỉ "MN 10" nếu không có title
+                const displayTitle = title ? `${acronym}: ${title}` : acronym;
 
                 QuicklookLayer.show(renderRes.html, displayTitle);
                 

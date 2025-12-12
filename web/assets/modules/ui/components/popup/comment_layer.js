@@ -8,9 +8,7 @@ export const CommentLayer = {
         this.elements = {
             popup: document.getElementById("comment-popup"),
             content: document.getElementById("comment-content"),
-            // [NEW] Element hiển thị context
             headerContext: document.getElementById("comment-context-header"),
-            
             closeBtn: document.getElementById("close-comment"),
             btnPrev: document.getElementById("btn-comment-prev"),
             btnNext: document.getElementById("btn-comment-next"),
@@ -47,30 +45,14 @@ export const CommentLayer = {
             }
         });
 
-        let startX = 0, startY = 0;
-        if (this.elements.popupBody) {
-            this.elements.popupBody.addEventListener("touchstart", (e) => {
-                startX = e.changedTouches[0].screenX;
-                startY = e.changedTouches[0].screenY;
-            }, { passive: true });
-
-            this.elements.popupBody.addEventListener("touchend", (e) => {
-                const diffX = e.changedTouches[0].screenX - startX;
-                const diffY = e.changedTouches[0].screenY - startY;
-                if (Math.abs(diffX) > 50 && Math.abs(diffY) < 30) {
-                    callbacks.onNavigate(diffX > 0 ? -1 : 1);
-                }
-            }, { passive: true });
-        }
+        // [REMOVED] Swipe Gestures removed for stability
     },
 
-    // [UPDATED] Nhận thêm contextText
     show(text, index, total, contextText = "") {
         if (!this.elements.content) return;
         
         this.elements.content.innerHTML = text;
         
-        // Hiển thị text của segment gốc lên header
         if (this.elements.headerContext) {
             this.elements.headerContext.textContent = contextText ? `"${contextText}"` : "";
         }
