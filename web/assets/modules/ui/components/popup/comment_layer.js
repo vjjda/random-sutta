@@ -13,6 +13,7 @@ export const CommentLayer = {
             btnPrev: document.getElementById("btn-comment-prev"),
             btnNext: document.getElementById("btn-comment-next"),
             infoLabel: document.getElementById("comment-index-info"),
+            // Container chịu trách nhiệm scroll
             popupBody: document.querySelector("#comment-popup .popup-body") 
         };
 
@@ -44,8 +45,6 @@ export const CommentLayer = {
                 }
             }
         });
-
-        // [REMOVED] Swipe Gestures removed for stability
     },
 
     show(text, index, total, contextText = "") {
@@ -58,6 +57,12 @@ export const CommentLayer = {
         }
 
         this.elements.popup.classList.remove("hidden");
+        
+        // [FIXED] Reset scroll position lên đầu trang khi nội dung thay đổi
+        if (this.elements.popupBody) {
+            this.elements.popupBody.scrollTop = 0;
+        }
+
         this._updateNav(index, total);
     },
 
