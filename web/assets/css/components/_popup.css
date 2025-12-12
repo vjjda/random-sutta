@@ -234,14 +234,17 @@
   opacity: 0.4;
   transition: opacity 0.3s ease, transform 0.2s ease;
   box-shadow: none; /* No shadow as requested */
+  
+  /* [CONFIG] Adjust dot size here */
+  --dot-size: 6px; 
 }
 
 /* The visual solid dot */
 .quicklook-fab::after {
   content: '';
   display: block;
-  width: 10px; /* Small visible size */
-  height: 10px;
+  width: var(--dot-size);
+  height: var(--dot-size);
   border-radius: 50%;
   background-color: var(--text-muted); /* Solid, low profile color */
   transition: background-color 0.2s;
