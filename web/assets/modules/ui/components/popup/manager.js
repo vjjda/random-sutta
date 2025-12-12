@@ -65,10 +65,17 @@ export const PopupManager = {
     saveState() {
         try {
             const currentState = window.history.state || {};
+            
+            // [LOGIC UPDATE] If Quicklook is visible, we assume Comment is also valid context underneath
+            const isCommentActive = CommentLayer.isVisible() || (QuicklookLayer.isVisible() && this.state.currentIndex !== -1);
+            
             const popupState = {
-                commentIndex: CommentLayer.isVisible() ? this.state.currentIndex : -1,
+                commentIndex: isCommentActive ? this.state.currentIndex : -1,
                 quicklookUrl: QuicklookLayer.isVisible() ? QuicklookLayer.elements.externalLinkBtn.href : null
             };
+            
+            logger.info("StateSave", `Saving: CommentIdx=${popupState.commentIndex}, QL=${popupState.quicklookUrl ? 'Yes' : 'No'}`);
+            
             window.history.replaceState({ ...currentState, popupState }, document.title, window.location.href);
         } catch (e) {
             logger.error("StateSave", e);
@@ -78,16 +85,27 @@ export const PopupManager = {
     async restoreState() {
         try {
             const state = window.history.state;
-            if (!state || !state.popupState) return;
+            if (!state || !state.popupState) {
+                logger.info("StateRestore", "No popup state found.");
+                return;
+            }
 
             const { commentIndex, quicklookUrl } = state.popupState;
+            logger.info("StateRestore", `Restoring: CommentIdx=${commentIndex}, QL=${quicklookUrl}`);
 
             // Restore Comment
             if (commentIndex !== undefined && commentIndex !== -1) {
+                // Ensure comments are scanned
+                if (this.state.comments.length === 0) {
+                    this.scanComments();
+                }
+
                 if (this.state.comments.length > 0 && commentIndex < this.state.comments.length) {
                     this.state.currentIndex = commentIndex;
                     const item = this.state.comments[commentIndex];
                     CommentLayer.show(item.text, commentIndex, this.state.comments.length, this._getCurrentContextText());
+                } else {
+                     logger.warn("StateRestore", `Comment index ${commentIndex} out of bounds (Total: ${this.state.comments.length})`);
                 }
             }
 
