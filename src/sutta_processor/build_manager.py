@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 
 from .shared.app_config import (
     STAGE_PROCESSED_DIR, 
@@ -34,7 +34,6 @@ class BuildManager:
         self.processed_book_ids: List[str] = [] 
         self.sutta_group_map: Dict[str, str] = {}
         
-        # [NEW] Danh sách tổng hợp items được sinh ra (Subleaf/Alias)
         self.all_generated_items: List[Tuple[str, str, str, str]] = []
 
     def _prepare_environment(self) -> None:
@@ -61,8 +60,6 @@ class BuildManager:
 
     def _finalize_book(self, group: str) -> None:
         raw_data = self.buffers.get(group, {})
-        
-        # [UPDATED] Pass list self.all_generated_items vào để thu thập
         book_obj = build_book_data(group, raw_data, self.names_map, self.all_generated_items)
         
         if book_obj and "id" in book_obj:
@@ -70,10 +67,10 @@ class BuildManager:
 
         write_book_file(group, book_obj, dry_run=True) 
 
-    def _write_missing_report(self, missing_items: List[Tuple[str, str, str]]) -> None:
+    # [UPDATED] Return message string instead of logging immediately
+    def _write_missing_report(self, missing_items: List[Tuple[str, str, str]]) -> Optional[str]:
         if not missing_items:
-            logger.info("🎉 No missing links found!")
-            return
+            return None
         
         tmp_dir = PROJECT_ROOT / "tmp"
         tmp_dir.mkdir(exist_ok=True)
@@ -84,30 +81,31 @@ class BuildManager:
                 f.write("Sutta_UID\tSegment_ID\tMissing_Target_UID\n")
                 for item in missing_items:
                     f.write(f"{item[0]}\t{item[1]}\t{item[2]}\n")
-            logger.warning(f"⚠️ Report saved: {report_path} ({len(missing_items)} missing links)")
+            return f"⚠️  Missing Links Report: {report_path} ({len(missing_items)} items)"
         except Exception as e:
             logger.error(f"❌ Failed to write missing report: {e}")
+            return None
 
-    # [NEW] Helper ghi báo cáo generated items
-    def _write_generated_report(self) -> None:
+    # [UPDATED] Return message string instead of logging immediately
+    def _write_generated_report(self) -> Optional[str]:
         if not self.all_generated_items:
-            return
+            return None
 
         tmp_dir = PROJECT_ROOT / "tmp"
         tmp_dir.mkdir(exist_ok=True)
         report_path = tmp_dir / "generated_items.tsv"
         
         try:
-            # Sort để dễ nhìn
             sorted_items = sorted(self.all_generated_items, key=lambda x: x[0])
             
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write("UID\tType\tParent/Target\tExtract/Hash\n")
                 for item in sorted_items:
                     f.write(f"{item[0]}\t{item[1]}\t{item[2]}\t{item[3]}\n")
-            logger.info(f"📋 Generated Items Report saved: {report_path} ({len(sorted_items)} items)")
+            return f"📋 Generated Items Report: {report_path} ({len(sorted_items)} items)"
         except Exception as e:
             logger.error(f"❌ Failed to write generated report: {e}")
+            return None
 
     def run(self) -> None:
         self._prepare_environment()
@@ -169,10 +167,9 @@ class BuildManager:
                 if (i + 1) % 1000 == 0:
                     logger.info(f"   Processed {i + 1}/{len(all_tasks)} items...")
 
-        self._write_missing_report(all_missing_links)
-        
-        # [UPDATED] Xuất báo cáo generated items (Dữ liệu đã được collect trong quá trình _handle_task_completion -> _finalize_book)
-        self._write_generated_report()
+        # [UPDATED] Capture report messages instead of logging now
+        missing_msg = self._write_missing_report(all_missing_links)
+        generated_msg = self._write_generated_report()
 
         if self.processed_book_ids:
             super_book_data = generate_super_book_data(self.processed_book_ids)
@@ -184,4 +181,11 @@ class BuildManager:
         
         if not self.dry_run:
             create_db_bundle()
+        
         logger.info("✅ All processing tasks completed.")
+        
+        # [NEW] Print Reports at the very end
+        if generated_msg:
+            logger.info(generated_msg)
+        if missing_msg:
+            logger.warning(missing_msg)
