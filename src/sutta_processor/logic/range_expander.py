@@ -10,19 +10,18 @@ RANGE_PATTERN = re.compile(r"^(.*?)(\d+)[-–](\d+)$")
 
 # Định nghĩa các quy tắc Regex cho Vinaya
 VINAYA_REGEX_RULES = [
-    # 1. Bhikkhuni Vibhanga (pli-tv-bi-vb-pj1 -> ipj1)
     (re.compile(r"^pli-tv-bi-vb-(.+)$"), r"i\1"),
-    # 2. Bhikkhu Vibhanga (pli-tv-bu-vb-pj1 -> pj1)
     (re.compile(r"^pli-tv-bu-vb-(.+)$"), r"\1"),
-    # 3. General Bhikkhuni (pli-tv-bi-pc1 -> ipc1)
     (re.compile(r"^pli-tv-bi-(.+)$"), r"i\1"),
-    # 4. General Bhikkhu (pli-tv-bu-pc1 -> pc1)
     (re.compile(r"^pli-tv-bu-(.+)$"), r"\1"),
-    # 5. General Vinaya (pli-tv-kd1 -> kd1)
     (re.compile(r"^pli-tv-(.+)$"), r"\1"),
 ]
 
 def _parse_range_string(uid: str) -> Optional[Tuple[str, int, int]]:
+    # [OPTIMIZATION] Fast fail: Nếu không có dấu gạch ngang, chắc chắn không phải range
+    if "-" not in uid and "–" not in uid:
+        return None
+        
     match = RANGE_PATTERN.match(uid)
     if match:
         prefix = match.group(1)
@@ -38,7 +37,6 @@ def _parse_range_string(uid: str) -> Optional[Tuple[str, int, int]]:
 def _expand_alias_ids(prefix: str, start: int, end: int) -> List[str]:
     return [f"{prefix}{i}" for i in range(start, end + 1)]
 
-# [NEW] Public hàm này để BuildManager sử dụng
 def expand_range_ids(uid: str) -> List[str]:
     """
     [PUBLIC] Phân tích UID dạng range (dhp383-423) và trả về danh sách các ID con.
@@ -49,6 +47,7 @@ def expand_range_ids(uid: str) -> List[str]:
         return _expand_alias_ids(prefix, start, end)
     return []
 
+# ... (Giữ nguyên phần còn lại của file: _extract_unique_article_ids, generate_vinaya_variants, generate_subleaf_shortcuts) ...
 def _extract_unique_article_ids(content: Dict[str, Any]) -> List[str]:
     found_ids = []
     seen_ids = set()
@@ -71,10 +70,6 @@ def _generate_smart_acronym(parent_acronym: str, start: int, end: int, replaceme
     return new_acronym if new_acronym != parent_acronym else ""
 
 def generate_vinaya_variants(uid: str) -> Set[str]:
-    """
-    [PUBLIC] Sinh ra các biến thể tên gọi (Alias) dựa trên quy tắc Vinaya.
-    Được sử dụng bởi cả Range Expander (Leaf) và Structure Expansion (Branch).
-    """
     variants = set()
     for pattern, replacement in VINAYA_REGEX_RULES:
         if pattern.match(uid):
@@ -94,7 +89,6 @@ def generate_subleaf_shortcuts(
     article_ids = _extract_unique_article_ids(content)
     root_range_info = _parse_range_string(root_uid)
 
-    # --- CASE A: SINGLE LEAF ---
     if len(article_ids) <= 1:
         ordered_structure_ids.append(root_uid)
         
@@ -112,7 +106,6 @@ def generate_subleaf_shortcuts(
                     "hash_id": None
                 }
 
-    # --- CASE B: MULTI SUBLEAFS ---
     else:
         logger.debug(f"   🌿 HTML Articles Detected: {root_uid} -> {len(article_ids)} subleafs")
 
@@ -147,11 +140,6 @@ def generate_subleaf_shortcuts(
                         "hash_id": sub_uid
                     }
 
-    # =================================================================
-    # [UNIVERSAL POST-PROCESS] SINH BIẾN THỂ VINAYA
-    # =================================================================
-    
-    # 1. Sinh biến thể cho Root UID
     root_variants = generate_vinaya_variants(root_uid)
     for var_uid in root_variants:
         if var_uid not in result_meta:
@@ -161,7 +149,6 @@ def generate_subleaf_shortcuts(
                 "hash_id": None
             }
 
-    # 2. Sinh biến thể cho TẤT CẢ items hiện có
     current_keys = list(result_meta.keys())
     
     for item_uid in current_keys:
