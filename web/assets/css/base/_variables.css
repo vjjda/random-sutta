@@ -10,6 +10,7 @@
   src: url("../../fonts/NotoSans-Regular.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
+  /* [OPTIMIZATION] Hiển thị font hệ thống trước, swap khi tải xong */
   font-display: swap;
 }
 
@@ -19,6 +20,7 @@
   src: url("../../fonts/NotoSans-Italic.ttf") format("truetype");
   font-weight: 400;
   font-style: italic;
+  /* [OPTIMIZATION] Hiển thị font hệ thống trước, swap khi tải xong */
   font-display: swap;
 }
 
