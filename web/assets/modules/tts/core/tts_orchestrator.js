@@ -2,15 +2,14 @@
 import { TTSWebSpeechEngine } from '../engines/tts_web_speech_engine.js';
 import { TTSStateStore } from './tts_state_store.js';
 import { TTSDOMParser } from './tts_dom_parser.js';
-import { getLogger } from '../../utils/logger.js'; // [CHECK] 2 levels up -> modules/utils
+import { getLogger } from '../../utils/logger.js';
 import { Scroller } from '../../ui/common/scroller.js';
 
-// ... (code giữ nguyên như trước)
 const logger = getLogger("TTS_Orchestrator");
 
 export const TTSOrchestrator = {
     engine: null,
-    ui: null, // Interface: updateInfo, updatePlayState, updateAutoNextState
+    ui: null, 
     onAutoNextRequest: null,
 
     init() {
@@ -21,7 +20,6 @@ export const TTSOrchestrator = {
 
     setUI(uiInstance) {
         this.ui = uiInstance;
-        // Sync Initial State
         if (this.ui) {
             this.ui.updateAutoNextState(TTSStateStore.autoNextEnabled);
         }
@@ -36,13 +34,12 @@ export const TTSOrchestrator = {
     // --- Actions ---
 
     togglePlay() {
-        // Lazy Load Playlist
         if (TTSStateStore.playlist.length === 0) {
             const items = TTSDOMParser.parse("sutta-container");
             if (items.length === 0) return;
             
             TTSStateStore.resetPlaylist(items);
-            this._activateUI(0); // Highlight first item immediately
+            this._activateUI(0); 
         }
 
         if (TTSStateStore.isPlaying) {
@@ -72,16 +69,11 @@ export const TTSOrchestrator = {
     },
 
     next() {
-        this.engine.stop(); // Stop audio immediately
-        
+        this.engine.stop(); 
         if (TTSStateStore.hasNext()) {
             TTSStateStore.advance();
             this._activateUI(TTSStateStore.currentIndex);
-            
-            // Nếu đang play thì đọc luôn, nếu pause thì chỉ chuyển highlight
-            if (TTSStateStore.isPlaying) {
-                this._speakCurrent();
-            }
+            if (TTSStateStore.isPlaying) this._speakCurrent();
         } else {
             this._handlePlaylistEnd();
         }
@@ -92,8 +84,30 @@ export const TTSOrchestrator = {
         if (TTSStateStore.hasPrev()) {
             TTSStateStore.retreat();
             this._activateUI(TTSStateStore.currentIndex);
+            if (TTSStateStore.isPlaying) this._speakCurrent();
+        }
+    },
+
+    // [NEW] Nhảy đến một ID cụ thể (Segment Trigger)
+    jumpToID(id) {
+        // 1. Nếu playlist trống, scan trước
+        if (TTSStateStore.playlist.length === 0) {
+            const items = TTSDOMParser.parse("sutta-container");
+            TTSStateStore.resetPlaylist(items);
+        }
+
+        // 2. Tìm index
+        const index = TTSStateStore.playlist.findIndex(item => item.id === id);
+        if (index !== -1) {
+            this.engine.stop(); // Dừng câu đang đọc
             
-            if (TTSStateStore.isPlaying) {
+            TTSStateStore.currentIndex = index;
+            this._activateUI(index);
+
+            // Nếu đang chưa play thì play luôn
+            if (!TTSStateStore.isPlaying) {
+                this.play(); 
+            } else {
                 this._speakCurrent();
             }
         }
@@ -109,11 +123,11 @@ export const TTSOrchestrator = {
         const item = TTSStateStore.playlist[index];
         if (!item) return;
 
-        // 1. Highlight
         this._highlightElement(item.element);
-        // 2. Scroll
-        Scroller.scrollToId(item.id);
-        // 3. Info
+        
+        // [UPDATED] Sử dụng scroll mode đọc sách (để lại khoảng trống bên trên)
+        Scroller.scrollToReadingPosition(item.id);
+        
         if (this.ui) {
             this.ui.updateInfo(index + 1, TTSStateStore.playlist.length);
         }
@@ -123,11 +137,9 @@ export const TTSOrchestrator = {
         const item = TTSStateStore.getCurrentItem();
         if (!item) return;
 
-        // Ensure UI is synced
         this._activateUI(TTSStateStore.currentIndex);
 
         this.engine.speak(item.text, () => {
-            // On End Callback
             if (TTSStateStore.isPlaying) {
                 if (TTSStateStore.hasNext()) {
                     TTSStateStore.advance();
@@ -145,14 +157,10 @@ export const TTSOrchestrator = {
             if (this.ui) this.ui.updateStatus("Loading next...");
 
             try {
-                // 1. Execute External Loader
                 await this.onAutoNextRequest();
-
-                // 2. Rescan DOM
                 const newItems = TTSDOMParser.parse("sutta-container");
                 if (newItems.length > 0) {
                     TTSStateStore.resetPlaylist(newItems);
-                    // 3. Continue playing
                     this._speakCurrent();
                 } else {
                     this.stop();

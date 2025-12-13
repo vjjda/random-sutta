@@ -41,13 +41,44 @@ export const TTSUIActions = {
             }
         });
 
+        // --- SEGMENT TRIGGER & TITLE DOUBLE TAP ---
         const container = document.getElementById("sutta-container");
         if (container) {
-            container.addEventListener("dblclick", (e) => {
+            let lastTapTime = 0;
+            
+            container.addEventListener("click", (e) => {
+                const now = Date.now();
+                const timeDiff = now - lastTapTime;
+                
+                // Logic 1: Double Tap Title để mở Player (đã có từ trước)
                 const title = e.target.closest("h1.sutta-title");
-                if (title) {
+                if (title && timeDiff < 300 && timeDiff > 50) {
                     renderer.togglePlayer(true);
+                    lastTapTime = 0;
+                    return;
                 }
+
+                // Logic 2: Double Tap Segment để nhảy (Jump to Segment)
+                const segment = e.target.closest(".segment");
+                
+                if (segment && timeDiff < 300 && timeDiff > 50) {
+                    // [CONFLICT CHECK] Kiểm tra xem user có đang bôi đen text không
+                    const selection = window.getSelection();
+                    const hasSelection = selection && selection.toString().length > 0;
+
+                    if (!hasSelection) {
+                        // Nếu không bôi đen -> Kích hoạt TTS Jump
+                        orchestrator.jumpToID(segment.id);
+                        
+                        // [UX] Reset selection để tránh bị bôi đen do thao tác double click
+                        if (selection) selection.removeAllRanges();
+                    }
+                    
+                    lastTapTime = 0;
+                    return;
+                }
+
+                lastTapTime = now;
             });
         }
     }

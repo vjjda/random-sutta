@@ -68,7 +68,11 @@ p {
 .segment {
   display: block;
   margin-bottom: 2px;
+  /* [NEW] Tắt double-tap zoom để bắt sự kiện click nhanh hơn */
+  touch-action: manipulation;
+  cursor: text; /* Giữ con trỏ text để người dùng biết có thể select */
 }
+
 .pli {
   font-family: var(--font-sutta);
   color: var(--text-pali);
