@@ -9,13 +9,14 @@ export const AppConfig = {
     TOAST_DURATION: 3000,
     MAGIC_NAV_COOLDOWN: 60000,
 
-    // [NEW] TTS Configuration
+    // [UPDATED] TTS Configuration
     TTS: {
-        // Khoảng trống đệm dưới cùng để Player không che chữ (CSS value)
-        BOTTOM_PADDING: "120px", 
-        
-        // Bật/Tắt tính năng kích hoạt bằng cách double-tap vào Nav Title
-        ENABLE_NAV_DOUBLE_TAP: true 
+        // Khoảng cách từ mép trên màn hình đến đoạn văn đang đọc (Highlight)
+        // '30vh' = 30% chiều cao màn hình. '100px' = 100 pixels.
+        SCROLL_OFFSET_TOP: '30vh',
+
+        // Khoảng trống đệm dưới cùng trang web để Player không che mất dòng cuối
+        BOTTOM_PADDING: '120px', 
     },
 
     // Popup Layout Configuration
@@ -39,7 +40,6 @@ export const AppConfig = {
         "sutta_font_scale",
         "sutta_sepia_light",
         "sutta_sepia_dark",
-        // [NEW] Add TTS settings persistence if needed
         "tts_rate",
         "tts_voice_uri",
         "tts_auto_next"

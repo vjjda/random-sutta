@@ -7,6 +7,8 @@ import { FilterComponent } from '../ui/components/filters/index.js';
 import { initPopupSystem } from '../ui/components/popup/index.js';
 import { Scroller } from '../ui/common/scroller.js';
 import { getLogger } from '../utils/logger.js';
+// [NEW] Import Orchestrator để reset session
+import { TTSOrchestrator } from '../tts/core/tts_orchestrator.js';
 
 const logger = getLogger("SuttaController");
 const PopupAPI = initPopupSystem();
@@ -28,6 +30,10 @@ export const SuttaController = {
     }
 
     PopupAPI.hideAll();
+    
+    // [NEW] Reset TTS Session khi chuyển bài
+    // Đảm bảo player đóng lại và trạng thái session = false
+    TTSOrchestrator.endSession();
 
     let suttaId;
     let scrollTarget = null;
@@ -49,8 +55,6 @@ export const SuttaController = {
     }
 
     logger.info('loadSutta', `Request: ${suttaId}`);
-    
-    // [RESTORED & UPDATED] Use logger.timer
     logger.timer(`Render: ${suttaId}`);
 
     const performRender = async () => {
@@ -70,7 +74,6 @@ export const SuttaController = {
         }
         
         const success = await renderSutta(suttaId, result, options);
-        
         if (success) {
             PopupAPI.scan();
             if (!shouldUpdateUrl) {
@@ -103,8 +106,8 @@ export const SuttaController = {
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     PopupAPI.hideAll();
+    // TTSOrchestrator.endSession() đã được gọi bên trong this.loadSutta() ở dưới
     
-    // [RESTORED & UPDATED] Use logger.timer
     logger.timer('Random Process Total');
 
     const filters = FilterComponent.getActiveFilters();

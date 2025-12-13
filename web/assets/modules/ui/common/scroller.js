@@ -1,8 +1,9 @@
 // Path: web/assets/modules/ui/common/scroller.js
 import { getLogger } from '../../utils/logger.js';
+import { AppConfig } from '../../core/app_config.js'; // [NEW] Import config
 
 const logger = getLogger("Scroller");
-const SCROLL_OFFSET = 0; // Offset cứng cho Header (nếu cần)
+const SCROLL_OFFSET = 0; 
 
 function getTargetPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
@@ -10,24 +11,34 @@ function getTargetPosition(element) {
     return currentScrollY + rectTop - SCROLL_OFFSET;
 }
 
-// [NEW] Tính toán vị trí "Reading Mode" (30% màn hình)
+// [UPDATED] Tính toán vị trí dựa trên AppConfig
 function getReadingPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
     const rectTop = element.getBoundingClientRect().top;
     const viewportHeight = window.innerHeight;
     
-    // Đích đến: Element nằm ở vị trí 30% từ đỉnh màn hình xuống
-    // offset = viewportHeight * 0.3
-    const offset = viewportHeight * 0.3;
-    
-    return currentScrollY + rectTop - offset;
+    // Lấy config (mặc định 30vh nếu lỗi)
+    const configVal = AppConfig.TTS?.SCROLL_OFFSET_TOP || '30vh';
+    let offsetPx = 0;
+
+    // Parse Config: Hỗ trợ 'vh' hoặc 'px'
+    if (configVal.endsWith('vh')) {
+        const percent = parseFloat(configVal) / 100;
+        offsetPx = viewportHeight * percent;
+    } else if (configVal.endsWith('px')) {
+        offsetPx = parseFloat(configVal);
+    } else {
+        // Fallback đơn giản nếu chỉ nhập số
+        offsetPx = parseFloat(configVal); 
+    }
+
+    return currentScrollY + rectTop - offsetPx;
 }
 
 function clearHighlights() {
     document.querySelectorAll('.highlight, .highlight-container, .tts-active').forEach(el => {
         el.classList.remove('highlight');
         el.classList.remove('highlight-container');
-        // Không xóa tts-active ở đây vì TTSManager quản lý riêng
     });
 }
 
@@ -61,13 +72,11 @@ export const Scroller = {
         this._findAndScroll(targetId, getTargetPosition);
     },
 
-    // [NEW] Hàm cuộn dành riêng cho TTS
     scrollToReadingPosition: function(targetId) {
         if (!targetId) return;
         this._findAndScroll(targetId, getReadingPosition);
     },
 
-    // Helper nội bộ để tránh lặp code retry
     _findAndScroll(targetId, positionCalculator) {
         let retries = 0;
         const maxRetries = 60;
@@ -76,12 +85,7 @@ export const Scroller = {
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = positionCalculator(element);
-                
-                // Behavior 'smooth' để mắt người dùng dễ theo dõi luồng đọc
-                // Nhưng nếu khoảng cách quá xa (ví dụ nhảy trang), có thể dùng 'instant'
                 window.scrollTo({ top: targetY, behavior: 'smooth' });
-                
-                // TTS Highlight được xử lý bởi TTSManager, ở đây chỉ xử lý scroll
             } else {
                 retries++;
                 if (retries < maxRetries) {
