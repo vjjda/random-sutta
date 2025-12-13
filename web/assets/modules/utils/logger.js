@@ -10,7 +10,6 @@ export const LogLevel = {
     ERROR: 3,
     NONE: 4
 };
-
 const Config = {
     level: LogLevel.INFO,
 };
@@ -26,14 +25,12 @@ const Styles = {
     context: "color: #b0bec5;",
     message: ""
 };
-
 const LevelLabels = {
     [LogLevel.DEBUG]: "DEBUG",
     [LogLevel.INFO]: "INFO ",
     [LogLevel.WARN]: "WARN ",
     [LogLevel.ERROR]: "ERROR"
 };
-
 export function setupLogging(options = {}) {
     if (typeof options.level !== 'undefined') {
         Config.level = options.level;
@@ -47,7 +44,6 @@ export function setupLogging(options = {}) {
 export function getLogger(moduleName) {
     const print = (level, context, message, ...args) => {
         if (level < Config.level) return;
-
         const label = LevelLabels[level];
         const levelStyle = Styles.level[level];
         
@@ -77,6 +73,18 @@ export function getLogger(moduleName) {
         debug: logMethod(LogLevel.DEBUG),
         info: logMethod(LogLevel.INFO),
         warn: logMethod(LogLevel.WARN),
-        error: logMethod(LogLevel.ERROR)
+        error: logMethod(LogLevel.ERROR),
+        
+        // [NEW] Timer Methods - Only active in DEBUG mode
+        timer: (label) => {
+            if (Config.level <= LogLevel.DEBUG) {
+                console.time(`⏱️ [${moduleName}] ${label}`);
+            }
+        },
+        timerEnd: (label) => {
+            if (Config.level <= LogLevel.DEBUG) {
+                console.timeEnd(`⏱️ [${moduleName}] ${label}`);
+            }
+        }
     };
 }

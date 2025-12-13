@@ -7,10 +7,8 @@ import { StructureStrategy } from './structure_strategy.js';
 
 const logger = getLogger("SuttaService");
 
-// [PERFORMANCE] Biến lưu cache trên RAM cho dữ liệu tĩnh dùng chung
 let _tpkCache = null;
 
-// [NEW] Helper: Tìm node trong cây cấu trúc dựa trên UID
 function findNodeInTree(structure, targetId) {
     if (!structure) return null;
     if (Array.isArray(structure)) {
@@ -34,7 +32,6 @@ function findNodeInTree(structure, targetId) {
     return null;
 }
 
-// [NEW] Helper: Xác định xem node này có phải là Single Chain không
 function getSingleChildTarget(nodeContent) {
     if (!nodeContent || nodeContent === "LEAF") return null;
     if (Array.isArray(nodeContent) && nodeContent.length === 1) {
@@ -82,14 +79,12 @@ export const SuttaService = {
             [hintBook, hintChunk] = loc;
         }
 
-        // --- ENVIRONMENT CHECK ---
         const isFileProtocol = window.location.protocol === 'file:';
         const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
         const isOfflineBuild = !!window.__DB_INDEX__;
 
         const shouldMergeTree = isFileProtocol || isOfflineReady || isOfflineBuild;
 
-        // [OPTIMIZATION] Xử lý TPK Cache để tránh latency mạng giả lập
         let tpkPromise;
         if (_tpkCache) {
             tpkPromise = Promise.resolve(_tpkCache);
@@ -100,12 +95,10 @@ export const SuttaService = {
             }).catch(() => null);
         }
 
-        // [DEBUG TIMER] Đo thời gian fetch dữ liệu
-        // [FIX] Thêm random ID để tránh xung đột timer khi gọi song song
+        // [RESTORED & UPDATED] Timer với unique ID để tránh trùng
         const timerId = Math.random().toString(36).substr(2, 5);
-        const fetchLabel = `📥 Data Fetch (${uid}) [${timerId}]`;
-        
-        console.time(fetchLabel);
+        const fetchLabel = `Data Fetch (${uid}) [${timerId}]`;
+        logger.timer(fetchLabel);
 
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
@@ -117,13 +110,12 @@ export const SuttaService = {
 
         const [bookMeta, superMeta, contentChunk] = await Promise.all(promises);
         
-        console.timeEnd(fetchLabel);
+        logger.timerEnd(fetchLabel);
 
         if (!bookMeta) return null;
         const metaEntry = bookMeta.meta[uid];
         if (!metaEntry) return null;
 
-        // 1. Check Alias Explicit (Alias cứng trong data)
         if (metaEntry.type === 'alias') {
             return { 
                 isAlias: true, 
@@ -132,11 +124,9 @@ export const SuttaService = {
             };
         }
 
-        // --- RESOLVE STRUCTURE ---
         const { tree: finalTree, contextMeta: finalContextMeta } = 
             await StructureStrategy.resolveContext(bookMeta, uid, shouldMergeTree);
 
-        // 2. [NEW] Check Implicit Single Chain (Alias mềm do cấu trúc)
         const currentNode = findNodeInTree(finalTree, uid);
         const singleChildTarget = getSingleChildTarget(currentNode);
 
@@ -148,7 +138,6 @@ export const SuttaService = {
             };
         }
 
-        // --- CONTENT EXTRACTION ---
         let content = null;
         if (contentChunk) {
             if (contentChunk[uid]) {
@@ -173,7 +162,6 @@ export const SuttaService = {
             }
         }
 
-        // --- NAVIGATION ---
         const nav = metaEntry.nav || {};
         const navMeta = {};
         const neighborsToFetch = [];
@@ -191,8 +179,6 @@ export const SuttaService = {
         checkAndAdd(nav.next);
 
         if (neighborsToFetch.length > 0) {
-            // Chỉ fetch meta cho nav, không chặn luồng chính quá lâu nếu không cần thiết
-            // Nhưng hiện tại vẫn await để đảm bảo render nav bar đúng
             const extraMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
             Object.assign(navMeta, extraMeta);
             
