@@ -24,6 +24,7 @@ export const TTSUIRenderer = {
     },
 
     togglePlayer(forceState) {
+        if (!this.elements.player) return;
         const isActive = this.elements.player.classList.contains("active");
         const newState = forceState !== undefined ? forceState : !isActive;
         if (newState) this.elements.player.classList.add("active");
@@ -31,6 +32,7 @@ export const TTSUIRenderer = {
     },
 
     updatePlayState(isPlaying) {
+        if (!this.elements.iconPlay || !this.elements.iconPause) return;
         if (isPlaying) {
             this.elements.iconPlay.classList.add("hidden");
             this.elements.iconPause.classList.remove("hidden");
@@ -41,11 +43,15 @@ export const TTSUIRenderer = {
     },
 
     updateInfo(current, total) {
-        this.elements.infoText.textContent = `${current} / ${total}`;
+        if (this.elements.infoText) {
+            this.elements.infoText.textContent = `${current} / ${total}`;
+        }
     },
 
     updateStatus(text) {
-        this.elements.infoText.textContent = text;
+        if (this.elements.infoText) {
+            this.elements.infoText.textContent = text;
+        }
     },
 
     updateAutoNextState(isChecked) {
@@ -55,15 +61,15 @@ export const TTSUIRenderer = {
     },
 
     toggleSettings() {
-        this.elements.settingsPanel.classList.toggle("hidden");
+        this.elements.settingsPanel?.classList.toggle("hidden");
     },
 
     closeSettings() {
-        this.elements.settingsPanel.classList.add("hidden");
+        this.elements.settingsPanel?.classList.add("hidden");
     },
 
     populateVoices(voices, currentVoice) {
-        if (!voices || voices.length === 0) return;
+        if (!voices || voices.length === 0 || !this.elements.voiceSelect) return;
         const select = this.elements.voiceSelect;
         select.innerHTML = "";
         
@@ -73,12 +79,11 @@ export const TTSUIRenderer = {
             option.textContent = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 25); 
             select.appendChild(option);
         });
-
         if (currentVoice) select.value = currentVoice.voiceURI;
     },
 
     updateRateDisplay(value) {
-        this.elements.rateRange.value = value;
-        this.elements.rateVal.textContent = value;
+        if (this.elements.rateRange) this.elements.rateRange.value = value;
+        if (this.elements.rateVal) this.elements.rateVal.textContent = value;
     }
 };

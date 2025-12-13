@@ -5,49 +5,54 @@ export const TTSUIActions = {
     bind(orchestrator, renderer) {
         const els = renderer.elements;
 
-        // 1. Magic Corner Trigger: BẮT ĐẦU SESSION
+        // [SAFETY CHECK] Quan trọng: Nếu DOM chưa inject được thì log và thoát
+        if (!els.trigger || !els.player) {
+            console.error("TTSUIActions: Critical elements missing. Inject failed?");
+            return;
+        }
+
+        // 1. Magic Corner Trigger
         els.trigger.addEventListener("click", (e) => {
             e.stopPropagation();
             orchestrator.startSession();
         });
 
-        // 2. Close Button: KẾT THÚC SESSION
-        els.btnClose.addEventListener("click", (e) => {
+        // 2. Close Button
+        els.btnClose?.addEventListener("click", (e) => {
             e.stopPropagation();
             orchestrator.endSession();
         });
 
         // Controls
-        els.btnPlay.addEventListener("click", () => orchestrator.togglePlay());
-        els.btnPrev.addEventListener("click", () => orchestrator.prev());
-        els.btnNext.addEventListener("click", () => orchestrator.next());
+        els.btnPlay?.addEventListener("click", () => orchestrator.togglePlay());
+        els.btnPrev?.addEventListener("click", () => orchestrator.prev());
+        els.btnNext?.addEventListener("click", () => orchestrator.next());
         
-        els.btnSettings.addEventListener("click", (e) => {
+        els.btnSettings?.addEventListener("click", (e) => {
             e.stopPropagation();
             renderer.toggleSettings();
         });
 
         // Settings Inputs
-        els.rateRange.addEventListener("input", (e) => {
+        els.rateRange?.addEventListener("input", (e) => {
             const val = e.target.value;
-            renderer.elements.rateVal.textContent = val;
+            if (renderer.elements.rateVal) renderer.elements.rateVal.textContent = val;
             orchestrator.engine.setRate(val);
         });
-        els.voiceSelect.addEventListener("change", (e) => {
+        els.voiceSelect?.addEventListener("change", (e) => {
             orchestrator.engine.setVoice(e.target.value);
         });
-        els.autoNextCheckbox.addEventListener("change", (e) => {
+        els.autoNextCheckbox?.addEventListener("change", (e) => {
             orchestrator.setAutoNext(e.target.checked);
         });
 
+        // Click outside to close settings
         document.addEventListener("click", (e) => {
-            if (!els.settingsPanel.classList.contains("hidden") && 
-                !els.player.contains(e.target)) {
+            if (els.settingsPanel && !els.settingsPanel.classList.contains("hidden") && 
+                els.player && !els.player.contains(e.target)) {
                 renderer.closeSettings();
             }
         });
-
-        // [DELETED] Nav Title Double Tap Logic removed here as requested.
 
         // --- GLOBAL INTERACTIONS ---
         
@@ -61,13 +66,12 @@ export const TTSUIActions = {
                 
                 if (segment) {
                     if (!orchestrator.isSessionActive()) {
-                        return; // Bỏ qua nếu chưa bật Player
+                        return;
                     }
 
                     const now = Date.now();
                     const timeDiff = now - segmentLastTap;
 
-                    // Giữ logic Double Tap cho Segment để tránh conflict chọn text
                     if (timeDiff < 300 && timeDiff > 50) {
                         const selection = window.getSelection();
                         const hasSelection = selection && selection.toString().length > 0;
