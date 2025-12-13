@@ -1,14 +1,13 @@
 // Path: web/assets/modules/tts/core/tts_orchestrator.js
 import { TTSWebSpeechEngine } from '../engines/tts_web_speech_engine.js';
 import { TTSStateStore } from './tts_state_store.js';
-import { TTSDOMParser } from './tts_dom_parser.js';
+import { TTSSessionManager } from './tts_session_manager.js'; // [NEW]
 import { getLogger } from '../../utils/logger.js';
 import { Scroller } from '../../ui/common/scroller.js';
 
 const logger = getLogger("TTS_Orchestrator");
 
 export const TTSOrchestrator = {
-    // ... (Giữ nguyên phần init, setUI, setCallbacks) ...
     engine: null,
     ui: null, 
     onAutoNextRequest: null,
@@ -16,11 +15,22 @@ export const TTSOrchestrator = {
     init() {
         this.engine = new TTSWebSpeechEngine();
         TTSStateStore.init();
+        
+        // Init Session Manager with dependencies
+        TTSSessionManager.init(this.engine, this.ui, {
+            activateUI: (idx) => this._activateUI(idx),
+            clearHighlight: () => this._clearHighlight(),
+            play: () => this.play() // Callback for autoPlay
+        });
+
         logger.info("Init", "Orchestrator Ready");
     },
 
     setUI(uiInstance) {
         this.ui = uiInstance;
+        // Update SessionManager's UI reference
+        TTSSessionManager.ui = uiInstance;
+        
         if (this.ui) {
             this.ui.updateAutoNextState(TTSStateStore.autoNextEnabled);
         }
@@ -32,93 +42,29 @@ export const TTSOrchestrator = {
         }
     },
 
-    // --- Session Management ---
+    // --- Public Facade (Delegation) ---
 
-    startSession() {
-        if (TTSStateStore.isSessionActive) {
-            if (this.ui) this.ui.togglePlayer(true);
-            return;
-        }
+    startSession() { TTSSessionManager.start(); },
+    endSession() { TTSSessionManager.end(); },
+    refreshSession(autoPlay) { TTSSessionManager.refresh(autoPlay); },
+    isSessionActive() { return TTSSessionManager.isActive(); },
+    isPlaying() { return TTSStateStore.isPlaying; },
 
-        logger.info("Session", "Starting TTS Session...");
-        TTSStateStore.setSessionActive(true);
-        
-        this.refreshSession();
-        
-        if (this.ui) this.ui.togglePlayer(true);
-    },
-
-    endSession() {
-        logger.info("Session", "Ending TTS Session.");
-        this.stop(); 
-        TTSStateStore.setSessionActive(false); 
-        
-        if (this.ui) {
-            this.ui.togglePlayer(false); 
-            this.ui.closeSettings();
-        }
-        this._clearHighlight();
-    },
-
-    // [UPDATED] Thêm tham số autoPlay
-    refreshSession(autoPlay = false) {
-        if (!TTSStateStore.isSessionActive) return;
-
-        // 1. Dừng đọc bài cũ (bắt buộc để không bị tiếng chồng lấn)
-        this.engine.stop();
-        
-        // 2. Scan DOM mới
-        const items = TTSDOMParser.parse("sutta-container");
-        
-        // 3. Reset Playlist (về index 0)
-        TTSStateStore.resetPlaylist(items);
-        
-        if (items.length > 0) {
-            // [LOGIC MỚI] Nếu bài trước đang play -> Bài này play luôn
-            if (autoPlay) {
-                this.play(); // Hàm này sẽ tự update UI play state và highlight
-            } else {
-                // Nếu không thì chỉ highlight câu đầu chờ người dùng bấm
-                TTSStateStore.isPlaying = false;
-                if (this.ui) this.ui.updatePlayState(false);
-                this._activateUI(0);
-            }
-        } else {
-            this._clearHighlight();
-            TTSStateStore.isPlaying = false;
-            if (this.ui) {
-                this.ui.updatePlayState(false);
-                this.ui.updateInfo(0, 0);
-            }
-        }
-    },
-
-    isSessionActive() {
-        return TTSStateStore.isSessionActive;
-    },
-
-    // [NEW] Helper để Controller check trạng thái
-    isPlaying() {
-        return TTSStateStore.isPlaying;
-    },
-
-    // --- Actions (Giữ nguyên) ---
+    // --- Playback Logic ---
 
     togglePlay() {
-        if (!TTSStateStore.isSessionActive) {
+        if (!TTSSessionManager.isActive()) {
             this.startSession();
         }
 
+        // Defensive check
         if (TTSStateStore.playlist.length === 0) {
-            this.refreshSession();
+            TTSSessionManager.refresh();
             if (TTSStateStore.playlist.length === 0) return;
         }
 
-        if (TTSStateStore.isPlaying) {
-            this.pause();
-        } else {
-            this.play();
-        }
+        if (TTSStateStore.isPlaying) this.pause();
+        else this.play();
     },
 
     play() {
@@ -160,24 +106,20 @@ export const TTSOrchestrator = {
     },
 
     jumpToID(id) {
-        if (!TTSStateStore.isSessionActive) return;
+        if (!TTSSessionManager.isActive()) return;
 
         if (TTSStateStore.playlist.length === 0) {
-            this.refreshSession();
+            TTSSessionManager.refresh();
         }
 
         const index = TTSStateStore.playlist.findIndex(item => item.id === id);
         if (index !== -1) {
             this.engine.stop(); 
-            
             TTSStateStore.currentIndex = index;
             this._activateUI(index);
 
-            if (!TTSStateStore.isPlaying) {
-                this.play();
-            } else {
-                this._speakCurrent();
-            }
+            if (!TTSStateStore.isPlaying) this.play();
+            else this._speakCurrent();
         }
     },
 
@@ -185,7 +127,7 @@ export const TTSOrchestrator = {
         TTSStateStore.setAutoNext(enabled);
     },
 
-    // --- Internal Logic (Giữ nguyên) ---
+    // --- Internal Logic ---
 
     _activateUI(index) {
         const item = TTSStateStore.playlist[index];
@@ -224,6 +166,8 @@ export const TTSOrchestrator = {
 
             try {
                 await this.onAutoNextRequest();
+                // Note: SuttaController triggers refreshSession(true) upon load
+                // So we just stop here to be safe
                 this.stop(); 
             } catch (e) {
                 logger.error("AutoNext", "Failed", e);

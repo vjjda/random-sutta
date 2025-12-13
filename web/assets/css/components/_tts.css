@@ -177,3 +177,75 @@
   position: relative;
   z-index: 1;
 }
+
+/* --- TOGGLE SWITCH (Auto Next) --- */
+.tts-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.tts-toggle-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* The Switch Container */
+.tts-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+/* Hide default HTML checkbox */
+.tts-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The Slider */
+.tts-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-light); /* Màu khi tắt */
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.tts-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+input:checked + .tts-slider {
+  background-color: var(--primary-color); /* Màu khi bật */
+}
+
+input:checked + .tts-slider:before {
+  transform: translateX(16px);
+}
+
+/* Focus visual */
+input:focus + .tts-slider {
+  box-shadow: 0 0 1px var(--primary-color);
+}

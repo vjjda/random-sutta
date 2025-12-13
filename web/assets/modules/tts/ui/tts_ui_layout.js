@@ -21,6 +21,7 @@ export const TTSUILayout = {
                 <button id="tts-close" class="tts-btn" style="color: #ff6b6b">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
+                
                 <div id="tts-settings-panel" class="hidden">
                     <div class="tts-setting-row">
                         <label>Speed: <span id="tts-rate-val">1.0</span>x</label>
@@ -30,9 +31,13 @@ export const TTSUILayout = {
                         <label>Voice</label>
                         <select id="tts-voice-select"></select>
                     </div>
-                    <div class="tts-setting-row" style="margin-top: 5px; flex-direction: row; align-items: center; justify-content: space-between;">
-                        <label for="tts-auto-next" style="margin-bottom:0; cursor:pointer;">Auto-play Next</label>
-                        <input type="checkbox" id="tts-auto-next" style="width: 18px; height: 18px; cursor: pointer;">
+                    
+                    <div class="tts-toggle-wrapper">
+                        <label for="tts-auto-next" class="tts-toggle-label">Auto-play Next Sutta</label>
+                        <label class="tts-switch">
+                            <input type="checkbox" id="tts-auto-next">
+                            <span class="tts-slider"></span>
+                        </label>
                     </div>
                 </div>
             </div>
