@@ -37,5 +37,14 @@ export const TTSUI = {
 
     updateInfo(current, total) {
         TTSView.updateInfo(current, total);
+    },
+
+    // [FIX] Bổ sung các hàm thiếu
+    updateStatus(text) {
+        TTSView.updateStatus(text);
+    },
+
+    updateAutoNextState(isChecked) {
+        TTSView.updateAutoNextState(isChecked);
     }
 };
