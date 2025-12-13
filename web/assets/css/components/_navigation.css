@@ -17,7 +17,6 @@
   flex-basis: 0;
   min-width: 0;
   max-width: 42%;
-  /* Đảm bảo nút Nav nằm trên layer của nút random tàng hình */
   position: relative;
   z-index: 10;
 }
@@ -25,7 +24,7 @@
 .sutta-nav button.nav-btn {
   background: none;
   border: 1px solid transparent;
-  color: var(--primitive-brown-400);
+  color: var(--primitive-brown-400); /* Màu gốc ở Light Mode */
   padding: 8px 0;
   font-size: 0.95rem;
   border-radius: var(--radius-sm);
@@ -34,11 +33,29 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
+  /* Giữ hiệu ứng chuyển màu mượt mà */
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
+/* [UPDATED] Light Mode Hover: Ấm hơn và đậm hơn chút */
 .sutta-nav button.nav-btn:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-  border-color: var(--border-light);
+  background-color: transparent;
+  border-color: transparent;
+  
+  /* Chuyển sang tông nâu đỏ ấm (Warm) nhưng đậm hơn để rõ chữ */
+  color: var(--primitive-brown-warm-600);
+  
+  /* Nhích nhẹ lên để tạo cảm giác tương tác vật lý */
+  transform: translateY(-1px);
+}
+
+/* [UPDATED] Dark Mode Hover: Sáng hơn một bậc, bỏ phát sáng */
+[data-theme="dark"] .sutta-nav button.nav-btn:hover {
+  /* Text chính đang là ivory-700, hover lên 800 là vừa đủ sáng nhẹ */
+  color: var(--primitive-ivory-800); 
+  
+  /* Bỏ text-shadow để chữ không bị nhòe/bạc màu */
+  text-shadow: none; 
 }
 
 .nav-spacer {
@@ -72,33 +89,28 @@
   width: 100%;
   line-height: 1.2;
   text-align: inherit;
+  transition: color 0.2s ease;
 }
 
-/* [UPDATED] Invisible Random Bottom Feature 
-   Thay thế cho .nav-random-icon cũ.
-   Đây là một vùng trong suốt nằm giữa thanh điều hướng.
-*/
+/* Khi hover nút mẹ, title phụ cũng sáng theo đồng bộ */
+.sutta-nav button.nav-btn:hover .nav-title {
+  color: inherit; /* Kế thừa màu của nút mẹ (Brown-warm-600 hoặc Ivory-800) */
+  opacity: 0.8;   /* Giảm nhẹ opacity để phân cấp chính phụ */
+}
+
+/* Invisible Random Bottom Feature */
 .nav-invisible-random {
   position: absolute;
   left: 50%;
   top: 0;
   bottom: 0;
   transform: translateX(-50%);
-  z-index: 5; /* Thấp hơn nav-btn (10) để không che nút Prev/Next nếu text dài */
-  
-  width: 34%; /* Khoảng 1/3 màn hình */
+  z-index: 5;
+  width: 34%;
   height: 100%;
-  
   background: transparent;
   border: none;
-  cursor: pointer; /* Vẫn hiện con trỏ để người dùng PC biết có thể click */
-  
-  /* Loại bỏ highlight khi tap trên mobile để giữ tính "tàng hình" */
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   outline: none;
 }
-
-/* Debug: Uncomment để nhìn thấy vùng bấm khi phát triển */
-/* .nav-invisible-random {
-  background-color: rgba(255, 0, 0, 0.1); 
-}  */
