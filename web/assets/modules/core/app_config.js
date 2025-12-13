@@ -13,7 +13,7 @@ export const AppConfig = {
     TTS: {
         // Khoảng cách từ mép trên màn hình đến đoạn văn đang đọc (Highlight)
         // '30vh' = 30% chiều cao màn hình. '100px' = 100 pixels.
-        SCROLL_OFFSET_TOP: '30vh',
+        SCROLL_OFFSET_TOP: '15vh',
 
         // Khoảng trống đệm dưới cùng trang web để Player không che mất dòng cuối
         BOTTOM_PADDING: '120px', 

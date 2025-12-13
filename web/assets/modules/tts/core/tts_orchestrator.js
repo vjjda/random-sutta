@@ -31,12 +31,10 @@ export const TTSOrchestrator = {
         }
     },
 
-    // --- Session Management [NEW] ---
+    // --- Session Management ---
 
-    // Gọi khi click Magic Corner hoặc Double Tap Nav
     startSession() {
         if (TTSStateStore.isSessionActive) {
-            // Nếu đang active mà gọi lại (vd click corner) -> Chỉ hiện UI lên nếu đang ẩn
             if (this.ui) this.ui.togglePlayer(true);
             return;
         }
@@ -45,27 +43,46 @@ export const TTSOrchestrator = {
         TTSStateStore.setSessionActive(true);
         
         // Scan ngay khi start session
-        const items = TTSDOMParser.parse("sutta-container");
-        if (items.length > 0) {
-            TTSStateStore.resetPlaylist(items);
-            this._activateUI(0);
-        }
+        this.refreshSession();
         
-        // Hiện Player
         if (this.ui) this.ui.togglePlayer(true);
     },
 
-    // Gọi khi click nút Close (X)
     endSession() {
         logger.info("Session", "Ending TTS Session.");
-        this.stop(); // Dừng đọc
-        TTSStateStore.setSessionActive(false); // Reset cờ
+        this.stop(); 
+        TTSStateStore.setSessionActive(false); 
         
         if (this.ui) {
-            this.ui.togglePlayer(false); // Ẩn UI
+            this.ui.togglePlayer(false); 
             this.ui.closeSettings();
         }
         this._clearHighlight();
+    },
+
+    // [NEW] Làm mới session (dùng khi chuyển bài kinh)
+    refreshSession() {
+        if (!TTSStateStore.isSessionActive) return;
+
+        // 1. Dừng đọc (nếu đang đọc dở bài cũ)
+        this.engine.stop();
+        TTSStateStore.isPlaying = false;
+        if (this.ui) this.ui.updatePlayState(false);
+
+        // 2. Scan DOM mới
+        const items = TTSDOMParser.parse("sutta-container");
+        
+        // 3. Reset Playlist
+        TTSStateStore.resetPlaylist(items);
+        
+        // 4. Highlight câu đầu tiên (nhưng chưa đọc ngay)
+        if (items.length > 0) {
+            this._activateUI(0);
+        } else {
+            // Nếu bài mới không có nội dung (ví dụ loading lỗi), xóa highlight cũ
+            this._clearHighlight();
+            if (this.ui) this.ui.updateInfo(0, 0);
+        }
     },
 
     isSessionActive() {
@@ -75,16 +92,14 @@ export const TTSOrchestrator = {
     // --- Actions ---
 
     togglePlay() {
-        // [Safety] Nếu toggle play mà session chưa active thì kích hoạt luôn
         if (!TTSStateStore.isSessionActive) {
             this.startSession();
         }
 
+        // Defensive check: Nếu playlist rỗng (do chưa scan kịp), scan lại
         if (TTSStateStore.playlist.length === 0) {
-            const items = TTSDOMParser.parse("sutta-container");
-            if (items.length === 0) return;
-            TTSStateStore.resetPlaylist(items);
-            this._activateUI(0); 
+            this.refreshSession();
+            if (TTSStateStore.playlist.length === 0) return; // Vẫn rỗng thì chịu
         }
 
         if (TTSStateStore.isPlaying) {
@@ -110,7 +125,7 @@ export const TTSOrchestrator = {
         TTSStateStore.isPlaying = false;
         if (this.ui) this.ui.updatePlayState(false);
         this.engine.stop();
-        // Không clear highlight ở đây để giữ vị trí đọc, chỉ clear khi endSession
+        // Không clear highlight khi stop tạm thời
     },
 
     next() {
@@ -133,28 +148,21 @@ export const TTSOrchestrator = {
         }
     },
 
-    // Nhảy đến một ID cụ thể (Segment Trigger)
     jumpToID(id) {
-        // [CRITICAL] Chỉ nhảy nếu Session đang Active
-        if (!TTSStateStore.isSessionActive) {
-            return;
-        }
+        if (!TTSStateStore.isSessionActive) return;
 
-        // 1. Nếu playlist trống, scan trước
+        // Fallback scan nếu playlist rỗng
         if (TTSStateStore.playlist.length === 0) {
-            const items = TTSDOMParser.parse("sutta-container");
-            TTSStateStore.resetPlaylist(items);
+            this.refreshSession();
         }
 
-        // 2. Tìm index
         const index = TTSStateStore.playlist.findIndex(item => item.id === id);
         if (index !== -1) {
-            this.engine.stop(); // Dừng câu đang đọc
+            this.engine.stop(); 
             
             TTSStateStore.currentIndex = index;
             this._activateUI(index);
 
-            // Nếu đang chưa play thì play luôn
             if (!TTSStateStore.isPlaying) {
                 this.play();
             } else {
@@ -174,8 +182,6 @@ export const TTSOrchestrator = {
         if (!item) return;
 
         this._highlightElement(item.element);
-        
-        // Sử dụng scroll mode đọc sách
         Scroller.scrollToReadingPosition(item.id);
         
         if (this.ui) {
@@ -208,13 +214,13 @@ export const TTSOrchestrator = {
 
             try {
                 await this.onAutoNextRequest();
-                const newItems = TTSDOMParser.parse("sutta-container");
-                if (newItems.length > 0) {
-                    TTSStateStore.resetPlaylist(newItems);
-                    this._speakCurrent();
-                } else {
-                    this.stop();
-                }
+                // [UPDATED] Sau khi load xong, Controller sẽ gọi refreshSession()
+                // nên ở đây ta chỉ cần trigger speak nếu muốn tự động đọc tiếp
+                // Tuy nhiên, logic loadSutta là async, ta không biết khi nào xong ở đây.
+                // Tốt nhất: Controller gọi loadSutta -> render -> refreshSession -> và nếu đang active thì Orchestrator tự biết dừng.
+                // Để AutoNext mượt, ta cần logic: Load xong -> Tự Play tiếp.
+                // Hiện tại ta cứ stop đã, để user bấm play cho an toàn.
+                this.stop(); 
             } catch (e) {
                 logger.error("AutoNext", "Failed", e);
                 this.stop();
