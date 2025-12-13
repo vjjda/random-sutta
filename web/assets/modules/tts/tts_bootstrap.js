@@ -1,23 +1,20 @@
-// Path: web/assets/modules/tts/index.js
-import { TTSManager } from './tts_manager.js';
-import { TTSUI } from './ui/index.js';
+// Path: web/assets/modules/tts/tts_bootstrap.js
+import { TTSOrchestrator } from './core/tts_orchestrator.js';
+import { TTSUICoordinator } from './ui/tts_ui_coordinator.js';
 
-export const TTSComponent = {
-    // [UPDATED] Accept options object
+export const TTSBootstrap = {
     init(options = {}) {
-        // 1. Init Manager First
-        TTSManager.init();
+        // 1. Core Logic
+        TTSOrchestrator.init();
+        TTSOrchestrator.setCallbacks(options);
+
+        // 2. UI
+        TTSUICoordinator.init(TTSOrchestrator);
+
+        // 3. Connect UI -> Core
+        TTSOrchestrator.setUI(TTSUICoordinator);
         
-        // 2. Set Options (callbacks)
-        TTSManager.setOptions(options);
-        
-        // 3. Init UI
-        TTSUI.init(TTSManager);
-        
-        // 4. Connect UI back to Manager
-        TTSManager.setUI(TTSUI);
-        
-        // ... (Popup observer code kept same)
+        // 4. Global Observers (Legacy logic for popup conflict)
         const observer = new MutationObserver((mutations) => {
             const commentPopup = document.getElementById("comment-popup");
             if (commentPopup && !commentPopup.classList.contains("hidden")) {
