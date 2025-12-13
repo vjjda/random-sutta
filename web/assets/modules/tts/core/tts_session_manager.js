@@ -6,15 +6,15 @@ import { getLogger } from '../../utils/logger.js';
 const logger = getLogger("TTS_SessionManager");
 
 export const TTSSessionManager = {
-    // Dependencies (Inject from Orchestrator)
-    engine: null,
-    ui: null,
-    highlightHelpers: null, // { activateUI, clearHighlight }
+    // Dependencies
+    player: null,      // Logic Audio
+    highlighter: null, // Logic Visuals
+    ui: null,          // Logic UI Toggles
 
-    init(engine, ui, highlightHelpers) {
-        this.engine = engine;
+    init(player, highlighter, ui) {
+        this.player = player;
+        this.highlighter = highlighter;
         this.ui = ui;
-        this.highlightHelpers = highlightHelpers;
     },
 
     start() {
@@ -25,63 +25,50 @@ export const TTSSessionManager = {
 
         logger.info("Lifecycle", "Starting Session...");
         TTSStateStore.setSessionActive(true);
-        
         this.refresh();
-        
         if (this.ui) this.ui.togglePlayer(true);
     },
 
     end() {
         logger.info("Lifecycle", "Ending Session.");
-        if (this.engine) this.engine.stop();
+        
+        // Dừng Player
+        if (this.player) this.player.stop();
         
         TTSStateStore.setSessionActive(false); 
-        TTSStateStore.isPlaying = false; // Reset playing state
         
+        // Dọn dẹp UI
         if (this.ui) {
             this.ui.togglePlayer(false); 
             this.ui.closeSettings();
-            this.ui.updatePlayState(false);
         }
         
-        if (this.highlightHelpers) this.highlightHelpers.clearHighlight();
+        // Xóa Highlight
+        if (this.highlighter) this.highlighter.clear();
     },
 
     refresh(autoPlay = false) {
         if (!TTSStateStore.isSessionActive) return;
 
-        // 1. Stop current audio
-        if (this.engine) this.engine.stop();
-        
-        // 2. Reset Play State temporarily
-        TTSStateStore.isPlaying = false;
-        if (this.ui) this.ui.updatePlayState(false);
+        // 1. Reset Player (Stop audio, reset state)
+        if (this.player) this.player.stop();
 
-        // 3. Rescan DOM
+        // 2. Rescan DOM
         const items = TTSDOMParser.parse("sutta-container");
         TTSStateStore.resetPlaylist(items);
         
-        // 4. Handle Content
+        // 3. Handle Content
         if (items.length > 0) {
             if (autoPlay) {
-                // Play logic will be triggered by Orchestrator or we call it via helper
-                // Để tránh circular dependency phức tạp, ta set state và gọi callback
-                TTSStateStore.isPlaying = true;
-                if (this.ui) this.ui.updatePlayState(true);
-                // Orchestrator need to know to speak. 
-                // However, for simplicity, we assume Orchestrator exposes a public play() 
-                // or we use the highlightHelper to at least set UI.
-                
-                // Vì speak() nằm ở Orchestrator, ở đây ta sẽ trả về tín hiệu
-                // hoặc gọi highlight trước.
-                if (this.highlightHelpers && this.highlightHelpers.play) {
-                    this.highlightHelpers.play();
-                }
+                // Auto Play: Player tự lo việc highlight và update UI state
+                if (this.player) this.player.play();
             } else {
-                if (this.highlightHelpers) this.highlightHelpers.activateUI(0);
+                // Manual: Chỉ highlight câu đầu, không play
+                if (this.highlighter) this.highlighter.activate(0);
             }
         } else {
-            if (this.highlightHelpers) this.highlightHelpers.clearHighlight();
+            // Empty: Clear visuals
+            if (this.highlighter) this.highlighter.clear();
             if (this.ui) this.ui.updateInfo(0, 0);
         }
     },

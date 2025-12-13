@@ -1,9 +1,10 @@
 // Path: web/assets/modules/tts/core/tts_orchestrator.js
 import { TTSWebSpeechEngine } from '../engines/tts_web_speech_engine.js';
 import { TTSStateStore } from './tts_state_store.js';
-import { TTSSessionManager } from './tts_session_manager.js'; // [NEW]
+import { TTSPlayer } from './tts_player.js';           // [NEW]
+import { TTSHighlighter } from './tts_highlighter.js'; // [NEW]
+import { TTSSessionManager } from './tts_session_manager.js';
 import { getLogger } from '../../utils/logger.js';
-import { Scroller } from '../../ui/common/scroller.js';
 
 const logger = getLogger("TTS_Orchestrator");
 
@@ -16,21 +17,30 @@ export const TTSOrchestrator = {
         this.engine = new TTSWebSpeechEngine();
         TTSStateStore.init();
         
-        // Init Session Manager with dependencies
-        TTSSessionManager.init(this.engine, this.ui, {
-            activateUI: (idx) => this._activateUI(idx),
-            clearHighlight: () => this._clearHighlight(),
-            play: () => this.play() // Callback for autoPlay
-        });
+        // 1. Init Modules
+        // Highlighter cần UI (sẽ set sau khi UI init)
+        
+        // Player cần Engine, Highlighter, UI
+        TTSPlayer.init(this.engine, TTSHighlighter, null);
+        
+        // SessionManager cần Player, Highlighter, UI
+        TTSSessionManager.init(TTSPlayer, TTSHighlighter, null);
 
-        logger.info("Init", "Orchestrator Ready");
+        // Setup Callback khi Player đọc xong bài
+        TTSPlayer.setCallbacks(() => this._handlePlaylistEnd());
+
+        logger.info("Init", "Orchestrator Ready (Refactored)");
     },
 
     setUI(uiInstance) {
         this.ui = uiInstance;
-        // Update SessionManager's UI reference
-        TTSSessionManager.ui = uiInstance;
         
+        // Inject UI vào các sub-modules
+        TTSHighlighter.setUI(uiInstance);
+        TTSPlayer.ui = uiInstance;
+        TTSSessionManager.ui = uiInstance;
+
+        // Sync UI state ban đầu
         if (this.ui) {
             this.ui.updateAutoNextState(TTSStateStore.autoNextEnabled);
         }
@@ -42,68 +52,36 @@ export const TTSOrchestrator = {
         }
     },
 
-    // --- Public Facade (Delegation) ---
+    // --- Public Facade (Clean API) ---
 
     startSession() { TTSSessionManager.start(); },
     endSession() { TTSSessionManager.end(); },
     refreshSession(autoPlay) { TTSSessionManager.refresh(autoPlay); },
+    
     isSessionActive() { return TTSSessionManager.isActive(); },
     isPlaying() { return TTSStateStore.isPlaying; },
 
-    // --- Playback Logic ---
+    // --- Controls ---
 
     togglePlay() {
         if (!TTSSessionManager.isActive()) {
             this.startSession();
         }
-
-        // Defensive check
+        // Defensive: Check playlist empty
         if (TTSStateStore.playlist.length === 0) {
             TTSSessionManager.refresh();
             if (TTSStateStore.playlist.length === 0) return;
         }
 
-        if (TTSStateStore.isPlaying) this.pause();
-        else this.play();
+        if (TTSStateStore.isPlaying) TTSPlayer.pause();
+        else TTSPlayer.play();
     },
 
-    play() {
-        TTSStateStore.isPlaying = true;
-        if (this.ui) this.ui.updatePlayState(true);
-        this._speakCurrent();
-    },
-
-    pause() {
-        TTSStateStore.isPlaying = false;
-        if (this.ui) this.ui.updatePlayState(false);
-        this.engine.pause();
-    },
-
-    stop() {
-        TTSStateStore.isPlaying = false;
-        if (this.ui) this.ui.updatePlayState(false);
-        this.engine.stop();
-    },
-
-    next() {
-        this.engine.stop();
-        if (TTSStateStore.hasNext()) {
-            TTSStateStore.advance();
-            this._activateUI(TTSStateStore.currentIndex);
-            if (TTSStateStore.isPlaying) this._speakCurrent();
-        } else {
-            this._handlePlaylistEnd();
-        }
-    },
-
-    prev() {
-        this.engine.stop();
-        if (TTSStateStore.hasPrev()) {
-            TTSStateStore.retreat();
-            this._activateUI(TTSStateStore.currentIndex);
-            if (TTSStateStore.isPlaying) this._speakCurrent();
-        }
-    },
+    play() { TTSPlayer.play(); },
+    pause() { TTSPlayer.pause(); },
+    stop() { TTSPlayer.stop(); },
+    next() { TTSPlayer.next(); },
+    prev() { TTSPlayer.prev(); },
 
     jumpToID(id) {
         if (!TTSSessionManager.isActive()) return;
@@ -114,12 +92,7 @@ export const TTSOrchestrator = {
 
         const index = TTSStateStore.playlist.findIndex(item => item.id === id);
         if (index !== -1) {
-            this.engine.stop(); 
-            TTSStateStore.currentIndex = index;
-            this._activateUI(index);
-
-            if (!TTSStateStore.isPlaying) this.play();
-            else this._speakCurrent();
+            TTSPlayer.jumpTo(index);
         }
     },
 
@@ -127,63 +100,27 @@ export const TTSOrchestrator = {
         TTSStateStore.setAutoNext(enabled);
     },
 
-    // --- Internal Logic ---
-
-    _activateUI(index) {
-        const item = TTSStateStore.playlist[index];
-        if (!item) return;
-
-        this._highlightElement(item.element);
-        Scroller.scrollToReadingPosition(item.id);
-        
-        if (this.ui) {
-            this.ui.updateInfo(index + 1, TTSStateStore.playlist.length);
-        }
-    },
-
-    _speakCurrent() {
-        const item = TTSStateStore.getCurrentItem();
-        if (!item) return;
-
-        this._activateUI(TTSStateStore.currentIndex);
-
-        this.engine.speak(item.text, () => {
-            if (TTSStateStore.isPlaying) {
-                if (TTSStateStore.hasNext()) {
-                    TTSStateStore.advance();
-                    this._speakCurrent();
-                } else {
-                    this._handlePlaylistEnd();
-                }
-            }
-        });
-    },
+    // --- Business Logic: Playlist End Strategy ---
 
     async _handlePlaylistEnd() {
+        // Orchestrator quyết định làm gì khi hết bài (đây là Business Logic, không phải Player Logic)
         if (TTSStateStore.autoNextEnabled && this.onAutoNextRequest) {
             logger.info("AutoNext", "Playlist ended. Requesting next...");
             if (this.ui) this.ui.updateStatus("Loading next...");
 
             try {
+                // Gọi callback ra ngoài (SuttaController sẽ load bài mới)
+                // SuttaController load xong sẽ gọi lại refreshSession(true)
                 await this.onAutoNextRequest();
-                // Note: SuttaController triggers refreshSession(true) upon load
-                // So we just stop here to be safe
-                this.stop(); 
+                
+                // Stop tạm thời để an toàn, chờ lệnh refresh từ Controller
+                TTSPlayer.stop(); 
             } catch (e) {
                 logger.error("AutoNext", "Failed", e);
-                this.stop();
+                TTSPlayer.stop();
             }
         } else {
-            this.stop();
+            TTSPlayer.stop();
         }
-    },
-
-    _highlightElement(el) {
-        document.querySelectorAll(".tts-active").forEach(e => e.classList.remove("tts-active"));
-        if (el) el.classList.add("tts-active");
-    },
-
-    _clearHighlight() {
-        document.querySelectorAll(".tts-active").forEach(e => e.classList.remove("tts-active"));
     }
 };
