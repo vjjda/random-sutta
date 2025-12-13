@@ -44,9 +44,15 @@ def inject_version_into_app_js(target_dir: Path, version_tag: str) -> bool:
     return _update_file(app_js_path, pattern, replacement)
 
 def inject_version_into_offline_manager(target_dir: Path, version_tag: str) -> bool:
-    """[NEW] Inject version vào offline_manager.js để logic check update hoạt động đúng."""
-    logger.info(f"💉 Injecting version '{version_tag}' into offline_manager.js...")
-    file_path = target_dir / "assets" / "modules" / "ui" / "managers" / "offline_manager.js"
+    """[UPDATED] Inject version vào offline_service.js (Module mới)."""
+    logger.info(f"💉 Injecting version '{version_tag}' into offline_service.js...")
+    
+    # [FIX] Cập nhật đường dẫn mới sau khi refactor
+    file_path = target_dir / "assets" / "modules" / "ui" / "managers" / "offline" / "offline_service.js"
+    
+    # Regex này vẫn hoạt động tốt với 'export const APP_VERSION = "...";'
+    # Nó sẽ thay thế đoạn 'const APP_VERSION = "...";' giữ nguyên từ khóa export phía trước
     pattern = r'const APP_VERSION = ".*?";'
     replacement = f'const APP_VERSION = "{version_tag}";'
+    
     return _update_file(file_path, pattern, replacement)
