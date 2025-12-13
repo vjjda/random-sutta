@@ -18,13 +18,26 @@ export const TocRenderer = {
             <span class="toc-toggle-icon" onclick="event.stopPropagation(); MagicNav.toggleNode(this)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </span>`;
+
+        // [NEW] Helper lấy tooltip (Original Title -> Translated Title)
+        const getTooltip = (id) => {
+            const m = metaMap[id] || {};
+            // Ưu tiên Original Title (Pali) cho tooltip
+            if (m.original_title) return m.original_title;
+            if (m.translated_title) return m.translated_title;
+            return "";
+        };
+
         const generateInnerContent = (id, type) => {
             const meta = metaMap[id] || {};
             const acronym = meta.acronym || id.toUpperCase();
             const title = meta.translated_title || meta.original_title || "";
+            
             if (type === 'leaf') {
+                // [UPDATED] Add tooltip to toc-text-container
+                const tooltip = getTooltip(id);
                 return `
-                    <div class="toc-text-container">
+                    <div class="toc-text-container" title="${tooltip}">
                         <div class="toc-row-main">${acronym}</div>
                         ${title ? `<div class="toc-row-sub">${title}</div>` : ''}
                     </div>
@@ -36,8 +49,7 @@ export const TocRenderer = {
                 return `<div class="toc-branch-label">${branchLabel}</div>`;
             }
         };
-        
-        // [FIXED] Dùng closeAll() thay vì toggleTOC() để ẩn luôn cả backdrop
+
         const getLoadAction = (id) => `onclick="window.loadSutta('${id}', true, 0, { transition: false }); MagicNav.closeAll()"`;
         
         const createItem = (id) => {
@@ -78,11 +90,15 @@ export const TocRenderer = {
             const rowActiveClass = isActive ? "active" : "";
             const presentationClass = type === 'leaf' ? 'toc-leaf-presentation' : '';
             const headerClasses = `toc-header type-${type} ${presentationClass} ${isClickable ? 'clickable' : ''}`;
+            
+            // [UPDATED] Add tooltip to toc-header-row
+            const tooltip = getTooltip(id);
+
             return `<div class="toc-node-wrapper ${collapsedClass}">
-                        <div class="toc-header-row ${rowActiveClass}">
+                        <div class="toc-header-row ${rowActiveClass}" title="${tooltip}">
                             <div class="${headerClasses}" ${headerAction} style="padding-left: ${paddingLeft}px">
                                 ${generateInnerContent(id, type)}
-                             </div>
+                            </div>
                             ${getToggleIcon()} 
                         </div>
                         <div class="toc-children">${childrenHtml}</div>
