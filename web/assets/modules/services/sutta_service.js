@@ -1,4 +1,4 @@
-// Path: web/assets/modules/services/sutta_service.js
+/* Path: web/assets/modules/services/sutta_service.js */
 import { SuttaRepository } from '../data/sutta_repository.js';
 import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { getLogger } from '../utils/logger.js';
@@ -101,7 +101,10 @@ export const SuttaService = {
         }
 
         // [DEBUG TIMER] Đo thời gian fetch dữ liệu
-        const fetchLabel = `📥 Data Fetch (${uid})`;
+        // [FIX] Thêm random ID để tránh xung đột timer khi gọi song song
+        const timerId = Math.random().toString(36).substr(2, 5);
+        const fetchLabel = `📥 Data Fetch (${uid}) [${timerId}]`;
+        
         console.time(fetchLabel);
 
         const promises = [
