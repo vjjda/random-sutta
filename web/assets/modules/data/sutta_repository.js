@@ -24,6 +24,8 @@ export const SuttaRepository = {
     async init() {
         if (this._isOfflineBuild()) {
             logger.info("Init", "Detected OFFLINE BUILD mode (JSONP Strategy).");
+        } else if (this._isOfflineReady()) {
+            logger.info("Init", "Detected HYBRID mode (Cache-First Strategy).");
         } else {
             logger.info("Init", "Detected ONLINE mode (Fetch Strategy).");
         }
@@ -39,6 +41,13 @@ export const SuttaRepository = {
         return !!window.__DB_INDEX__;
     },
 
+    /**
+     * [NEW] Kiểm tra xem người dùng đã tải gói Offline Bundle chưa.
+     */
+    _isOfflineReady() {
+        return !!localStorage.getItem('sutta_offline_version');
+    },
+
     _getBucketId(uid) {
         let hash = 5381;
         for (let i = 0; i < uid.length; i++) {
@@ -51,7 +60,7 @@ export const SuttaRepository = {
 
     /**
      * [CORE LOGIC] Hàm tải dữ liệu thông minh.
-     * Tự động chọn cách tải dựa trên môi trường build.
+     * Tự động chọn cách tải dựa trên môi trường build và cache.
      */
     async _loadData(category, filenameWithoutExt) {
         // TRƯỜNG HỢP 1: Bản Build Offline (Chạy file:// hoặc localhost:8002)
@@ -64,10 +73,7 @@ export const SuttaRepository = {
 
             const scriptUrl = `${DB_PATH}/${category}/${filenameWithoutExt}.js`;
             try {
-                // CoreNetwork.loadScript hoạt động tốt trên cả file:// và http://
                 await CoreNetwork.loadScript(scriptUrl);
-                
-                // Sau khi script chạy xong, nó sẽ gọi __DB_LOADER__.receive để đẩy data vào buffer
                 const data = dataBuffer[filenameWithoutExt];
                 if (data) return data;
                 throw new Error(`Data buffer empty after loading ${scriptUrl}`);
@@ -78,9 +84,31 @@ export const SuttaRepository = {
         } 
         
         // TRƯỜNG HỢP 2: Bản Online (Chạy localhost:8001 hoặc Web)
-        // Dữ liệu nằm trong file .json, load bằng fetch
         else {
             const jsonUrl = `${DB_PATH}/${category}/${filenameWithoutExt}.json`;
+
+            // [NEW LOGIC] Ưu tiên Cache API nếu đã có Offline Bundle
+            if (this._isOfflineReady() && 'caches' in window) {
+                try {
+                    // Tìm cache chứa dữ liệu (thường bắt đầu bằng sutta-cache-)
+                    const keys = await caches.keys();
+                    const cacheName = keys.find(k => k.startsWith('sutta-cache-'));
+                    
+                    if (cacheName) {
+                        const cache = await caches.open(cacheName);
+                        const cachedResponse = await cache.match(jsonUrl);
+                        
+                        if (cachedResponse) {
+                            // logger.debug("LoadData", `Cache Hit: ${filenameWithoutExt}`);
+                            return await cachedResponse.json();
+                        }
+                    }
+                } catch (e) {
+                    logger.warn("LoadData", `Cache lookup failed for ${jsonUrl}, falling back to network.`, e);
+                }
+            }
+
+            // Fallback: Fetch Network (sẽ lỗi nếu không có mạng và không có cache)
             return await CoreNetwork.fetchJson(jsonUrl);
         }
     },
