@@ -7,17 +7,14 @@
 /* Noto Sans Regular */
 @font-face {
   font-family: "Noto Sans";
-  /* [UPDATED] Dùng WOFF2 thay vì TTF */
   src: url("../../fonts/NotoSans-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
-/* Noto Sans Italic (Dùng cho chữ Pāli) */
 @font-face {
   font-family: "Noto Sans";
-  /* [UPDATED] Dùng WOFF2 thay vì TTF */
   src: url("../../fonts/NotoSans-Italic.woff2") format("woff2");
   font-weight: 400;
   font-style: italic;
@@ -55,7 +52,20 @@
   --primitive-brown-200: #bcaaa4; /* Muted Pali Text (Anchor) */
   --primitive-brown-100: #d7ccc8; /* Lighter borders / Backgrounds (Anchor) */
   --primitive-brown-50: #ebe5e3; /* Very Light Wash / Tint */
-  --primitive-brown-warm: #ba6b45; /* Primary Hover Dark */
+
+  /* BRAND: WARM (Sienna / Copper Accent) - Expanded Scale */
+  /* Base: #ba6b45 */
+  --primitive-brown-warm-50:  #fdf6f3;
+  --primitive-brown-warm-100: #fae9e2;
+  --primitive-brown-warm-200: #f3d4c7;
+  --primitive-brown-warm-300: #e9bda8;
+  --primitive-brown-warm-400: #d29476;
+  --primitive-brown-warm-500: #ba6b45; /* Original Anchor */
+  --primitive-brown-warm-600: #9e5332;
+  --primitive-brown-warm-700: #824025;
+  --primitive-brown-warm-800: #68321e;
+  --primitive-brown-warm-900: #502618;
+  --primitive-brown-warm-950: #38190f;
 
   /* TEXT: INK (Dành cho nền sáng) */
   --primitive-ink-950: #221b15; /* Deepest Ink */
@@ -68,7 +78,7 @@
   --primitive-ink-300: #a4a4a4; /* Disabled Text */
   --primitive-ink-200: #c0c0c0; /* Borders High Contrast */
   --primitive-ink-100: #dcdcdc; /* Borders Low Contrast */
-  --primitive-ink-50: #f9f9f9;  /* Background / Wash */
+  --primitive-ink-50: #f9f9f9; /* Background / Wash */
 
   /* TEXT: IVORY (Dành cho nền tối) - [NEW FULL SCALE] */
   --primitive-ivory-900: #ececec; /* High contrast */
@@ -113,7 +123,6 @@
   --text-main: var(--primitive-ink-900);
   --text-muted: var(--primitive-ink-700);
   --text-light: var(--primitive-ink-400);
-
   --text-pali: var(--primitive-ink-700);
   --text-eng: var(--primitive-ink-900);
 
@@ -125,6 +134,7 @@
   --shadow-soft: 0 2px 10px rgba(62, 39, 35, 0.05);
   --shadow-card: 0 4px 15px rgba(62, 39, 35, 0.08);
   --shadow-hover: 0 12px 24px rgba(62, 39, 35, 0.15);
+
   --highlight-color-background: rgba(139, 69, 19, 0.08);
   --highlight-color-segment: rgba(255, 167, 38, 0.15);
 
@@ -156,10 +166,10 @@
   --bg-hover: rgba(255, 255, 255, 0.12);
 
   /* Text */
-  --text-main: var(--primitive-ivory-800);
+  --text-main: var(--primitive-ivory-700);
   --text-muted: var(--primitive-ivory-500);
   --text-light: var(--primitive-ivory-400);
-  --text-pali: var(--primitive-brown-200);
+  --text-pali: var(--primitive-brown-300);
   --text-eng: var(--primitive-ivory-800);
   --text-link: var(--primitive-amber-800); /* Link dùng màu Amber 300 sáng */
 
@@ -169,7 +179,7 @@
 
   /* Primary */
   --primary-color: var(--primitive-brown-400);
-  --primary-hover: var(--primitive-brown-warm);
+  --primary-hover: var(--primitive-brown-warm-500); /* Updated to use new scale anchor */
 
   /* Shadows */
   --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.4);
