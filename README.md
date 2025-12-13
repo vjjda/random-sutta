@@ -1,78 +1,103 @@
 # Random Sutta Reader
 
-Một trình đọc kinh điển Phật giáo sơ kỳ (EBT) đơn giản, tập trung vào trải nghiệm đọc ngẫu nhiên (Random) và hỗ trợ chạy offline hoàn toàn. Dữ liệu được lấy từ dự án [Bilara](https://github.com/suttacentral/sc-data) của SuttaCentral.
+A simple, focus-oriented reader for Early Buddhist Texts (EBT), designed for a seamless reading experience with robust offline capabilities.
+Data is sourced from SuttaCentral's [Bilara](https://github.com/suttacentral/sc-data) project.
 
-## 🌟 Tính năng
+## 🌟 Key Features
 
-- **Random Sutta:** Ngẫu nhiên chọn một bài kinh để đọc.
-- **Bộ lọc sách (Book Filters):** Tùy chọn random trong các bộ Nikaya (DN, MN, SN, AN) hoặc Khuddaka Nikaya (Dhp, Ud, Iti, v.v.).
-- **Song ngữ:** Hiển thị song song Pāli và tiếng Anh (bản dịch của Bhante Sujato).
-- **Chú giải:** Hỗ trợ hiển thị chú giải (comment) dạng popup.
-- **Offline-first:** Chạy trực tiếp trên trình duyệt mà không cần internet hay server backend (sau khi đã build dữ liệu).
+- **Random Sutta:** Instantly discover a random discourse from the Nikayas.
+- **Smart Hybrid Offline Mode:** - Automatically prioritizes cached data over network requests.
+  - Supports full offline capability via a downloadable "DB Bundle".
+  - Works seamlessly on `localhost` or static hosting.
+- **Magic Navigation:** Integrated Breadcrumbs and Table of Contents (TOC) for easy context awareness.
+- **Bilingual View:** Parallel display of Pāli and English (Bhante Sujato's translation).
+- **Deep Linking:** Support for specific segments (e.g., `dn1:1.2`) and "Quicklook" previews for cross-references.
+- **Customization:** Dark Mode, Sepia (Night Shift) mode, and adjustable font sizes.
 
-## 🛠️ Yêu cầu hệ thống (Cho Developer/Builder)
+## 🛠️ System Requirements
 
-Để build dữ liệu từ nguồn, bạn cần:
+For building the data assets from source:
 
-- Python 3.8 trở lên.
-- Git.
-- Kết nối Internet (để tải dữ liệu từ SuttaCentral).
+- **Python 3.8+**
+- **Git**
+- **Make** (Optional, but recommended for easy commands)
+- Internet connection (to fetch raw data from SuttaCentral).
 
-## 🚀 Hướng dẫn Cài đặt & Build
+## 🚀 Installation & Build Guide
 
-### 1\. Clone dự án
+### 1\. Clone the repository
 
 ```bash
 git clone https://github.com/vjjda/random-sutta.git
 cd random-sutta
 ```
 
-### 2\. Tải dữ liệu nguồn
+### 2\. Fetch Raw Data
 
-Dự án cần 2 nguồn dữ liệu:
-
-1. **Nội dung kinh (Text & HTML):** Tải từ Bilara Git repo.
-2. **Thông tin Metadata (Tên kinh):** Tải từ SuttaCentral API.
-
-Chạy lần lượt các lệnh sau:
+The project requires raw data (Bilara texts & API metadata). You can sync everything using the provided Makefile:
 
 ```bash
-# Tải nội dung kinh (Pali/English) vào data/bilara
-python3 src/sutta_fetcher.py
+# Installs git hooks and sets up environment
+make setup
 
-# Tải tên bài kinh (Metadata) vào data/json
-python3 src/api_fetcher.py
+# Fetches Bilara data and API metadata
+make sync
 ```
 
-### 3\. Xử lý dữ liệu (Build)
+### 3\. Build Assets (Processor)
 
-Bước này sẽ chuyển đổi dữ liệu thô (JSON) thành các file JavaScript tối ưu cho web, lưu tại `web/assets/sutta/`.
+Convert raw JSON data into optimized JavaScript assets for the web app.
 
 ```bash
-python3 -m src.sutta_processor
+# Runs the Sutta Processor
+make data
 ```
 
-### 4\. Chạy ứng dụng
+### 4\. Run Locally
 
-Sau khi build xong, toàn bộ ứng dụng nằm trong thư mục `web/`.
-Bạn có thể mở trực tiếp file `web/index.html` bằng trình duyệt (Chrome, Firefox, Edge...) để sử dụng.
+Start a local development server to preview the app.
 
-## 📂 Cấu trúc dự án
+```bash
+# Starts server at http://localhost:8000
+make dev
+```
 
-- `src/`: Mã nguồn Python (Tools).
-  - `sutta_fetcher.py`: Đồng bộ dữ liệu từ Bilara Git.
-  - `api_fetcher.py`: Tải metadata từ API.
-  - `sutta_processor/`: Xử lý logic, convert JSON -\> JS Assets.
-- `data/`: Chứa dữ liệu thô (không commit lên Git, được tải về bởi các fetcher).
-- `web/`: Giao diện người dùng (Frontend).
-  - `assets/sutta/`: Dữ liệu đã được build (Database của App).
-  - `assets/modules/`: Các module JS xử lý logic hiển thị.
+## 🐞 Development & Debugging
 
-## 🤝 Đóng góp
+The application includes a built-in Logger and Performance Timer system.
 
-Mọi đóng góp đều được hoan nghênh. Vui lòng tạo Issue hoặc Pull Request trên GitHub.
+### Enabling Debug Mode
+
+To view verbose logs, performance metrics (rendering time, fetch latency), and internal state transitions, append `?debug=1` or `?debug=true` to the URL.
+
+**Example:**
+`http://localhost:8000/?q=mn1&debug=1`
+
+### What to look for in Console
+
+- **⏱️ Render:** Time taken to process and render a Sutta.
+- **📥 Data Fetch:** Time taken to retrieve data (helps verify if data is coming from Cache vs. Network).
+- **⚡ Random Process:** Total time for the randomization logic.
+- **[DEBUG] / [INFO]:** Detailed logs from internal modules (`SuttaController`, `SuttaRepository`, `PopupManager`, etc.).
+
+## 📂 Project Structure
+
+- `src/`: Python source code (Build Tools).
+  - `sutta_fetcher/`: Synchronizes raw data from Bilara Git.
+  - `api_fetcher.py`: Fetches metadata from SuttaCentral API.
+  - `sutta_processor/`: Core logic to convert JSON -\> Optimized JS Assets.
+  - `release_system/`: Handles versioning, bundling, and deployment.
+- `data/`: Raw downloaded data (ignored by Git).
+- `web/`: Frontend Application (HTML/CSS/JS).
+  - `assets/sutta/`: Generated data assets (The App Database).
+  - `assets/modules/`: ES6 Modules for UI and Logic.
+  - `sw.js`: Service Worker for caching and offline support.
+
+## 🤝 Contributing
+
+Contributions are welcome\! Please feel free to submit a Pull Request or open an Issue.
 
 ## 📄 License
 
-Dự án này sử dụng dữ liệu từ SuttaCentral (Creative Commons Zero - CC0).
-Mã nguồn của ứng dụng được phát hành dưới giấy phép MIT.
+- **Content:** SuttaCentral (Creative Commons Zero - CC0).
+- **Source Code:** MIT License.
