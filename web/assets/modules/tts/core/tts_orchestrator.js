@@ -8,6 +8,7 @@ import { Scroller } from '../../ui/common/scroller.js';
 const logger = getLogger("TTS_Orchestrator");
 
 export const TTSOrchestrator = {
+    // ... (Giữ nguyên phần init, setUI, setCallbacks) ...
     engine: null,
     ui: null, 
     onAutoNextRequest: null,
@@ -42,7 +43,6 @@ export const TTSOrchestrator = {
         logger.info("Session", "Starting TTS Session...");
         TTSStateStore.setSessionActive(true);
         
-        // Scan ngay khi start session
         this.refreshSession();
         
         if (this.ui) this.ui.togglePlayer(true);
@@ -60,28 +60,36 @@ export const TTSOrchestrator = {
         this._clearHighlight();
     },
 
-    // [NEW] Làm mới session (dùng khi chuyển bài kinh)
-    refreshSession() {
+    // [UPDATED] Thêm tham số autoPlay
+    refreshSession(autoPlay = false) {
         if (!TTSStateStore.isSessionActive) return;
 
-        // 1. Dừng đọc (nếu đang đọc dở bài cũ)
+        // 1. Dừng đọc bài cũ (bắt buộc để không bị tiếng chồng lấn)
         this.engine.stop();
-        TTSStateStore.isPlaying = false;
-        if (this.ui) this.ui.updatePlayState(false);
-
+        
         // 2. Scan DOM mới
         const items = TTSDOMParser.parse("sutta-container");
         
-        // 3. Reset Playlist
+        // 3. Reset Playlist (về index 0)
         TTSStateStore.resetPlaylist(items);
         
-        // 4. Highlight câu đầu tiên (nhưng chưa đọc ngay)
         if (items.length > 0) {
-            this._activateUI(0);
+            // [LOGIC MỚI] Nếu bài trước đang play -> Bài này play luôn
+            if (autoPlay) {
+                this.play(); // Hàm này sẽ tự update UI play state và highlight
+            } else {
+                // Nếu không thì chỉ highlight câu đầu chờ người dùng bấm
+                TTSStateStore.isPlaying = false;
+                if (this.ui) this.ui.updatePlayState(false);
+                this._activateUI(0);
+            }
         } else {
-            // Nếu bài mới không có nội dung (ví dụ loading lỗi), xóa highlight cũ
             this._clearHighlight();
-            if (this.ui) this.ui.updateInfo(0, 0);
+            TTSStateStore.isPlaying = false;
+            if (this.ui) {
+                this.ui.updatePlayState(false);
+                this.ui.updateInfo(0, 0);
+            }
         }
     },
 
@@ -89,17 +97,21 @@ export const TTSOrchestrator = {
         return TTSStateStore.isSessionActive;
     },
 
-    // --- Actions ---
+    // [NEW] Helper để Controller check trạng thái
+    isPlaying() {
+        return TTSStateStore.isPlaying;
+    },
+
+    // --- Actions (Giữ nguyên) ---
 
     togglePlay() {
         if (!TTSStateStore.isSessionActive) {
             this.startSession();
         }
 
-        // Defensive check: Nếu playlist rỗng (do chưa scan kịp), scan lại
         if (TTSStateStore.playlist.length === 0) {
             this.refreshSession();
-            if (TTSStateStore.playlist.length === 0) return; // Vẫn rỗng thì chịu
+            if (TTSStateStore.playlist.length === 0) return;
         }
 
         if (TTSStateStore.isPlaying) {
@@ -125,7 +137,6 @@ export const TTSOrchestrator = {
         TTSStateStore.isPlaying = false;
         if (this.ui) this.ui.updatePlayState(false);
         this.engine.stop();
-        // Không clear highlight khi stop tạm thời
     },
 
     next() {
@@ -151,7 +162,6 @@ export const TTSOrchestrator = {
     jumpToID(id) {
         if (!TTSStateStore.isSessionActive) return;
 
-        // Fallback scan nếu playlist rỗng
         if (TTSStateStore.playlist.length === 0) {
             this.refreshSession();
         }
@@ -175,7 +185,7 @@ export const TTSOrchestrator = {
         TTSStateStore.setAutoNext(enabled);
     },
 
-    // --- Internal Logic ---
+    // --- Internal Logic (Giữ nguyên) ---
 
     _activateUI(index) {
         const item = TTSStateStore.playlist[index];
@@ -214,12 +224,6 @@ export const TTSOrchestrator = {
 
             try {
                 await this.onAutoNextRequest();
-                // [UPDATED] Sau khi load xong, Controller sẽ gọi refreshSession()
-                // nên ở đây ta chỉ cần trigger speak nếu muốn tự động đọc tiếp
-                // Tuy nhiên, logic loadSutta là async, ta không biết khi nào xong ở đây.
-                // Tốt nhất: Controller gọi loadSutta -> render -> refreshSession -> và nếu đang active thì Orchestrator tự biết dừng.
-                // Để AutoNext mượt, ta cần logic: Load xong -> Tự Play tiếp.
-                // Hiện tại ta cứ stop đã, để user bấm play cho an toàn.
                 this.stop(); 
             } catch (e) {
                 logger.error("AutoNext", "Failed", e);

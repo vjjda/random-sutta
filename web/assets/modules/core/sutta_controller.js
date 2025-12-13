@@ -30,13 +30,16 @@ export const SuttaController = {
 
     PopupAPI.hideAll();
     
-    // [UPDATED LOGIC] Giữ TTS Session nếu đang Active
+    // [LOGIC MỚI] 
+    // 1. Kiểm tra xem session có active không
     const wasTTSActive = TTSOrchestrator.isSessionActive();
+    // 2. Kiểm tra xem ĐANG PLAY hay ĐANG PAUSE (Quan trọng)
+    const wasPlaying = TTSOrchestrator.isPlaying(); 
     
-    // Dừng âm thanh ngay lập tức (để không đọc đè lên việc load)
+    // Dừng âm thanh ngay lập tức để load bài mới
     TTSOrchestrator.stop(); 
 
-    // Nếu Session không active, đảm bảo tắt hẳn (reset UI)
+    // Nếu Session không active từ đầu, đảm bảo tắt hẳn
     if (!wasTTSActive) {
         TTSOrchestrator.endSession();
     }
@@ -86,11 +89,11 @@ export const SuttaController = {
                 PopupAPI.restore();
             }
             
-            // [UPDATED] Nếu TTS đang bật -> Scan bài mới & Highlight câu đầu
+            // [LOGIC MỚI] Khôi phục trạng thái TTS
             if (wasTTSActive) {
-                // Đợi một chút để DOM ổn định (an toàn)
                 setTimeout(() => {
-                    TTSOrchestrator.refreshSession();
+                    // Truyền wasPlaying vào đây. Nếu true -> Tự động play bài mới.
+                    TTSOrchestrator.refreshSession(wasPlaying);
                 }, 100);
             }
         }
@@ -120,8 +123,6 @@ export const SuttaController = {
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     PopupAPI.hideAll();
-    
-    // TTSOrchestrator.stop() sẽ được gọi trong loadSutta
     
     logger.timer('Random Process Total');
 
