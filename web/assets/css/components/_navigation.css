@@ -24,7 +24,7 @@
 .sutta-nav button.nav-btn {
   background: none;
   border: 1px solid transparent;
-  color: var(--primitive-brown-400); /* Màu gốc ở Light Mode */
+  color: var(--primitive-brown-400);
   padding: 8px 0;
   font-size: 0.95rem;
   border-radius: var(--radius-sm);
@@ -33,29 +33,25 @@
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  /* Giữ hiệu ứng chuyển màu mượt mà */
   transition: color 0.2s ease, transform 0.2s ease;
 }
 
-/* [UPDATED] Light Mode Hover: Ấm hơn và đậm hơn chút */
+/* Light Mode Hover: Main Text đậm đà (Warm) */
 .sutta-nav button.nav-btn:hover {
   background-color: transparent;
   border-color: transparent;
   
-  /* Chuyển sang tông nâu đỏ ấm (Warm) nhưng đậm hơn để rõ chữ */
+  /* Dòng chính (SN 46...) dùng màu Nâu Đỏ */
   color: var(--primitive-brown-warm-600);
   
-  /* Nhích nhẹ lên để tạo cảm giác tương tác vật lý */
   transform: translateY(-1px);
 }
 
-/* [UPDATED] Dark Mode Hover: Sáng hơn một bậc, bỏ phát sáng */
+/* Dark Mode Hover: Main Text rực rỡ (Warm) */
 [data-theme="dark"] .sutta-nav button.nav-btn:hover {
-  /* Text chính đang là ivory-700, hover lên 800 là vừa đủ sáng nhẹ */
-  color: var(--primitive-ivory-800); 
-  
-  /* Bỏ text-shadow để chữ không bị nhòe/bạc màu */
-  text-shadow: none; 
+  /* Dòng chính (SN 46...) dùng màu Cam Đất */
+  color: var(--primitive-brown-warm-400); 
+  text-shadow: none;
 }
 
 .nav-spacer {
@@ -89,13 +85,18 @@
   width: 100%;
   line-height: 1.2;
   text-align: inherit;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
-/* Khi hover nút mẹ, title phụ cũng sáng theo đồng bộ */
+/* [UPDATED] Nav Title tách màu riêng biệt (Neutral) */
+/* Khi hover nút mẹ, title phụ dùng màu trung tính sáng rõ, không ám màu Brand */
 .sutta-nav button.nav-btn:hover .nav-title {
-  color: inherit; /* Kế thừa màu của nút mẹ (Brown-warm-600 hoặc Ivory-800) */
-  opacity: 0.8;   /* Giảm nhẹ opacity để phân cấp chính phụ */
+  color: var(--primitive-ink-600); /* Light Mode: Xám đậm */
+  opacity: 1;
+}
+
+[data-theme="dark"] .sutta-nav button.nav-btn:hover .nav-title {
+  color: var(--primitive-ivory-800); /* Dark Mode: Trắng ngà sáng */
 }
 
 /* Invisible Random Bottom Feature */
