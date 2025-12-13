@@ -20,9 +20,9 @@ const SHELL_ASSETS = [
   "./assets/icons/web-app-manifest-192x192.png",
   "./assets/icons/web-app-manifest-512x512.png",
   
-  // Fonts
-  "./assets/fonts/NotoSans-Regular.ttf",
-  "./assets/fonts/NotoSans-Italic.ttf",
+  // Fonts [UPDATED] - Changed from .ttf to .woff2 to match CSS
+  "./assets/fonts/NotoSans-Regular.woff2",
+  "./assets/fonts/NotoSans-Italic.woff2",
 
   // Data
   "./assets/modules/data/constants.js",
@@ -106,7 +106,6 @@ self.addEventListener("fetch", (event) => {
 
         } catch (e) {
           console.error("[SW] Fetch failed:", e);
-          
           // F. Mạng lỗi và Cache rỗng -> Trả về trang lỗi giả lập
           // Status 200 giúp tránh màn hình "Dino" của trình duyệt
           const errorHtml = `
@@ -130,7 +129,6 @@ self.addEventListener("fetch", (event) => {
                 <button onclick="window.location.reload()">Retry Connection</button>
             </body>
             </html>`;
-
           return new Response(errorHtml, { 
               status: 200, 
               headers: { "Content-Type": "text/html" } 
