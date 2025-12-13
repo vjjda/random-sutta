@@ -4,11 +4,18 @@ import { TTSUI } from './tts_ui.js';
 
 export const TTSComponent = {
     init() {
+        // [FIXED] Order of initialization logic
+        
+        // 1. Init Manager First (Create Engine)
+        TTSManager.init();
+        
+        // 2. Init UI (Inject HTML, Bind Events, Bind Engine Listeners)
         TTSUI.init(TTSManager);
-        TTSManager.init(TTSUI);
+        
+        // 3. Connect UI back to Manager
+        TTSManager.setUI(TTSUI);
         
         // Listen to Popup events to toggle visibility of trigger
-        // (Đây là giải pháp tạm, tốt hơn là dùng MutationObserver hoặc Event Bus)
         const observer = new MutationObserver((mutations) => {
             const commentPopup = document.getElementById("comment-popup");
             if (commentPopup && !commentPopup.classList.contains("hidden")) {

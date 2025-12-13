@@ -1,13 +1,17 @@
 /* Path: web/assets/css/components/_tts.css */
 
-/* --- 1. MAGIC TTS CORNER (Invisible Trigger) --- */
+/* --- 1. MAGIC TTS CORNER (Fixed for iOS) --- */
 #magic-tts-trigger {
   position: fixed;
-  bottom: 0;
-  right: 0;
-  width: 60px; /* Vùng bấm đủ lớn */
-  height: 60px;
-  z-index: 1090; /* Thấp hơn Popup (1100+) nhưng cao hơn nội dung */
+  /* Dùng biến môi trường để đẩy lên khỏi thanh Home ảo */
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  right: 15px; 
+  
+  /* Tăng kích thước vùng bấm nhưng vẫn vô hình */
+  width: 50px; 
+  height: 50px;
+  
+  z-index: 1090;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -15,57 +19,53 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Debug mode: Uncomment to see the hit area */
-/* #magic-tts-trigger { background: rgba(0, 255, 0, 0.2); } */
-
-/* Deactivate when popup is open */
-body.popup-open #magic-tts-trigger {
-  pointer-events: none;
-  display: none; 
-}
-
 /* --- 2. GLOBAL PLAYER --- */
 #tts-player {
   position: fixed;
-  bottom: 20px;
+  /* Đẩy lên cao hơn trigger một chút */
+  bottom: calc(80px + env(safe-area-inset-bottom));
   left: 50%;
-  transform: translateX(-50%) translateY(100px); /* Mặc định ẩn xuống dưới */
-  width: 90%;
-  max-width: 400px;
+  transform: translateX(-50%) translateY(150px);
+  width: 94%;
+  max-width: 420px;
+  
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: 50px; /* Hình viên thuốc */
-  box-shadow: var(--shadow-card);
-  padding: 10px 20px;
+  border-radius: 16px; /* Bo góc hiện đại hơn */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Bóng đổ đậm hơn */
   
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   
-  z-index: 1095; /* Cao hơn trigger */
+  z-index: 1095;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
   opacity: 0;
+  pointer-events: none; /* Tránh chặn click khi ẩn */
 }
 
 #tts-player.active {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
+  pointer-events: auto;
 }
 
-/* --- Player Controls --- */
+/* --- Controls --- */
 .tts-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
 }
 
 .tts-btn:hover {
@@ -74,11 +74,12 @@ body.popup-open #magic-tts-trigger {
 }
 
 .tts-btn-main {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   background-color: var(--primary-color);
   color: white;
-  box-shadow: 0 4px 10px rgba(139, 69, 19, 0.3);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
 }
 
 .tts-btn-main:hover {
@@ -90,19 +91,92 @@ body.popup-open #magic-tts-trigger {
 .tts-info {
   flex: 1;
   text-align: center;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-family: monospace;
+  font-size: 0.9rem;
+  font-weight: 500;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  user-select: none;
+  background: var(--bg-hover);
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
-/* --- Active Segment Highlight (Karaoke Style) --- */
+/* --- SETTINGS PANEL (Popup inside Player) --- */
+#tts-settings-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-card);
+  
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  
+  animation: slideUp 0.2s ease-out;
+}
+
+#tts-settings-panel.hidden {
+  display: none;
+}
+
+.tts-setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tts-setting-row label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+#tts-voice-select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+#tts-rate-range {
+  width: 100%;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: 3px;
+  -webkit-appearance: none;
+}
+#tts-rate-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Active Segment --- */
 .segment.tts-active {
   background-color: var(--highlight-color-segment);
   transition: background-color 0.2s;
-  border-radius: 4px;
-  box-shadow: 0 0 0 4px var(--highlight-color-segment); /* Mở rộng vùng highlight */
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px var(--highlight-color-segment);
+  position: relative;
+  z-index: 1;
 }

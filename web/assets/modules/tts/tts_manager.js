@@ -1,22 +1,28 @@
 // Path: web/assets/modules/tts/tts_manager.js
 import { WebSpeechEngine } from './engines/web_speech.js';
-import { getLogger } from '../utils/logger.js'; // [FIXED] Correct path
+import { getLogger } from '../utils/logger.js';
 import { Scroller } from '../ui/common/scroller.js';
 
 const logger = getLogger("TTSManager");
 
 export const TTSManager = {
     engine: null,
-    ui: null, // Sẽ được inject từ index
+    ui: null, 
     
     // State
-    playlist: [], // Array of { id, text, element }
+    playlist: [], 
     currentIndex: -1,
     isPlaying: false,
 
-    init(uiInstance) {
-        this.ui = uiInstance;
+    // [FIXED] Tách việc tạo Engine ra khỏi việc nhận UI
+    init() {
         this.engine = new WebSpeechEngine();
+        logger.info("Init", "TTS Engine Initialized");
+    },
+
+    // [NEW] Hàm riêng để inject UI sau khi đã khởi tạo xong cả 2 bên
+    setUI(uiInstance) {
+        this.ui = uiInstance;
     },
 
     // Quét toàn bộ nội dung bài kinh để tạo playlist
@@ -32,10 +38,10 @@ export const TTSManager = {
                 const engEl = seg.querySelector(".eng");
                 if (!engEl) return null;
                 
-                // [TODO]: Normalize Pali here later (e.g., remove special chars)
+                // [TODO]: Normalize Pali here later
                 let text = engEl.textContent.trim();
                 
-                // Clean citation references like [1] if any
+                // Clean citation references like [1]
                 text = text.replace(/\[\d+\]/g, "");
 
                 return {
@@ -69,19 +75,19 @@ export const TTSManager = {
         }
 
         this.isPlaying = true;
-        this.ui.updatePlayState(true);
+        if (this.ui) this.ui.updatePlayState(true);
         this._speakCurrentSegment();
     },
 
     _pause() {
         this.isPlaying = false;
-        this.ui.updatePlayState(false);
-        this.engine.pause(); // Native pause
+        if (this.ui) this.ui.updatePlayState(false);
+        this.engine.pause(); 
     },
 
     stop() {
         this.isPlaying = false;
-        this.ui.updatePlayState(false);
+        if (this.ui) this.ui.updatePlayState(false);
         this.engine.stop();
         this._clearHighlight();
     },
@@ -107,24 +113,18 @@ export const TTSManager = {
 
         const item = this.playlist[this.currentIndex];
         
-        // 1. Highlight UI
         this._highlightSegment(item);
-        
-        // 2. Scroll to View
         Scroller.scrollToId(item.id);
 
-        // 3. Update UI Info
-        this.ui.updateInfo(this.currentIndex + 1, this.playlist.length);
+        if (this.ui) this.ui.updateInfo(this.currentIndex + 1, this.playlist.length);
 
-        // 4. Speak
         this.engine.speak(item.text, () => {
-            // On End
             if (this.isPlaying) {
                 if (this.currentIndex < this.playlist.length - 1) {
                     this.currentIndex++;
                     this._speakCurrentSegment();
                 } else {
-                    this.stop(); // End of playlist
+                    this.stop(); 
                 }
             }
         });
