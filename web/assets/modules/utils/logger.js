@@ -1,4 +1,4 @@
-// Path: web/assets/modules/shared/logger.js
+// Path: web/assets/modules/utils/logger.js
 
 /**
  * Enum for Log Levels

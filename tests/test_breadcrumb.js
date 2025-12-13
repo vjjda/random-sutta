@@ -1,4 +1,4 @@
-// tests/test_breadcrumb.js
+// Path: tests/test_breadcrumb.js
 // Mocking the required modules for a Node.js environment
 const BreadcrumbRenderer = {
     findPath(structure, targetUid, currentPath = []) {

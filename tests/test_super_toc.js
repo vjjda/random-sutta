@@ -1,4 +1,4 @@
-// tests/test_super_toc.js
+// Path: tests/test_super_toc.js
 // Mock global objects for Node.js environment
 if (typeof window === 'undefined') {
     global.window = {

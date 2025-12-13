@@ -1,4 +1,4 @@
-/* Path: web/assets/modules/ui/views/renderer.js */
+// Path: web/assets/modules/ui/views/renderer.js
 import { LeafRenderer } from "./renderers/leaf_renderer.js";
 import { BranchRenderer } from "./renderers/branch_renderer.js";
 import { setupTableOfHeadings } from "../components/toh/toh_controller.js";

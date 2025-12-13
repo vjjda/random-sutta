@@ -1,4 +1,4 @@
-/* Path: web/assets/modules/services/sutta_service.js */
+// Path: web/assets/modules/services/sutta_service.js
 import { SuttaRepository } from '../data/sutta_repository.js';
 import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { getLogger } from '../utils/logger.js';

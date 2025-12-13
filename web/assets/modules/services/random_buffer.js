@@ -1,4 +1,4 @@
-/* Path: web/assets/modules/services/random_buffer.js */
+// Path: web/assets/modules/services/random_buffer.js
 import { AppConfig } from '../core/app_config.js';
 import { RandomHelper } from './random_helper.js';
 import { SuttaService } from './sutta_service.js';
