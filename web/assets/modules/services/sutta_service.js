@@ -1,10 +1,14 @@
-// Path: web/assets/modules/services/sutta_service.js
+/* Path: web/assets/modules/services/sutta_service.js */
 import { SuttaRepository } from '../data/sutta_repository.js';
 import { SuttaExtractor } from '../data/sutta_extractor.js';
 import { getLogger } from '../utils/logger.js';
 import { RandomHelper } from './random_helper.js';
 import { StructureStrategy } from './structure_strategy.js';
+
 const logger = getLogger("SuttaService");
+
+// [PERFORMANCE] Biến lưu cache trên RAM cho dữ liệu tĩnh dùng chung
+let _tpkCache = null;
 
 // [NEW] Helper: Tìm node trong cây cấu trúc dựa trên UID
 function findNodeInTree(structure, targetId) {
@@ -37,7 +41,6 @@ function findNodeInTree(structure, targetId) {
 }
 
 // [NEW] Helper: Xác định xem node này có phải là Single Chain không
-// Trả về UID của con duy nhất nếu có, ngược lại trả về null
 function getSingleChildTarget(nodeContent) {
     if (!nodeContent || nodeContent === "LEAF") return null;
     // Trường hợp 1: Array có đúng 1 phần tử [ "dn" ] hoặc [ { "kn": ... } ]
@@ -52,7 +55,7 @@ function getSingleChildTarget(nodeContent) {
         }
     }
     
-    // Trường hợp 2: Object dạng Wrapper { "long": ["dn"] } (ít gặp nếu đã unwrap ở findNode, nhưng dự phòng)
+    // Trường hợp 2: Object dạng Wrapper { "long": ["dn"] }
     if (typeof nodeContent === 'object' && !Array.isArray(nodeContent)) {
         const keys = Object.keys(nodeContent);
         if (keys.length === 1) {
@@ -93,21 +96,29 @@ export const SuttaService = {
         // --- ENVIRONMENT CHECK ---
         const isFileProtocol = window.location.protocol === 'file:';
         const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
-        
-        // [FIX] Kiểm tra thêm biến global __DB_INDEX__
-        // Biến này được inject bởi 'offline_converter.py' trong quá trình build offline.
-        // Nếu nó tồn tại, nghĩa là ta đang chạy bản dev-offline (dù là trên http hay file://).
         const isOfflineBuild = !!window.__DB_INDEX__;
 
-        const shouldFetchTpk = true; 
-        
         // [UPDATED] Merge tree nếu là File Protocol HOẶC đã cache Offline HOẶC là bản Build Offline
         const shouldMergeTree = isFileProtocol || isOfflineReady || isOfflineBuild;
 
+        // [OPTIMIZATION] Xử lý TPK Cache để tránh latency mạng giả lập
+        let tpkPromise;
+        if (_tpkCache) {
+            // Nếu đã có trong RAM, trả về ngay lập tức (0ms delay)
+            tpkPromise = Promise.resolve(_tpkCache);
+        } else {
+            // Nếu chưa, gọi Repository và cache lại kết quả
+            tpkPromise = SuttaRepository.fetchMeta('tpk').then(data => {
+                if (data) _tpkCache = data;
+                return data;
+            }).catch(() => null);
+        }
+
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
-            shouldFetchTpk ? SuttaRepository.fetchMeta('tpk') : Promise.resolve(null)
+            tpkPromise 
         ];
+
         if (hintChunk !== null) {
             promises.push(SuttaRepository.fetchContentChunk(hintBook, hintChunk));
         }
@@ -132,11 +143,9 @@ export const SuttaService = {
             await StructureStrategy.resolveContext(bookMeta, uid, shouldMergeTree);
 
         // 2. [NEW] Check Implicit Single Chain (Alias mềm do cấu trúc)
-        // Tìm vị trí của UID hiện tại trong cây
         const currentNode = findNodeInTree(finalTree, uid);
         const singleChildTarget = getSingleChildTarget(currentNode);
 
-        // Nếu tìm thấy con duy nhất và con đó không phải chính nó (tránh loop)
         if (singleChildTarget && singleChildTarget !== uid) {
             logger.info("loadSutta", `Auto-redirecting single chain: ${uid} -> ${singleChildTarget}`);
             return {
@@ -164,8 +173,6 @@ export const SuttaService = {
                     logger.warn("loadSutta", `Parent '${parentUid}' NOT found in Chunk ${hintChunk}.`);
                 }
             } else {
-                // Chỉ warn nếu đây là Leaf mà không có content.
-                // Branch thì không cần content.
                 if (metaEntry.type === 'leaf' || metaEntry.type === 'subleaf') {
                      logger.warn("loadSutta", `No content for ${uid} and no parent_uid defined.`);
                 }
