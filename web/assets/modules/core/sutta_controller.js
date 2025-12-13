@@ -3,7 +3,7 @@ import { SuttaService } from '../services/sutta_service.js';
 import { RandomBuffer } from '../services/random_buffer.js';
 import { renderSutta } from '../ui/views/renderer.js';
 import { Router } from './router.js';
-import { FilterComponent } from '../ui/components/filters/index.js'; 
+import { FilterComponent } from '../ui/components/filters/index.js';
 // [UPDATED] Import API từ Popup System
 import { initPopupSystem } from '../ui/components/popup/index.js';
 import { Scroller } from '../ui/common/scroller.js';
@@ -36,6 +36,8 @@ export const SuttaController = {
     let scrollTarget = null;
     if (typeof input === 'object') {
         suttaId = input.uid;
+        // [DEBUG LOG]
+        if (input.book_id) logger.debug('loadSutta', `Hint Book: ${input.book_id}`);
     } else {
         const parts = input.split('#');
         suttaId = parts[0].trim().toLowerCase();
@@ -52,12 +54,15 @@ export const SuttaController = {
     }
 
     logger.info('loadSutta', `Request: ${suttaId}`);
+    
+    // [DEBUG TIMER] Start render Timer
+    console.time(`⏱️ Render: ${suttaId}`);
 
     const performRender = async () => {
         const result = await SuttaService.loadSutta(suttaId);
-        
         if (!result) {
             renderSutta(suttaId, null, null, options);
+            console.timeEnd(`⏱️ Render: ${suttaId}`);
             return false;
         }
 
@@ -65,11 +70,11 @@ export const SuttaController = {
             let redirectId = result.targetUid;
             if (result.hashId) redirectId += `#${result.hashId}`;
             this.loadSutta(redirectId, true, 0, { transition: false });
+            console.timeEnd(`⏱️ Render: ${suttaId}`);
             return true;
         }
         
         const success = await renderSutta(suttaId, result, options);
-        
         // [UPDATED] Gọi scan qua API mới
         if (success) {
             PopupAPI.scan();
@@ -82,6 +87,8 @@ export const SuttaController = {
              const bookParam = FilterComponent.generateBookParam();
              Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, currentScroll);
         }
+        
+        console.timeEnd(`⏱️ Render: ${suttaId}`);
         return success;
     };
 
@@ -100,17 +107,29 @@ export const SuttaController = {
   },
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
-    PopupAPI.hideAll(); // [UPDATED]
+    PopupAPI.hideAll();
     
+    // [DEBUG TIMER] Start Total Random Process
+    console.time('⚡ Random Process Total');
+
     const filters = FilterComponent.getActiveFilters();
+    
+    // Step 1: Get Payload
+    console.time('🎲 Buffer Get Payload');
     const payload = await RandomBuffer.getPayload(filters);
+    console.timeEnd('🎲 Buffer Get Payload');
 
     if (!payload) {
       alert("Database loading or no suttas found.");
+      console.timeEnd('⚡ Random Process Total');
       return;
     }
     
     logger.info('loadRandom', `Selected: ${payload.uid}`);
+    
+    // Step 2: Load Sutta
     await this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
+    
+    console.timeEnd('⚡ Random Process Total');
   }
 };

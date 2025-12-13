@@ -13,25 +13,19 @@ let _tpkCache = null;
 // [NEW] Helper: Tìm node trong cây cấu trúc dựa trên UID
 function findNodeInTree(structure, targetId) {
     if (!structure) return null;
-    // Nếu structure là array, duyệt từng phần tử
     if (Array.isArray(structure)) {
         for (const child of structure) {
-            // Nếu con là string và khớp ID -> Trả về "LEAF" (để phân biệt với null)
             if (typeof child === 'string') {
                 if (child === targetId) return "LEAF";
             } else {
-                // Nếu con là object, đệ quy
                 const res = findNodeInTree(child, targetId);
                 if (res) return res;
             }
         }
         return null;
     }
-    // Nếu structure là object (Dictionary hoặc Node Wrapper)
     if (typeof structure === 'object') {
-        // Nếu tìm thấy key khớp -> Trả về nội dung bên trong (Value)
         if (structure[targetId]) return structure[targetId];
-        // Nếu không, tìm trong các con
         for (const key in structure) {
             const res = findNodeInTree(structure[key], targetId);
             if (res) return res;
@@ -43,24 +37,19 @@ function findNodeInTree(structure, targetId) {
 // [NEW] Helper: Xác định xem node này có phải là Single Chain không
 function getSingleChildTarget(nodeContent) {
     if (!nodeContent || nodeContent === "LEAF") return null;
-    // Trường hợp 1: Array có đúng 1 phần tử [ "dn" ] hoặc [ { "kn": ... } ]
     if (Array.isArray(nodeContent) && nodeContent.length === 1) {
         const child = nodeContent[0];
-        // Con là String -> OK (VD: "dn")
         if (typeof child === 'string') return child;
-        // Con là Object có 1 key -> OK (VD: { "kn": [...] })
         if (typeof child === 'object') {
             const keys = Object.keys(child);
             if (keys.length === 1) return keys[0];
         }
     }
     
-    // Trường hợp 2: Object dạng Wrapper { "long": ["dn"] }
     if (typeof nodeContent === 'object' && !Array.isArray(nodeContent)) {
         const keys = Object.keys(nodeContent);
         if (keys.length === 1) {
              const childVal = nodeContent[keys[0]];
-             // Chỉ redirect nếu value cũng là single
              return getSingleChildTarget(childVal) ? keys[0] : null; 
         }
     }
@@ -98,32 +87,34 @@ export const SuttaService = {
         const isOfflineReady = !!localStorage.getItem('sutta_offline_version');
         const isOfflineBuild = !!window.__DB_INDEX__;
 
-        // [UPDATED] Merge tree nếu là File Protocol HOẶC đã cache Offline HOẶC là bản Build Offline
         const shouldMergeTree = isFileProtocol || isOfflineReady || isOfflineBuild;
 
         // [OPTIMIZATION] Xử lý TPK Cache để tránh latency mạng giả lập
         let tpkPromise;
         if (_tpkCache) {
-            // Nếu đã có trong RAM, trả về ngay lập tức (0ms delay)
             tpkPromise = Promise.resolve(_tpkCache);
         } else {
-            // Nếu chưa, gọi Repository và cache lại kết quả
             tpkPromise = SuttaRepository.fetchMeta('tpk').then(data => {
                 if (data) _tpkCache = data;
                 return data;
             }).catch(() => null);
         }
 
+        // [DEBUG TIMER] Đo thời gian fetch dữ liệu
+        const fetchLabel = `📥 Data Fetch (${uid})`;
+        console.time(fetchLabel);
+
         const promises = [
             SuttaRepository.fetchMeta(hintBook),
             tpkPromise 
         ];
-
         if (hintChunk !== null) {
             promises.push(SuttaRepository.fetchContentChunk(hintBook, hintChunk));
         }
 
         const [bookMeta, superMeta, contentChunk] = await Promise.all(promises);
+        
+        console.timeEnd(fetchLabel);
 
         if (!bookMeta) return null;
         const metaEntry = bookMeta.meta[uid];
@@ -197,6 +188,8 @@ export const SuttaService = {
         checkAndAdd(nav.next);
 
         if (neighborsToFetch.length > 0) {
+            // Chỉ fetch meta cho nav, không chặn luồng chính quá lâu nếu không cần thiết
+            // Nhưng hiện tại vẫn await để đảm bảo render nav bar đúng
             const extraMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
             Object.assign(navMeta, extraMeta);
             
