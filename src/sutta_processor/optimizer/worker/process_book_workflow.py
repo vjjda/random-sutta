@@ -22,7 +22,8 @@ logger = logging.getLogger("Optimizer.Worker")
 def process_book_task(
     file_path: Path, 
     dry_run: bool, 
-    external_nav: Optional[Dict[str, str]] = None 
+    external_nav: Optional[Dict[str, str]] = None,
+    global_meta: Optional[Dict[str, Any]] = None # [NEW]
 ) -> Dict[str, Any]:
     """
     Workflow chính điều phối việc xử lý một cuốn sách.
@@ -35,7 +36,7 @@ def process_book_task(
         "locator_map": {}, 
         "sub_counts": {},
         "sub_books_list": [],
-        "pool_data": {} # [NEW] Nơi chứa danh sách pool
+        "pool_data": {} 
     }
 
     try:
@@ -59,14 +60,14 @@ def process_book_task(
         if external_nav:
             full_nav_map[book_id] = external_nav
 
-        # 2. Dispatch Strategy
+        # 2. Dispatch Strategy (Truyền global_meta)
         if is_split_book(book_id):
             execute_split_book_strategy(
-                book_id, data, full_meta, structure, full_nav_map, io, result
+                book_id, data, full_meta, structure, full_nav_map, io, result, global_meta
             )
         else:
             execute_normal_book_strategy(
-                book_id, data, full_meta, structure, full_nav_map, linear_uids, io, result
+                book_id, data, full_meta, structure, full_nav_map, linear_uids, io, result, global_meta
             )
 
         result["status"] = "success"

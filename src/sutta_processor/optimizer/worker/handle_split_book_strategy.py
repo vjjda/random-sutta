@@ -1,5 +1,5 @@
 # Path: src/sutta_processor/optimizer/worker/handle_split_book_strategy.py
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Optional
 
 from ..io_manager import IOManager
 from ..chunker import chunk_content
@@ -15,12 +15,12 @@ def execute_split_book_strategy(
     structure: Any, 
     nav_map: Dict, 
     io: IOManager, 
-    result: Dict
+    result: Dict,
+    global_meta: Optional[Dict[str, Any]] = None # [NEW]
 ) -> None:
     """
     Chiến lược xử lý cho các sách Super Book (AN, SN).
-    [UPDATED] Universal Boundary Injection: Inject Meta cho cả Leaf và Branch nằm ở biên.
-    [UPDATED v2] Super Boundary Injection: Inject Meta hàng xóm cho chính Super Book.
+    [UPDATED] Sử dụng global_meta để inject thông tin đầy đủ.
     """
     sub_books = extract_sub_books(book_id, structure, full_meta)
     sub_book_ids = []
@@ -36,8 +36,7 @@ def execute_split_book_strategy(
     collected_pools = {}
 
     for sub_id, all_sub_keys, sub_struct in sub_books:
-        # ... (Giữ nguyên logic loop sub_books như cũ) ...
-        # 1. Content Chunking
+        # ... (Content Chunking logic giữ nguyên) ...
         sub_content = {}
         sub_leaves_check = []
         flatten_tree_uids(sub_struct, full_meta, sub_leaves_check)
@@ -58,14 +57,14 @@ def execute_split_book_strategy(
                 for uid in chunk_data.keys():
                     sub_chunk_map[uid] = idx
 
-        # 2. Build Meta & Locator
+        # 2. Build Meta
         sub_meta_map = {}
         for k in all_sub_keys:
             c_idx = resolve_chunk_idx(k, sub_chunk_map, full_meta)
             result["locator_map"][k] = [sub_id, c_idx]
             sub_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
 
-        # 3. Universal Boundary Injection (Sub-books)
+        # 3. Universal Boundary Injection WITH GLOBAL LOOKUP
         for internal_uid in all_sub_keys:
             nav_entry = nav_map.get(internal_uid)
             if not nav_entry: continue
@@ -76,9 +75,16 @@ def execute_split_book_strategy(
 
             for neighbor_uid in neighbors:
                 if neighbor_uid not in sub_meta_map:
-                    sub_meta_map[neighbor_uid] = build_meta_entry(
-                        neighbor_uid, full_meta, nav_map, None
-                    )
+                    # [CRITICAL FIX] Ưu tiên lấy từ Global Meta nếu có
+                    if global_meta and neighbor_uid in global_meta:
+                        sub_meta_map[neighbor_uid] = build_meta_entry(
+                            neighbor_uid, global_meta, nav_map, None
+                        )
+                    else:
+                        # Fallback về tạo node rỗng (ít ra còn có cái type branch)
+                        sub_meta_map[neighbor_uid] = build_meta_entry(
+                            neighbor_uid, full_meta, nav_map, None
+                        )
 
         # Inject Parent Info
         if book_id in full_meta:
@@ -110,8 +116,7 @@ def execute_split_book_strategy(
         total_valid_count += count
         collected_pools[sub_id] = sub_leaves_check
 
-    # --- [NEW] SUPER BOOK BOUNDARY INJECTION ---
-    # Inject hàng xóm của chính Super Book (ví dụ SN, MN là hàng xóm của AN)
+    # --- [NEW] SUPER BOOK BOUNDARY INJECTION WITH GLOBAL LOOKUP ---
     super_nav = nav_map.get(book_id)
     if super_nav:
         super_neighbors = []
@@ -120,10 +125,14 @@ def execute_split_book_strategy(
         
         for neighbor_uid in super_neighbors:
             if neighbor_uid not in super_meta_map:
-                # Inject meta của sách hàng xóm vào file an.json
-                super_meta_map[neighbor_uid] = build_meta_entry(
-                    neighbor_uid, full_meta, nav_map, None
-                )
+                if global_meta and neighbor_uid in global_meta:
+                    super_meta_map[neighbor_uid] = build_meta_entry(
+                        neighbor_uid, global_meta, nav_map, None
+                    )
+                else:
+                    super_meta_map[neighbor_uid] = build_meta_entry(
+                        neighbor_uid, full_meta, nav_map, None
+                    )
 
     # Save Super-Book
     result["locator_map"][book_id] = [book_id, None]

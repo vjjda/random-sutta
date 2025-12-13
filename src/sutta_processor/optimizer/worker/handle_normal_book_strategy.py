@@ -1,5 +1,5 @@
 # Path: src/sutta_processor/optimizer/worker/handle_normal_book_strategy.py
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from ..io_manager import IOManager
 from ..chunker import chunk_content
@@ -15,11 +15,12 @@ def execute_normal_book_strategy(
     nav_map: Dict, 
     linear_uids: List[str],
     io: IOManager, 
-    result: Dict
+    result: Dict,
+    global_meta: Optional[Dict[str, Any]] = None # [NEW]
 ) -> None:
     """
     Chiến lược xử lý cho các sách thường (MN, DN...).
-    [UPDATED] Boundary Injection cho Normal Book.
+    [UPDATED] Inject Meta hàng xóm từ Global Context.
     """
     # 1. Content Chunking
     normal_chunk_map = {}
@@ -37,21 +38,17 @@ def execute_normal_book_strategy(
     collect_all_keys(structure, all_keys)
     all_keys.add(book_id)
     
-    # Quét thêm meta keys để vợt alias (nếu có)
     for k in full_meta.keys(): 
         all_keys.add(k)
 
-    # Convert to list for stable iteration
     keys_list = list(all_keys)
 
-    # Populate Metadata
     for k in keys_list:
         c_idx = resolve_chunk_idx(k, normal_chunk_map, full_meta)
         result["locator_map"][k] = [book_id, c_idx]
         slim_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
 
-    # --- [NEW] BOOK-LEVEL BOUNDARY INJECTION ---
-    # Inject hàng xóm của chính Normal Book (ví dụ DN -> Next: MN)
+    # --- [NEW] BOOK-LEVEL BOUNDARY INJECTION WITH GLOBAL LOOKUP ---
     book_nav = nav_map.get(book_id)
     if book_nav:
         neighbors = []
@@ -60,10 +57,14 @@ def execute_normal_book_strategy(
         
         for neighbor_uid in neighbors:
             if neighbor_uid not in slim_meta_map:
-                # Inject meta của sách hàng xóm vào file mn.json
-                slim_meta_map[neighbor_uid] = build_meta_entry(
-                    neighbor_uid, full_meta, nav_map, None
-                )
+                if global_meta and neighbor_uid in global_meta:
+                    slim_meta_map[neighbor_uid] = build_meta_entry(
+                        neighbor_uid, global_meta, nav_map, None
+                    )
+                else:
+                    slim_meta_map[neighbor_uid] = build_meta_entry(
+                        neighbor_uid, full_meta, nav_map, None
+                    )
 
     # Save Book
     payload = build_book_payload(
@@ -76,7 +77,4 @@ def execute_normal_book_strategy(
     io.save_category("meta", f"{book_id}.json", payload)
     
     result["valid_count"] = len(linear_uids)
-    
-    result["pool_data"] = {
-        book_id: linear_uids
-    }
+    result["pool_data"] = { book_id: linear_uids }

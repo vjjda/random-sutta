@@ -20,15 +20,18 @@ class DBOrchestrator:
         self.pool_manager = PoolManager()
         self.global_locator: Dict[str, List[Any]] = {}
         self.super_nav_map: Dict[str, Dict[str, str]] = {}
+        # [NEW] Lưu trữ Super Meta để truyền xuống worker
+        self.global_meta_context: Dict[str, Any] = {}
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6.6 - Clean Meta): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v6.7 - Global Meta): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
         book_files = []
         
+        # 1. Process Super Book FIRST to get Global Context
         for f in all_files:
             if f.name == "super_book.json":
                 self._process_super(f)
@@ -43,7 +46,15 @@ class DBOrchestrator:
             for f in book_files:
                 book_id_guess = f.name.replace("_book.json", "")
                 ext_nav = self.super_nav_map.get(book_id_guess)
-                futures[executor.submit(process_book_task, f, self.dry_run, ext_nav)] = f.name
+                
+                # [UPDATED] Truyền self.global_meta_context vào task
+                futures[executor.submit(
+                    process_book_task, 
+                    f, 
+                    self.dry_run, 
+                    ext_nav, 
+                    self.global_meta_context
+                )] = f.name
 
             for future in as_completed(futures):
                 fname = futures[future]
@@ -73,7 +84,6 @@ class DBOrchestrator:
                 except Exception as e:
                     logger.error(f"   ❌ Exception: {e}")
 
-        # [UPDATED] Save BOTH Split Index (for Online Lazy Load) AND Monolithic Index (for Offline Build)
         self._save_split_indexes()
         self._save_uid_index()
         self.pool_manager.generate_js_constants() 
@@ -81,6 +91,7 @@ class DBOrchestrator:
         logger.info("✨ Optimization Completed.")
 
     def _extract_sutta_books(self, structure: Any) -> List[str]:
+        # ... (Giữ nguyên)
         sutta_books: Set[str] = set()
         def _find_sutta_root(node):
             if isinstance(node, dict):
@@ -120,6 +131,9 @@ class DBOrchestrator:
 
             meta = data.get("meta", {})
             
+            # [NEW] Store Global Meta Context
+            self.global_meta_context = meta
+
             for uid, info in meta.items():
                 if "nav" in info:
                     self.super_nav_map[uid] = info["nav"]
@@ -129,7 +143,6 @@ class DBOrchestrator:
 
             self.pool_manager.register_book_count("tpk", 0)
 
-            # [UPDATED] Xóa trường random_pool
             meta_pack = {
                 "id": "tpk",
                 "title": data.get("title"),
@@ -137,7 +150,7 @@ class DBOrchestrator:
                 "meta": meta
             }
             self.io.save_category("meta", "tpk.json", meta_pack)
-            logger.info(f"   🌟 Super Book Processed (Nav loaded from Staging: {len(self.super_nav_map)} entries)")
+            logger.info(f"   🌟 Super Book Processed (Global Meta Captured: {len(meta)} entries)")
             
         except Exception as e:
             logger.error(f"❌ Error super_book: {e}")
@@ -145,44 +158,26 @@ class DBOrchestrator:
             traceback.print_exc()
 
     def _save_uid_index(self) -> None:
-        """Lưu index tổng (cho Offline Build legacy support)."""
         self.io.save_category("root", "uid_index.json", self.global_locator)
 
     def _get_bucket_id(self, uid: str) -> str:
-        """
-        Consistent Hash (DJB2) compatible with JS.
-        Used to distribute index entries evenly across 20 buckets.
-        """
         hash_val = 5381
         for char in uid:
-            # hash * 33 + c
             hash_val = ((hash_val << 5) + hash_val) + ord(char)
-            hash_val &= 0xFFFFFFFF # Force 32-bit unsigned behavior to match JS
-        
+            hash_val &= 0xFFFFFFFF
         return str(hash_val % 20)
 
     def _save_split_indexes(self) -> None:
-        """
-        [NEW] Chia nhỏ UID Index thành 20 Hash Buckets.
-        Đảm bảo kích thước file đồng đều (~22KB) và load cực nhanh.
-        """
         buckets: Dict[str, Dict[str, Any]] = {}
-        
-        # 1. Grouping by Hash
         for uid, loc in self.global_locator.items():
             if not uid: continue
-            
             bucket_id = self._get_bucket_id(uid)
-            
             if bucket_id not in buckets:
                 buckets[bucket_id] = {}
-            
             buckets[bucket_id][uid] = loc
 
-        # 2. Saving
         for bucket_id, data in buckets.items():
             self.io.save_category("root", f"index/{bucket_id}.json", data)
-            
         logger.info(f"   📦 Hash Index created: {len(buckets)} buckets (0-19).")
 
 def run_optimizer(dry_run: bool = False):
