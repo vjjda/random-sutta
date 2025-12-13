@@ -13,23 +13,22 @@ const logger = getLogger("PopupManager");
 export const PopupManager = {
     state: {
         comments: [],
-        currentIndex: -1
+        currentIndex: -1,
+        loadingUid: null // [NEW] Biến cờ để khóa process đang tải
     },
 
     init() {
         this._applyLayoutConfig();
-
         CommentLayer.init({
             onClose: () => this.hideAll(),
             onNavigate: (dir) => this._navigateComment(dir),
             onLinkClick: (href) => this._handleCommentLink(href)
         });
-
         QuicklookLayer.init({
             onDeepLink: (href) => this._navigateToMain(href),
             onOpenOriginal: (href) => this._handleExternalLink(href)
         });
-
+        
         const container = document.getElementById("sutta-container");
         if (container) {
             container.addEventListener("click", (e) => {
@@ -73,7 +72,6 @@ export const PopupManager = {
                 commentIndex: isCommentActive ? this.state.currentIndex : -1,
                 quicklookUrl: QuicklookLayer.isVisible() ? QuicklookLayer.elements.externalLinkBtn.href : null
             };
-            
             logger.info("StateSave", `Saving: CommentIdx=${popupState.commentIndex}, QL=${popupState.quicklookUrl ? 'Yes' : 'No'}`);
             
             window.history.replaceState({ ...currentState, popupState }, document.title, window.location.href);
@@ -168,7 +166,6 @@ export const PopupManager = {
         const item = this.state.comments[nextIdx];
         
         CommentLayer.show(item.text, nextIdx, this.state.comments.length, this._getCurrentContextText());
-        
         if (item.id) Scroller.scrollToId(item.id);
         
         QuicklookLayer.hide();
@@ -186,64 +183,70 @@ export const PopupManager = {
                 const parts = urlObj.pathname.split('/').filter(p => p);
                 if (parts.length > 0) uid = parts[0];
             }
-            hash = urlObj.hash; 
-
+            hash = urlObj.hash;
             if (!uid) return;
+
+            // [OPTIMIZATION] Chặn double-fetch nếu đang load chính UID này
+            if (this.state.loadingUid === uid) {
+                logger.info("Quicklook", `Debounced duplicate request for ${uid}`);
+                return;
+            }
+            // Set lock
+            this.state.loadingUid = uid;
 
             QuicklookLayer.show(
                 '<div style="text-align:center; padding: 20px;">Loading...</div>', 
                 uid.toUpperCase()
             );
-
-            const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
             
-            if (data && data.content) {
-                const renderRes = LeafRenderer.render(data);
+            try {
+                const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
                 
-                // [UPDATED] Construct Rich Title for Header
-                const meta = data.meta || {};
-                const acronym = meta.acronym || uid.toUpperCase();
-                const titleText = meta.translated_title || meta.original_title || "";
-                
-                // HTML format to separate styling
-                const displayTitle = titleText 
-                    ? `<span class="ql-uid-badge">${acronym}</span><span class="ql-sutta-title">${titleText}</span>` 
-                    : `<span class="ql-uid-badge">${acronym}</span>`;
-
-                QuicklookLayer.show(renderRes.html, displayTitle, href);
-                
-                // [FIXED] Do not hide comment layer if we are just opening a link from it (unless mobile space is tight, but behavior requested is to keep state)
-                // Actually, logic was: CommentLayer calls onLinkClick -> _handleCommentLink.
-                // We want BOTH visible if screen permits, or at least logically open.
-                // Previously, logic didn't hide CommentLayer here implicitly, which is good.
-                
-                if (hash) {
-                    let targetId = hash.substring(1); 
-                    if (targetId && !targetId.includes(':')) {
-                        const isSegmentNumber = /^[\d\.]+$/.test(targetId);
-                        if (isSegmentNumber) {
-                            targetId = `${uid}:${targetId}`;
+                if (data && data.content) {
+                    const renderRes = LeafRenderer.render(data);
+                    // [UPDATED] Construct Rich Title for Header
+                    const meta = data.meta || {};
+                    const acronym = meta.acronym || uid.toUpperCase();
+                    const titleText = meta.translated_title || meta.original_title || "";
+                    // HTML format to separate styling
+                    const displayTitle = titleText 
+                        ? `<span class="ql-uid-badge">${acronym}</span><span class="ql-sutta-title">${titleText}</span>` 
+                        : `<span class="ql-uid-badge">${acronym}</span>`;
+                    
+                    QuicklookLayer.show(renderRes.html, displayTitle, href);
+                    
+                    if (hash) {
+                        let targetId = hash.substring(1);
+                        if (targetId && !targetId.includes(':')) {
+                            const isSegmentNumber = /^[\d\.]+$/.test(targetId);
+                            if (isSegmentNumber) {
+                                targetId = `${uid}:${targetId}`;
+                            }
                         }
+
+                        setTimeout(() => {
+                            const qBody = document.querySelector("#quicklook-popup .popup-body");
+                            const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
+                            
+                            if (targetEl && qBody) {
+                                const offsetTop = targetEl.offsetTop;
+                                qBody.scrollTop = offsetTop - 60;
+
+                                qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+                                targetEl.classList.add('highlight');
+                            }
+                        }, 100);
                     }
-
-                    setTimeout(() => {
-                        const qBody = document.querySelector("#quicklook-popup .popup-body");
-                        const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
-                        
-                        if (targetEl && qBody) {
-                            const offsetTop = targetEl.offsetTop;
-                            qBody.scrollTop = offsetTop - 60;
-
-                            qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
-                            targetEl.classList.add('highlight');
-                        }
-                    }, 100);
+                } else {
+                    QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
                 }
-            } else {
-                QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
+            } finally {
+                // [OPTIMIZATION] Release lock sau khi xong (dù thành công hay thất bại)
+                this.state.loadingUid = null;
             }
 
         } catch (e) {
+            this.state.loadingUid = null;
             logger.error("Quicklook", e);
             QuicklookLayer.show('<p class="error-message">Failed to load preview.</p>', "Error");
         }
@@ -271,5 +274,7 @@ export const PopupManager = {
     hideAll() {
         CommentLayer.hide();
         QuicklookLayer.hide();
+        // Reset loading state if manually closed
+        this.state.loadingUid = null;
     }
 };
