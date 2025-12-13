@@ -33,9 +33,15 @@ export const TTSLayout = {
                         <label>Speed: <span id="tts-rate-val">1.0</span>x</label>
                         <input type="range" id="tts-rate-range" min="0.5" max="2.0" step="0.1" value="1.0">
                     </div>
+                    
                     <div class="tts-setting-row">
                         <label>Voice</label>
                         <select id="tts-voice-select"></select>
+                    </div>
+
+                    <div class="tts-setting-row" style="margin-top: 5px; flex-direction: row; align-items: center; justify-content: space-between;">
+                        <label for="tts-auto-next" style="margin-bottom:0; cursor:pointer;">Auto-play Next</label>
+                        <input type="checkbox" id="tts-auto-next" style="width: 18px; height: 18px; cursor: pointer;">
                     </div>
                 </div>
             </div>

@@ -18,6 +18,8 @@ export const TTSView = {
             rateRange: document.getElementById("tts-rate-range"),
             rateVal: document.getElementById("tts-rate-val"),
             voiceSelect: document.getElementById("tts-voice-select"),
+            // [NEW] Checkbox
+            autoNextCheckbox: document.getElementById("tts-auto-next"),
         };
         return this.elements;
     },
@@ -47,6 +49,17 @@ export const TTSView = {
         this.elements.infoText.textContent = `${current} / ${total}`;
     },
 
+    // [NEW] Cho phép set text trạng thái tùy ý (vd: "Loading...")
+    updateStatus(text) {
+        this.elements.infoText.textContent = text;
+    },
+
+    updateAutoNextState(isChecked) {
+        if (this.elements.autoNextCheckbox) {
+            this.elements.autoNextCheckbox.checked = isChecked;
+        }
+    },
+
     toggleSettings() {
         this.elements.settingsPanel.classList.toggle("hidden");
     },
@@ -64,7 +77,6 @@ export const TTSView = {
         voices.forEach(v => {
             const option = document.createElement("option");
             option.value = v.voiceURI;
-            // Shorten name for mobile UI
             option.textContent = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 25); 
             select.appendChild(option);
         });

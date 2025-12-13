@@ -1,14 +1,23 @@
 // Path: web/assets/modules/tts/index.js
 import { TTSManager } from './tts_manager.js';
-import { TTSUI } from './ui/index.js'; // [UPDATED] Point to UI folder
+import { TTSUI } from './ui/index.js';
 
 export const TTSComponent = {
-    init() {
+    // [UPDATED] Accept options object
+    init(options = {}) {
+        // 1. Init Manager First
         TTSManager.init();
+        
+        // 2. Set Options (callbacks)
+        TTSManager.setOptions(options);
+        
+        // 3. Init UI
         TTSUI.init(TTSManager);
+        
+        // 4. Connect UI back to Manager
         TTSManager.setUI(TTSUI);
         
-        // Listen to Popup events (Legacy logic)
+        // ... (Popup observer code kept same)
         const observer = new MutationObserver((mutations) => {
             const commentPopup = document.getElementById("comment-popup");
             if (commentPopup && !commentPopup.classList.contains("hidden")) {

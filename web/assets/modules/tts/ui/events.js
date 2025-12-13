@@ -17,12 +17,13 @@ export const TTSEvents = {
             view.closeSettings();
         });
 
-        // Settings
+        // Settings Toggle
         els.btnSettings.addEventListener("click", (e) => {
             e.stopPropagation();
             view.toggleSettings();
         });
 
+        // Inputs
         els.rateRange.addEventListener("input", (e) => {
             const val = e.target.value;
             view.elements.rateVal.textContent = val;
@@ -31,6 +32,11 @@ export const TTSEvents = {
 
         els.voiceSelect.addEventListener("change", (e) => {
             manager.engine.setVoice(e.target.value);
+        });
+
+        // [NEW] Auto Next Checkbox
+        els.autoNextCheckbox.addEventListener("change", (e) => {
+            manager.setAutoNext(e.target.checked);
         });
 
         // Click outside settings

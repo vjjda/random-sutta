@@ -8,19 +8,42 @@ const logger = getLogger("TTSManager");
 export const TTSManager = {
     engine: null,
     ui: null, 
+    onAutoNext: null, // Callback để load bài mới
     
     // State
     playlist: [], 
     currentIndex: -1,
     isPlaying: false,
+    autoNextEnabled: true, // Default true
 
     init() {
         this.engine = new WebSpeechEngine();
+        this._loadSettings();
         logger.info("Init", "TTS Engine Initialized");
     },
 
     setUI(uiInstance) {
         this.ui = uiInstance;
+        // Sync UI với State hiện tại
+        if (this.ui) this.ui.updateAutoNextState(this.autoNextEnabled);
+    },
+
+    setOptions(options) {
+        if (options && typeof options.onAutoNext === 'function') {
+            this.onAutoNext = options.onAutoNext;
+        }
+    },
+
+    _loadSettings() {
+        const saved = localStorage.getItem("tts_auto_next");
+        if (saved !== null) {
+            this.autoNextEnabled = (saved === "true");
+        }
+    },
+
+    setAutoNext(enabled) {
+        this.autoNextEnabled = enabled;
+        localStorage.setItem("tts_auto_next", enabled);
     },
 
     scanContent() {
@@ -54,7 +77,6 @@ export const TTSManager = {
         if (this.playlist.length === 0) {
             if (!this.scanContent()) return;
             this.currentIndex = 0;
-            // [UX] Khi mới mở lên, highlight luôn đoạn đầu tiên
             this._activateSegment(0); 
         }
 
@@ -89,18 +111,14 @@ export const TTSManager = {
     },
 
     next() {
-        // [LOGIC FIX] Stop engine cũ nhưng KHÔNG đổi trạng thái isPlaying (nếu đang play thì vẫn play tiếp đoạn sau)
         this.engine.stop();
-        
         if (this.currentIndex < this.playlist.length - 1) {
             this.currentIndex++;
-            // [UX] Update UI ngay lập tức
             this._activateSegment(this.currentIndex);
-            
-            // Nếu đang play thì đọc tiếp, nếu đang pause thì chỉ chuyển highlight thôi
-            if (this.isPlaying) {
-                this._speakCurrentSegment();
-            }
+            if (this.isPlaying) this._speakCurrentSegment();
+        } else {
+            // Manual Next at end -> Trigger Auto Next logic directly
+            this._handlePlaylistEnd();
         }
     },
 
@@ -108,50 +126,61 @@ export const TTSManager = {
         this.engine.stop();
         if (this.currentIndex > 0) {
             this.currentIndex--;
-            // [UX] Update UI ngay lập tức
             this._activateSegment(this.currentIndex);
-
-            if (this.isPlaying) {
-                this._speakCurrentSegment();
-            }
+            if (this.isPlaying) this._speakCurrentSegment();
         }
     },
 
-    // Hàm chuyên trách cập nhật UI (Visual State)
     _activateSegment(index) {
         const item = this.playlist[index];
         if (!item) return;
-
-        // 1. Highlight
         this._highlightSegment(item);
-        
-        // 2. Scroll
         Scroller.scrollToId(item.id);
-
-        // 3. Update Info Text
-        if (this.ui) {
-            this.ui.updateInfo(index + 1, this.playlist.length);
-        }
+        if (this.ui) this.ui.updateInfo(index + 1, this.playlist.length);
     },
 
-    // Hàm chuyên trách phát âm thanh (Audio State)
     _speakCurrentSegment() {
-        // Luôn chắc chắn UI đúng với Audio
         this._activateSegment(this.currentIndex);
-
         const item = this.playlist[this.currentIndex];
         
         this.engine.speak(item.text, () => {
-            // On End (Audio finished)
             if (this.isPlaying) {
                 if (this.currentIndex < this.playlist.length - 1) {
                     this.currentIndex++;
                     this._speakCurrentSegment();
                 } else {
-                    this.stop(); 
+                    this._handlePlaylistEnd();
                 }
             }
         });
+    },
+
+    async _handlePlaylistEnd() {
+        if (this.autoNextEnabled && this.onAutoNext) {
+            logger.info("AutoNext", "Playlist ended. Loading next random sutta...");
+            
+            if (this.ui) this.ui.updateStatus("Loading next...");
+            
+            try {
+                // 1. Load Sutta mới (Chờ render xong)
+                await this.onAutoNext();
+                
+                // 2. Quét nội dung mới
+                if (this.scanContent()) {
+                    this.currentIndex = 0;
+                    // 3. Tiếp tục phát
+                    this._speakCurrentSegment();
+                } else {
+                    logger.warn("AutoNext", "New sutta has no readable content.");
+                    this.stop();
+                }
+            } catch (e) {
+                logger.error("AutoNext", "Failed to load next sutta", e);
+                this.stop();
+            }
+        } else {
+            this.stop();
+        }
     },
 
     _highlightSegment(item) {
