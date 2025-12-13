@@ -22,17 +22,24 @@ export const UIFactory = {
   createNavButton: function (suttaId, direction, metaMap) {
     // Nếu ID là null/undefined -> Spacer rỗng
     if (!suttaId) return `<div class="nav-spacer"></div>`;
+    
     let title = suttaId.toUpperCase();
     let subtitle = "";
+    let tooltip = ""; // [NEW] Variable for tooltip
 
     // Tra cứu meta (được truyền từ navMeta)
     if (metaMap && metaMap[suttaId]) {
         const info = metaMap[suttaId];
         // 1. Dòng chính: Acronym (ngắn gọn)
         if (info.acronym) title = info.acronym;
+        
         // 2. Dòng phụ: Tên tiếng Anh -> hoặc Tên Pali
         if (info.translated_title) subtitle = info.translated_title;
         else if (info.original_title) subtitle = info.original_title;
+
+        // [NEW] 3. Tooltip: Ưu tiên Original Title (Pali)
+        if (info.original_title) tooltip = info.original_title;
+        else if (info.translated_title) tooltip = info.translated_title;
     }
 
     const align = direction === 'left' ? 'left' : 'right';
@@ -40,11 +47,13 @@ export const UIFactory = {
     const arrowIcon = direction === 'left'
         ? getChevronSvg(-90, "nav-icon-inline left")
         : getChevronSvg(90, "nav-icon-inline right");
+        
     const content = direction === 'left' 
         ? `${arrowIcon}<span>${title}</span>`
         : `<span>${title}</span>${arrowIcon}`;
-    
-    return `<button onclick="window.loadSutta('${suttaId}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}">
+
+    // [UPDATED] Added title="${tooltip}" attribute
+    return `<button onclick="window.loadSutta('${suttaId}')" class="nav-btn" style="align-items:${alignItems}; text-align:${align}" title="${tooltip}">
             <span class="nav-main-text">
                 ${content}
             </span>
@@ -54,12 +63,10 @@ export const UIFactory = {
 
   createBottomNavHtml: function (prevId, nextId, metaMap) {
     let html = '<div class="sutta-nav">';
-    
     // Nút Previous
     html += this.createNavButton(prevId, 'left', metaMap);
     
-    // [UPDATED] Invisible Random Bottom Trigger
-    // Thay thế nút icon cũ bằng nút tàng hình chiếm 1/3 giữa
+    // Invisible Random Bottom Trigger
     html += `
       <button 
         onclick="window.triggerRandomSutta()" 
