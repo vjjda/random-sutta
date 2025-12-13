@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/tts_manager.js
 import { WebSpeechEngine } from './engines/web_speech.js';
-import { getLogger } from '../utils/logger.js'; // Correct path
+import { getLogger } from '../utils/logger.js';
 import { Scroller } from '../ui/common/scroller.js';
 
 const logger = getLogger("TTSManager");
@@ -23,29 +23,19 @@ export const TTSManager = {
         this.ui = uiInstance;
     },
 
-    // Quét toàn bộ nội dung bài kinh để tạo playlist
     scanContent() {
         const container = document.getElementById("sutta-container");
         if (!container) return false;
 
-        // Chỉ lấy các segment có chứa tiếng Anh (.eng)
         const segments = Array.from(container.querySelectorAll(".segment"));
         
         this.playlist = segments
-            .filter(seg => {
-                // [NEW] Logic lọc phần tử ẩn
-                // offsetParent trả về null nếu phần tử (hoặc bất kỳ cha nào của nó) có display: none
-                // Điều này giúp TTS tôn trọng CSS ".sutta-text-view header ul { display: none; }"
-                return seg.offsetParent !== null;
-            })
+            .filter(seg => seg.offsetParent !== null)
             .map(seg => {
                 const engEl = seg.querySelector(".eng");
                 if (!engEl) return null;
                 
-                // [TODO]: Normalize Pali here later
                 let text = engEl.textContent.trim();
-                
-                // Clean citation references like [1]
                 text = text.replace(/\[\d+\]/g, "");
 
                 return {
@@ -64,6 +54,8 @@ export const TTSManager = {
         if (this.playlist.length === 0) {
             if (!this.scanContent()) return;
             this.currentIndex = 0;
+            // [UX] Khi mới mở lên, highlight luôn đoạn đầu tiên
+            this._activateSegment(0); 
         }
 
         if (this.isPlaying) {
@@ -97,10 +89,18 @@ export const TTSManager = {
     },
 
     next() {
+        // [LOGIC FIX] Stop engine cũ nhưng KHÔNG đổi trạng thái isPlaying (nếu đang play thì vẫn play tiếp đoạn sau)
         this.engine.stop();
+        
         if (this.currentIndex < this.playlist.length - 1) {
             this.currentIndex++;
-            this._speakCurrentSegment();
+            // [UX] Update UI ngay lập tức
+            this._activateSegment(this.currentIndex);
+            
+            // Nếu đang play thì đọc tiếp, nếu đang pause thì chỉ chuyển highlight thôi
+            if (this.isPlaying) {
+                this._speakCurrentSegment();
+            }
         }
     },
 
@@ -108,21 +108,41 @@ export const TTSManager = {
         this.engine.stop();
         if (this.currentIndex > 0) {
             this.currentIndex--;
-            this._speakCurrentSegment();
+            // [UX] Update UI ngay lập tức
+            this._activateSegment(this.currentIndex);
+
+            if (this.isPlaying) {
+                this._speakCurrentSegment();
+            }
         }
     },
 
+    // Hàm chuyên trách cập nhật UI (Visual State)
+    _activateSegment(index) {
+        const item = this.playlist[index];
+        if (!item) return;
+
+        // 1. Highlight
+        this._highlightSegment(item);
+        
+        // 2. Scroll
+        Scroller.scrollToId(item.id);
+
+        // 3. Update Info Text
+        if (this.ui) {
+            this.ui.updateInfo(index + 1, this.playlist.length);
+        }
+    },
+
+    // Hàm chuyên trách phát âm thanh (Audio State)
     _speakCurrentSegment() {
-        if (!this.isPlaying) return;
+        // Luôn chắc chắn UI đúng với Audio
+        this._activateSegment(this.currentIndex);
 
         const item = this.playlist[this.currentIndex];
         
-        this._highlightSegment(item);
-        Scroller.scrollToId(item.id);
-
-        if (this.ui) this.ui.updateInfo(this.currentIndex + 1, this.playlist.length);
-
         this.engine.speak(item.text, () => {
+            // On End (Audio finished)
             if (this.isPlaying) {
                 if (this.currentIndex < this.playlist.length - 1) {
                     this.currentIndex++;
