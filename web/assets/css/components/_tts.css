@@ -4,7 +4,7 @@
 #magic-tts-trigger {
   position: fixed;
   /* Dùng biến môi trường để đẩy lên khỏi thanh Home ảo */
-  bottom: calc(20px + env(safe-area-inset-bottom));
+  bottom: calc(5px + env(safe-area-inset-bottom));
   right: 15px; 
   
   /* Tăng kích thước vùng bấm nhưng vẫn vô hình */
@@ -23,7 +23,7 @@
 #tts-player {
   position: fixed;
   /* Đẩy lên cao hơn trigger một chút */
-  bottom: calc(80px + env(safe-area-inset-bottom));
+  bottom: calc(5px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%) translateY(150px);
   width: 94%;

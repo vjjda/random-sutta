@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/tts_manager.js
 import { WebSpeechEngine } from './engines/web_speech.js';
-import { getLogger } from '../utils/logger.js';
+import { getLogger } from '../utils/logger.js'; // Correct path
 import { Scroller } from '../ui/common/scroller.js';
 
 const logger = getLogger("TTSManager");
@@ -14,13 +14,11 @@ export const TTSManager = {
     currentIndex: -1,
     isPlaying: false,
 
-    // [FIXED] Tách việc tạo Engine ra khỏi việc nhận UI
     init() {
         this.engine = new WebSpeechEngine();
         logger.info("Init", "TTS Engine Initialized");
     },
 
-    // [NEW] Hàm riêng để inject UI sau khi đã khởi tạo xong cả 2 bên
     setUI(uiInstance) {
         this.ui = uiInstance;
     },
@@ -34,6 +32,12 @@ export const TTSManager = {
         const segments = Array.from(container.querySelectorAll(".segment"));
         
         this.playlist = segments
+            .filter(seg => {
+                // [NEW] Logic lọc phần tử ẩn
+                // offsetParent trả về null nếu phần tử (hoặc bất kỳ cha nào của nó) có display: none
+                // Điều này giúp TTS tôn trọng CSS ".sutta-text-view header ul { display: none; }"
+                return seg.offsetParent !== null;
+            })
             .map(seg => {
                 const engEl = seg.querySelector(".eng");
                 if (!engEl) return null;
