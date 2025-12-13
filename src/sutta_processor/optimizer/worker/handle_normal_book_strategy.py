@@ -19,6 +19,7 @@ def execute_normal_book_strategy(
 ) -> None:
     """
     Chiến lược xử lý cho các sách thường (MN, DN...).
+    [UPDATED] Boundary Injection cho Normal Book.
     """
     # 1. Content Chunking
     normal_chunk_map = {}
@@ -40,13 +41,31 @@ def execute_normal_book_strategy(
     for k in full_meta.keys(): 
         all_keys.add(k)
 
-    for k in all_keys:
+    # Convert to list for stable iteration
+    keys_list = list(all_keys)
+
+    # Populate Metadata
+    for k in keys_list:
         c_idx = resolve_chunk_idx(k, normal_chunk_map, full_meta)
         result["locator_map"][k] = [book_id, c_idx]
         slim_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
-    
+
+    # --- [NEW] BOOK-LEVEL BOUNDARY INJECTION ---
+    # Inject hàng xóm của chính Normal Book (ví dụ DN -> Next: MN)
+    book_nav = nav_map.get(book_id)
+    if book_nav:
+        neighbors = []
+        if "prev" in book_nav: neighbors.append(book_nav["prev"])
+        if "next" in book_nav: neighbors.append(book_nav["next"])
+        
+        for neighbor_uid in neighbors:
+            if neighbor_uid not in slim_meta_map:
+                # Inject meta của sách hàng xóm vào file mn.json
+                slim_meta_map[neighbor_uid] = build_meta_entry(
+                    neighbor_uid, full_meta, nav_map, None
+                )
+
     # Save Book
-    # [UPDATED] Không truyền random_pool
     payload = build_book_payload(
         book_id=book_id,
         title=data.get("title"),
@@ -58,7 +77,6 @@ def execute_normal_book_strategy(
     
     result["valid_count"] = len(linear_uids)
     
-    # [KEEP] Gửi pool về để ghi vào constants.js
     result["pool_data"] = {
         book_id: linear_uids
     }

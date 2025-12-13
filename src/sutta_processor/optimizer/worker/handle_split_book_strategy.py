@@ -20,6 +20,7 @@ def execute_split_book_strategy(
     """
     Chiến lược xử lý cho các sách Super Book (AN, SN).
     [UPDATED] Universal Boundary Injection: Inject Meta cho cả Leaf và Branch nằm ở biên.
+    [UPDATED v2] Super Boundary Injection: Inject Meta hàng xóm cho chính Super Book.
     """
     sub_books = extract_sub_books(book_id, structure, full_meta)
     sub_book_ids = []
@@ -35,7 +36,8 @@ def execute_split_book_strategy(
     collected_pools = {}
 
     for sub_id, all_sub_keys, sub_struct in sub_books:
-        # 1. Content Chunking cho Sách Con
+        # ... (Giữ nguyên logic loop sub_books như cũ) ...
+        # 1. Content Chunking
         sub_content = {}
         sub_leaves_check = []
         flatten_tree_uids(sub_struct, full_meta, sub_leaves_check)
@@ -56,37 +58,29 @@ def execute_split_book_strategy(
                 for uid in chunk_data.keys():
                     sub_chunk_map[uid] = idx
 
-        # 2. Build Meta & Locator (Core Items)
+        # 2. Build Meta & Locator
         sub_meta_map = {}
         for k in all_sub_keys:
             c_idx = resolve_chunk_idx(k, sub_chunk_map, full_meta)
             result["locator_map"][k] = [sub_id, c_idx]
             sub_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
 
-        # 3. [NEW] Universal Boundary Injection (Inject Meta cho hàng xóm của TẤT CẢ các node)
-        # Logic này thay thế logic cũ chỉ check first/last leaf.
-        # Nó quét toàn bộ node trong sub-book (all_sub_keys bao gồm cả Branch & Leaf).
+        # 3. Universal Boundary Injection (Sub-books)
         for internal_uid in all_sub_keys:
             nav_entry = nav_map.get(internal_uid)
-            if not nav_entry:
-                continue
+            if not nav_entry: continue
 
-            # Xác định các hàng xóm cần kiểm tra
             neighbors = []
             if "prev" in nav_entry: neighbors.append(nav_entry["prev"])
             if "next" in nav_entry: neighbors.append(nav_entry["next"])
 
             for neighbor_uid in neighbors:
-                # Nếu hàng xóm CHƯA có trong map của file này (nghĩa là nó thuộc file khác)
                 if neighbor_uid not in sub_meta_map:
-                    # Inject meta để hiển thị nút.
-                    # chunk_idx sẽ là None vì nội dung nó không nằm trong file này.
-                    # Nhưng quan trọng là ta có Title/Acronym cho UI.
                     sub_meta_map[neighbor_uid] = build_meta_entry(
                         neighbor_uid, full_meta, nav_map, None
                     )
 
-        # Inject Parent Info vào con
+        # Inject Parent Info
         if book_id in full_meta:
             sub_meta_map[book_id] = build_meta_entry(book_id, full_meta, nav_map, None)
         
@@ -115,6 +109,21 @@ def execute_split_book_strategy(
         result["sub_counts"][sub_id] = count
         total_valid_count += count
         collected_pools[sub_id] = sub_leaves_check
+
+    # --- [NEW] SUPER BOOK BOUNDARY INJECTION ---
+    # Inject hàng xóm của chính Super Book (ví dụ SN, MN là hàng xóm của AN)
+    super_nav = nav_map.get(book_id)
+    if super_nav:
+        super_neighbors = []
+        if "prev" in super_nav: super_neighbors.append(super_nav["prev"])
+        if "next" in super_nav: super_neighbors.append(super_nav["next"])
+        
+        for neighbor_uid in super_neighbors:
+            if neighbor_uid not in super_meta_map:
+                # Inject meta của sách hàng xóm vào file an.json
+                super_meta_map[neighbor_uid] = build_meta_entry(
+                    neighbor_uid, full_meta, nav_map, None
+                )
 
     # Save Super-Book
     result["locator_map"][book_id] = [book_id, None]
