@@ -21,16 +21,6 @@ if [ -n "$STAGED_WEB_FILES" ]; then
         echo "❌ Build thất bại. Hủy bỏ Commit."
         exit 1
     fi
-
-    # 4. [QUAN TRỌNG] Add các file artifact vừa sinh ra vào commit hiện tại
-    # Nếu không có bước này, bạn sẽ commit code nguồn nhưng file build cũ.
-    echo "➕ Đang thêm file build mới vào commit..."
-    
-    # Add sw.js (nơi chứa version cache)
-    git add web/sw.js
-    
-    # Add toàn bộ assets (bao gồm css bundle, js bundle, file_index.js...)
-    git add web/assets/
     
     echo "✅ Auto Build hoàn tất. Tiếp tục Commit."
     echo "--------------------------------------------------------"
