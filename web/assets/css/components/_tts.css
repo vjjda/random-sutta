@@ -1,0 +1,108 @@
+/* Path: web/assets/css/components/_tts.css */
+
+/* --- 1. MAGIC TTS CORNER (Invisible Trigger) --- */
+#magic-tts-trigger {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 60px; /* Vùng bấm đủ lớn */
+  height: 60px;
+  z-index: 1090; /* Thấp hơn Popup (1100+) nhưng cao hơn nội dung */
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Debug mode: Uncomment to see the hit area */
+/* #magic-tts-trigger { background: rgba(0, 255, 0, 0.2); } */
+
+/* Deactivate when popup is open */
+body.popup-open #magic-tts-trigger {
+  pointer-events: none;
+  display: none; 
+}
+
+/* --- 2. GLOBAL PLAYER --- */
+#tts-player {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px); /* Mặc định ẩn xuống dưới */
+  width: 90%;
+  max-width: 400px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 50px; /* Hình viên thuốc */
+  box-shadow: var(--shadow-card);
+  padding: 10px 20px;
+  
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  
+  z-index: 1095; /* Cao hơn trigger */
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+  opacity: 0;
+}
+
+#tts-player.active {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* --- Player Controls --- */
+.tts-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tts-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+}
+
+.tts-btn-main {
+  width: 44px;
+  height: 44px;
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 10px rgba(139, 69, 19, 0.3);
+}
+
+.tts-btn-main:hover {
+  background-color: var(--primary-hover);
+  color: white;
+  transform: scale(1.05);
+}
+
+.tts-info {
+  flex: 1;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+/* --- Active Segment Highlight (Karaoke Style) --- */
+.segment.tts-active {
+  background-color: var(--highlight-color-segment);
+  transition: background-color 0.2s;
+  border-radius: 4px;
+  box-shadow: 0 0 0 4px var(--highlight-color-segment); /* Mở rộng vùng highlight */
+}

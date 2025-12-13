@@ -1,10 +1,8 @@
 // Path: web/assets/modules/core/app.js
 import { Router } from './router.js';
 import { SuttaController } from './sutta_controller.js';
-
 // [REFACTORED] Import từ Service Gateway
 import { SuttaService, RandomBuffer } from '../services/index.js';
-
 // Utils
 import { setupLogging, LogLevel, getLogger } from '../utils/logger.js';
 
@@ -13,7 +11,6 @@ import { FilterComponent } from '../ui/components/filters/index.js';
 import { setupQuickNav } from '../ui/components/search.js';
 // [REFACTORED] Import Popup System từ gateway index.js của nó
 import { initPopupSystem } from '../ui/components/popup/index.js';
-
 // [REFACTORED] Import Managers từ Gateway (Thay vì 4 dòng import lẻ)
 import { 
     DrawerManager, 
@@ -21,6 +18,9 @@ import {
     ThemeManager, 
     FontSizeManager 
 } from '../ui/managers/index.js';
+
+// [NEW] TTS System Import
+import { TTSComponent } from '../tts/index.js'; 
 
 const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
@@ -45,8 +45,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // 3. Khởi tạo Components
     FilterComponent.init(); 
-    initPopupSystem(); // Khởi tạo hệ thống Popup (Comment & Quicklook)
+    initPopupSystem(); 
     
+    // [NEW] Initialize TTS
+    TTSComponent.init();
+
     // Setup Search/QuickNav
     setupQuickNav((query) => SuttaController.loadSutta(query));
 
@@ -93,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.time('⏱️ Direct Load Total');
             await SuttaController.loadSutta(loadId, true);
             console.timeEnd('⏱️ Direct Load Total');
-            
+
             // Vẫn chạy buffer ngầm để sẵn sàng cho random
             RandomBuffer.startBackgroundWork();
         } 

@@ -11,7 +11,7 @@
 @import "css/layout/_header.css";
 @import "css/layout/_container.css";
 
-/* [NEW] Drawer Modules */
+/* Drawer Modules */
 @import "css/layout/drawer/_drawer_container.css";
 @import "css/layout/drawer/_drawer_filters.css";
 @import "css/layout/drawer/_drawer_footer.css";
@@ -25,8 +25,9 @@
 @import "css/components/_toh.css";
 @import "css/components/_splash.css";
 @import "css/components/_loader.css";
+@import "css/components/_tts.css"; /* [NEW] TTS Styles */
 
-/* [REPLACED] Magic Nav with Explicit Names */
+/* Magic Nav */
 @import "css/components/magic_nav/_magic_nav_layout.css";
 @import "css/components/magic_nav/_magic_nav_trigger_buttons.css";
 @import "css/components/magic_nav/_magic_nav_breadcrumb_bar.css";
