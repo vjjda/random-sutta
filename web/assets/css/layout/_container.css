@@ -1,7 +1,7 @@
 /* Path: web/assets/css/layout/_container.css */
 :root {
-  /* Giá trị mặc định nếu JS chưa load config */
-  --tts-bottom-padding: 120px;
+  /* Giá trị này sẽ được JS cập nhật từ AppConfig (vd: 300px) */
+  --tts-bottom-padding: 120px; 
 }
 
 #sutta-container {
@@ -9,12 +9,18 @@
   border-top: 1px solid var(--border-color);
   box-shadow: none;
   
-  /* Padding: Top | Right | Bottom (Dùng biến) | Left */
-  padding: 20px 40px var(--tts-bottom-padding) 40px;
+  /* [MẶC ĐỊNH] Padding khi KHÔNG bật TTS */
+  padding: 20px 40px 60px 40px; 
   
   min-height: 300px;
-  /* Đảm bảo padding được tính toán đúng */
-  transition: padding-bottom 0.3s ease;
+  
+  /* [QUAN TRỌNG] Hiệu ứng chuyển đổi mượt mà khi bật/tắt Player */
+  transition: padding-bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* [KHI BẬT TTS] Áp dụng padding lớn để tránh bị che */
+body.tts-open #sutta-container {
+  padding-bottom: var(--tts-bottom-padding);
 }
 
 @media (max-width: 600px) {
@@ -22,7 +28,11 @@
     padding: 0;
   }
   #sutta-container {
-    /* Mobile cũng dùng biến này */
-    padding: 30px 20px var(--tts-bottom-padding) 20px;
+    /* Mobile: Mặc định 80px, khi bật TTS sẽ dùng biến */
+    padding: 30px 20px 80px 20px;
+  }
+  
+  body.tts-open #sutta-container {
+    padding-bottom: var(--tts-bottom-padding);
   }
 }

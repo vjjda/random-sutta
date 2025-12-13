@@ -7,9 +7,9 @@ const logger = getLogger("TTS_SessionManager");
 
 export const TTSSessionManager = {
     // Dependencies
-    player: null,      // Logic Audio
-    highlighter: null, // Logic Visuals
-    ui: null,          // Logic UI Toggles
+    player: null,
+    highlighter: null,
+    ui: null,
 
     init(player, highlighter, ui) {
         this.player = player;
@@ -25,6 +25,10 @@ export const TTSSessionManager = {
 
         logger.info("Lifecycle", "Starting Session...");
         TTSStateStore.setSessionActive(true);
+        
+        // [NEW] Thêm class vào body để CSS đẩy padding lên
+        document.body.classList.add('tts-open');
+
         this.refresh();
         if (this.ui) this.ui.togglePlayer(true);
     },
@@ -32,42 +36,36 @@ export const TTSSessionManager = {
     end() {
         logger.info("Lifecycle", "Ending Session.");
         
-        // Dừng Player
         if (this.player) this.player.stop();
         
         TTSStateStore.setSessionActive(false); 
         
-        // Dọn dẹp UI
+        // [NEW] Xóa class khỏi body -> Padding trở về bình thường
+        document.body.classList.remove('tts-open');
+        
         if (this.ui) {
             this.ui.togglePlayer(false); 
             this.ui.closeSettings();
         }
         
-        // Xóa Highlight
         if (this.highlighter) this.highlighter.clear();
     },
 
     refresh(autoPlay = false) {
         if (!TTSStateStore.isSessionActive) return;
 
-        // 1. Reset Player (Stop audio, reset state)
         if (this.player) this.player.stop();
 
-        // 2. Rescan DOM
         const items = TTSDOMParser.parse("sutta-container");
         TTSStateStore.resetPlaylist(items);
         
-        // 3. Handle Content
         if (items.length > 0) {
             if (autoPlay) {
-                // Auto Play: Player tự lo việc highlight và update UI state
                 if (this.player) this.player.play();
             } else {
-                // Manual: Chỉ highlight câu đầu, không play
                 if (this.highlighter) this.highlighter.activate(0);
             }
         } else {
-            // Empty: Clear visuals
             if (this.highlighter) this.highlighter.clear();
             if (this.ui) this.ui.updateInfo(0, 0);
         }

@@ -16,7 +16,7 @@ export const AppConfig = {
         SCROLL_OFFSET_TOP: '15vh',
 
         // Khoảng trống đệm dưới cùng trang web để Player không che mất dòng cuối
-        BOTTOM_PADDING: '120px', 
+        BOTTOM_PADDING: '300px', 
     },
 
     // Popup Layout Configuration
