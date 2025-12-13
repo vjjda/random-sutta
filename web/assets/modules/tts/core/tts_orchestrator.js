@@ -31,13 +31,58 @@ export const TTSOrchestrator = {
         }
     },
 
+    // --- Session Management [NEW] ---
+
+    // Gọi khi click Magic Corner hoặc Double Tap Nav
+    startSession() {
+        if (TTSStateStore.isSessionActive) {
+            // Nếu đang active mà gọi lại (vd click corner) -> Chỉ hiện UI lên nếu đang ẩn
+            if (this.ui) this.ui.togglePlayer(true);
+            return;
+        }
+
+        logger.info("Session", "Starting TTS Session...");
+        TTSStateStore.setSessionActive(true);
+        
+        // Scan ngay khi start session
+        const items = TTSDOMParser.parse("sutta-container");
+        if (items.length > 0) {
+            TTSStateStore.resetPlaylist(items);
+            this._activateUI(0);
+        }
+        
+        // Hiện Player
+        if (this.ui) this.ui.togglePlayer(true);
+    },
+
+    // Gọi khi click nút Close (X)
+    endSession() {
+        logger.info("Session", "Ending TTS Session.");
+        this.stop(); // Dừng đọc
+        TTSStateStore.setSessionActive(false); // Reset cờ
+        
+        if (this.ui) {
+            this.ui.togglePlayer(false); // Ẩn UI
+            this.ui.closeSettings();
+        }
+        this._clearHighlight();
+    },
+
+    isSessionActive() {
+        return TTSStateStore.isSessionActive;
+    },
+
     // --- Actions ---
 
     togglePlay() {
+        // [Safety] Nếu toggle play mà session chưa active thì kích hoạt luôn
+        if (!TTSStateStore.isSessionActive) {
+            this.startSession();
+        }
+
         if (TTSStateStore.playlist.length === 0) {
             const items = TTSDOMParser.parse("sutta-container");
             if (items.length === 0) return;
-            
             TTSStateStore.resetPlaylist(items);
             this._activateUI(0); 
         }
@@ -65,11 +110,11 @@ export const TTSOrchestrator = {
         TTSStateStore.isPlaying = false;
         if (this.ui) this.ui.updatePlayState(false);
         this.engine.stop();
-        this._clearHighlight();
+        // Không clear highlight ở đây để giữ vị trí đọc, chỉ clear khi endSession
     },
 
     next() {
-        this.engine.stop(); 
+        this.engine.stop();
         if (TTSStateStore.hasNext()) {
             TTSStateStore.advance();
             this._activateUI(TTSStateStore.currentIndex);
@@ -88,8 +133,13 @@ export const TTSOrchestrator = {
         }
     },
 
-    // [NEW] Nhảy đến một ID cụ thể (Segment Trigger)
+    // Nhảy đến một ID cụ thể (Segment Trigger)
     jumpToID(id) {
+        // [CRITICAL] Chỉ nhảy nếu Session đang Active
+        if (!TTSStateStore.isSessionActive) {
+            return;
+        }
+
         // 1. Nếu playlist trống, scan trước
         if (TTSStateStore.playlist.length === 0) {
             const items = TTSDOMParser.parse("sutta-container");
@@ -106,7 +156,7 @@ export const TTSOrchestrator = {
 
             // Nếu đang chưa play thì play luôn
             if (!TTSStateStore.isPlaying) {
-                this.play(); 
+                this.play();
             } else {
                 this._speakCurrent();
             }
@@ -125,7 +175,7 @@ export const TTSOrchestrator = {
 
         this._highlightElement(item.element);
         
-        // [UPDATED] Sử dụng scroll mode đọc sách (để lại khoảng trống bên trên)
+        // Sử dụng scroll mode đọc sách
         Scroller.scrollToReadingPosition(item.id);
         
         if (this.ui) {

@@ -5,6 +5,9 @@ export const TTSStateStore = {
     currentIndex: -1,
     isPlaying: false,
     
+    // [NEW] Session State: Chỉ True khi người dùng chủ động mở Player
+    isSessionActive: false,
+    
     // Settings
     autoNextEnabled: true,
 
@@ -22,6 +25,11 @@ export const TTSStateStore = {
     setAutoNext(enabled) {
         this.autoNextEnabled = enabled;
         localStorage.setItem("tts_auto_next", enabled);
+    },
+
+    // [NEW] Session Management
+    setSessionActive(active) {
+        this.isSessionActive = active;
     },
 
     resetPlaylist(newPlaylist) {

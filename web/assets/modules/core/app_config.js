@@ -9,14 +9,18 @@ export const AppConfig = {
     TOAST_DURATION: 3000,
     MAGIC_NAV_COOLDOWN: 60000,
 
-    // [NEW] Popup Layout Configuration
-    POPUP_LAYOUT: {
-        // Chiều cao của Comment Popup (chiếm bao nhiêu % màn hình)
-        // Quicklook sẽ tự động chiếm phần còn lại (trừ đi phần Top Offset)
-        COMMENT_HEIGHT_VH: 40, 
+    // [NEW] TTS Configuration
+    TTS: {
+        // Khoảng trống đệm dưới cùng để Player không che chữ (CSS value)
+        BOTTOM_PADDING: "120px", 
         
-        // Khoảng cách từ đỉnh màn hình xuống Quicklook Popup (để tránh Header)
-        // Đơn vị: px
+        // Bật/Tắt tính năng kích hoạt bằng cách double-tap vào Nav Title
+        ENABLE_NAV_DOUBLE_TAP: true 
+    },
+
+    // Popup Layout Configuration
+    POPUP_LAYOUT: {
+        COMMENT_HEIGHT_VH: 40, 
         QUICKLOOK_TOP_OFFSET_PX: 0 
     },
 
@@ -34,6 +38,10 @@ export const AppConfig = {
         "sutta_theme",
         "sutta_font_scale",
         "sutta_sepia_light",
-        "sutta_sepia_dark"
+        "sutta_sepia_dark",
+        // [NEW] Add TTS settings persistence if needed
+        "tts_rate",
+        "tts_voice_uri",
+        "tts_auto_next"
     ]
 };
