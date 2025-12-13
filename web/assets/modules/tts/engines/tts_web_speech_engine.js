@@ -1,5 +1,6 @@
 // Path: web/assets/modules/tts/engines/tts_web_speech_engine.js
-import { getLogger } from '../../utils/logger.js'; // [FIXED] Correct relative path (2 levels up)
+// [CRITICAL] Import path must be exactly 2 levels up to reach 'modules/utils'
+import { getLogger } from '../../utils/logger.js'; 
 
 const logger = getLogger("TTS_WebSpeech");
 
@@ -10,6 +11,7 @@ export class TTSWebSpeechEngine {
         this.rate = 1.0;
         this.pitch = 1.0;
         this.onVoicesChanged = null;
+        this.currentUtterance = null;
         
         if (speechSynthesis.onvoiceschanged !== undefined) {
             speechSynthesis.onvoiceschanged = () => {
@@ -19,6 +21,7 @@ export class TTSWebSpeechEngine {
         }
         this._loadVoices();
         this._loadSettings();
+        this.stop(); 
     }
 
     _loadVoices() {
@@ -60,25 +63,47 @@ export class TTSWebSpeechEngine {
     }
 
     speak(text, onEnd, onBoundary) {
-        if (this.synth.speaking) this.synth.cancel();
-        if (!text) { if (onEnd) onEnd(); return; }
+        this.synth.cancel();
+
+        if (!text) { 
+            if (onEnd) onEnd(); 
+            return; 
+        }
 
         const utterance = new SpeechSynthesisUtterance(text);
+        this.currentUtterance = utterance;
+
         if (this.voice) utterance.voice = this.voice;
         utterance.rate = this.rate;
         utterance.pitch = this.pitch;
 
-        utterance.onend = () => { if (onEnd) onEnd(); };
-        utterance.onerror = (e) => {
-            logger.error("Speak error", e);
-            if (e.error !== 'interrupted' && onEnd) onEnd();
+        utterance.onend = () => { 
+            this.currentUtterance = null;
+            if (onEnd) onEnd(); 
         };
-        if (onBoundary) utterance.onboundary = onBoundary;
 
-        this.synth.speak(utterance);
+        utterance.onerror = (e) => {
+            logger.error("Speak error", `Code: ${e.error}`);
+            this.currentUtterance = null;
+            if (e.error !== 'interrupted' && e.error !== 'canceled' && onEnd) {
+                onEnd();
+            }
+        };
+
+        if (onBoundary) {
+            utterance.onboundary = onBoundary;
+        }
+
+        setTimeout(() => {
+            this.synth.speak(utterance);
+        }, 10);
     }
 
     pause() { this.synth.pause(); }
     resume() { this.synth.resume(); }
-    stop() { this.synth.cancel(); }
+    
+    stop() { 
+        this.synth.cancel();
+        this.currentUtterance = null;
+    }
 }

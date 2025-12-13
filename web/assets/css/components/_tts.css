@@ -23,23 +23,20 @@
 #tts-player {
   position: fixed;
   /* Đẩy lên cao hơn trigger một chút */
-  bottom: calc(5px + env(safe-area-inset-bottom));
+  bottom: calc(15px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%) translateY(150px);
   width: 94%;
   max-width: 420px;
-  
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 16px; /* Bo góc hiện đại hơn */
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Bóng đổ đậm hơn */
-  
   padding: 8px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  
   z-index: 1095;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
   opacity: 0;
@@ -98,7 +95,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: var(--bg-hover);
+  /* background: var(--bg-hover); */
   padding: 4px 8px;
   border-radius: 4px;
 }

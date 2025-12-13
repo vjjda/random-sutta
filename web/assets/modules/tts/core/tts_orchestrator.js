@@ -2,9 +2,10 @@
 import { TTSWebSpeechEngine } from '../engines/tts_web_speech_engine.js';
 import { TTSStateStore } from './tts_state_store.js';
 import { TTSDOMParser } from './tts_dom_parser.js';
-import { getLogger } from '../../utils/logger.js';
+import { getLogger } from '../../utils/logger.js'; // [CHECK] 2 levels up -> modules/utils
 import { Scroller } from '../../ui/common/scroller.js';
 
+// ... (code giữ nguyên như trước)
 const logger = getLogger("TTS_Orchestrator");
 
 export const TTSOrchestrator = {
