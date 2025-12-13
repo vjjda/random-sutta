@@ -1,4 +1,4 @@
-// Path: web/assets/modules/ui/managers/offline_view.js
+// Path: web/assets/modules/ui/managers/offline/offline_view.js
 const ICONS = {
     SYNC: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 5.5A11 11 0 0 0 12 2c-6.237 0-11.232 5.26-10.96 11.58C1.4 21.03 8.35 26 15 22.6M2.5 22v-6h6M2.66 18.5a11 11 0 0 0 19.8-7.3"></path></svg>`,
     CHECK: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
@@ -23,13 +23,11 @@ export const OfflineView = {
     renderState(state, text = "", percent = 0) {
         const { footer, btnDownload, btnUpdate, progressBar, label, icon } = this.elements;
 
-        // Footer Classes
         if (footer) {
             footer.classList.remove("syncing", "ready", "error");
             if (state) footer.classList.add(state);
         }
 
-        // Button State
         if (btnDownload) {
             if (label) label.textContent = text;
             
@@ -46,19 +44,16 @@ export const OfflineView = {
                 btnDownload.style.cursor = 'pointer';
                 if (icon) icon.innerHTML = ICONS.ALERT;
             } else {
-                // Default / Init state
                 btnDownload.disabled = false;
                 btnDownload.style.cursor = 'pointer';
             }
         }
 
-        // Update Button Visibility
         if (btnUpdate) {
             if (state === 'ready') btnUpdate.classList.remove('hidden');
             else btnUpdate.classList.add('hidden');
         }
 
-        // Progress Bar Animation
         if (progressBar) {
             if (state === 'syncing') {
                 progressBar.classList.add('active');
