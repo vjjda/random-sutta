@@ -4,6 +4,7 @@ import { getLogger } from '../../utils/logger.js';
 import { AppConfig } from '../../core/app_config.js';
 
 const logger = getLogger("OfflineManager");
+// Placeholder này sẽ được thay thế bằng version thật khi build release
 const APP_VERSION = "dev-placeholder";
 
 const ICONS = {
@@ -17,6 +18,7 @@ export const OfflineManager = {
         const btnOffline = document.getElementById("btn-download-offline");
         const btnUpdate = document.getElementById("btn-update-offline");
 
+        // Tự động kiểm tra trạng thái sau khi app load xong (để không chặn luồng chính)
         setTimeout(() => {
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(() => this.runSmartBackgroundDownload());
@@ -28,9 +30,11 @@ export const OfflineManager = {
         if (btnOffline) {
             btnOffline.addEventListener("click", () => {
                 const wrapper = document.getElementById("drawer-footer");
+                // Nếu đã Ready -> Bấm vào để hiện Version
                 if (wrapper && wrapper.classList.contains("ready")) {
                     this.showVersionInfo(btnOffline);
                 } else {
+                    // Nếu chưa Ready hoặc Error -> Bấm vào để thử tải lại
                     localStorage.removeItem('sutta_offline_version');
                     this.runSmartBackgroundDownload();
                 }
@@ -41,8 +45,7 @@ export const OfflineManager = {
             btnUpdate.addEventListener("click", async (e) => {
                 e.stopPropagation();
                 if (confirm("Reset cache and reload? (Your settings will be saved)")) {
-                    
-                    // 1. Backup Settings
+                    // 1. Backup Settings (Lưu lại cài đặt người dùng)
                     const backup = {};
                     if (AppConfig.PERSISTENT_SETTINGS) {
                         AppConfig.PERSISTENT_SETTINGS.forEach(key => {
@@ -51,17 +54,17 @@ export const OfflineManager = {
                         });
                     }
 
-                    // 2. Factory Reset
+                    // 2. Factory Reset (Xóa sạch localStorage)
                     localStorage.clear();
 
-                    // 3. Restore Settings
+                    // 3. Restore Settings (Khôi phục cài đặt)
                     Object.entries(backup).forEach(([key, val]) => {
                         localStorage.setItem(key, val);
                     });
                     
                     logger.info("Reset", "Settings restored:", Object.keys(backup));
 
-                    // 4. Cleanup SW & Cache
+                    // 4. Cleanup SW & Cache (Xóa sạch Cache Storage)
                     if ('serviceWorker' in navigator) {
                         const regs = await navigator.serviceWorker.getRegistrations();
                         for (const reg of regs) await reg.unregister();
@@ -78,26 +81,61 @@ export const OfflineManager = {
         }
     },
 
+    /**
+     * [NEW] Yêu cầu trình duyệt cấp quyền "Lưu trữ bền vững" (Persistent Storage).
+     * Giúp dữ liệu không bị tự động xóa khi bộ nhớ máy đầy.
+     */
+    async tryRequestPersistence() {
+        if (navigator.storage && navigator.storage.persist) {
+            try {
+                // Kiểm tra xem đã được cấp quyền chưa
+                const isPersisted = await navigator.storage.persisted();
+                if (isPersisted) {
+                    logger.info("Storage", "Storage is already persistent.");
+                    return true;
+                }
+
+                // Nếu chưa, xin quyền
+                const granted = await navigator.storage.persist();
+                if (granted) {
+                    logger.info("Storage", "✅ Persistent storage granted!");
+                } else {
+                    logger.warn("Storage", "⚠️ Persistent storage denied. Data may be evicted under pressure.");
+                }
+                return granted;
+            } catch (e) {
+                logger.error("Storage", "Error requesting persistence", e);
+                return false;
+            }
+        }
+        return false;
+    },
+
     showVersionInfo(btnElement) {
         const label = btnElement.querySelector(".label");
         if (!label) return;
         
         const originalText = label.textContent;
+        // Chỉ hiện số phiên bản, bỏ chữ 'v' nếu có để gọn
         const current = APP_VERSION.replace('v', '');
         
         label.textContent = `v${current}`;
+        
+        // Tự động quay lại text cũ sau 3 giây
         setTimeout(() => {
             label.textContent = originalText;
         }, 3000);
     },
 
     async runSmartBackgroundDownload() {
+        // Nếu là bản Offline Build (có index sẵn) hoặc chạy file:// -> Không cần tải
         if (window.__DB_INDEX__ || window.location.protocol === 'file:') return;
 
         const storedVersion = localStorage.getItem('sutta_offline_version');
         const btnOffline = document.getElementById("btn-download-offline");
         const globalBar = document.getElementById("global-progress-bar");
 
+        // Nếu version đã khớp -> Ready luôn
         if (storedVersion === APP_VERSION) {
             logger.info("BackgroundDL", `Cache up-to-date.`);
             this.setUIState("ready", "Offline Ready", ICONS.CHECK);
@@ -105,7 +143,11 @@ export const OfflineManager = {
             return;
         }
 
+        // Nếu đang bật chế độ tiết kiệm dữ liệu -> Không tự tải
         if (navigator.connection && navigator.connection.saveData) return;
+
+        // [NEW] Xin quyền Persistent Storage trước khi bắt đầu tải nặng
+        await this.tryRequestPersistence();
 
         logger.info("BackgroundDL", "Downloading...");
         this.setUIState("syncing", "Syncing...", ICONS.SYNC, 0);
@@ -117,6 +159,7 @@ export const OfflineManager = {
                 if (globalBar) globalBar.style.width = `${percent}%`;
             });
 
+            // Tải xong -> Lưu version và cập nhật UI
             localStorage.setItem('sutta_offline_version', APP_VERSION);
             this.setUIState("ready", "Offline Ready", ICONS.CHECK);
             if (btnOffline) btnOffline.disabled = false;
@@ -169,6 +212,7 @@ export const OfflineManager = {
                 globalBar.style.width = `${percent}%`;
             } else if (state === 'ready' || state === 'error') {
                 globalBar.style.width = '100%';
+                // Hiệu ứng fade-out thanh progress bar sau khi xong
                 setTimeout(() => {
                     globalBar.classList.remove('active');
                     setTimeout(() => {
