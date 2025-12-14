@@ -28,18 +28,21 @@ export class TTSGoogleCloudFetcher {
             throw new Error("Missing Google Cloud API Key");
         }
 
+        // [Fix] Clamp values to API limits to prevent 400 Bad Request
+        const safeRate = Math.max(0.25, Math.min(4.0, Number(speakingRate)));
+        const safePitch = Math.max(-20.0, Math.min(20.0, Number(pitch)));
+
         const payload = {
             input: { text: text },
             voice: {
                 languageCode: languageCode,
                 name: voiceName
-                // ssmlGender: "MALE" // Optional, let voiceName decide
             },
             audioConfig: {
                 audioEncoding: "MP3",
-                speakingRate: speakingRate,
-                pitch: pitch,
-                effectsProfileId: ["headphone-class-device"] // Optimization for headphones
+                speakingRate: safeRate,
+                pitch: safePitch,
+                effectsProfileId: ["headphone-class-device"]
             }
         };
 
@@ -56,7 +59,9 @@ export class TTSGoogleCloudFetcher {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                logger.error("Fetch", `API Error ${response.status}: ${errorData.error?.message || response.statusText}`);
+                // [Debug] Log payload details on error
+                logger.error("Fetch", `API Error ${response.status}: ${JSON.stringify(errorData)}`);
+                logger.debug("Fetch", `Failed Payload: Rate=${safeRate}, Pitch=${safePitch}, TextLen=${text.length}`);
                 throw new Error(`Google TTS API Error: ${errorData.error?.message || response.statusText}`);
             }
 
