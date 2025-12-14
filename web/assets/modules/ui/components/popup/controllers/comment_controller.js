@@ -11,8 +11,7 @@ export const CommentController = {
             onClose: () => this.close(),
             onNavigate: (dir) => this.navigate(dir),
             onLinkClick: (href) => {
-                // Dispatch event to orchestrator or handle if simple
-                // Better to let Orchestrator handle link requests to route to Quicklook
+                // Delegate to global handler
                 window.dispatchEvent(new CustomEvent('popup:request-link', { detail: { href } }));
             }
         });
@@ -35,7 +34,7 @@ export const CommentController = {
     },
 
     activate(index) {
-        PopupState.setCommentActive(index); // Update State
+        PopupState.setCommentActive(index);
         
         const comments = PopupState.getComments();
         const total = comments.length;
@@ -48,7 +47,6 @@ export const CommentController = {
     },
 
     navigate(dir) {
-        // Lấy index từ state hoặc UI
         let currentIdx = PopupState.activeIndex;
         const comments = PopupState.getComments();
         
@@ -56,9 +54,11 @@ export const CommentController = {
         if (nextIdx >= 0 && nextIdx < comments.length) {
             this.activate(nextIdx);
             
-            // Scroll main view instant
+            // [FIXED] Use Instant Jump for main view context sync
             const item = comments[nextIdx];
-            if (item.id) Scroller.scrollToId(item.id, 'smooth');
+            if (item && item.id) {
+                Scroller.jumpTo(item.id);
+            }
             
             QuicklookUI.hide();
         }
@@ -66,8 +66,6 @@ export const CommentController = {
 
     close() {
         CommentUI.hide();
-        // Không xóa activeIndex trong state vội để logic restore hoạt động nếu cần,
-        // nhưng Orchestrator sẽ gọi clearActive().
         window.dispatchEvent(new CustomEvent('popup:close-all'));
     }
 };

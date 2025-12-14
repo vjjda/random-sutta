@@ -17,18 +17,20 @@ export const SuttaController = {
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
 
+    // 1. Update URL State (Preserving History)
     if (shouldUpdateUrl) {
-        // [NOTE] Router.updateURL now correctly preserves popupSnapshot via replaceState
         try {
             const bookParam = FilterComponent.generateBookParam();
+            // Router đã được fix để dùng replaceState bảo toàn popupSnapshot
             Router.updateURL(null, bookParam, false, null, currentScroll);
         } catch (e) {}
     }
 
-    // 1. Hide popups initially (Clean slate visual)
-    // IMPORTANT: This clears runtime state, BUT we are relying on History State for restore
+    // 2. Hide Popups (Visual Reset)
+    // Lưu ý: Việc này chỉ ẩn giao diện, không xóa history state
     PopupAPI.hideAll();
 
+    // 3. Handle TTS
     const wasTTSActive = TTSOrchestrator.isSessionActive();
     const wasPlaying = TTSOrchestrator.isPlaying();
     TTSOrchestrator.stop();
@@ -36,7 +38,7 @@ export const SuttaController = {
         TTSOrchestrator.endSession();
     }
 
-    // Parse Input logic ...
+    // 4. Parse Input
     let suttaId;
     let scrollTarget = null;
     if (typeof input === 'object') {
@@ -44,12 +46,17 @@ export const SuttaController = {
     } else {
         const parts = input.split('#');
         suttaId = parts[0].trim().toLowerCase();
-        if (parts.length > 1) scrollTarget = parts[1];
+        if (parts.length > 1) {
+            scrollTarget = parts[1];
+        }
     }
 
+    // Normalized segment ID format (e.g. dn1:1.1)
     if (scrollTarget && !scrollTarget.includes(':')) {
         const isSegmentNumber = /^[\d\.]+$/.test(scrollTarget);
-        if (isSegmentNumber) scrollTarget = `${suttaId}:${scrollTarget}`;
+        if (isSegmentNumber) {
+            scrollTarget = `${suttaId}:${scrollTarget}`;
+        }
     }
 
     logger.info('loadSutta', `Request: ${suttaId} (URL update: ${shouldUpdateUrl})`);
@@ -57,12 +64,15 @@ export const SuttaController = {
 
     const performRender = async () => {
         const result = await SuttaService.loadSutta(suttaId);
+        
+        // Handle Error / Not Found
         if (!result) {
             renderSutta(suttaId, null, null, options);
             logger.timerEnd(`Render: ${suttaId}`);
             return false;
         }
 
+        // Handle Redirect (Alias)
         if (result.isAlias) {
             let redirectId = result.targetUid;
             if (result.hashId) redirectId += `#${result.hashId}`;
@@ -71,20 +81,22 @@ export const SuttaController = {
             return true;
         }
         
+        // Render Content
         const success = await renderSutta(suttaId, result, options);
         
         if (success) {
-            // [CRITICAL] Scan immediately after render
+            // [CRITICAL] Scan comments immediately
             PopupAPI.scan();
 
-            // [CRITICAL] Restore Logic
+            // [CRITICAL] Restore Popup Logic
             // shouldUpdateUrl = false nghĩa là đang Back/Forward (popstate)
-            // Lúc này ta kiểm tra xem trong History có Snapshot không để khôi phục
+            // Lúc này cần kiểm tra History Snapshot để khôi phục popup cũ
             if (!shouldUpdateUrl) {
                 logger.debug("SuttaController", "Triggering popup restore...");
                 PopupAPI.restore();
             }
 
+            // Restore TTS Session if needed
             if (wasTTSActive) {
                 setTimeout(() => {
                     TTSOrchestrator.refreshSession(wasPlaying);
@@ -92,6 +104,7 @@ export const SuttaController = {
             }
         }
 
+        // Push new State if needed
         if (success && shouldUpdateUrl) {
              const bookParam = FilterComponent.generateBookParam();
              Router.updateURL(suttaId, bookParam, false, scrollTarget ? `#${scrollTarget}` : null, currentScroll);
@@ -101,13 +114,16 @@ export const SuttaController = {
         return success;
     };
 
+    // Execute Scroll/Transition Strategy
     if (isTransition) {
         await Scroller.transitionTo(performRender, scrollTarget);
     } else {
         await performRender();
         if (scrollTarget) {
+            // Use setTimeout 0 to ensure DOM paint
             setTimeout(() => {
-                Scroller.scrollToId(scrollTarget, 'instant');
+                // [UPDATED] Use Instant Jump
+                Scroller.jumpTo(scrollTarget);
                 Scroller.highlightElement(scrollTarget);
             }, 0);
         } else if (scrollY > 0) {

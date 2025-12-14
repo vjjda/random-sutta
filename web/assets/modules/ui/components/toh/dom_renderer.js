@@ -4,6 +4,7 @@ import { Scroller } from 'ui/common/scroller.js';
 export const DomRenderer = {
     renderList(items, listElement, callbacks) {
         listElement.innerHTML = "";
+
         items.forEach(item => {
             if (!item.id) return; 
 
@@ -18,11 +19,10 @@ export const DomRenderer = {
             const headerRow = document.createElement("div");
             headerRow.className = "toh-header-row";
             
-            // Main Text Container
             const mainTextDiv = document.createElement("div");
             mainTextDiv.className = "toh-main-text clickable";
             
-            // [UPDATED] Render Title
+            // Render Title & Description
             let titleHtml = "";
             if (item.prefix) {
                 titleHtml = `<span class="toh-prefix">${item.prefix}.</span> ${item.text}`;
@@ -30,23 +30,22 @@ export const DomRenderer = {
                 titleHtml = item.text;
             }
 
-            // [NEW] Render Description (Subtext của chính Heading)
             if (item.description) {
-                // Dùng class 'toh-row-sub' để tận dụng style màu xám/nhỏ có sẵn
                 titleHtml += `<div class="toh-row-sub" style="font-weight: normal; margin-top: 2px;">${item.description}</div>`;
             }
 
             mainTextDiv.innerHTML = titleHtml;
             
+            // Main Click Handler
             mainTextDiv.onclick = (e) => {
                 e.stopPropagation();
-                Scroller.animateScrollTo(item.id);
+                // [FIXED] Use Instant Jump
+                Scroller.jumpTo(item.id); 
                 if (callbacks.onItemClick) callbacks.onItemClick();
             };
             headerRow.appendChild(mainTextDiv);
 
-            // Toggle Icon (Only if subTexts exist)
-            // Lưu ý: subTexts giờ đây đã KHÔNG chứa đoạn văn đầu tiên nữa
+            // Toggle Icon (if children exist)
             const hasChildren = item.subTexts && Array.isArray(item.subTexts) && item.subTexts.length > 0;
             if (hasChildren) {
                 const toggleBtn = document.createElement("span");
@@ -81,7 +80,8 @@ export const DomRenderer = {
                     if (sub.id) {
                         subDiv.onclick = (e) => {
                             e.stopPropagation();
-                            Scroller.animateScrollTo(sub.id);
+                            // [FIXED] Use Instant Jump for sub-items too
+                            Scroller.jumpTo(sub.id);
                             if (callbacks.onItemClick) callbacks.onItemClick();
                         };
                     } else {
@@ -91,8 +91,8 @@ export const DomRenderer = {
                 });
                 wrapper.appendChild(childrenContainer);
             } 
-            // Fallback cho Paragraph Mode cũ (nếu item.subText vẫn được dùng ở đâu đó)
             else if (item.subText) {
+                // Fallback for old paragraph mode
                 const subDiv = document.createElement("div");
                 subDiv.className = "toh-sub-text";
                 subDiv.textContent = item.subText;
@@ -120,20 +120,21 @@ export const DomRenderer = {
         if (!targetId) return;
 
         let targetEl = list.querySelector(`.toh-sub-text[data-target-id="${targetId}"]`);
-        
         if (!targetEl) {
             const li = list.querySelector(`li[data-target-id="${targetId}"]`);
-            if (li) {
-                targetEl = li.querySelector(".toh-header-row");
-            }
+            if (li) targetEl = li.querySelector(".toh-header-row");
         }
 
         if (targetEl) {
             targetEl.classList.add("active");
+            
+            // Auto expand parent if needed
             if (targetEl.classList.contains("toh-sub-text")) {
                 const wrapper = targetEl.closest(".toh-item-wrapper");
                 if (wrapper) wrapper.classList.remove("collapsed");
             }
+            
+            // Scroll menu to show active item
             targetEl.scrollIntoView({ block: "center", behavior: "instant" });
         }
     }

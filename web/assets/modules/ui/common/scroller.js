@@ -4,8 +4,8 @@ import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("Scroller");
 
-// Offset context khi jump đến
-const SCROLL_OFFSET_CTX = 60; 
+// Offset context khi jump đến (trừ hao header)
+const SCROLL_OFFSET_CTX = 60;
 
 function getTargetPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
@@ -20,12 +20,10 @@ function getReadingPosition(element) {
     
     const configVal = AppConfig.TTS?.SCROLL_OFFSET_TOP || '30vh';
     let offsetPx = 0;
-
+    
     if (configVal.endsWith('vh')) {
         const percent = parseFloat(configVal) / 100;
         offsetPx = viewportHeight * percent;
-    } else if (configVal.endsWith('px')) {
-        offsetPx = parseFloat(configVal);
     } else {
         offsetPx = parseFloat(configVal);
     }
@@ -40,25 +38,60 @@ export const Scroller = {
 
     restoreScrollTop: function(y) {
         if (typeof y !== 'number') return;
+        // Sử dụng setTimeout 0 để đẩy xuống cuối hàng đợi render -> đảm bảo Instant
         setTimeout(() => {
             window.scrollTo({ top: y, behavior: 'instant' });
         }, 0);
     },
 
-    scrollToId: function(targetId, behavior = 'smooth') {
+    /**
+     * [REFACTORED] Instant Jump (Mặc định cho toàn App)
+     * Thay thế cho scrollToId cũ.
+     */
+    jumpTo: function(targetId) {
         if (!targetId) {
             this.restoreScrollTop(0);
             return;
         }
-        this._findAndScroll(targetId, getTargetPosition, behavior);
+        // Force 'instant' behavior
+        this._findAndScroll(targetId, getTargetPosition, 'instant');
     },
 
-    scrollToReadingPosition: function(targetId, behavior = 'smooth') {
+    /**
+     * Smooth Scroll (Chỉ dùng cho các trường hợp đặc biệt cần animation, vd: Context links)
+     */
+    smoothScrollTo: function(targetId) {
         if (!targetId) return;
-        this._findAndScroll(targetId, getReadingPosition, behavior);
+        this._findAndScroll(targetId, getTargetPosition, 'smooth');
     },
 
-    // [NEW] Hàm chuyên dụng để Highlight phần tử sau khi jump
+    /**
+     * Dùng riêng cho TTS (giữ nguyên logic smooth để đọc dễ chịu hơn)
+     */
+    scrollToReadingPosition: function(targetId) {
+        if (!targetId) return;
+        this._findAndScroll(targetId, getReadingPosition, 'smooth');
+    },
+
+    /**
+     * Alias cũ để tương thích ngược (nếu còn sót chỗ nào gọi)
+     * Nhưng map sang jumpTo để đảm bảo độ phản hồi nhanh.
+     */
+    scrollToId: function(targetId, behavior = 'instant') {
+        if (behavior === 'smooth') {
+            this.smoothScrollTo(targetId);
+        } else {
+            this.jumpTo(targetId);
+        }
+    },
+
+    /**
+     * Alias cũ cho animation, giờ trỏ về smoothScrollTo
+     */
+    animateScrollTo: function(targetId) {
+        this.smoothScrollTo(targetId);
+    },
+
     highlightElement: function(targetId) {
         // 1. Xóa highlight cũ
         document.querySelectorAll('.highlight, .highlight-container').forEach(el => {
@@ -67,38 +100,52 @@ export const Scroller = {
 
         if (!targetId) return;
 
-        // 2. Tìm và highlight mới
+        // 2. Highlight mới
         const el = document.getElementById(targetId);
         if (el) {
-            // Nếu là segment (câu) -> highlight nền vàng
             if (el.classList.contains('segment')) {
                 el.classList.add('highlight');
-            } 
-            // Nếu là heading/block -> highlight đường viền trái
-            else {
+            } else {
                 el.classList.add('highlight-container');
             }
         }
     },
 
+    transitionTo: async function(renderAction, targetId) {
+        if (renderAction) await renderAction();
+        
+        // Chờ 1 frame để DOM cập nhật
+        await new Promise(r => requestAnimationFrame(r));
+        
+        if (targetId) {
+            // Context Links thường dùng transition, nên dùng smooth scroll cho mượt
+            this.smoothScrollTo(targetId);
+            // Highlight sau khi scroll
+            this.highlightElement(targetId);
+        } else {
+            this.restoreScrollTop(0);
+        }
+    },
+
     _findAndScroll(targetId, positionCalculator, behavior) {
         let retries = 0;
-        const maxRetries = 60;
+        const maxRetries = 60; // Thử trong khoảng 1s (60 frames)
 
         const attemptFind = () => {
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = positionCalculator(element);
-                
-                // [FIXED] Force Instant: Tắt CSS smooth scroll tạm thời nếu cần instant
+
+                // [CRITICAL] Override CSS scroll-behavior để đảm bảo Instant tuyệt đối
                 if (behavior === 'instant') {
                     document.documentElement.style.scrollBehavior = 'auto';
                 }
 
                 window.scrollTo({ top: targetY, behavior: behavior });
 
-                // Restore CSS behavior
+                // Restore CSS behavior sau khi jump xong
                 if (behavior === 'instant') {
+                    // Timeout ngắn để đảm bảo lệnh scroll đã thực thi xong trước khi reset style
                     setTimeout(() => {
                         document.documentElement.style.scrollBehavior = '';
                     }, 50);
@@ -107,25 +154,11 @@ export const Scroller = {
                 retries++;
                 if (retries < maxRetries) {
                     requestAnimationFrame(attemptFind);
+                } else {
+                    logger.warn("Find", `Target not found after retries: ${targetId}`);
                 }
             }
         };
         requestAnimationFrame(attemptFind);
-    },
-
-    animateScrollTo: function(targetId) {
-        this.scrollToId(targetId, 'smooth');
-    },
-
-    transitionTo: async function(renderAction, targetId) {
-        if (renderAction) await renderAction();
-        await new Promise(r => requestAnimationFrame(r));
-        if (targetId) {
-            this.scrollToId(targetId, 'smooth');
-            // [NEW] Highlight khi transition xong (cho trường hợp click link nội bộ)
-            this.highlightElement(targetId); 
-        } else {
-            this.restoreScrollTop(0);
-        }
     }
 };
