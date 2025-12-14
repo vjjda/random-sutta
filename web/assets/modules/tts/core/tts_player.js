@@ -7,11 +7,16 @@ export const TTSPlayer = {
     highlighter: null,
     ui: null,
     onPlaylistEnd: null, // Callback khi đọc hết bài
+    farthestPrefetchedIndex: -1,
 
     init(engine, highlighter, ui) {
         this.engine = engine;
         this.highlighter = highlighter;
         this.ui = ui;
+    },
+
+    reset() {
+        this.farthestPrefetchedIndex = -1;
     },
 
     setCallbacks(onPlaylistEnd) {
@@ -89,45 +94,54 @@ export const TTSPlayer = {
         // Đảm bảo highlight đúng câu đang đọc
         this.highlighter.activate(TTSStateStore.currentIndex);
         
-                // ... existing prefetch logic ...
+        // [NEW] Rolling Buffer Logic
+        this._managePrefetchBuffer();
+
+        this.engine.speak(item.text, () => {
+            // Callback khi đọc xong 1 câu
+            if (TTSStateStore.isPlaying) {
+                if (TTSStateStore.hasNext()) {
+                    TTSStateStore.advance();
+                    this._speakCurrent(); // Đệ quy đọc câu tiếp
+                } else {
+                    this._triggerEnd();
+                }
+            }
+        }).catch(e => {
+            console.error("TTS Player Error:", e);
+            this.stop(); // Stop playback on hard error
+            if (this.ui && this.ui.showError) {
+                this.ui.showError(e.message);
+            }
+        });
+    },
+
+    _managePrefetchBuffer() {
+        if (!this.engine.prefetch) return;
+
+        const { currentIndex, playlist } = TTSStateStore;
+        const bufferSize = AppConfig.TTS?.BUFFER_AHEAD || 7;
+
+        // The index of the farthest item we want to have in our buffer
+        const desiredFarthestIndex = Math.min(currentIndex + bufferSize, playlist.length - 1);
+
+        // If we've already queued everything up to this point, no need to do more.
+        if (this.farthestPrefetchedIndex >= desiredFarthestIndex) {
+            return;
+        }
+
+        // Fetch the items from our last known point to the new desired point.
+        const startIndex = this.farthestPrefetchedIndex + 1;
+        for (let i = startIndex; i <= desiredFarthestIndex; i++) {
+            const item = playlist[i];
+            if (item) {
+                this.engine.prefetch(item.text);
+            }
+        }
         
-        
-        
-                this.engine.speak(item.text, () => {
-        
-                    // Callback khi đọc xong 1 câu
-        
-                    if (TTSStateStore.isPlaying) {
-        
-                        if (TTSStateStore.hasNext()) {
-        
-                            TTSStateStore.advance();
-        
-                            this._speakCurrent(); // Đệ quy đọc câu tiếp
-        
-                        } else {
-        
-                            this._triggerEnd();
-        
-                        }
-        
-                    }
-        
-                }).catch(e => {
-        
-                    console.error("TTS Player Error:", e);
-        
-                    this.stop(); // Stop playback on hard error
-        
-                    if (this.ui && this.ui.showError) {
-        
-                        this.ui.showError(e.message);
-        
-                    }
-        
-                });
-        
-            },
+        // Update the high-water mark
+        this.farthestPrefetchedIndex = desiredFarthestIndex;
+    },
 
     _triggerEnd() {
         if (this.onPlaylistEnd) this.onPlaylistEnd();

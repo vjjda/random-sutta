@@ -59,7 +59,10 @@ export const TTSSessionManager = {
     refresh(autoPlay = false) {
         if (!TTSStateStore.isSessionActive) return;
 
-        if (this.player) this.player.stop();
+        if (this.player) {
+            this.player.stop();
+            this.player.reset(); // [NEW] Reset prefetch buffer state
+        }
 
         let originalItems = [];
         if (TTSStateStore.playbackMode === 'paragraph') {

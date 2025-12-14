@@ -26,7 +26,7 @@ export const AppConfig = {
         },
         
         // Số lượng câu/đoạn tải trước (Prefetch) để đảm bảo mượt mà
-        BUFFER_AHEAD: 2
+        BUFFER_AHEAD: 7
     },
 
     // Popup Layout Configuration
