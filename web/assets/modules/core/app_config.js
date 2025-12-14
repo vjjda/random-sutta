@@ -12,23 +12,44 @@ export const AppConfig = {
     // [UPDATED] TTS Configuration
     TTS: {
         // Khoảng cách từ mép trên màn hình đến đoạn văn đang đọc (Highlight)
-        // '30vh' = 30% chiều cao màn hình. '100px' = 100 pixels.
         SCROLL_OFFSET_TOP: '15vh',
 
-        // Khoảng trống đệm dưới cùng trang web để Player không che mất dòng cuối
+        // Khoảng trống đệm dưới cùng trang web
         BOTTOM_PADDING: '300px', 
         
-        // Cấu hình giọng đọc Google Cloud mặc định
+        // [UPDATED] Chỉ cần voiceURI là đủ
         DEFAULT_VOICE: {
-            voiceURI: "en-US-Chirp3-HD-Algenib",
-            name: "Algenib",
-            lang: "en-US"
+            voiceURI: "en-US-Chirp3-HD-Algenib"
         },
+
+        // [NEW] Danh sách giọng đề xuất (Nằm top list)
+        RECOMMENDED_VOICES: [
+            { 
+                voiceURI: "en-US-Chirp3-HD-Algenib", 
+                name: "🇺🇸 Chirp 3 Algenib (Deep)" 
+            },
+            { 
+                voiceURI: "en-US-Chirp3-HD-Puck", 
+                name: "🇺🇸 Chirp 3 Puck (Clear)" 
+            },
+            { 
+                voiceURI: "en-GB-Chirp3-HD-Orion", 
+                name: "🇬🇧 Chirp 3 Orion (British)" 
+            },
+            { 
+                voiceURI: "en-US-Neural2-D",
+                name: "🇺🇸 Neural 2 D (Male)"
+            },
+            { 
+                voiceURI: "en-US-Neural2-F",
+                name: "🇺🇸 Neural 2 F (Female)"
+            }
+        ],
         
-        // Số lượng câu/đoạn tải trước (Prefetch) để đảm bảo mượt mà
+        // Số lượng câu/đoạn tải trước
         BUFFER_AHEAD: 7,
 
-        // Ngưỡng ký tự để tự động chia nhỏ một đoạn văn dài
+        // Ngưỡng ký tự để tự động chia nhỏ đoạn văn
         PARAGRAPH_SPLIT_THRESHOLD: 300
     },
 

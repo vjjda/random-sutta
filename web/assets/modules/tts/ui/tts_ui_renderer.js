@@ -1,4 +1,6 @@
 // Path: web/assets/modules/tts/ui/tts_ui_renderer.js
+import { AppConfig } from '../../core/app_config.js'; // [NEW] Import config
+
 export const TTSUIRenderer = {
     elements: {},
 
@@ -93,8 +95,6 @@ export const TTSUIRenderer = {
         if (this.elements.apiKeyRow) {
             if (engineId === 'gcloud') {
                 this.elements.apiKeyRow.classList.remove('hidden');
-                
-                // [UX] Auto focus if key is missing
                 if (!apiKey && this.elements.apiKeyInput) {
                     setTimeout(() => this.elements.apiKeyInput.focus(), 100);
                 }
@@ -117,6 +117,7 @@ export const TTSUIRenderer = {
         this.elements.settingsPanel?.classList.add("hidden");
     },
 
+    // [UPDATED] Hỗ trợ Recommended Voices & Phân tách
     populateVoices(voices, currentVoice) {
         if (!this.elements.voiceSelect) return;
         
@@ -140,7 +141,7 @@ export const TTSUIRenderer = {
             return;
         }
 
-        // CASE 2: GCloud, Đã có Key, nhưng danh sách Rỗng -> Đang tải hoặc Lỗi
+        // CASE 2: Loading / Error
         if (isGCloud && hasKey && (!voices || voices.length === 0)) {
             const option = document.createElement("option");
             option.textContent = "⏳ Loading voices or Invalid Key...";
@@ -150,7 +151,7 @@ export const TTSUIRenderer = {
             return;
         }
 
-        // CASE 3: Bình thường
+        // CASE 3: Render Lists
         if (!voices || voices.length === 0) {
             const option = document.createElement("option");
             option.textContent = "No voices available";
@@ -159,22 +160,74 @@ export const TTSUIRenderer = {
             return;
         }
 
+        // --- Logic Recommended ---
+        const recommendedConfig = AppConfig.TTS?.RECOMMENDED_VOICES || [];
+        // Map để tra cứu nhanh xem voiceURI có trong recommended không
+        const recommendedMap = new Map(recommendedConfig.map(i => [i.voiceURI, i]));
+        
+        const recommendedList = [];
+        const otherList = [];
+
         voices.forEach(v => {
+            const recEntry = recommendedMap.get(v.voiceURI);
+            // Clean name logic: Bỏ prefix thừa
+            const cleanName = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60);
+
+            if (recEntry) {
+                // Nếu là Recommended: Ưu tiên tên Custom trong config
+                recommendedList.push({
+                    ...v,
+                    displayName: recEntry.name || ("★ " + cleanName),
+                    isRec: true
+                });
+            } else {
+                otherList.push({
+                    ...v,
+                    displayName: cleanName,
+                    isRec: false
+                });
+            }
+        });
+
+        // Helper render option
+        const createOption = (v) => {
             const option = document.createElement("option");
             option.value = v.voiceURI;
-            
-            const cleanName = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60);
-            option.dataset.originalName = cleanName;
-            
-            option.textContent = "\u00A0\u00A0\u00A0" + cleanName; 
-            select.appendChild(option);
-        });
+            // Lưu tên hiển thị chuẩn vào dataset để dùng cho việc đánh dấu offline (bullet point)
+            option.dataset.displayName = v.displayName;
+            option.textContent = "\u00A0\u00A0" + v.displayName; // Padding mặc định
+            return option;
+        };
+
+        // 1. Render Recommended (Sorted by Config Order)
+        if (recommendedList.length > 0) {
+            // Sort lại theo đúng thứ tự trong Config
+            recommendedList.sort((a, b) => {
+                const idxA = recommendedConfig.findIndex(c => c.voiceURI === a.voiceURI);
+                const idxB = recommendedConfig.findIndex(c => c.voiceURI === b.voiceURI);
+                return idxA - idxB;
+            });
+
+            recommendedList.forEach(v => select.appendChild(createOption(v)));
+
+            // 2. Separator
+            if (otherList.length > 0) {
+                const sep = document.createElement("option");
+                sep.disabled = true;
+                sep.textContent = "──────────";
+                select.appendChild(sep);
+            }
+        }
+
+        // 3. Render Others
+        otherList.forEach(v => select.appendChild(createOption(v)));
 
         if (currentVoice) {
             select.value = currentVoice.voiceURI;
         }
     },
 
+    // [UPDATED] Update marker mà không làm mất Custom Name
     updateVoiceOfflineMarkers(offlineVoiceURIs) {
         if (!this.elements.voiceSelect) return;
         const options = this.elements.voiceSelect.options;
@@ -182,13 +235,14 @@ export const TTSUIRenderer = {
         
         for (let i = 0; i < options.length; i++) {
             const opt = options[i];
-            const originalName = opt.dataset.originalName;
+            // Lấy tên hiển thị chuẩn từ dataset (đã lưu ở populateVoices)
+            const displayName = opt.dataset.displayName;
 
-            if (originalName) {
+            if (displayName) {
                 if (offlineSet.has(opt.value)) {
-                    opt.textContent = "• " + originalName;
+                    opt.textContent = "• " + displayName;
                 } else {
-                    opt.textContent = "\u00A0\u00A0\u00A0" + originalName;
+                    opt.textContent = "\u00A0\u00A0" + displayName;
                 }
             }
         }
