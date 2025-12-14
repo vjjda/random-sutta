@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/engines/gcloud/voice_manager.js
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels up
-import { AppConfig } from '../../../core/app_config.js'; // [FIXED] 3 levels up
+import { getLogger } from '../../../utils/logger.js'; // [FIXED] Exactly 3 levels up
+import { AppConfig } from '../../../core/app_config.js';
 
 const logger = getLogger("GCloud_VoiceMgr");
 const CACHE_KEYS = {
@@ -45,7 +45,6 @@ export class GCloudVoiceManager {
             logger.info("Voices", "Fetching from API...");
             const rawVoices = await this.fetcher.fetchVoices();
             
-            // 1. Strict Filter & Format
             this.availableVoices = rawVoices
                 .filter(v => {
                     const id = v.name;

@@ -1,10 +1,9 @@
 // Path: web/assets/modules/tts/core/orchestrator/ui_synchronizer.js
 import { TTSStateStore } from '../tts_state_store.js';
-import { getLogger } from '../../../utils/logger.js';
+import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels
 
 const logger = getLogger("TTS_UISync");
 
-// Local debounce helper
 const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {
@@ -17,8 +16,6 @@ export class TTSUISynchronizer {
     constructor(registry) {
         this.ui = null;
         this.registry = registry;
-        
-        // Debounced status refresh to avoid UI flickering
         this.debouncedRefreshOfflineStatus = debounce(() => this.refreshOfflineVoicesStatus(), 1500);
     }
 
@@ -33,37 +30,26 @@ export class TTSUISynchronizer {
         const engine = this.registry.getActiveEngine();
         const gcloud = this.registry.getEngine('gcloud');
 
-        // 1. Toggles
         this.ui.updateAutoNextState(TTSStateStore.autoNextEnabled);
         this.ui.updatePlaybackModeState(TTSStateStore.playbackMode === 'paragraph');
         
-        // 2. Engine & Key
         const apiKey = gcloud ? gcloud.apiKey : "";
         this.ui.updateEngineState(TTSStateStore.activeEngine, apiKey);
         
-        // 3. Voices & Rate
         this.ui.populateVoices(engine.getVoices(), engine.voice);
         this.ui.updateRateDisplay(engine.rate);
     }
 
-    /**
-     * Update UI when Engine Switched
-     */
     onEngineChanged(newEngine) {
         if (!this.ui) return;
         
         this.ui.populateVoices(newEngine.getVoices(), newEngine.voice);
         this.ui.updateRateDisplay(newEngine.rate);
         
-        // Re-check offline status for new engine
         this.debouncedRefreshOfflineStatus();
     }
 
-    /**
-     * Check offline availability of current playlist and update UI markers.
-     */
     async refreshOfflineVoicesStatus() {
-        // Only run if session is active to save resources
         if (!TTSStateStore.isSessionActive) return;
 
         const engine = this.registry.getActiveEngine();
@@ -80,6 +66,5 @@ export class TTSUISynchronizer {
         }
     }
 
-    // Proxy to UI methods
     updateStatus(text) { if (this.ui) this.ui.updateStatus(text); }
 }

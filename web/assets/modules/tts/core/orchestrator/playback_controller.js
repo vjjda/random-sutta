@@ -2,7 +2,7 @@
 import { TTSStateStore } from '../tts_state_store.js';
 import { TTSSessionManager } from '../tts_session_manager.js';
 import { TTSPlayer } from '../tts_player.js';
-import { getLogger } from '../../../utils/logger.js';
+import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels
 
 const logger = getLogger("TTS_PlaybackCtrl");
 
@@ -18,16 +18,12 @@ export class TTSPlaybackController {
         }
     }
 
-    // --- Core Logic ---
-
     togglePlay() {
         if (!TTSSessionManager.isActive()) {
-            // Start session (UI opens, etc.)
             TTSSessionManager.start();
             this.uiSync.refreshOfflineVoicesStatus();
         }
         
-        // Defensive: Playlist check
         if (TTSStateStore.playlist.length === 0) {
             TTSSessionManager.refresh();
             if (TTSStateStore.playlist.length === 0) return;
@@ -55,8 +51,6 @@ export class TTSPlaybackController {
         }
     }
 
-    // --- Mode Switching Logic ---
-
     setPlaybackMode(mode) {
         if (TTSStateStore.playbackMode === mode) return;
         
@@ -64,19 +58,14 @@ export class TTSPlaybackController {
 
         if (!TTSSessionManager.isActive()) return;
 
-        // Capture current ID to try and restore position
         const currentItem = TTSStateStore.getCurrentItem();
         let targetId = currentItem ? currentItem.id : null;
 
-        // Refresh playlist structure (Segments <-> Paragraphs)
         TTSSessionManager.refresh(false);
 
-        // Smart Jump
         if (targetId) {
-            // Try direct jump
             this.jumpToID(targetId);
             
-            // If failed (e.g. switching Paragraph -> Segment mid-paragraph), try smart lookup
             if (TTSStateStore.playbackMode === 'paragraph') {
                 const foundIndex = TTSStateStore.playlist.findIndex(block => {
                     return block.segments && block.segments.some(s => s.id === targetId);
@@ -86,17 +75,14 @@ export class TTSPlaybackController {
         }
     }
 
-    // --- Playlist End Strategy ---
-
     async handlePlaylistEnd() {
         if (TTSStateStore.autoNextEnabled && this.onAutoNextRequest) {
             logger.info("AutoNext", "Playlist ended. Requesting next...");
             this.uiSync.updateStatus("Loading next...");
 
             try {
-                // Call external handler (SuttaController)
                 await this.onAutoNextRequest();
-                TTSPlayer.stop(); // Safe stop
+                TTSPlayer.stop();
             } catch (e) {
                 logger.error("AutoNext", "Failed", e);
                 TTSPlayer.stop();

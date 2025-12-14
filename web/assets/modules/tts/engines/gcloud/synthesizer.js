@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/engines/gcloud/synthesizer.js
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels up instead of 4
+import { getLogger } from '../../../utils/logger.js'; // [FIXED] Exactly 3 levels up
 
 const logger = getLogger("GCloud_Synth");
 
@@ -10,7 +10,6 @@ export class GCloudSynthesizer {
         this.player = player;
         this.config = configManager;
         this.onAudioCached = null;
-        
         this.currentReqId = 0;
     }
 
@@ -22,7 +21,6 @@ export class GCloudSynthesizer {
         const voice = this.config.getVoice();
         const rate = this.config.getRate();
 
-        // 1. Validation
         if (!apiKey) {
             logger.error("Speak", "API Key missing.");
             throw new Error("API key is missing.");
@@ -40,18 +38,15 @@ export class GCloudSynthesizer {
         const key = this.cache.generateKey(text, voice.voiceURI, 1.0, 0.0);
 
         try {
-            // 2. Cache Check
             let blob = await this.cache.get(key);
             if (reqId !== this.currentReqId) return;
 
-            // 3. Fetch if miss
             if (!blob) {
                 logger.info("Speak", "Fetching...");
                 blob = await this.fetcher.fetchAudio(text, voice.lang, voice.voiceURI, 1.0, 0.0);
                 
                 if (reqId !== this.currentReqId) return;
 
-                // Cache in background
                 this.cache.put(key, blob).then(() => {
                     if (this.onAudioCached) this.onAudioCached(text);
                 });
@@ -59,7 +54,6 @@ export class GCloudSynthesizer {
                 logger.info("Speak", "Cache HIT");
             }
 
-            // 4. Play
             this.player.play(blob, onEnd, rate);
 
         } catch (e) {
