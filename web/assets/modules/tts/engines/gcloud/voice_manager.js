@@ -1,11 +1,13 @@
 // Path: web/assets/modules/tts/engines/gcloud/voice_manager.js
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] Exactly 3 levels up
-import { AppConfig } from '../../../core/app_config.js';
+import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels up (modules/utils/logger.js)
+import { AppConfig } from '../../../core/app_config.js'; // 3 levels up (modules/core/app_config.js)
 
 const logger = getLogger("GCloud_VoiceMgr");
+
+// [UPDATED] Bump version to v3 to force refresh list without Standard/Wavenet
 const CACHE_KEYS = {
-    LIST: "tts_gcloud_voices_list_v2", 
-    TS: "tts_gcloud_voices_ts_v2"
+    LIST: "tts_gcloud_voices_list_v3", 
+    TS: "tts_gcloud_voices_ts_v3"
 };
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; 
 
@@ -45,12 +47,15 @@ export class GCloudVoiceManager {
             logger.info("Voices", "Fetching from API...");
             const rawVoices = await this.fetcher.fetchVoices();
             
+            // 1. Strict Filter: High Quality Only
             this.availableVoices = rawVoices
                 .filter(v => {
                     const id = v.name;
                     return (v.languageCodes.includes("en-US") || v.languageCodes.includes("en-GB")) &&
                            id.startsWith("en-") && 
-                           id.includes("-");
+                           id.includes("-") &&
+                           !id.includes("Standard") && // Remove Legacy Standard
+                           !id.includes("Wavenet");    // [NEW] Remove Legacy Wavenet
                 })
                 .map(v => ({
                     name: `${v.name} (${v.ssmlGender})`,
@@ -66,7 +71,7 @@ export class GCloudVoiceManager {
             localStorage.setItem(CACHE_KEYS.TS, now.toString());
             
             this._notify();
-            logger.info("Voices", `Updated ${this.availableVoices.length} voices.`);
+            logger.info("Voices", `Updated ${this.availableVoices.length} premium voices.`);
 
         } catch (e) {
             logger.error("Voices", "Refresh failed", e);
