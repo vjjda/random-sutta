@@ -63,17 +63,11 @@ export const TTSUIRenderer = {
         const infoEl = this.elements.infoText;
         if (!infoEl) return;
 
-        // Save current state to revert back to
         const originalText = infoEl.textContent;
-
-        // Apply error state
         infoEl.classList.add("error-text");
         infoEl.textContent = message;
-
-        // Revert after duration
         setTimeout(() => {
             infoEl.classList.remove("error-text");
-            // Check if the text is still our error message before reverting
             if (infoEl.textContent === message) {
                 infoEl.textContent = originalText;
             }
@@ -109,15 +103,10 @@ export const TTSUIRenderer = {
             }
         }
         if (this.elements.apiKeyInput) {
-            // Chỉ set value nếu có apiKey truyền vào (để tránh overwrite khi đang gõ)
             if (apiKey !== null && apiKey !== undefined) {
                 this.elements.apiKeyInput.value = apiKey;
             }
         }
-        
-        // [QUAN TRỌNG] Trigger lại UI giọng đọc để áp dụng logic khóa/mở
-        // Tuy nhiên populateVoices cần danh sách voices. 
-        // Logic này tốt nhất nên nằm ở Orchestrator hoặc Action binding.
     },
 
     toggleSettings() {
@@ -135,24 +124,33 @@ export const TTSUIRenderer = {
         const engineSelect = this.elements.engineSelect;
         const apiKeyInput = this.elements.apiKeyInput;
         
-        // [LOGIC MỚI] Kiểm tra xem có phải GCloud và thiếu Key không
         const isGCloud = engineSelect && engineSelect.value === 'gcloud';
         const hasKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
 
-        select.innerHTML = ""; // Clear old options
-        select.disabled = false; // Reset state
+        select.innerHTML = ""; 
+        select.disabled = false; 
 
-        // TRƯỜNG HỢP 1: GCloud nhưng chưa có Key
+        // CASE 1: GCloud nhưng chưa có Key
         if (isGCloud && !hasKey) {
             const option = document.createElement("option");
             option.textContent = "✨ Enter API Key to load voices...";
             option.value = "";
             select.appendChild(option);
-            select.disabled = true; // Khóa menu lại
-            return; // Dừng, không render danh sách fallback
+            select.disabled = true; 
+            return;
         }
 
-        // TRƯỜNG HỢP 2: Render danh sách bình thường (WSA hoặc GCloud đã có Key)
+        // CASE 2: GCloud, Đã có Key, nhưng danh sách Rỗng -> Đang tải hoặc Lỗi
+        if (isGCloud && hasKey && (!voices || voices.length === 0)) {
+            const option = document.createElement("option");
+            option.textContent = "⏳ Loading voices or Invalid Key...";
+            option.value = "";
+            select.appendChild(option);
+            select.disabled = true; 
+            return;
+        }
+
+        // CASE 3: Bình thường
         if (!voices || voices.length === 0) {
             const option = document.createElement("option");
             option.textContent = "No voices available";
@@ -165,11 +163,10 @@ export const TTSUIRenderer = {
             const option = document.createElement("option");
             option.value = v.voiceURI;
             
-            // Clean name logic
             const cleanName = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60);
             option.dataset.originalName = cleanName;
-            option.textContent = "\u00A0\u00A0\u00A0" + cleanName; 
             
+            option.textContent = "\u00A0\u00A0\u00A0" + cleanName; 
             select.appendChild(option);
         });
 
@@ -187,13 +184,10 @@ export const TTSUIRenderer = {
             const opt = options[i];
             const originalName = opt.dataset.originalName;
 
-            // Always work from the clean original name stored in the dataset
             if (originalName) {
                 if (offlineSet.has(opt.value)) {
-                    // Prepend bullet for offline voices
                     opt.textContent = "• " + originalName;
                 } else {
-                    // Prepend non-breaking spaces for alignment for online voices
                     opt.textContent = "\u00A0\u00A0\u00A0" + originalName;
                 }
             }
