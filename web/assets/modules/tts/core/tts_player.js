@@ -87,33 +87,55 @@ export const TTSPlayer = {
         }
     },
 
-    _speakCurrent() {
+    async _speakCurrent() {
         const item = TTSStateStore.getCurrentItem();
         if (!item) return;
 
         // Đảm bảo highlight đúng câu đang đọc
         this.highlighter.activate(TTSStateStore.currentIndex);
         
-        // [NEW] Rolling Buffer Logic
-        this._managePrefetchBuffer();
-
-        this.engine.speak(item.text, () => {
-            // Callback khi đọc xong 1 câu
-            if (TTSStateStore.isPlaying) {
-                if (TTSStateStore.hasNext()) {
-                    TTSStateStore.advance();
-                    this._speakCurrent(); // Đệ quy đọc câu tiếp
-                } else {
-                    this._triggerEnd();
-                }
+        try {
+            // Priority 1: Await prefetch of the CURRENT item to ensure it's ready.
+            if (this.engine.prefetch) {
+                await this.engine.prefetch(item.text);
             }
-        }).catch(e => {
-            console.error("TTS Player Error:", e);
+
+            // Priority 2: Fire-and-forget prefetch for the VERY NEXT item.
+            const nextItem = TTSStateStore.getNextItem(); // Helper to get item at currentIndex + 1
+            if (nextItem && this.engine.prefetch) {
+                this.engine.prefetch(nextItem.text);
+            }
+
+            // Now that the current item is guaranteed to be cached, speak it.
+            // The `speak` call will be instant if the prefetch worked.
+            this.engine.speak(item.text, () => {
+                // onEnd: Callback khi đọc xong 1 câu
+                if (TTSStateStore.isPlaying) {
+                    if (TTSStateStore.hasNext()) {
+                        TTSStateStore.advance();
+                        this._speakCurrent(); // Đệ quy đọc câu tiếp
+                    } else {
+                        this._triggerEnd();
+                    }
+                }
+            }).catch(e => {
+                // This catch is for playback errors, not prefetch errors.
+                console.error("TTS Player Playback Error:", e);
+                this.stop();
+                if (this.ui && this.ui.showError) this.ui.showError("Playback error.");
+            });
+
+            // Priority 3: Manage the rest of the rolling buffer in the background.
+            this._managePrefetchBuffer();
+
+        } catch (e) {
+            // This catch is for prefetch/setup errors (e.g., missing API key).
+            console.error("TTS Player Setup Error:", e);
             this.stop(); // Stop playback on hard error
             if (this.ui && this.ui.showError) {
                 this.ui.showError(e.message);
             }
-        });
+        }
     },
 
     _managePrefetchBuffer() {
@@ -121,34 +143,26 @@ export const TTSPlayer = {
 
         const { currentIndex, playlist } = TTSStateStore;
         const bufferSize = AppConfig.TTS?.BUFFER_AHEAD || 7;
-        
-        console.log(`[DEBUG_BUFFER] --- Managing Buffer at index: ${currentIndex} ---`);
-        console.log(`[DEBUG_BUFFER] Farthest index previously prefetched: ${this.farthestPrefetchedIndex}`);
 
         // The index of the farthest item we want to have in our buffer
         const desiredFarthestIndex = Math.min(currentIndex + bufferSize, playlist.length - 1);
-        console.log(`[DEBUG_BUFFER] Desired farthest index: ${desiredFarthestIndex}`);
 
         // If we've already queued everything up to this point, no need to do more.
         if (this.farthestPrefetchedIndex >= desiredFarthestIndex) {
-            console.log("[DEBUG_BUFFER] Buffer is already full. No action needed.");
             return;
         }
 
         // Fetch the items from our last known point to the new desired point.
         const startIndex = this.farthestPrefetchedIndex + 1;
-        console.log(`[DEBUG_BUFFER] Fetching items from index ${startIndex} to ${desiredFarthestIndex}`);
         for (let i = startIndex; i <= desiredFarthestIndex; i++) {
             const item = playlist[i];
             if (item) {
-                console.log(`[DEBUG_BUFFER] Calling prefetch for item ${i}: "${item.text.substring(0, 20)}..."`);
                 this.engine.prefetch(item.text);
             }
         }
         
         // Update the high-water mark
         this.farthestPrefetchedIndex = desiredFarthestIndex;
-        console.log(`[DEBUG_BUFFER] New farthest index updated to: ${this.farthestPrefetchedIndex}`);
     },
 
     _triggerEnd() {

@@ -66,6 +66,14 @@ export const TTSStateStore = {
         return null;
     },
 
+    getNextItem() {
+        const nextIndex = this.currentIndex + 1;
+        if (nextIndex < this.playlist.length) {
+            return this.playlist[nextIndex];
+        }
+        return null;
+    },
+
     hasNext() {
         return this.currentIndex < this.playlist.length - 1;
     },
