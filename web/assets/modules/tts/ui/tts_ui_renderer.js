@@ -98,6 +98,7 @@ export const TTSUIRenderer = {
     populateVoices(voices, currentVoice) {
         if (!this.elements.voiceSelect) return;
         const select = this.elements.voiceSelect;
+        console.log("[DEBUG] Clearing and Populating Voices. Count:", voices.length);
         select.innerHTML = ""; // Clear previous options
         
         voices.forEach(v => {
@@ -110,6 +111,7 @@ export const TTSUIRenderer = {
             
             // 2. Set a default padded state. Use non-breaking spaces to prevent trimming.
             option.textContent = "\u00A0\u00A0" + cleanName; 
+            console.log(`[DEBUG] populateVoices: Set initial text for ${v.voiceURI} to "${option.textContent}"`);
             
             select.appendChild(option);
         });
@@ -121,6 +123,7 @@ export const TTSUIRenderer = {
 
     updateVoiceOfflineMarkers(offlineVoiceURIs) {
         if (!this.elements.voiceSelect) return;
+        console.log("[DEBUG] Updating Offline Markers. Offline URIs:", offlineVoiceURIs);
         const options = this.elements.voiceSelect.options;
         const offlineSet = new Set(offlineVoiceURIs);
         
@@ -130,13 +133,18 @@ export const TTSUIRenderer = {
 
             // Always work from the clean original name stored in the dataset
             if (originalName) {
-                if (offlineSet.has(opt.value)) {
+                const isOffline = offlineSet.has(opt.value);
+                console.log(`[DEBUG] updateMarkers: Checking ${opt.value}. Is Offline: ${isOffline}. Original Name: "${originalName}". Current textContent: "${opt.textContent}"`);
+                if (isOffline) {
                     // Prepend checkmark for offline voices
                     opt.textContent = "✓ " + originalName;
                 } else {
                     // Prepend non-breaking spaces for alignment for online voices
                     opt.textContent = "\u00A0\u00A0" + originalName;
                 }
+                console.log(`[DEBUG] updateMarkers: New textContent for ${opt.value} is "${opt.textContent}"`);
+            } else {
+                console.warn(`[DEBUG] updateMarkers: Option ${opt.value} is missing originalName dataset!`);
             }
         }
     },
