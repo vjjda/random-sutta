@@ -106,7 +106,7 @@ export const TTSUIRenderer = {
         voices.forEach(v => {
             const option = document.createElement("option");
             option.value = v.voiceURI;
-            option.textContent = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 25); 
+            option.textContent = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60); 
             select.appendChild(option);
         });
         if (currentVoice) select.value = currentVoice.voiceURI;
