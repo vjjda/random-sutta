@@ -11,7 +11,6 @@ export const CommentController = {
             onClose: () => this.close(),
             onNavigate: (dir) => this.navigate(dir),
             onLinkClick: (href) => {
-                // Delegate to global handler
                 window.dispatchEvent(new CustomEvent('popup:request-link', { detail: { href } }));
             }
         });
@@ -54,10 +53,11 @@ export const CommentController = {
         if (nextIdx >= 0 && nextIdx < comments.length) {
             this.activate(nextIdx);
             
-            // [FIXED] Use Instant Jump for main view context sync
+            // [FIXED] Instant Jump & Highlight Sync
             const item = comments[nextIdx];
             if (item && item.id) {
                 Scroller.jumpTo(item.id);
+                Scroller.highlightElement(item.id); // <--- Thêm dòng này
             }
             
             QuicklookUI.hide();

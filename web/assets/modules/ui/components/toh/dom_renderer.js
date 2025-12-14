@@ -39,8 +39,9 @@ export const DomRenderer = {
             // Main Click Handler
             mainTextDiv.onclick = (e) => {
                 e.stopPropagation();
-                // [FIXED] Use Instant Jump
+                // [FIXED] Jump & Highlight
                 Scroller.jumpTo(item.id); 
+                Scroller.highlightElement(item.id); // <--- Thêm dòng này
                 if (callbacks.onItemClick) callbacks.onItemClick();
             };
             headerRow.appendChild(mainTextDiv);
@@ -80,8 +81,9 @@ export const DomRenderer = {
                     if (sub.id) {
                         subDiv.onclick = (e) => {
                             e.stopPropagation();
-                            // [FIXED] Use Instant Jump for sub-items too
+                            // [FIXED] Jump & Highlight for Sub-items
                             Scroller.jumpTo(sub.id);
+                            Scroller.highlightElement(sub.id); // <--- Thêm dòng này
                             if (callbacks.onItemClick) callbacks.onItemClick();
                         };
                     } else {
@@ -92,7 +94,6 @@ export const DomRenderer = {
                 wrapper.appendChild(childrenContainer);
             } 
             else if (item.subText) {
-                // Fallback for old paragraph mode
                 const subDiv = document.createElement("div");
                 subDiv.className = "toh-sub-text";
                 subDiv.textContent = item.subText;
@@ -127,14 +128,10 @@ export const DomRenderer = {
 
         if (targetEl) {
             targetEl.classList.add("active");
-            
-            // Auto expand parent if needed
             if (targetEl.classList.contains("toh-sub-text")) {
                 const wrapper = targetEl.closest(".toh-item-wrapper");
                 if (wrapper) wrapper.classList.remove("collapsed");
             }
-            
-            // Scroll menu to show active item
             targetEl.scrollIntoView({ block: "center", behavior: "instant" });
         }
     }

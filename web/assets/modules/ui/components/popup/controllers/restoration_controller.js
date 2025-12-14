@@ -16,46 +16,36 @@ export const RestorationController = {
             return;
         }
 
-        // [CRITICAL STRATEGY] Data Availability Check
-        // Do NOT rely on snapshot.type check here (e.g. if type === 'none').
-        // Race conditions might reset 'type' to 'none' but valid data persists.
-        
         logger.info("Exec", `Analyzing snapshot...`, snapshot);
 
         let restoredAnything = false;
 
-        // 1. Phục hồi Comment (Lớp dưới)
+        // 1. Phục hồi Comment
         if (typeof snapshot.commentIndex === 'number' && snapshot.commentIndex !== -1) {
-            
-            // Đảm bảo dữ liệu comment đã được quét
             if (PopupState.getComments().length === 0) {
                 logger.info("Restore", "Rescanning comments...");
                 CommentController.scanComments();
             }
             
             const comments = PopupState.getComments();
-            // Double check index hợp lệ
             if (snapshot.commentIndex < comments.length) {
                 logger.info("Restore", `Restoring Comment at index: ${snapshot.commentIndex}`);
                 
-                // Activate Comment (UI)
                 CommentController.activate(snapshot.commentIndex);
                 restoredAnything = true;
 
-                // Scroll trang chính tới vị trí cũ
+                // [FIXED] Restore Scroll & Highlight
                 const item = comments[snapshot.commentIndex];
                 if (item && item.id) {
-                    // [UPDATED] Dùng jumpTo để tránh hiệu ứng cuộn khi restore
                     Scroller.jumpTo(item.id); 
+                    Scroller.highlightElement(item.id); // <--- Thêm dòng này
                 }
             }
         }
 
-        // 2. Phục hồi Quicklook (Lớp trên - Đè lên comment nếu có)
+        // 2. Phục hồi Quicklook
         if (snapshot.quicklookUrl) {
             logger.info("Restore", `Restoring Quicklook: ${snapshot.quicklookUrl}`);
-            
-            // Gọi hàm mở Quicklook với cờ isRestoring = true
             QuicklookController.handleLinkRequest(snapshot.quicklookUrl, true);
             restoredAnything = true;
         }
