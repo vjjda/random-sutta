@@ -48,7 +48,6 @@ export const TTSUILayout = {
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                                 </button>
                             </div>
-                            <span id="tts-voice-offline-badge" class="hidden" style="font-size: 0.75rem; color: #2e7d32; font-weight: 600;">✓ Offline Ready</span>
                         </div>
                         <select id="tts-voice-select"></select>
                     </div>

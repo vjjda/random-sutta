@@ -33,7 +33,7 @@ export const TTSOrchestrator = {
         if (this.engines['gcloud']) {
             this.engines['gcloud'].onAudioCached = (text) => {
                  TTSMarkerManager.markAsCached(text);
-                 this.checkOfflineStatus();
+                 // Future logic can go here if needed
             };
             // [NEW] Bind Voices Changed Event
             this.engines['gcloud'].onVoicesChanged = (voices, currentVoice) => {
@@ -79,6 +79,7 @@ export const TTSOrchestrator = {
             
             // Sync Voice and Pitch
             this.ui.populateVoices(this.engine.getVoices(), this.engine.voice);
+            this.ui.updateRateDisplay(this.engine.rate);
         }
     },
 
@@ -140,7 +141,6 @@ export const TTSOrchestrator = {
             this.engine.setVoice(voiceURI);
             
             // Trigger status updates
-            this.checkOfflineStatus();
             if (this.isSessionActive()) {
                 TTSMarkerManager.checkCacheStatus(this.engine);
             }
@@ -150,19 +150,6 @@ export const TTSOrchestrator = {
     setCallbacks(callbacks) {
         if (callbacks && typeof callbacks.onAutoNext === 'function') {
             this.onAutoNextRequest = callbacks.onAutoNext;
-        }
-    },
-
-    // --- Status Checks ---
-    
-    async checkOfflineStatus() {
-        if (this.engine instanceof TTSGoogleCloudEngine && this.isSessionActive()) {
-            const texts = TTSStateStore.playlist.map(i => i.text);
-            const isOffline = await this.engine.checkOfflineStatusForVoice(texts, this.engine.voice.name);
-            
-            if (this.ui) {
-                this.ui.updateOfflineStatus(isOffline);
-            }
         }
     },
 
@@ -187,13 +174,12 @@ export const TTSOrchestrator = {
 
     startSession() { 
         TTSSessionManager.start(); 
-        this.checkOfflineStatus();
         this.refreshOfflineVoicesStatus(); // [NEW] Check all voices
     },
     endSession() { TTSSessionManager.end(); },
     refreshSession(autoPlay) { 
         TTSSessionManager.refresh(autoPlay); 
-        this.checkOfflineStatus();
+        this.refreshOfflineVoicesStatus();
     },
     
     isSessionActive() { return TTSSessionManager.isActive(); },

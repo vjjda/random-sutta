@@ -19,7 +19,6 @@ export const TTSUIRenderer = {
             rateVal: document.getElementById("tts-rate-val"),
             voiceSelect: document.getElementById("tts-voice-select"),
             btnRefreshVoices: document.getElementById("tts-refresh-voices"),
-            offlineBadge: document.getElementById("tts-voice-offline-badge"),
             autoNextCheckbox: document.getElementById("tts-auto-next"),
             modeCheckbox: document.getElementById("tts-mode-toggle"),
             engineSelect: document.getElementById("tts-engine-select"),
@@ -117,15 +116,10 @@ export const TTSUIRenderer = {
         
         for (let i = 0; i < options.length; i++) {
             const opt = options[i];
-            // Use a data attribute to store the original name to prevent cumulative appends
-            if (!opt.dataset.originalName) {
-                opt.dataset.originalName = opt.textContent;
-            }
-            
             if (offlineSet.has(opt.value)) {
-                opt.textContent = opt.dataset.originalName + " ✓";
+                opt.classList.add("offline-ready");
             } else {
-                opt.textContent = opt.dataset.originalName;
+                opt.classList.remove("offline-ready");
             }
         }
     },
@@ -133,12 +127,5 @@ export const TTSUIRenderer = {
     updateRateDisplay(value) {
         if (this.elements.rateRange) this.elements.rateRange.value = value;
         if (this.elements.rateVal) this.elements.rateVal.textContent = value;
-    },
-
-    updateOfflineStatus(isOffline) {
-        if (this.elements.offlineBadge) {
-            if (isOffline) this.elements.offlineBadge.classList.remove('hidden');
-            else this.elements.offlineBadge.classList.add('hidden');
-        }
     }
 };

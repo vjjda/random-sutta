@@ -168,6 +168,11 @@
   font-size: 0.9rem;
 }
 
+#tts-voice-select option.offline-ready {
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
 #tts-apikey-input {
   width: 100%;
   padding: 8px;
