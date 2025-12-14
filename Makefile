@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api build-data dev dev-online dev-offline release release-zip release-beta publish clean
+.PHONY: help setup sync sync-text sync-api build-data dev dev-online dev-offline release release-zip release-beta publish clean build official
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -17,13 +17,13 @@ help:
 	@echo "⚙️  BUILD & DEV:"
 	@echo "  make dry     - Chạy Sutta Processor (Dry Run, không ghi file)"
 	@echo "  make data     - Chạy Sutta Processor (JSON -> Assets)"
-	@echo "  make full          - Chạy Full Build (Data + Release)"
+	@echo "  make build          - Chạy Full Build (Data + Release)"
 	@echo "  make dev            - Server Web gốc (Source)  -> http://localhost:8000"
 	@echo "  make dev-on     - Server Build Online      -> http://localhost:8001"
 	@echo "  make dev-off    - Server Build Offline     -> http://localhost:8002"
 	@echo ""
 	@echo "🚀 RELEASE SYSTEM:"
-	@echo "  make release        - Build Local kiểm tra (Không zip, không commit)"
+	@echo "  make re        - Build Local kiểm tra (Không zip, không commit)"
 	@echo "  make zip    - Build & Tạo file .zip (-z)"
 	@echo "  make reweb    - Build & Deploy lên GitHub Pages (-w)"
 	@echo "  make beta   - PUBLISH PRE-RELEASE (-p) (Commit -> Push -> GH Release)"
@@ -57,7 +57,7 @@ data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
 
-full:
+build:
 	@echo "🧠 Full Build (Data + Release)..."
 	$(PYTHON) -m src.sutta_processor
 	$(PYTHON) -m src.release_system
@@ -86,7 +86,7 @@ dev-off:
 # ==============================================================================
 
 # 1. Local Build Check (Mặc định)
-release:
+re:
 	$(PYTHON) -m src.release_system
 
 # 2. Tạo Zip Artifact (-z)
