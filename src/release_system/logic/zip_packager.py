@@ -1,54 +1,89 @@
 # Path: src/release_system/logic/zip_packager.py
 import logging
-import zipfile
 import os
+import zipfile
 import json
 import hashlib
 from pathlib import Path
 
-# [FIXED] Import đúng đường dẫn từ module sutta_processor
+# Import cấu hình từ các module khác nhau
 from src.sutta_processor.shared.app_config import DIST_DB_DIR
+from ..release_config import RELEASE_DIR, APP_NAME
 
-logger = logging.getLogger("SuttaProcessor.Output.ZipGen")
+logger = logging.getLogger("Release.ZipPackager")
 
-# [CONFIG] Thời gian cố định cho mọi file trong Zip
-# Năm, Tháng, Ngày, Giờ, Phút, Giây
+# [CONFIG] Thời gian cố định cho mọi file trong Zip (Nén đơn định)
 FIXED_DATETIME = (2024, 1, 1, 0, 0, 0)
 
 def _calculate_file_hash(file_path: Path) -> str:
     """Tính SHA-256 hash của một file."""
     sha256_hash = hashlib.sha256()
     with open(file_path, "rb") as f:
-        # Đọc từng chunk 4KB để tránh tràn RAM với file lớn
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
 
-def create_db_bundle() -> bool:
+def create_zip_from_build(build_dir: Path, version_tag: str) -> bool:
+    """
+    Nén toàn bộ thư mục build thành zip artifact (Dùng cho Release).
+    Giữ nguyên timestamp thực tế vì đây là file phân phối cuối cùng.
+    """
+    if not RELEASE_DIR.exists():
+        RELEASE_DIR.mkdir(parents=True)
+
+    zip_filename = RELEASE_DIR / f"{APP_NAME}-{version_tag}.zip"
+    if zip_filename.exists():
+        os.remove(zip_filename)
+
+    logger.info(f"📦 Zipping artifacts from {build_dir.name}...")
+    
+    try:
+        with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, _, files in os.walk(build_dir):
+                for file in files:
+                    file_path = Path(root) / file
+                    relative_path = file_path.relative_to(build_dir)
+                    archive_name = Path(APP_NAME) / relative_path
+                    zf.write(file_path, archive_name)
+        return True
+    except Exception as e:
+        logger.error(f"❌ Zip failed: {e}")
+        return False
+
+def create_db_bundle(base_dir: Path = None) -> bool:
     """
     Nén assets/db thành db_bundle.zip với Deterministic Hashing.
     Và tạo file db_manifest.json chứa hash.
+    
+    Args:
+        base_dir: Thư mục gốc chứa assets/db (ví dụ: build/pwa). 
+                  Nếu None, dùng DIST_DB_DIR (web/assets/db).
     """
-    if not DIST_DB_DIR.exists():
-        logger.warning("⚠️ DB Directory not found, skipping zip bundle.")
+    # Xác định thư mục DB đích
+    if base_dir:
+        db_root = base_dir / "assets" / "db"
+    else:
+        db_root = DIST_DB_DIR
+
+    if not db_root.exists():
+        logger.warning(f"⚠️ DB Directory not found at {db_root}, skipping bundle.")
         return False
 
-    zip_path = DIST_DB_DIR / "db_bundle.zip"
-    manifest_path = DIST_DB_DIR / "db_manifest.json"
+    zip_path = db_root / "db_bundle.zip"
+    manifest_path = db_root / "db_manifest.json"
     
-    logger.info("📦 Creating deterministic DB bundle...")
+    logger.info(f"📦 Creating deterministic DB bundle in {db_root.parent.name}/db...")
     
     try:
         # Dùng 'w' để tạo mới, ZIP_DEFLATED để nén
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             
-            # Duyệt qua các thư mục con
+            # Duyệt qua các thư mục con 
             for subdir in ["meta", "content", "index"]:
-                target_dir = DIST_DB_DIR / subdir
+                target_dir = db_root / subdir
                 if not target_dir.exists(): continue
                 
                 # [CRITICAL 1] Sort file để đảm bảo thứ tự nén luôn giống nhau (A-Z)
-                # Nếu không sort, thứ tự file có thể ngẫu nhiên tùy OS -> Sai Hash
                 files = sorted(list(target_dir.glob("*.json")))
                 
                 for file_path in files:
@@ -60,10 +95,9 @@ def create_db_bundle() -> bool:
                         file_data = f.read()
                     
                     # [CRITICAL 3] Tạo ZipInfo thủ công với thời gian cố định
-                    # Thay vì dùng zf.write(path) (sẽ lấy giờ hệ thống)
                     zinfo = zipfile.ZipInfo(filename=arcname, date_time=FIXED_DATETIME)
                     
-                    # Set quyền truy cập file (rw-r--r--) cho giống nhau trên mọi OS (Win/Lin/Mac)
+                    # Set quyền truy cập file (rw-r--r--) cho giống nhau trên mọi OS
                     zinfo.external_attr = 0o644 << 16 
                     zinfo.compress_type = zipfile.ZIP_DEFLATED
                     
@@ -79,7 +113,7 @@ def create_db_bundle() -> bool:
         manifest_data = {
             "hash": file_hash,
             "size_bytes": zip_path.stat().st_size,
-            "generated_at_ts": os.path.getmtime(zip_path) # Timestamp thực tế để debug
+            "generated_at_ts": os.path.getmtime(zip_path)
         }
         
         with open(manifest_path, "w", encoding="utf-8") as f:
