@@ -10,31 +10,44 @@ const logger = getLogger("RestorationCtrl");
 export const RestorationController = {
     restore() {
         const snapshot = PopupState.getSnapshot();
-        // Kiểm tra hợp lệ: type phải khác 'none'
-        if (!snapshot || snapshot.type === 'none') return;
+        
+        // Debug Log
+        if (snapshot) {
+            logger.info("Restore", `Found snapshot type: ${snapshot.type}`, snapshot);
+        } else {
+            logger.debug("Restore", "No snapshot found.");
+            return;
+        }
 
-        logger.info("Exec", `Type: ${snapshot.type}`, snapshot);
+        if (snapshot.type === 'none') return;
 
-        // 1. Luôn restore comment nền nếu có index
-        if (snapshot.commentIndex !== undefined && snapshot.commentIndex !== -1) {
+        // 1. Luôn restore comment nền nếu có index hợp lệ
+        if (typeof snapshot.commentIndex === 'number' && snapshot.commentIndex !== -1) {
             // Đảm bảo dữ liệu comment đã được quét
             if (PopupState.getComments().length === 0) {
-                CommentController.scanComments(); 
+                logger.info("Restore", "Rescanning comments...");
+                CommentController.scanComments();
             }
             
+            logger.info("Restore", `Activating comment index: ${snapshot.commentIndex}`);
             // Activate Comment (UI)
             CommentController.activate(snapshot.commentIndex);
             
-            // Scroll trang chính
+            // Scroll trang chính tới vị trí cũ
             const comments = PopupState.getComments();
             if (comments[snapshot.commentIndex]) {
                 const item = comments[snapshot.commentIndex];
-                if (item && item.id) Scroller.scrollToId(item.id, 'instant');
+                if (item && item.id) {
+                    // Dùng 'instant' để tránh hiệu ứng cuộn gây chóng mặt khi restore
+                    Scroller.scrollToId(item.id, 'instant'); 
+                }
             }
         }
 
         // 2. Nếu type là Quicklook, restore đè lên
         if (snapshot.type === 'quicklook' && snapshot.quicklookUrl) {
+            logger.info("Restore", `Re-opening Quicklook: ${snapshot.quicklookUrl}`);
+            // isRestoring = true
             QuicklookController.handleLinkRequest(snapshot.quicklookUrl, true);
         }
     }

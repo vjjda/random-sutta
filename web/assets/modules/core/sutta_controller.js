@@ -13,26 +13,22 @@ const logger = getLogger("SuttaController");
 const PopupAPI = initPopupSystem();
 
 export const SuttaController = {
-  // ... (Phần đầu giữ nguyên) ...
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
 
-    // ... (Giữ nguyên logic Router update) ...
     if (shouldUpdateUrl) {
+        // [NOTE] Router.updateURL now correctly preserves popupSnapshot via replaceState
         try {
-            const currentState = window.history.state || {};
-            window.history.replaceState(
-                { ...currentState, scrollY: currentScroll },
-                document.title,
-                window.location.href
-            );
+            const bookParam = FilterComponent.generateBookParam();
+            Router.updateURL(null, bookParam, false, null, currentScroll);
         } catch (e) {}
     }
 
+    // 1. Hide popups initially (Clean slate visual)
+    // IMPORTANT: This clears runtime state, BUT we are relying on History State for restore
     PopupAPI.hideAll();
-    
-    // ... (Giữ nguyên logic TTS stop) ...
+
     const wasTTSActive = TTSOrchestrator.isSessionActive();
     const wasPlaying = TTSOrchestrator.isPlaying();
     TTSOrchestrator.stop();
@@ -40,7 +36,7 @@ export const SuttaController = {
         TTSOrchestrator.endSession();
     }
 
-    // Parse Input
+    // Parse Input logic ...
     let suttaId;
     let scrollTarget = null;
     if (typeof input === 'object') {
@@ -48,19 +44,15 @@ export const SuttaController = {
     } else {
         const parts = input.split('#');
         suttaId = parts[0].trim().toLowerCase();
-        if (parts.length > 1) {
-            scrollTarget = parts[1];
-        }
+        if (parts.length > 1) scrollTarget = parts[1];
     }
 
     if (scrollTarget && !scrollTarget.includes(':')) {
         const isSegmentNumber = /^[\d\.]+$/.test(scrollTarget);
-        if (isSegmentNumber) {
-            scrollTarget = `${suttaId}:${scrollTarget}`;
-        }
+        if (isSegmentNumber) scrollTarget = `${suttaId}:${scrollTarget}`;
     }
 
-    logger.info('loadSutta', `Request: ${suttaId}`);
+    logger.info('loadSutta', `Request: ${suttaId} (URL update: ${shouldUpdateUrl})`);
     logger.timer(`Render: ${suttaId}`);
 
     const performRender = async () => {
@@ -80,11 +72,19 @@ export const SuttaController = {
         }
         
         const success = await renderSutta(suttaId, result, options);
+        
         if (success) {
+            // [CRITICAL] Scan immediately after render
             PopupAPI.scan();
+
+            // [CRITICAL] Restore Logic
+            // shouldUpdateUrl = false nghĩa là đang Back/Forward (popstate)
+            // Lúc này ta kiểm tra xem trong History có Snapshot không để khôi phục
             if (!shouldUpdateUrl) {
+                logger.debug("SuttaController", "Triggering popup restore...");
                 PopupAPI.restore();
             }
+
             if (wasTTSActive) {
                 setTimeout(() => {
                     TTSOrchestrator.refreshSession(wasPlaying);
@@ -104,14 +104,10 @@ export const SuttaController = {
     if (isTransition) {
         await Scroller.transitionTo(performRender, scrollTarget);
     } else {
-        // [INSTANT JUMP LOGIC]
         await performRender();
-        
         if (scrollTarget) {
-            // setTimeout 0 để đẩy xuống cuối stack sự kiện, đảm bảo DOM đã paint
             setTimeout(() => {
                 Scroller.scrollToId(scrollTarget, 'instant');
-                // [FIXED] Kích hoạt highlight sau khi jump
                 Scroller.highlightElement(scrollTarget);
             }, 0);
         } else if (scrollY > 0) {
@@ -122,7 +118,6 @@ export const SuttaController = {
     }
   },
 
-  // ... (Phần cuối giữ nguyên) ...
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     PopupAPI.hideAll();
     logger.timer('Random Process Total');
