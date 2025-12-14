@@ -1,23 +1,7 @@
 // Path: web/assets/modules/tts/ui/tts_ui_renderer.js
-import { AppConfig } from '../../core/app_config.js';
-
-function formatVoiceName(rawName) {
-    let clean = rawName.replace(/^(en-US-|en-GB-)/, '');
-    clean = clean.replace('Neural2', 'Neural 2')
-                 .replace('Studio', 'Studio')
-                 .replace('Wavenet', 'Wavenet')
-                 .replace('Polyglot', 'Polyglot')
-                 .replace('Standard', 'Standard');
-
-    if (clean.includes('Chirp')) {
-        clean = clean.replace('Chirp3-HD-', 'Chirp 3 ');
-        clean = clean.replace('Chirp-HD-', 'Chirp ');
-    } 
-    
-    clean = clean.replace(/-([A-Z])\s/, ' $1 ');
-    clean = clean.replace(/-/g, ' ');
-    return clean;
-}
+import { TTSVoiceListRenderer } from './renderers/voice_list_renderer.js';
+import { TTSSettingsRenderer } from './renderers/settings_renderer.js';
+import { TTSPlayerControlsRenderer } from './renderers/player_controls_renderer.js';
 
 export const TTSUIRenderer = {
     elements: {},
@@ -48,215 +32,30 @@ export const TTSUIRenderer = {
         return this.elements;
     },
 
-    togglePlayer(forceState) {
-        if (!this.elements.player) return;
-        const isActive = this.elements.player.classList.contains("active");
-        const newState = forceState !== undefined ? forceState : !isActive;
-        if (newState) this.elements.player.classList.add("active");
-        else this.elements.player.classList.remove("active");
-    },
+    // --- Delegation ---
 
-    updatePlayState(isPlaying) {
-        if (!this.elements.iconPlay || !this.elements.iconPause) return;
-        if (isPlaying) {
-            this.elements.iconPlay.classList.add("hidden");
-            this.elements.iconPause.classList.remove("hidden");
-        } else {
-            this.elements.iconPlay.classList.remove("hidden");
-            this.elements.iconPause.classList.add("hidden");
-        }
-    },
+    // Player
+    togglePlayer(forceState) { TTSPlayerControlsRenderer.togglePlayer(this.elements, forceState); },
+    updatePlayState(isPlaying) { TTSPlayerControlsRenderer.updatePlayState(this.elements, isPlaying); },
+    updateInfo(current, total) { TTSPlayerControlsRenderer.updateInfo(this.elements, current, total); },
+    updateStatus(text) { TTSPlayerControlsRenderer.updateStatus(this.elements, text); },
+    showError(msg) { TTSPlayerControlsRenderer.showError(this.elements, msg); },
 
-    updateInfo(current, total) {
-        if (this.elements.infoText) {
-            this.elements.infoText.textContent = `${current} / ${total}`;
-        }
-    },
+    // Settings
+    updateEngineState(engineId, apiKey) { TTSSettingsRenderer.updateEngineState(this.elements, engineId, apiKey); },
+    updateRateDisplay(val) { TTSSettingsRenderer.updateRate(this.elements, val); },
+    updateAutoNextState(v) { TTSSettingsRenderer.updateToggles(this.elements, v, null); },
+    updatePlaybackModeState(v) { TTSSettingsRenderer.updateToggles(this.elements, null, v); },
+    toggleSettings() { TTSSettingsRenderer.togglePanel(this.elements); },
+    closeSettings() { TTSSettingsRenderer.togglePanel(this.elements, false); },
 
-    updateStatus(text) {
-        if (this.elements.infoText) {
-            this.elements.infoText.textContent = text;
-        }
-    },
-
-    showError(message, duration = 5000) {
-        const infoEl = this.elements.infoText;
-        if (!infoEl) return;
-
-        const originalText = infoEl.textContent;
-        infoEl.classList.add("error-text");
-        infoEl.textContent = message;
-        setTimeout(() => {
-            infoEl.classList.remove("error-text");
-            if (infoEl.textContent === message) {
-                infoEl.textContent = originalText;
-            }
-        }, duration);
-    },
-
-    updateAutoNextState(isChecked) {
-        if (this.elements.autoNextCheckbox) {
-            this.elements.autoNextCheckbox.checked = isChecked;
-        }
-    },
-
-    updatePlaybackModeState(isParagraph) {
-        if (this.elements.modeCheckbox) {
-            this.elements.modeCheckbox.checked = isParagraph;
-        }
-    },
-
-    updateEngineState(engineId, apiKey) {
-        if (this.elements.engineSelect) {
-            this.elements.engineSelect.value = engineId;
-        }
-        if (this.elements.apiKeyRow) {
-            if (engineId === 'gcloud') {
-                this.elements.apiKeyRow.classList.remove('hidden');
-                if (!apiKey && this.elements.apiKeyInput) {
-                    setTimeout(() => this.elements.apiKeyInput.focus(), 100);
-                }
-            } else {
-                this.elements.apiKeyRow.classList.add('hidden');
-            }
-        }
-        if (this.elements.apiKeyInput) {
-            if (apiKey !== null && apiKey !== undefined) {
-                this.elements.apiKeyInput.value = apiKey;
-            }
-        }
-    },
-
-    toggleSettings() {
-        this.elements.settingsPanel?.classList.toggle("hidden");
-    },
-
-    closeSettings() {
-        this.elements.settingsPanel?.classList.add("hidden");
-    },
-
-    populateVoices(voices, currentVoice) {
-        if (!this.elements.voiceSelect) return;
+    // Voice List
+    populateVoices(voices, currentVoice) { 
+        const engineId = this.elements.engineSelect?.value;
+        const hasKey = this.elements.apiKeyInput?.value.trim().length > 0;
+        const isGCloud = engineId === 'gcloud';
         
-        const select = this.elements.voiceSelect;
-        const engineSelect = this.elements.engineSelect;
-        const apiKeyInput = this.elements.apiKeyInput;
-        
-        const isGCloud = engineSelect && engineSelect.value === 'gcloud';
-        const hasKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
-
-        select.innerHTML = ""; 
-        select.disabled = false; 
-
-        // CASE 1: Thiếu Key
-        if (isGCloud && !hasKey) {
-            const option = document.createElement("option");
-            option.textContent = "✨ Enter API Key to load voices...";
-            option.value = "";
-            select.appendChild(option);
-            select.disabled = true; 
-            return;
-        }
-
-        // CASE 2: Đã có Key nhưng list rỗng (Lỗi hoặc đang tải)
-        if (isGCloud && hasKey && (!voices || voices.length === 0)) {
-            const option = document.createElement("option");
-            // [UX] Thông báo rõ ràng hơn
-            option.textContent = "⚠️ Failed to load. Check Key/Network.";
-            option.value = "";
-            select.appendChild(option);
-            select.disabled = true; 
-            return;
-        }
-
-        // CASE 3: Không có voice nào (cho cả WSA)
-        if (!voices || voices.length === 0) {
-            const option = document.createElement("option");
-            option.textContent = "No voices available";
-            select.appendChild(option);
-            select.disabled = true;
-            return;
-        }
-
-        // --- Logic Recommended ---
-        const recommendedConfig = AppConfig.TTS?.RECOMMENDED_VOICES || [];
-        const recommendedMap = new Map(recommendedConfig.map(i => [i.voiceURI, i]));
-        
-        const recommendedList = [];
-        const otherList = [];
-
-        voices.forEach(v => {
-            const recEntry = recommendedMap.get(v.voiceURI);
-            const prettyName = formatVoiceName(v.name);
-
-            if (recEntry) {
-                recommendedList.push({
-                    ...v,
-                    displayName: recEntry.name || ("★ " + prettyName),
-                    isRec: true
-                });
-            } else {
-                otherList.push({
-                    ...v,
-                    displayName: prettyName,
-                    isRec: false
-                });
-            }
-        });
-
-        const createOption = (v) => {
-            const option = document.createElement("option");
-            option.value = v.voiceURI;
-            option.dataset.displayName = v.displayName;
-            option.textContent = "\u00A0\u00A0\u00A0" + v.displayName; 
-            return option;
-        };
-
-        if (recommendedList.length > 0) {
-            recommendedList.sort((a, b) => {
-                const idxA = recommendedConfig.findIndex(c => c.voiceURI === a.voiceURI);
-                const idxB = recommendedConfig.findIndex(c => c.voiceURI === b.voiceURI);
-                return idxA - idxB;
-            });
-
-            recommendedList.forEach(v => select.appendChild(createOption(v)));
-
-            if (otherList.length > 0) {
-                const sep = document.createElement("option");
-                sep.disabled = true;
-                sep.textContent = "──────────";
-                select.appendChild(sep);
-            }
-        }
-
-        otherList.forEach(v => select.appendChild(createOption(v)));
-
-        if (currentVoice) {
-            select.value = currentVoice.voiceURI;
-        }
+        TTSVoiceListRenderer.render(this.elements.voiceSelect, voices, currentVoice, isGCloud, hasKey); 
     },
-
-    updateVoiceOfflineMarkers(offlineVoiceURIs) {
-        if (!this.elements.voiceSelect) return;
-        const options = this.elements.voiceSelect.options;
-        const offlineSet = new Set(offlineVoiceURIs);
-        
-        for (let i = 0; i < options.length; i++) {
-            const opt = options[i];
-            const originalName = opt.dataset.displayName;
-
-            if (originalName) {
-                if (offlineSet.has(opt.value)) {
-                    opt.textContent = "• " + originalName;
-                } else {
-                    opt.textContent = "\u00A0\u00A0\u00A0" + originalName;
-                }
-            }
-        }
-    },
-
-    updateRateDisplay(value) {
-        if (this.elements.rateRange) this.elements.rateRange.value = value;
-        if (this.elements.rateVal) this.elements.rateVal.textContent = value;
-    }
+    updateVoiceOfflineMarkers(list) { TTSVoiceListRenderer.updateOfflineMarkers(this.elements.voiceSelect, list); }
 };
