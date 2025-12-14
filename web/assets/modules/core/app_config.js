@@ -26,7 +26,10 @@ export const AppConfig = {
         },
         
         // Số lượng câu/đoạn tải trước (Prefetch) để đảm bảo mượt mà
-        BUFFER_AHEAD: 7
+        BUFFER_AHEAD: 7,
+
+        // Ngưỡng ký tự để tự động chia nhỏ một đoạn văn dài
+        PARAGRAPH_SPLIT_THRESHOLD: 300
     },
 
     // Popup Layout Configuration

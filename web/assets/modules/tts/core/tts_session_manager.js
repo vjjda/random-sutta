@@ -4,10 +4,9 @@ import { TTSDOMParser } from './tts_dom_parser.js';
 import { TTSMarkerManager } from './tts_marker_manager.js';
 import { getLogger } from '../../utils/logger.js';
 import { TextSplitter } from '../../utils/text_splitter.js';
+import { AppConfig } from '../../core/app_config.js';
 
 const logger = getLogger("TTS_SessionManager");
-
-const SPLIT_THRESHOLD = 450; // Character limit for splitting paragraphs
 
 export const TTSSessionManager = {
     // Dependencies
@@ -73,10 +72,12 @@ export const TTSSessionManager = {
         
         // [NEW] Process items to split long paragraphs
         const processedItems = [];
+        const splitThreshold = AppConfig.TTS?.PARAGRAPH_SPLIT_THRESHOLD || 300; // Get from config or fallback
+
         originalItems.forEach(item => {
-            if (TTSStateStore.playbackMode === 'paragraph' && item.text.length > SPLIT_THRESHOLD) {
+            if (TTSStateStore.playbackMode === 'paragraph' && item.text.length > splitThreshold) {
                 logger.info("Splitting", `Paragraph ${item.id} is too long (${item.text.length} chars), splitting.`);
-                const chunks = TextSplitter.split(item.text, { maxLength: SPLIT_THRESHOLD });
+                const chunks = TextSplitter.split(item.text, { maxLength: splitThreshold });
                 chunks.forEach((chunk, index) => {
                     processedItems.push({
                         ...item, // Inherit element, etc.
