@@ -178,6 +178,21 @@
   z-index: 1;
 }
 
+/* --- Active Block (Paragraph/Heading) --- */
+/* Target elements that are NOT .segment but have .tts-active */
+:not(.segment).tts-active {
+  border-left: 4px solid var(--primary-color);
+  padding-left: 12px;
+  margin-left: -16px; /* Compensate for border+padding to align text */
+  background-color: rgba(139, 69, 19, 0.05); /* Subtle tint */
+  border-radius: 0 8px 8px 0;
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] :not(.segment).tts-active {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
 /* --- TOGGLE SWITCH (Auto Next) --- */
 .tts-toggle-wrapper {
   display: flex;

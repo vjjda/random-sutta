@@ -26,6 +26,7 @@
 @import "css/components/_splash.css";
 @import "css/components/_loader.css";
 @import "css/components/_tts.css"; /* [NEW] TTS Styles */
+@import "css/components/_tts_markers.css";
 
 /* Magic Nav */
 @import "css/components/magic_nav/_magic_nav_layout.css";

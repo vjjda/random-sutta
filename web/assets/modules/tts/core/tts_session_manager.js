@@ -1,6 +1,7 @@
 // Path: web/assets/modules/tts/core/tts_session_manager.js
 import { TTSStateStore } from './tts_state_store.js';
 import { TTSDOMParser } from './tts_dom_parser.js';
+import { TTSMarkerManager } from './tts_marker_manager.js';
 import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("TTS_SessionManager");
@@ -49,6 +50,7 @@ export const TTSSessionManager = {
         }
         
         if (this.highlighter) this.highlighter.clear();
+        TTSMarkerManager.remove();
     },
 
     refresh(autoPlay = false) {
@@ -64,6 +66,7 @@ export const TTSSessionManager = {
         }
         
         TTSStateStore.resetPlaylist(items);
+        TTSMarkerManager.inject(items); // [NEW] Inject markers based on new playlist
         
         if (items.length > 0) {
             if (autoPlay) {

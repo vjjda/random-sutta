@@ -61,34 +61,19 @@ export const TTSUIActions = {
 
         // --- GLOBAL INTERACTIONS ---
         
-        // Segment Trigger: Chỉ hoạt động khi Session Active
+        // Marker Trigger: Handle clicks on generated markers
         const container = document.getElementById("sutta-container");
         if (container) {
-            let segmentLastTap = 0;
-            
             container.addEventListener("click", (e) => {
-                const segment = e.target.closest(".segment");
-                
-                if (segment) {
-                    if (!orchestrator.isSessionActive()) {
-                        return;
+                // [NEW] Marker Click Strategy
+                const marker = e.target.closest(".tts-marker");
+                if (marker) {
+                    e.stopPropagation(); // Prevent bubbling
+                    const id = marker.getAttribute("data-tts-id");
+                    if (id && orchestrator.isSessionActive()) {
+                        orchestrator.jumpToID(id);
                     }
-
-                    const now = Date.now();
-                    const timeDiff = now - segmentLastTap;
-
-                    if (timeDiff < 300 && timeDiff > 50) {
-                        const selection = window.getSelection();
-                        const hasSelection = selection && selection.toString().length > 0;
-
-                        if (!hasSelection) {
-                            orchestrator.jumpToID(segment.id);
-                            if (selection) selection.removeAllRanges();
-                        }
-                        segmentLastTap = 0;
-                        return;
-                    }
-                    segmentLastTap = now;
+                    return;
                 }
             });
         }
