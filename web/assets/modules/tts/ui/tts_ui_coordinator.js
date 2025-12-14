@@ -43,6 +43,7 @@ export const TTSUICoordinator = {
     updateStatus(text) { TTSUIRenderer.updateStatus(text); },
     updateAutoNextState(isChecked) { TTSUIRenderer.updateAutoNextState(isChecked); },
     updatePlaybackModeState(isParagraph) { TTSUIRenderer.updatePlaybackModeState(isParagraph); },
+    updateEngineState(engineId, apiKey) { TTSUIRenderer.updateEngineState(engineId, apiKey); },
     togglePlayer(show) { TTSUIRenderer.togglePlayer(show); }, 
     closeSettings() { TTSUIRenderer.closeSettings(); } 
 };

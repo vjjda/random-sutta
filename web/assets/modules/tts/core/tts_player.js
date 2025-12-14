@@ -87,6 +87,14 @@ export const TTSPlayer = {
 
         // Đảm bảo highlight đúng câu đang đọc
         this.highlighter.activate(TTSStateStore.currentIndex);
+        
+        // [NEW] Prefetch next item if engine supports it
+        if (this.engine.prefetch && TTSStateStore.hasNext()) {
+            const nextItem = TTSStateStore.playlist[TTSStateStore.currentIndex + 1];
+            if (nextItem) {
+                this.engine.prefetch(nextItem.text);
+            }
+        }
 
         this.engine.speak(item.text, () => {
             // Callback khi đọc xong 1 câu

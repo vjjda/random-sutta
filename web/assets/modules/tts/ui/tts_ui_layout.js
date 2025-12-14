@@ -24,6 +24,19 @@ export const TTSUILayout = {
                 
                 <div id="tts-settings-panel" class="hidden">
                     <div class="tts-setting-row">
+                        <label>Provider</label>
+                        <select id="tts-engine-select">
+                            <option value="wsa">Browser Default</option>
+                            <option value="gcloud">Google Cloud (High Quality)</option>
+                        </select>
+                    </div>
+
+                    <div class="tts-setting-row hidden" id="tts-apikey-row">
+                        <label>API Key</label>
+                        <input type="password" id="tts-apikey-input" placeholder="Enter GCloud API Key" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    </div>
+
+                    <div class="tts-setting-row">
                         <label>Speed: <span id="tts-rate-val">1.0</span>x</label>
                         <input type="range" id="tts-rate-range" min="0.5" max="2.0" step="0.1" value="1.0">
                     </div>

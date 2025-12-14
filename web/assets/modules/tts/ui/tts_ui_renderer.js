@@ -20,6 +20,9 @@ export const TTSUIRenderer = {
             voiceSelect: document.getElementById("tts-voice-select"),
             autoNextCheckbox: document.getElementById("tts-auto-next"),
             modeCheckbox: document.getElementById("tts-mode-toggle"),
+            engineSelect: document.getElementById("tts-engine-select"),
+            apiKeyRow: document.getElementById("tts-apikey-row"),
+            apiKeyInput: document.getElementById("tts-apikey-input"),
         };
         return this.elements;
     },
@@ -64,6 +67,22 @@ export const TTSUIRenderer = {
     updatePlaybackModeState(isParagraph) {
         if (this.elements.modeCheckbox) {
             this.elements.modeCheckbox.checked = isParagraph;
+        }
+    },
+
+    updateEngineState(engineId, apiKey) {
+        if (this.elements.engineSelect) {
+            this.elements.engineSelect.value = engineId;
+        }
+        if (this.elements.apiKeyRow) {
+            if (engineId === 'gcloud') {
+                this.elements.apiKeyRow.classList.remove('hidden');
+            } else {
+                this.elements.apiKeyRow.classList.add('hidden');
+            }
+        }
+        if (this.elements.apiKeyInput && apiKey) {
+            this.elements.apiKeyInput.value = apiKey;
         }
     },
 

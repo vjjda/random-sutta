@@ -51,6 +51,19 @@ export const TTSUIActions = {
             orchestrator.setPlaybackMode(mode);
         });
 
+        // Engine Switching
+        els.engineSelect?.addEventListener("change", (e) => {
+            const engineId = e.target.value;
+            orchestrator.switchEngine(engineId);
+            // Update UI visibility for API Key
+            renderer.updateEngineState(engineId, null);
+        });
+
+        // API Key Input
+        els.apiKeyInput?.addEventListener("change", (e) => {
+            orchestrator.setGCloudApiKey(e.target.value);
+        });
+
         // Click outside to close settings
         document.addEventListener("click", (e) => {
             if (els.settingsPanel && !els.settingsPanel.classList.contains("hidden") && 

@@ -1,23 +1,36 @@
 // Path: web/assets/modules/tts/core/tts_orchestrator.js
 import { TTSWebSpeechEngine } from '../engines/tts_web_speech_engine.js';
+import { TTSGoogleCloudEngine } from '../engines/tts_gcloud_engine.js'; // [NEW]
 import { TTSStateStore } from './tts_state_store.js';
-import { TTSPlayer } from './tts_player.js';           // [NEW]
-import { TTSHighlighter } from './tts_highlighter.js'; // [NEW]
+import { TTSPlayer } from './tts_player.js';
+import { TTSHighlighter } from './tts_highlighter.js';
 import { TTSSessionManager } from './tts_session_manager.js';
 import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("TTS_Orchestrator");
 
 export const TTSOrchestrator = {
-    engine: null,
+    engine: null, // Current active engine
+    engines: {},  // Map of available engines
     ui: null, 
     onAutoNextRequest: null,
 
     init() {
-        this.engine = new TTSWebSpeechEngine();
         TTSStateStore.init();
+
+        // 1. Init Engines
+        this.engines = {
+            'wsa': new TTSWebSpeechEngine(),
+            'gcloud': new TTSGoogleCloudEngine()
+        };
+
+        // 2. Select Engine based on stored state
+        const savedEngine = TTSStateStore.activeEngine;
+        this.engine = this.engines[savedEngine] || this.engines['wsa'];
         
-        // 1. Init Modules
+        logger.info("Init", `Active Engine: ${savedEngine || 'wsa'}`);
+        
+        // 3. Init Modules
         // Highlighter cần UI (sẽ set sau khi UI init)
         
         // Player cần Engine, Highlighter, UI
@@ -44,6 +57,47 @@ export const TTSOrchestrator = {
         if (this.ui) {
             this.ui.updateAutoNextState(TTSStateStore.autoNextEnabled);
             this.ui.updatePlaybackModeState(TTSStateStore.playbackMode === 'paragraph');
+            
+            // Sync Engine UI
+            const apiKey = this.engines['gcloud'] ? this.engines['gcloud'].apiKey : "";
+            this.ui.updateEngineState(TTSStateStore.activeEngine, apiKey);
+        }
+    },
+
+    // --- Engine Management ---
+
+    switchEngine(engineId) {
+        if (!this.engines[engineId]) {
+            logger.warn("SwitchEngine", `Unknown engine: ${engineId}`);
+            return;
+        }
+
+        if (TTSStateStore.activeEngine === engineId) return;
+
+        logger.info("SwitchEngine", `Switching to ${engineId}...`);
+
+        // 1. Stop current playback
+        this.stop();
+
+        // 2. Switch
+        this.engine = this.engines[engineId];
+        TTSStateStore.setActiveEngine(engineId);
+
+        // 3. Re-bind Player
+        TTSPlayer.init(this.engine, TTSHighlighter, this.ui);
+        
+        // 4. Update UI Voices List (Different engines have different voices)
+        if (this.ui && this.engine.onVoicesChanged) {
+            // Trigger manual update
+            this.ui.populateVoices(this.engine.getVoices(), this.engine.voice);
+        } else if (this.ui) {
+             this.ui.populateVoices(this.engine.getVoices(), this.engine.voice);
+        }
+    },
+
+    setGCloudApiKey(key) {
+        if (this.engines['gcloud']) {
+            this.engines['gcloud'].setApiKey(key);
         }
     },
 

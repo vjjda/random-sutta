@@ -11,6 +11,7 @@ export const TTSStateStore = {
     // Settings
     autoNextEnabled: true,
     playbackMode: 'segment', // 'segment' | 'paragraph'
+    activeEngine: 'wsa', // 'wsa' | 'gcloud'
 
     init() {
         this._loadSettings();
@@ -26,6 +27,11 @@ export const TTSStateStore = {
         if (savedMode) {
             this.playbackMode = savedMode;
         }
+
+        const savedEngine = localStorage.getItem("tts_active_engine");
+        if (savedEngine) {
+            this.activeEngine = savedEngine;
+        }
     },
 
     setAutoNext(enabled) {
@@ -36,6 +42,11 @@ export const TTSStateStore = {
     setPlaybackMode(mode) {
         this.playbackMode = mode;
         localStorage.setItem("tts_playback_mode", mode);
+    },
+
+    setActiveEngine(engineId) {
+        this.activeEngine = engineId;
+        localStorage.setItem("tts_active_engine", engineId);
     },
 
     // [NEW] Session Management
