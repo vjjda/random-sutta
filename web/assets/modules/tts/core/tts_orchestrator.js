@@ -4,7 +4,8 @@ import { TTSPlayer } from './tts_player.js';
 import { TTSHighlighter } from './tts_highlighter.js';
 import { TTSSessionManager } from './tts_session_manager.js';
 import { TTSMarkerManager } from './tts_marker_manager.js';
-import { getLogger } from '../utils/logger.js';
+// [FIXED] Lùi 2 cấp (core -> tts -> modules) để tìm thấy utils
+import { getLogger } from '../../utils/logger.js'; 
 
 // Sub-modules
 import { TTSEngineRegistry } from './orchestrator/engine_registry.js';
