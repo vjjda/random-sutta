@@ -6,11 +6,13 @@ WEB_DIR = PROJECT_ROOT / "web"
 
 BUILD_ROOT = PROJECT_ROOT / "build"
 
-# [REFACTORED] Đổi tên thư mục build rõ nghĩa hơn
-# 1. Server Build: Bản Web chuẩn, dùng ESM, Service Worker, cần HTTP Server (GitHub Pages, Nginx...)
-BUILD_SERVER_DIR = BUILD_ROOT / "server"
+# [REFACTORED] Đổi tên Server -> PWA
+# 1. PWA Build: Bản Web chuẩn (Progressive Web App), cần HTTP Server
+# Trước đây là BUILD_ONLINE_DIR hoặc BUILD_SERVER_DIR
+BUILD_PWA_DIR = BUILD_ROOT / "pwa"
 
-# 2. Serverless Build: Bản Bundle, dùng IIFE, chạy trực tiếp file:// (USB, Local Storage)
+# 2. Serverless Build: Bản Bundle, chạy trực tiếp file://
+# Trước đây là BUILD_OFFLINE_DIR
 BUILD_SERVERLESS_DIR = BUILD_ROOT / "serverless"
 
 RELEASE_DIR = PROJECT_ROOT / "release"
