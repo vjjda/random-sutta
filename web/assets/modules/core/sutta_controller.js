@@ -13,11 +13,12 @@ const logger = getLogger("SuttaController");
 const PopupAPI = initPopupSystem();
 
 export const SuttaController = {
-  // ... (Giữ nguyên các phần trên loadSutta) ...
+  // ... (Phần đầu giữ nguyên) ...
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
 
+    // ... (Giữ nguyên logic Router update) ...
     if (shouldUpdateUrl) {
         try {
             const currentState = window.history.state || {};
@@ -31,7 +32,7 @@ export const SuttaController = {
 
     PopupAPI.hideAll();
     
-    // ... (TTS logic giữ nguyên) ...
+    // ... (Giữ nguyên logic TTS stop) ...
     const wasTTSActive = TTSOrchestrator.isSessionActive();
     const wasPlaying = TTSOrchestrator.isPlaying();
     TTSOrchestrator.stop();
@@ -39,6 +40,7 @@ export const SuttaController = {
         TTSOrchestrator.endSession();
     }
 
+    // Parse Input
     let suttaId;
     let scrollTarget = null;
     if (typeof input === 'object') {
@@ -102,10 +104,16 @@ export const SuttaController = {
     if (isTransition) {
         await Scroller.transitionTo(performRender, scrollTarget);
     } else {
+        // [INSTANT JUMP LOGIC]
         await performRender();
+        
         if (scrollTarget) {
-            // [FIXED] Dùng 'instant' để nhảy ngay lập tức, bỏ qua hiệu ứng cuộn
-            setTimeout(() => Scroller.scrollToId(scrollTarget, 'instant'), 0);
+            // setTimeout 0 để đẩy xuống cuối stack sự kiện, đảm bảo DOM đã paint
+            setTimeout(() => {
+                Scroller.scrollToId(scrollTarget, 'instant');
+                // [FIXED] Kích hoạt highlight sau khi jump
+                Scroller.highlightElement(scrollTarget);
+            }, 0);
         } else if (scrollY > 0) {
             Scroller.restoreScrollTop(scrollY);
         } else {
@@ -114,6 +122,7 @@ export const SuttaController = {
     }
   },
 
+  // ... (Phần cuối giữ nguyên) ...
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     PopupAPI.hideAll();
     logger.timer('Random Process Total');

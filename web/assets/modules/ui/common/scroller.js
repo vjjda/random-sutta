@@ -3,12 +3,14 @@ import { getLogger } from 'utils/logger.js';
 import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("Scroller");
-const SCROLL_OFFSET = 0;
+
+// Offset context khi jump đến
+const SCROLL_OFFSET_CTX = 60; 
 
 function getTargetPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
     const rectTop = element.getBoundingClientRect().top;
-    return currentScrollY + rectTop - SCROLL_OFFSET;
+    return currentScrollY + rectTop - SCROLL_OFFSET_CTX;
 }
 
 function getReadingPosition(element) {
@@ -43,7 +45,6 @@ export const Scroller = {
         }, 0);
     },
 
-    // [UPDATED] Thêm tham số behavior (mặc định 'smooth')
     scrollToId: function(targetId, behavior = 'smooth') {
         if (!targetId) {
             this.restoreScrollTop(0);
@@ -57,7 +58,29 @@ export const Scroller = {
         this._findAndScroll(targetId, getReadingPosition, behavior);
     },
 
-    // [UPDATED] Nhận tham số behavior và truyền vào window.scrollTo
+    // [NEW] Hàm chuyên dụng để Highlight phần tử sau khi jump
+    highlightElement: function(targetId) {
+        // 1. Xóa highlight cũ
+        document.querySelectorAll('.highlight, .highlight-container').forEach(el => {
+            el.classList.remove('highlight', 'highlight-container');
+        });
+
+        if (!targetId) return;
+
+        // 2. Tìm và highlight mới
+        const el = document.getElementById(targetId);
+        if (el) {
+            // Nếu là segment (câu) -> highlight nền vàng
+            if (el.classList.contains('segment')) {
+                el.classList.add('highlight');
+            } 
+            // Nếu là heading/block -> highlight đường viền trái
+            else {
+                el.classList.add('highlight-container');
+            }
+        }
+    },
+
     _findAndScroll(targetId, positionCalculator, behavior) {
         let retries = 0;
         const maxRetries = 60;
@@ -66,7 +89,20 @@ export const Scroller = {
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = positionCalculator(element);
+                
+                // [FIXED] Force Instant: Tắt CSS smooth scroll tạm thời nếu cần instant
+                if (behavior === 'instant') {
+                    document.documentElement.style.scrollBehavior = 'auto';
+                }
+
                 window.scrollTo({ top: targetY, behavior: behavior });
+
+                // Restore CSS behavior
+                if (behavior === 'instant') {
+                    setTimeout(() => {
+                        document.documentElement.style.scrollBehavior = '';
+                    }, 50);
+                }
             } else {
                 retries++;
                 if (retries < maxRetries) {
@@ -77,7 +113,6 @@ export const Scroller = {
         requestAnimationFrame(attemptFind);
     },
 
-    // Legacy wrappers
     animateScrollTo: function(targetId) {
         this.scrollToId(targetId, 'smooth');
     },
@@ -87,6 +122,8 @@ export const Scroller = {
         await new Promise(r => requestAnimationFrame(r));
         if (targetId) {
             this.scrollToId(targetId, 'smooth');
+            // [NEW] Highlight khi transition xong (cho trường hợp click link nội bộ)
+            this.highlightElement(targetId); 
         } else {
             this.restoreScrollTop(0);
         }
