@@ -3,11 +3,11 @@
 /* --- 1. MAGIC TTS CORNER (Fixed for iOS) --- */
 #magic-tts-trigger {
   position: fixed;
-  /* Dùng biến môi trường để đẩy lên khỏi thanh Home ảo */
+  /* DÃ¹ng biáº¿n mÃ´i trÆ°á»ng Ä‘á»ƒ Ä‘áº©y lÃªn khá»i thanh Home áº£o */
   bottom: calc(5px + env(safe-area-inset-bottom));
   right: 15px; 
   
-  /* Tăng kích thước vùng bấm nhưng vẫn vô hình */
+  /* TÄƒng kÃ­ch thÆ°á»›c vÃ¹ng báº¥m nhÆ°ng váº«n vÃ´ hÃ¬nh */
   width: 50px; 
   height: 50px;
   
@@ -22,16 +22,16 @@
 /* --- 2. GLOBAL PLAYER --- */
 #tts-player {
   position: fixed;
-  /* Đẩy lên cao hơn trigger một chút */
+  /* Äáº©y lÃªn cao hÆ¡n trigger má»™t chÃºt */
   bottom: calc(15px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%) translateY(150px);
   width: 94%;
   max-width: 420px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 16px; /* Bo góc hiện đại hơn */
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* Bóng đổ đậm hơn */
+  background-color: var(--bg-body);
+  border: 0.5 solid var(--border-light);
+  border-radius: 16px; /* Bo gÃ³c hiá»‡n Ä‘áº¡i hÆ¡n */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* BÃ³ng Ä‘á»• Ä‘áº­m hÆ¡n */
   padding: 8px 12px;
   display: flex;
   align-items: center;
@@ -40,7 +40,7 @@
   z-index: 1095;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
   opacity: 0;
-  pointer-events: none; /* Tránh chặn click khi ẩn */
+  pointer-events: none; /* TrÃ¡nh cháº·n click khi áº©n */
 }
 
 #tts-player.active {
@@ -91,8 +91,8 @@
 }
 
 .tts-btn-main {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   background-color: var(--primary-color);
   color: white;
   border-radius: 50%;
@@ -106,18 +106,18 @@
 }
 
 .tts-info {
-  flex: 1;
+  flex: 0.5;
   text-align: center;
   font-family: monospace;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* background: var(--bg-hover); */
+  background: transparent;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 10px;
   transition: color 0.3s;
 }
 
@@ -191,14 +191,11 @@
   background: var(--border-light);
   border-radius: 3px;
   -webkit-appearance: none;
-  appearance: none; /* [FIX] Standard property compatibility */
   transition: opacity 0.3s;
 }
-
 #tts-rate-range::-webkit-slider-thumb,
 #tts-pitch-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  appearance: none; /* [FIX] Standard property compatibility */
   width: 18px;
   height: 18px;
   background: var(--primary-color);
@@ -292,7 +289,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--border-light); /* Màu khi tắt */
+  background-color: var(--border-light); /* MÃ u khi táº¯t */
   transition: .4s;
   border-radius: 34px;
 }
@@ -311,7 +308,7 @@
 }
 
 input:checked + .tts-slider {
-  background-color: var(--primary-color); /* Màu khi bật */
+  background-color: var(--primary-color); /* MÃ u khi báº­t */
 }
 
 input:checked + .tts-slider:before {
