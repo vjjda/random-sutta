@@ -10,14 +10,29 @@ import { getLogger } from '../../utils/logger.js';
 
 const logger = getLogger("TTS_Orchestrator");
 
+// Debounce helper
+const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            func.apply(null, args);
+        }, delay);
+    };
+};
+
 export const TTSOrchestrator = {
     engine: null, // Current active engine
     engines: {},  // Map of available engines
     ui: null, 
     onAutoNextRequest: null,
+    _debouncedRefresh: null,
 
     init() {
         TTSStateStore.init();
+
+        // Create a debounced version of the status refresh function
+        this._debouncedRefresh = debounce(() => this.refreshOfflineVoicesStatus(), 1500);
 
         // 1. Init Engines
         this.engines = {
@@ -33,7 +48,8 @@ export const TTSOrchestrator = {
         if (this.engines['gcloud']) {
             this.engines['gcloud'].onAudioCached = (text) => {
                  TTSMarkerManager.markAsCached(text);
-                 // Future logic can go here if needed
+                 // Trigger a debounced refresh to update the UI in near real-time
+                 this._debouncedRefresh();
             };
             // [NEW] Bind Voices Changed Event
             this.engines['gcloud'].onVoicesChanged = (voices, currentVoice) => {
