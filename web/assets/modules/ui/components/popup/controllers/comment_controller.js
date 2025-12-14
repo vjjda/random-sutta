@@ -28,6 +28,14 @@ export const CommentController = {
         const index = PopupState.getComments().findIndex(c => c.text === text);
         if (index !== -1) {
             this.activate(index);
+            
+            // [FIXED] Highlight segment when marker is clicked directly
+            const item = comments[index];
+            if (item && item.id) {
+                // No need to jump (user is already there), just highlight
+                Scroller.highlightElement(item.id);
+            }
+
             QuicklookUI.hide();
         }
     },
@@ -53,11 +61,11 @@ export const CommentController = {
         if (nextIdx >= 0 && nextIdx < comments.length) {
             this.activate(nextIdx);
             
-            // [FIXED] Instant Jump & Highlight Sync
+            // [FIXED] Instant Jump & Highlight Sync for Navigation
             const item = comments[nextIdx];
             if (item && item.id) {
                 Scroller.jumpTo(item.id);
-                Scroller.highlightElement(item.id); // <--- Thêm dòng này
+                Scroller.highlightElement(item.id);
             }
             
             QuicklookUI.hide();
