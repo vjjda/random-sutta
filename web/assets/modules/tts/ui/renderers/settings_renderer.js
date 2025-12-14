@@ -28,8 +28,15 @@ export const TTSSettingsRenderer = {
     },
 
     updateToggles(elements, autoNext, paragraphMode) {
-        if (elements.autoNextCheckbox) elements.autoNextCheckbox.checked = autoNext;
-        if (elements.modeCheckbox) elements.modeCheckbox.checked = paragraphMode;
+        // [FIX] Chỉ update nếu giá trị khác null/undefined
+        // Tránh việc update cái này lại làm reset cái kia về false
+        if (elements.autoNextCheckbox && autoNext !== null && autoNext !== undefined) {
+            elements.autoNextCheckbox.checked = autoNext;
+        }
+        
+        if (elements.modeCheckbox && paragraphMode !== null && paragraphMode !== undefined) {
+            elements.modeCheckbox.checked = paragraphMode;
+        }
     },
 
     togglePanel(elements, forceState) {
