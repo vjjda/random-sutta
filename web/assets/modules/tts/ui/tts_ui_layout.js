@@ -12,7 +12,7 @@ export const TTSUILayout = {
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
                 </button>
                 <button id="tts-play" class="tts-btn tts-btn-main">
-                    <svg class="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                     <svg class="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                     <svg class="icon-pause hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                 </button>
                 <div class="tts-info" id="tts-info-text">Ready</div>
@@ -20,7 +20,7 @@ export const TTSUILayout = {
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
                 </button>
                 <button id="tts-close" class="tts-btn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
                 
                 <div id="tts-settings-panel" class="hidden">
@@ -59,7 +59,7 @@ export const TTSUILayout = {
                     <div class="tts-toggle-wrapper">
                         <label for="tts-auto-next" class="tts-toggle-label">Auto-play Next</label>
                         <label class="tts-switch">
-                            <input type="checkbox" id="tts-auto-next">
+                            <input type="checkbox" id="tts-auto-next" checked>
                             <span class="tts-slider"></span>
                         </label>
                     </div>
@@ -67,7 +67,7 @@ export const TTSUILayout = {
                     <div class="tts-toggle-wrapper">
                         <label for="tts-mode-toggle" class="tts-toggle-label">Paragraph Mode</label>
                         <label class="tts-switch">
-                            <input type="checkbox" id="tts-mode-toggle">
+                             <input type="checkbox" id="tts-mode-toggle">
                             <span class="tts-slider"></span>
                         </label>
                     </div>

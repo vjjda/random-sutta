@@ -9,7 +9,7 @@ export const TTSStateStore = {
     isSessionActive: false,
     
     // Settings
-    autoNextEnabled: true,
+    autoNextEnabled: true, // [DEFAULT: ON]
     playbackMode: 'paragraph', // 'segment' | 'paragraph'
     activeEngine: 'wsa', // 'wsa' | 'gcloud'
 
