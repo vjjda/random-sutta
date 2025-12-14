@@ -13,31 +13,6 @@ export class TTSGoogleCloudEngine {
         this.cache = new TTSAudioCache();
         this.player = new TTSCloudAudioPlayer();
         
-        // No-Pitch Voices Registry (Persisted)
-        this.knownNoPitchVoices = new Set();
-        try {
-            const saved = JSON.parse(localStorage.getItem("tts_gcloud_no_pitch") || "[]");
-            if (Array.isArray(saved)) saved.forEach(v => this.knownNoPitchVoices.add(v));
-        } catch(e) { /* ignore */ }
-
-        // Fetcher Callback for Pitch Failures
-        this.fetcher.onPitchRetry = (voiceURI) => {
-            if (!this.knownNoPitchVoices.has(voiceURI)) {
-                logger.info("Engine", `Marking voice '${voiceURI}' as pitch-unsupported.`);
-                this.knownNoPitchVoices.add(voiceURI);
-                localStorage.setItem("tts_gcloud_no_pitch", JSON.stringify([...this.knownNoPitchVoices]));
-                
-                // If it's the current voice, reset pitch and update UI
-                if (this.voice && this.voice.voiceURI === voiceURI) {
-                     this.pitch = 0.0;
-                     localStorage.setItem("tts_gcloud_pitch", 0.0);
-                     if (this.onVoicesChanged) {
-                         this.onVoicesChanged(this.availableVoices, this.voice);
-                     }
-                }
-            }
-        };
-        
         // Default Config
         this.voice = AppConfig.TTS?.DEFAULT_VOICE || { 
             voiceURI: "en-US-Neural2-D", 
@@ -45,7 +20,6 @@ export class TTSGoogleCloudEngine {
             lang: "en-US" 
         };
         this.rate = 1.0;
-        this.pitch = 0.0;
         this.apiKey = localStorage.getItem("tts_gcloud_key") || "";
         
         this.fetcher.setApiKey(this.apiKey);
@@ -179,11 +153,6 @@ export class TTSGoogleCloudEngine {
             this.player.setRate(this.rate);
         }
     }
-
-    setPitch(pitch) {
-        this.pitch = parseFloat(pitch);
-        localStorage.setItem("tts_gcloud_pitch", this.pitch);
-    }
     
     _loadSettings() {
          const savedVoice = localStorage.getItem("tts_gcloud_voice");
@@ -191,20 +160,6 @@ export class TTSGoogleCloudEngine {
          
          const savedRate = localStorage.getItem("tts_gcloud_rate");
          if (savedRate) this.rate = parseFloat(savedRate);
-
-         const savedPitch = localStorage.getItem("tts_gcloud_pitch");
-         if (savedPitch) this.pitch = parseFloat(savedPitch);
-    }
-
-    /**
-     * Check if the current voice supports pitch adjustment.
-     * Heuristic: 'Journey' voices typically do not support pitch.
-     * Also checks runtime discovery of unsupported voices.
-     */
-    supportsPitch() {
-        if (!this.voice || !this.voice.voiceURI) return true;
-        if (this.knownNoPitchVoices.has(this.voice.voiceURI)) return false;
-        return !this.voice.voiceURI.toLowerCase().includes("journey");
     }
 
     /**
@@ -222,8 +177,8 @@ export class TTSGoogleCloudEngine {
             return;
         }
 
-        // 2. Generate Key for Cache (Always use rate 1.0)
-        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, this.pitch);
+        // 2. Generate Key for Cache (Always use rate 1.0, pitch 0.0)
+        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, 0.0);
 
         try {
             // 3. Check Cache
@@ -233,9 +188,9 @@ export class TTSGoogleCloudEngine {
             if (reqId !== this.currentReqId) return;
 
             if (!blob) {
-                // 4. Fetch from Cloud (Always fetch at rate 1.0)
+                // 4. Fetch from Cloud (Always fetch at rate 1.0, pitch 0.0)
                 logger.info("Speak", "Fetching from Cloud...");
-                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, this.pitch);
+                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, 0.0);
                 
                 // Check Race Condition 2: If request changed while fetching (slow, likely)
                 if (reqId !== this.currentReqId) {
@@ -266,8 +221,8 @@ export class TTSGoogleCloudEngine {
      * Check if text is cached (for Smart Markers)
      */
     async isCached(text) {
-        // Check for rate 1.0 version
-        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, this.pitch);
+        // Check for rate 1.0, pitch 0.0 version
+        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, 0.0);
         const blob = await this.cache.get(key);
         return !!blob;
     }
@@ -278,14 +233,14 @@ export class TTSGoogleCloudEngine {
     async prefetch(text) {
         if (!text || !this.apiKey) return;
         
-        // Prefetch rate 1.0 version
-        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, this.pitch);
+        // Prefetch rate 1.0, pitch 0.0 version
+        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, 0.0);
         const cached = await this.cache.get(key);
         
         if (!cached) {
             logger.debug("Prefetch", `Downloading: "${text.substring(0, 20)}..."`);
             try {
-                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, this.pitch);
+                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, 0.0);
                 await this.cache.put(key, blob);
                 if (this.onAudioCached) this.onAudioCached(text);
             } catch (e) {
@@ -305,7 +260,7 @@ export class TTSGoogleCloudEngine {
         // Use Promise.all with short-circuit
         // But for many items, we want to fail fast.
         for (const text of textList) {
-            const key = this.cache.generateKey(text, voiceURI, this.rate, this.pitch);
+            const key = this.cache.generateKey(text, voiceURI, 1.0, 0.0);
             const blob = await this.cache.get(key);
             if (!blob) return false;
         }
