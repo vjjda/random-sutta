@@ -39,6 +39,7 @@ export const TTSOrchestrator = {
             this.engines['gcloud'].onVoicesChanged = (voices, currentVoice) => {
                 if (this.ui) {
                     this.ui.populateVoices(voices, currentVoice);
+                    this.refreshOfflineVoicesStatus(); // Re-apply styles
                 }
             };
         }
@@ -121,6 +122,7 @@ export const TTSOrchestrator = {
         // 5. Update Markers (Cache status might change)
         if (this.isSessionActive()) {
             TTSMarkerManager.checkCacheStatus(this.engine);
+            this.refreshOfflineVoicesStatus(); // Re-apply styles
         }
     },
 
