@@ -319,3 +319,9 @@ input:checked + .tts-slider:before {
 input:focus + .tts-slider {
   box-shadow: 0 0 1px var(--primary-color);
 }
+
+body.popup-open #magic-tts-trigger {
+  opacity: 0;
+  pointer-events: none; /* Đảm bảo không bấm nhầm vào vùng tàng hình */
+  transform: scale(0.8); /* Thu nhỏ nhẹ tạo hiệu ứng biến mất */
+}
