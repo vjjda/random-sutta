@@ -18,20 +18,64 @@ export class TTSGoogleCloudEngine {
         this.apiKey = localStorage.getItem("tts_gcloud_key") || "";
         
         this.fetcher.setApiKey(this.apiKey);
+        this.availableVoices = []; // [NEW] Dynamic list
+        this._loadSettings();
         
+        // Try loading cached voices first
+        const cachedVoices = localStorage.getItem("tts_gcloud_voices_list");
+        if (cachedVoices) {
+            try {
+                this.availableVoices = JSON.parse(cachedVoices);
+            } catch(e) { /* ignore */ }
+        }
+
         // Callbacks
-        this.onVoicesChanged = null; // GCloud voices are static/config based, but we can simulate
+        this.onVoicesChanged = null; 
     }
 
     setApiKey(key) {
         this.apiKey = key;
         this.fetcher.setApiKey(key);
         localStorage.setItem("tts_gcloud_key", key);
+        
+        // Auto fetch voices if key is present
+        if (key) {
+            this.refreshVoices();
+        }
+    }
+    
+    async refreshVoices() {
+        if (!this.apiKey) return;
+        try {
+            const rawVoices = await this.fetcher.fetchVoices();
+            // Filter and Map
+            this.availableVoices = rawVoices
+                .filter(v => v.languageCodes.includes("en-US") || v.languageCodes.includes("en-GB"))
+                .map(v => ({
+                    name: `${v.name} (${v.ssmlGender})`,
+                    voiceURI: v.name,
+                    lang: v.languageCodes[0]
+                }));
+            
+            // Sort by name
+            this.availableVoices.sort((a, b) => a.name.localeCompare(b.name));
+
+            localStorage.setItem("tts_gcloud_voices_list", JSON.stringify(this.availableVoices));
+            
+            if (this.onVoicesChanged) {
+                this.onVoicesChanged(this.availableVoices);
+            }
+            logger.info("Voices", `Loaded ${this.availableVoices.length} voices from GCloud.`);
+        } catch (e) {
+            logger.warn("Voices", "Failed to refresh voices", e);
+        }
     }
 
     getVoices() {
-        // Return a static list of popular Google Neural voices for user selection
-        // In a full implementation, we could fetch this list from API.
+        if (this.availableVoices.length > 0) {
+            return this.availableVoices;
+        }
+        // Fallback static list
         return [
             { name: "Google US Neural2-A (Male)", voiceURI: "en-US-Neural2-A", lang: "en-US" },
             { name: "Google US Neural2-C (Female)", voiceURI: "en-US-Neural2-C", lang: "en-US" },

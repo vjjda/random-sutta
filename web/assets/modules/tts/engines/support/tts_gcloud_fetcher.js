@@ -83,4 +83,28 @@ export class TTSGoogleCloudFetcher {
         const byteArray = new Uint8Array(byteNumbers);
         return new Blob([byteArray], { type: mimeType });
     }
+
+    /**
+     * Fetches list of available voices from Google Cloud.
+     * @returns {Promise<Array>} List of voices
+     */
+    async fetchVoices() {
+        if (!this.apiKey) {
+            throw new Error("Missing Google Cloud API Key");
+        }
+
+        const url = `https://texttospeech.googleapis.com/v1/voices?key=${this.apiKey}&languageCode=en-US`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error("Failed to fetch voices");
+            }
+            const data = await response.json();
+            return data.voices || [];
+        } catch (e) {
+            logger.error("FetchVoices", "Error", e);
+            throw e;
+        }
+    }
 }
