@@ -1,6 +1,17 @@
 // Path: web/assets/modules/tts/ui/tts_ui_actions.js
 import { AppConfig } from '../../core/app_config.js';
 
+// Simple debounce helper
+const debounce = (func, delay) => {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            func.apply(null, args);
+        }, delay);
+    };
+};
+
 export const TTSUIActions = {
     bind(orchestrator, renderer) {
         const els = renderer.elements;
@@ -34,16 +45,19 @@ export const TTSUIActions = {
         });
 
         // Settings Inputs
+        const debouncedSetRate = debounce((val) => orchestrator.engine.setRate(val), 300);
+        const debouncedSetPitch = debounce((val) => orchestrator.engine.setPitch(val), 300);
+
         els.rateRange?.addEventListener("input", (e) => {
             const val = e.target.value;
             if (renderer.elements.rateVal) renderer.elements.rateVal.textContent = val;
-            orchestrator.engine.setRate(val);
+            debouncedSetRate(val);
         });
 
         els.pitchRange?.addEventListener("input", (e) => {
             const val = e.target.value;
             if (renderer.elements.pitchVal) renderer.elements.pitchVal.textContent = val;
-            orchestrator.engine.setPitch(val);
+            debouncedSetPitch(val);
         });
 
         els.voiceSelect?.addEventListener("change", (e) => {

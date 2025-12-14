@@ -1,5 +1,6 @@
 // Path: web/assets/modules/tts/core/tts_player.js
 import { TTSStateStore } from './tts_state_store.js';
+import { AppConfig } from '../../core/app_config.js'; // [NEW] Import
 
 export const TTSPlayer = {
     engine: null,
@@ -88,11 +89,15 @@ export const TTSPlayer = {
         // Đảm bảo highlight đúng câu đang đọc
         this.highlighter.activate(TTSStateStore.currentIndex);
         
-        // [NEW] Prefetch next item if engine supports it
-        if (this.engine.prefetch && TTSStateStore.hasNext()) {
-            const nextItem = TTSStateStore.playlist[TTSStateStore.currentIndex + 1];
-            if (nextItem) {
-                this.engine.prefetch(nextItem.text);
+        // [NEW] Prefetch next items (Buffered)
+        if (this.engine.prefetch) {
+            const bufferCount = AppConfig.TTS?.BUFFER_AHEAD || 1;
+            for (let i = 1; i <= bufferCount; i++) {
+                const nextIdx = TTSStateStore.currentIndex + i;
+                if (nextIdx < TTSStateStore.playlist.length) {
+                    const nextItem = TTSStateStore.playlist[nextIdx];
+                    this.engine.prefetch(nextItem.text);
+                }
             }
         }
 

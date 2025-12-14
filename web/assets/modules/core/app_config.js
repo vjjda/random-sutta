@@ -17,6 +17,16 @@ export const AppConfig = {
 
         // Khoảng trống đệm dưới cùng trang web để Player không che mất dòng cuối
         BOTTOM_PADDING: '300px', 
+        
+        // Cấu hình giọng đọc Google Cloud mặc định
+        DEFAULT_VOICE: {
+            voiceURI: "en-US-Neural2-D",
+            name: "Google US Neural2-D",
+            lang: "en-US"
+        },
+        
+        // Số lượng câu/đoạn tải trước (Prefetch) để đảm bảo mượt mà
+        BUFFER_AHEAD: 2
     },
 
     // Popup Layout Configuration

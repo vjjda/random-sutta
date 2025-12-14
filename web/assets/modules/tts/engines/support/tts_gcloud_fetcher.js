@@ -59,10 +59,18 @@ export class TTSGoogleCloudFetcher {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.error?.message || response.statusText;
+                
+                // [Fix] Fallback for voices that don't support pitch
+                if (errorMessage.includes("does not support pitch") && pitch !== 0.0) {
+                    logger.warn("Fetch", `Voice '${voiceName}' does not support pitch. Retrying with pitch 0.`);
+                    return this.fetchAudio(text, languageCode, voiceName, speakingRate, 0.0);
+                }
+
                 // [Debug] Log payload details on error
                 logger.error("Fetch", `API Error ${response.status}: ${JSON.stringify(errorData)}`);
                 logger.debug("Fetch", `Failed Payload: Rate=${safeRate}, Pitch=${safePitch}, TextLen=${text.length}`);
-                throw new Error(`Google TTS API Error: ${errorData.error?.message || response.statusText}`);
+                throw new Error(`Google TTS API Error: ${errorMessage}`);
             }
 
             const data = await response.json();

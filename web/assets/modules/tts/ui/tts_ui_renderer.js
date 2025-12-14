@@ -20,6 +20,7 @@ export const TTSUIRenderer = {
             pitchRange: document.getElementById("tts-pitch-range"),
             pitchVal: document.getElementById("tts-pitch-val"),
             voiceSelect: document.getElementById("tts-voice-select"),
+            btnRefreshVoices: document.getElementById("tts-refresh-voices"),
             offlineBadge: document.getElementById("tts-voice-offline-badge"),
             autoNextCheckbox: document.getElementById("tts-auto-next"),
             modeCheckbox: document.getElementById("tts-mode-toggle"),

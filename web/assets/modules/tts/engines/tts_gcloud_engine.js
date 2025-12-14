@@ -3,6 +3,7 @@ import { TTSGoogleCloudFetcher } from './support/tts_gcloud_fetcher.js';
 import { TTSAudioCache } from './support/tts_audio_cache.js';
 import { TTSCloudAudioPlayer } from './support/tts_cloud_audio_player.js';
 import { getLogger } from '../../utils/logger.js';
+import { AppConfig } from '../../core/app_config.js'; // [NEW] Import
 
 const logger = getLogger("TTS_GCloudEngine");
 
@@ -13,7 +14,11 @@ export class TTSGoogleCloudEngine {
         this.player = new TTSCloudAudioPlayer();
         
         // Default Config
-        this.voice = { name: "en-US-Neural2-D", lang: "en-US" }; // Default high quality voice
+        this.voice = AppConfig.TTS?.DEFAULT_VOICE || { 
+            voiceURI: "en-US-Neural2-D", 
+            name: "Google US Neural2-D", 
+            lang: "en-US" 
+        };
         this.rate = 1.0;
         this.pitch = 0.0;
         this.apiKey = localStorage.getItem("tts_gcloud_key") || "";
@@ -82,10 +87,14 @@ export class TTSGoogleCloudEngine {
             localStorage.setItem("tts_gcloud_voices_ts", now.toString());
             
             // [Fix] Re-sync current voice object with new list to ensure UI consistency
-            if (this.voice && this.voice.name) {
-                const updatedVoice = this.availableVoices.find(v => v.voiceURI === this.voice.name);
+            if (this.voice && this.voice.voiceURI) {
+                const updatedVoice = this.availableVoices.find(v => v.voiceURI === this.voice.voiceURI);
                 if (updatedVoice) {
-                    this.voice = { name: updatedVoice.voiceURI, lang: updatedVoice.lang };
+                    this.voice = { 
+                        voiceURI: updatedVoice.voiceURI, 
+                        name: updatedVoice.name, 
+                        lang: updatedVoice.lang 
+                    };
                 }
             }
 
@@ -119,12 +128,20 @@ export class TTSGoogleCloudEngine {
         const voices = this.getVoices();
         const found = voices.find(v => v.voiceURI === voiceURI);
         if (found) {
-            this.voice = { name: found.voiceURI, lang: found.lang };
+            // [Fix] Store full voice object or compatible structure
+            this.voice = { 
+                voiceURI: found.voiceURI, 
+                name: found.name, 
+                lang: found.lang 
+            };
             localStorage.setItem("tts_gcloud_voice", voiceURI);
         } else if (voiceURI) {
             // [Fix] Allow setting saved voice even if list not fully loaded yet
-            // Assume it's a valid Google Voice URI
-            this.voice = { name: voiceURI, lang: "en-US" }; // Default lang assumption or extract from ID
+            this.voice = { 
+                voiceURI: voiceURI, 
+                name: voiceURI, // Fallback name
+                lang: "en-US" 
+            };
             localStorage.setItem("tts_gcloud_voice", voiceURI);
         }
     }
