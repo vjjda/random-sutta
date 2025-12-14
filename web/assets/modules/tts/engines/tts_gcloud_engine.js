@@ -13,6 +13,31 @@ export class TTSGoogleCloudEngine {
         this.cache = new TTSAudioCache();
         this.player = new TTSCloudAudioPlayer();
         
+        // No-Pitch Voices Registry (Persisted)
+        this.knownNoPitchVoices = new Set();
+        try {
+            const saved = JSON.parse(localStorage.getItem("tts_gcloud_no_pitch") || "[]");
+            if (Array.isArray(saved)) saved.forEach(v => this.knownNoPitchVoices.add(v));
+        } catch(e) { /* ignore */ }
+
+        // Fetcher Callback for Pitch Failures
+        this.fetcher.onPitchRetry = (voiceURI) => {
+            if (!this.knownNoPitchVoices.has(voiceURI)) {
+                logger.info("Engine", `Marking voice '${voiceURI}' as pitch-unsupported.`);
+                this.knownNoPitchVoices.add(voiceURI);
+                localStorage.setItem("tts_gcloud_no_pitch", JSON.stringify([...this.knownNoPitchVoices]));
+                
+                // If it's the current voice, reset pitch and update UI
+                if (this.voice && this.voice.voiceURI === voiceURI) {
+                     this.pitch = 0.0;
+                     localStorage.setItem("tts_gcloud_pitch", 0.0);
+                     if (this.onVoicesChanged) {
+                         this.onVoicesChanged(this.availableVoices, this.voice);
+                     }
+                }
+            }
+        };
+        
         // Default Config
         this.voice = AppConfig.TTS?.DEFAULT_VOICE || { 
             voiceURI: "en-US-Neural2-D", 
@@ -170,9 +195,11 @@ export class TTSGoogleCloudEngine {
     /**
      * Check if the current voice supports pitch adjustment.
      * Heuristic: 'Journey' voices typically do not support pitch.
+     * Also checks runtime discovery of unsupported voices.
      */
     supportsPitch() {
         if (!this.voice || !this.voice.voiceURI) return true;
+        if (this.knownNoPitchVoices.has(this.voice.voiceURI)) return false;
         return !this.voice.voiceURI.toLowerCase().includes("journey");
     }
 

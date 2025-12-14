@@ -8,6 +8,7 @@ const API_ENDPOINT = "https://texttospeech.googleapis.com/v1/text:synthesize";
 export class TTSGoogleCloudFetcher {
     constructor(apiKey) {
         this.apiKey = apiKey;
+        this.onPitchRetry = null;
     }
 
     setApiKey(key) {
@@ -64,6 +65,7 @@ export class TTSGoogleCloudFetcher {
                 // [Fix] Fallback for voices that don't support pitch
                 if (errorMessage.includes("does not support pitch") && pitch !== 0.0) {
                     logger.warn("Fetch", `Voice '${voiceName}' does not support pitch. Retrying with pitch 0.`);
+                    if (this.onPitchRetry) this.onPitchRetry(voiceName);
                     return this.fetchAudio(text, languageCode, voiceName, speakingRate, 0.0);
                 }
 
