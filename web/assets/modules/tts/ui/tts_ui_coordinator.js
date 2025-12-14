@@ -17,18 +17,7 @@ export const TTSUICoordinator = {
 
         TTSUIActions.bind(this.orchestrator, TTSUIRenderer);
         
-        this.orchestrator.engine.onVoicesChanged = (voices, currentVoice) => {
-            TTSUIRenderer.populateVoices(voices, currentVoice || this.orchestrator.engine.voice);
-        };
-
-        setTimeout(() => {
-             TTSUIRenderer.populateVoices(
-                 this.orchestrator.engine.getVoices(), 
-                 this.orchestrator.engine.voice
-             );
-             TTSUIRenderer.updateRateDisplay(this.orchestrator.engine.rate);
-             TTSUIRenderer.updatePitchDisplay(this.orchestrator.engine.pitch || 0); // WSA might default to 1, GCloud 0
-        }, 500);
+        // Orchestrator handles onVoicesChanged and initial population
     },
 
     // [UPDATED] Set CSS Variable
@@ -48,6 +37,7 @@ export const TTSUICoordinator = {
     populateVoices(voices, currentVoice) { TTSUIRenderer.populateVoices(voices, currentVoice); },
     updateRateDisplay(val) { TTSUIRenderer.updateRateDisplay(val); },
     updatePitchDisplay(val) { TTSUIRenderer.updatePitchDisplay(val); },
+    setPitchEnabled(enabled) { TTSUIRenderer.setPitchEnabled(enabled); },
     updateOfflineStatus(val) { TTSUIRenderer.updateOfflineStatus(val); },
     togglePlayer(show) { TTSUIRenderer.togglePlayer(show); }, 
     closeSettings() { TTSUIRenderer.closeSettings(); } 
