@@ -1,27 +1,31 @@
 // Path: web/assets/modules/tts/ui/tts_ui_renderer.js
 import { AppConfig } from '../../core/app_config.js';
 
-// [NEW] Helper làm đẹp tên hiển thị
+// [UPDATED] Robust Name Formatter
 function formatVoiceName(rawName) {
-    // rawName ex: "en-US-Chirp3-HD-Algenib (MALE)"
-    // 1. Remove Language Prefix
+    // Expected rawName: "en-US-Neural2-D (MALE)" or "en-US-Chirp3-HD-Algenib (MALE)"
+    
+    // 1. Strip language prefix
     let clean = rawName.replace(/^(en-US-|en-GB-)/, '');
     
-    // 2. Format common types
+    // 2. Format Types
     clean = clean.replace('Neural2', 'Neural 2')
                  .replace('Studio', 'Studio')
                  .replace('Wavenet', 'Wavenet')
                  .replace('Polyglot', 'Polyglot')
                  .replace('Standard', 'Standard');
 
-    // 3. Format Chirp specifically
+    // 3. Format Chirp (Handle both Chirp and Chirp3)
     if (clean.includes('Chirp')) {
         clean = clean.replace('Chirp3-HD-', 'Chirp 3 ');
         clean = clean.replace('Chirp-HD-', 'Chirp ');
-    } else {
-        // Remove trailing letter-dash combos like "-A ", "-B " to just " A ", " B "
-        clean = clean.replace(/-([A-Z])\s/, ' $1 ');
-    }
+    } 
+    
+    // 4. Format Letters (e.g. "-D " -> " D ")
+    clean = clean.replace(/-([A-Z])\s/, ' $1 ');
+    
+    // 5. Remove any remaining dashes that look ugly
+    clean = clean.replace(/-/g, ' ');
 
     return clean;
 }
@@ -189,9 +193,10 @@ export const TTSUIRenderer = {
         const otherList = [];
 
         voices.forEach(v => {
+            // [CRITICAL] v.voiceURI must be the raw ID (e.g. en-US-Chirp3-HD-Algenib)
             const recEntry = recommendedMap.get(v.voiceURI);
             
-            // [UPDATED] Use formatVoiceName for a cleaner look in "Others"
+            // Format name for display only
             const prettyName = formatVoiceName(v.name);
 
             if (recEntry) {
@@ -211,7 +216,7 @@ export const TTSUIRenderer = {
 
         const createOption = (v) => {
             const option = document.createElement("option");
-            option.value = v.voiceURI;
+            option.value = v.voiceURI; // [CRITICAL] This sets the value sent to API
             option.dataset.displayName = v.displayName;
             option.textContent = "\u00A0\u00A0\u00A0" + v.displayName; 
             return option;

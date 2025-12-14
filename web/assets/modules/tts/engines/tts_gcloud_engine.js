@@ -7,6 +7,10 @@ import { AppConfig } from '../../core/app_config.js';
 
 const logger = getLogger("TTS_GCloudEngine");
 
+// [IMPORTANT] Đổi key cache để invalidate dữ liệu cũ bị lỗi
+const CACHE_KEY_LIST = "tts_gcloud_voices_list_v2";
+const CACHE_KEY_TS = "tts_gcloud_voices_ts_v2";
+
 export class TTSGoogleCloudEngine {
     constructor() {
         this.fetcher = new TTSGoogleCloudFetcher(null);
@@ -27,7 +31,7 @@ export class TTSGoogleCloudEngine {
         this._loadSettings();
 
         // Try loading cached voices first
-        const cachedVoices = localStorage.getItem("tts_gcloud_voices_list");
+        const cachedVoices = localStorage.getItem(CACHE_KEY_LIST);
         if (cachedVoices) {
             try {
                 this.availableVoices = JSON.parse(cachedVoices);
@@ -47,7 +51,6 @@ export class TTSGoogleCloudEngine {
         localStorage.setItem("tts_gcloud_key", key);
         
         if (key) {
-            // Force refresh và clear cache cũ để tránh dữ liệu rác
             this.refreshVoices(true); 
         }
     }
@@ -56,7 +59,7 @@ export class TTSGoogleCloudEngine {
         if (!this.apiKey) return;
 
         const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
-        const lastUpdate = parseInt(localStorage.getItem("tts_gcloud_voices_ts") || "0");
+        const lastUpdate = parseInt(localStorage.getItem(CACHE_KEY_TS) || "0");
         const now = Date.now();
 
         if (!force && this.availableVoices.length > 0 && (now - lastUpdate < CACHE_DURATION)) {
@@ -69,27 +72,25 @@ export class TTSGoogleCloudEngine {
             const rawVoices = await this.fetcher.fetchVoices();
             
             // [FIXED] Strict Filter & Mapping
-            // Google ID chuẩn phải có dạng "en-US-WxYz..." (chứa dấu gạch ngang và bắt đầu bằng mã ngữ)
             this.availableVoices = rawVoices
                 .filter(v => {
                     const id = v.name;
-                    // Lọc: Phải là tiếng Anh, và ID phải chuẩn (tránh các ID ngắn như "Algenib")
+                    // Chỉ lấy ID chuẩn (có chứa 'en-' và dấu gạch ngang)
                     return (v.languageCodes.includes("en-US") || v.languageCodes.includes("en-GB")) &&
-                           id.includes("-") && 
-                           id.startsWith("en-");
+                           id.startsWith("en-") && 
+                           id.includes("-");
                 })
                 .map(v => ({
-                    name: `${v.name} (${v.ssmlGender})`, // Tên hiển thị gốc (có thể làm đẹp sau ở Renderer)
-                    voiceURI: v.name, // QUAN TRỌNG: Đây phải là ID chuẩn của Google
+                    // Giữ nguyên tên gốc, không format ở đây để tránh lỗi logic
+                    name: `${v.name} (${v.ssmlGender})`, 
+                    voiceURI: v.name, // QUAN TRỌNG: Đây phải là ID gốc (vd: en-US-Chirp3-HD-Algenib)
                     lang: v.languageCodes[0]
                 }));
             
-            // Sort by name
             this.availableVoices.sort((a, b) => a.name.localeCompare(b.name));
 
-            // AUTO-SELECT DEFAULT VOICE
+            // AUTO-SELECT DEFAULT
             const isCurrentValid = this.availableVoices.some(v => v.voiceURI === this.voice.voiceURI);
-            
             if (!isCurrentValid) {
                 const defaultURI = AppConfig.TTS?.DEFAULT_VOICE?.voiceURI;
                 const defaultVoice = this.availableVoices.find(v => v.voiceURI === defaultURI);
@@ -102,9 +103,9 @@ export class TTSGoogleCloudEngine {
                 }
             }
 
-            // Save Cache
-            localStorage.setItem("tts_gcloud_voices_list", JSON.stringify(this.availableVoices));
-            localStorage.setItem("tts_gcloud_voices_ts", now.toString());
+            // Save Cache (New Keys)
+            localStorage.setItem(CACHE_KEY_LIST, JSON.stringify(this.availableVoices));
+            localStorage.setItem(CACHE_KEY_TS, now.toString());
             
             if (this.onVoicesChanged) {
                 this.onVoicesChanged(this.availableVoices, this.voice);
@@ -112,9 +113,9 @@ export class TTSGoogleCloudEngine {
             logger.info("Voices", `Loaded ${this.availableVoices.length} voices from GCloud.`);
 
         } catch (e) {
-            logger.error("Voices", "Failed to refresh voices (Invalid Key or Network)", e);
+            logger.error("Voices", "Failed to refresh voices", e);
             this.availableVoices = [];
-            localStorage.removeItem("tts_gcloud_voices_list"); 
+            localStorage.removeItem(CACHE_KEY_LIST); 
             if (this.onVoicesChanged) {
                 this.onVoicesChanged([], null);
             }
@@ -125,12 +126,10 @@ export class TTSGoogleCloudEngine {
 
     setVoice(voiceURI) {
         const found = this.availableVoices.find(v => v.voiceURI === voiceURI);
-        
         if (found) {
-            this.voice = { ...found }; // Clone object
+            this.voice = { ...found }; 
             localStorage.setItem("tts_gcloud_voice", voiceURI);
         } else if (voiceURI) {
-            // Temporary set for initial load
             this.voice = { voiceURI: voiceURI, name: voiceURI, lang: "en-US" };
             localStorage.setItem("tts_gcloud_voice", voiceURI);
         }
@@ -161,8 +160,14 @@ export class TTSGoogleCloudEngine {
             throw new Error("API key is missing.");
         }
         if (!text) {
-            if (onEnd) onEnd();
-            return;
+            if (onEnd) onEnd(); return;
+        }
+
+        // Validate URI before sending
+        if (!this.voice.voiceURI || !this.voice.voiceURI.includes("-")) {
+             logger.error("Speak", `Invalid Voice ID: ${this.voice.voiceURI}`);
+             if (onEnd) onEnd();
+             return;
         }
 
         const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, 0.0);
@@ -172,11 +177,6 @@ export class TTSGoogleCloudEngine {
 
             if (!blob) {
                 logger.info("Speak", "Fetching from Cloud...");
-                // Validate URI trước khi fetch
-                if (!this.voice.voiceURI.includes("-")) {
-                     throw new Error(`Invalid Voice ID: ${this.voice.voiceURI}`);
-                }
-
                 blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, 0.0);
                 
                 if (reqId !== this.currentReqId) return;
@@ -213,7 +213,7 @@ export class TTSGoogleCloudEngine {
                 await this.cache.put(key, blob);
                 if (this.onAudioCached) this.onAudioCached(text);
             } catch (e) {
-                logger.warn("Prefetch", `Failed for "${text.substring(0, 30)}..."`, e);
+                logger.warn("Prefetch", `Failed`, e);
             }
         }
     }
@@ -222,7 +222,6 @@ export class TTSGoogleCloudEngine {
         if (!textList || textList.length === 0) return [];
         const offlineVoices = [];
         for (const voice of this.availableVoices) {
-            // Logic check cache đơn giản
             const key = this.cache.generateKey(textList[0], voice.voiceURI, 1.0, 0.0);
             const blob = await this.cache.get(key);
             if (blob) offlineVoices.push(voice.voiceURI);
