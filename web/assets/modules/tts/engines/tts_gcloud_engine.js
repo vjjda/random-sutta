@@ -47,7 +47,8 @@ export class TTSGoogleCloudEngine {
         localStorage.setItem("tts_gcloud_key", key);
         
         if (key) {
-            this.refreshVoices(true); // Force refresh khi nhập key mới
+            // Force refresh và clear cache cũ để tránh dữ liệu rác
+            this.refreshVoices(true); 
         }
     }
     
@@ -67,24 +68,29 @@ export class TTSGoogleCloudEngine {
         try {
             const rawVoices = await this.fetcher.fetchVoices();
             
-            // Filter and Map
+            // [FIXED] Strict Filter & Mapping
+            // Google ID chuẩn phải có dạng "en-US-WxYz..." (chứa dấu gạch ngang và bắt đầu bằng mã ngữ)
             this.availableVoices = rawVoices
-                .filter(v => v.languageCodes.includes("en-US") || v.languageCodes.includes("en-GB"))
+                .filter(v => {
+                    const id = v.name;
+                    // Lọc: Phải là tiếng Anh, và ID phải chuẩn (tránh các ID ngắn như "Algenib")
+                    return (v.languageCodes.includes("en-US") || v.languageCodes.includes("en-GB")) &&
+                           id.includes("-") && 
+                           id.startsWith("en-");
+                })
                 .map(v => ({
-                    name: `${v.name} (${v.ssmlGender})`,
-                    voiceURI: v.name,
+                    name: `${v.name} (${v.ssmlGender})`, // Tên hiển thị gốc (có thể làm đẹp sau ở Renderer)
+                    voiceURI: v.name, // QUAN TRỌNG: Đây phải là ID chuẩn của Google
                     lang: v.languageCodes[0]
                 }));
             
             // Sort by name
             this.availableVoices.sort((a, b) => a.name.localeCompare(b.name));
 
-            // [LOGIC MỚI] AUTO-SELECT DEFAULT VOICE
-            // Kiểm tra xem giọng hiện tại có hợp lệ trong danh sách mới không
+            // AUTO-SELECT DEFAULT VOICE
             const isCurrentValid = this.availableVoices.some(v => v.voiceURI === this.voice.voiceURI);
             
             if (!isCurrentValid) {
-                // Nếu giọng hiện tại không hợp lệ (hoặc chưa chọn), thử tìm giọng Default từ Config
                 const defaultURI = AppConfig.TTS?.DEFAULT_VOICE?.voiceURI;
                 const defaultVoice = this.availableVoices.find(v => v.voiceURI === defaultURI);
                 
@@ -92,7 +98,6 @@ export class TTSGoogleCloudEngine {
                     this.setVoice(defaultVoice.voiceURI);
                     logger.info("Voices", `Auto-selected default: ${defaultVoice.name}`);
                 } else if (this.availableVoices.length > 0) {
-                    // Fallback cùng đường: Chọn cái đầu tiên
                     this.setVoice(this.availableVoices[0].voiceURI);
                 }
             }
@@ -108,42 +113,25 @@ export class TTSGoogleCloudEngine {
 
         } catch (e) {
             logger.error("Voices", "Failed to refresh voices (Invalid Key or Network)", e);
-            
-            // [QUAN TRỌNG] Nếu lỗi, xóa sạch danh sách để UI hiển thị trạng thái lỗi
-            // Không dùng danh sách cũ (có thể đã sai key) và KHÔNG dùng static fallback.
             this.availableVoices = [];
-            localStorage.removeItem("tts_gcloud_voices_list"); // Clear cache rác
-            
+            localStorage.removeItem("tts_gcloud_voices_list"); 
             if (this.onVoicesChanged) {
                 this.onVoicesChanged([], null);
             }
         }
     }
 
-    getVoices() {
-        // [QUAN TRỌNG] Trả về đúng thực tế, không trả về danh sách giả
-        return this.availableVoices;
-    }
+    getVoices() { return this.availableVoices; }
 
     setVoice(voiceURI) {
-        // Tìm trong danh sách hiện có trước
         const found = this.availableVoices.find(v => v.voiceURI === voiceURI);
         
         if (found) {
-            this.voice = { 
-                voiceURI: found.voiceURI, 
-                name: found.name, 
-                lang: found.lang 
-            };
+            this.voice = { ...found }; // Clone object
             localStorage.setItem("tts_gcloud_voice", voiceURI);
         } else if (voiceURI) {
-            // Trường hợp load setting nhưng danh sách chưa tải xong -> Tạm chấp nhận set URI
-            // (Sẽ được validate lại sau khi refreshVoices chạy xong)
-            this.voice = { 
-                voiceURI: voiceURI, 
-                name: voiceURI, 
-                lang: "en-US" 
-            };
+            // Temporary set for initial load
+            this.voice = { voiceURI: voiceURI, name: voiceURI, lang: "en-US" };
             localStorage.setItem("tts_gcloud_voice", voiceURI);
         }
     }
@@ -184,6 +172,11 @@ export class TTSGoogleCloudEngine {
 
             if (!blob) {
                 logger.info("Speak", "Fetching from Cloud...");
+                // Validate URI trước khi fetch
+                if (!this.voice.voiceURI.includes("-")) {
+                     throw new Error(`Invalid Voice ID: ${this.voice.voiceURI}`);
+                }
+
                 blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, 0.0);
                 
                 if (reqId !== this.currentReqId) return;
@@ -218,31 +211,21 @@ export class TTSGoogleCloudEngine {
             try {
                 const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, 0.0);
                 await this.cache.put(key, blob);
-                if (this.onAudioCached) {
-                    this.onAudioCached(text);
-                }
+                if (this.onAudioCached) this.onAudioCached(text);
             } catch (e) {
                 logger.warn("Prefetch", `Failed for "${text.substring(0, 30)}..."`, e);
             }
         }
     }
 
-    async checkOfflineStatusForVoice(textList, voiceURI) {
-        if (!textList || textList.length === 0 || !voiceURI) return false;
-        for (const text of textList) {
-            const key = this.cache.generateKey(text, voiceURI, 1.0, 0.0);
-            const blob = await this.cache.get(key);
-            if (!blob) return false;
-        }
-        return true;
-    }
-
     async getOfflineVoices(textList) {
         if (!textList || textList.length === 0) return [];
         const offlineVoices = [];
         for (const voice of this.availableVoices) {
-            const isReady = await this.checkOfflineStatusForVoice(textList, voice.voiceURI);
-            if (isReady) offlineVoices.push(voice.voiceURI);
+            // Logic check cache đơn giản
+            const key = this.cache.generateKey(textList[0], voice.voiceURI, 1.0, 0.0);
+            const blob = await this.cache.get(key);
+            if (blob) offlineVoices.push(voice.voiceURI);
         }
         return offlineVoices;
     }

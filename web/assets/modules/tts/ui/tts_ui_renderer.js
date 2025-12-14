@@ -1,5 +1,30 @@
 // Path: web/assets/modules/tts/ui/tts_ui_renderer.js
-import { AppConfig } from '../../core/app_config.js'; // [NEW] Import config
+import { AppConfig } from '../../core/app_config.js';
+
+// [NEW] Helper làm đẹp tên hiển thị
+function formatVoiceName(rawName) {
+    // rawName ex: "en-US-Chirp3-HD-Algenib (MALE)"
+    // 1. Remove Language Prefix
+    let clean = rawName.replace(/^(en-US-|en-GB-)/, '');
+    
+    // 2. Format common types
+    clean = clean.replace('Neural2', 'Neural 2')
+                 .replace('Studio', 'Studio')
+                 .replace('Wavenet', 'Wavenet')
+                 .replace('Polyglot', 'Polyglot')
+                 .replace('Standard', 'Standard');
+
+    // 3. Format Chirp specifically
+    if (clean.includes('Chirp')) {
+        clean = clean.replace('Chirp3-HD-', 'Chirp 3 ');
+        clean = clean.replace('Chirp-HD-', 'Chirp ');
+    } else {
+        // Remove trailing letter-dash combos like "-A ", "-B " to just " A ", " B "
+        clean = clean.replace(/-([A-Z])\s/, ' $1 ');
+    }
+
+    return clean;
+}
 
 export const TTSUIRenderer = {
     elements: {},
@@ -117,7 +142,6 @@ export const TTSUIRenderer = {
         this.elements.settingsPanel?.classList.add("hidden");
     },
 
-    // [UPDATED] Hỗ trợ Recommended Voices & Phân tách
     populateVoices(voices, currentVoice) {
         if (!this.elements.voiceSelect) return;
         
@@ -131,7 +155,6 @@ export const TTSUIRenderer = {
         select.innerHTML = ""; 
         select.disabled = false; 
 
-        // CASE 1: GCloud nhưng chưa có Key
         if (isGCloud && !hasKey) {
             const option = document.createElement("option");
             option.textContent = "✨ Enter API Key to load voices...";
@@ -141,7 +164,6 @@ export const TTSUIRenderer = {
             return;
         }
 
-        // CASE 2: Loading / Error
         if (isGCloud && hasKey && (!voices || voices.length === 0)) {
             const option = document.createElement("option");
             option.textContent = "⏳ Loading voices or Invalid Key...";
@@ -151,7 +173,6 @@ export const TTSUIRenderer = {
             return;
         }
 
-        // CASE 3: Render Lists
         if (!voices || voices.length === 0) {
             const option = document.createElement("option");
             option.textContent = "No voices available";
@@ -162,7 +183,6 @@ export const TTSUIRenderer = {
 
         // --- Logic Recommended ---
         const recommendedConfig = AppConfig.TTS?.RECOMMENDED_VOICES || [];
-        // Map để tra cứu nhanh xem voiceURI có trong recommended không
         const recommendedMap = new Map(recommendedConfig.map(i => [i.voiceURI, i]));
         
         const recommendedList = [];
@@ -170,38 +190,34 @@ export const TTSUIRenderer = {
 
         voices.forEach(v => {
             const recEntry = recommendedMap.get(v.voiceURI);
-            // Clean name logic: Bỏ prefix thừa
-            const cleanName = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60);
+            
+            // [UPDATED] Use formatVoiceName for a cleaner look in "Others"
+            const prettyName = formatVoiceName(v.name);
 
             if (recEntry) {
-                // Nếu là Recommended: Ưu tiên tên Custom trong config
                 recommendedList.push({
                     ...v,
-                    displayName: recEntry.name || ("★ " + cleanName),
+                    displayName: recEntry.name || ("★ " + prettyName),
                     isRec: true
                 });
             } else {
                 otherList.push({
                     ...v,
-                    displayName: cleanName,
+                    displayName: prettyName,
                     isRec: false
                 });
             }
         });
 
-        // Helper render option
         const createOption = (v) => {
             const option = document.createElement("option");
             option.value = v.voiceURI;
-            // Lưu tên hiển thị chuẩn vào dataset để dùng cho việc đánh dấu offline (bullet point)
             option.dataset.displayName = v.displayName;
-            option.textContent = "\u00A0\u00A0" + v.displayName; // Padding mặc định
+            option.textContent = "\u00A0\u00A0\u00A0" + v.displayName; 
             return option;
         };
 
-        // 1. Render Recommended (Sorted by Config Order)
         if (recommendedList.length > 0) {
-            // Sort lại theo đúng thứ tự trong Config
             recommendedList.sort((a, b) => {
                 const idxA = recommendedConfig.findIndex(c => c.voiceURI === a.voiceURI);
                 const idxB = recommendedConfig.findIndex(c => c.voiceURI === b.voiceURI);
@@ -210,7 +226,6 @@ export const TTSUIRenderer = {
 
             recommendedList.forEach(v => select.appendChild(createOption(v)));
 
-            // 2. Separator
             if (otherList.length > 0) {
                 const sep = document.createElement("option");
                 sep.disabled = true;
@@ -219,7 +234,6 @@ export const TTSUIRenderer = {
             }
         }
 
-        // 3. Render Others
         otherList.forEach(v => select.appendChild(createOption(v)));
 
         if (currentVoice) {
@@ -227,7 +241,6 @@ export const TTSUIRenderer = {
         }
     },
 
-    // [UPDATED] Update marker mà không làm mất Custom Name
     updateVoiceOfflineMarkers(offlineVoiceURIs) {
         if (!this.elements.voiceSelect) return;
         const options = this.elements.voiceSelect.options;
@@ -235,14 +248,13 @@ export const TTSUIRenderer = {
         
         for (let i = 0; i < options.length; i++) {
             const opt = options[i];
-            // Lấy tên hiển thị chuẩn từ dataset (đã lưu ở populateVoices)
-            const displayName = opt.dataset.displayName;
+            const originalName = opt.dataset.displayName;
 
-            if (displayName) {
+            if (originalName) {
                 if (offlineSet.has(opt.value)) {
-                    opt.textContent = "• " + displayName;
+                    opt.textContent = "• " + originalName;
                 } else {
-                    opt.textContent = "\u00A0\u00A0" + displayName;
+                    opt.textContent = "\u00A0\u00A0\u00A0" + originalName;
                 }
             }
         }
