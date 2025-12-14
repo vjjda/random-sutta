@@ -1,6 +1,21 @@
 // Path: web/assets/modules/tts/ui/tts_ui_layout.js
 export const TTSUILayout = {
     getHTML() {
+        // [CONSISTENCY FIX] Đọc trạng thái trực tiếp từ LocalStorage để render HTML đúng ngay lập tức
+        // Tránh hiện tượng UI bị "nháy" hoặc hiển thị sai trạng thái mặc định khi refresh.
+        
+        // 1. Auto Next (Mặc định: True)
+        const savedAutoNext = localStorage.getItem("tts_auto_next");
+        const isAutoNext = savedAutoNext === null ? true : (savedAutoNext === "true");
+
+        // 2. Paragraph Mode (Mặc định: True - paragraph)
+        const savedMode = localStorage.getItem("tts_playback_mode");
+        const isParagraph = savedMode ? (savedMode === "paragraph") : true; 
+
+        // 3. Engine (Mặc định: wsa)
+        const savedEngine = localStorage.getItem("tts_active_engine");
+        const isGCloud = (savedEngine === "gcloud");
+
         return `
             <button id="magic-tts-trigger" title="Enable TTS"></button>
             <div id="tts-player">
@@ -27,12 +42,12 @@ export const TTSUILayout = {
                     <div class="tts-setting-row">
                         <label>Provider</label>
                         <select id="tts-engine-select">
-                            <option value="wsa">Browser Default</option>
-                            <option value="gcloud">Google Cloud</option>
+                            <option value="wsa" ${!isGCloud ? 'selected' : ''}>Browser Default</option>
+                            <option value="gcloud" ${isGCloud ? 'selected' : ''}>Google Cloud</option>
                         </select>
                     </div>
 
-                    <div class="tts-setting-row hidden" id="tts-apikey-row">
+                    <div class="tts-setting-row ${isGCloud ? '' : 'hidden'}" id="tts-apikey-row">
                         <form onsubmit="return false;" style="display: contents;">
                             <input type="text" autocomplete="username" style="display:none;">
                             <label>API Key</label>
@@ -59,7 +74,7 @@ export const TTSUILayout = {
                     <div class="tts-toggle-wrapper">
                         <label for="tts-auto-next" class="tts-toggle-label">Auto-play Next</label>
                         <label class="tts-switch">
-                            <input type="checkbox" id="tts-auto-next" checked>
+                            <input type="checkbox" id="tts-auto-next" ${isAutoNext ? 'checked' : ''}>
                             <span class="tts-slider"></span>
                         </label>
                     </div>
@@ -67,7 +82,7 @@ export const TTSUILayout = {
                     <div class="tts-toggle-wrapper">
                         <label for="tts-mode-toggle" class="tts-toggle-label">Paragraph Mode</label>
                         <label class="tts-switch">
-                             <input type="checkbox" id="tts-mode-toggle" checked>
+                             <input type="checkbox" id="tts-mode-toggle" ${isParagraph ? 'checked' : ''}>
                             <span class="tts-slider"></span>
                         </label>
                     </div>
