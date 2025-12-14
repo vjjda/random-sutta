@@ -1,12 +1,10 @@
 // Path: web/assets/modules/ui/common/scroller.js
 import { getLogger } from 'utils/logger.js';
 import { AppConfig } from 'core/app_config.js';
-
 const logger = getLogger("Scroller");
 
 // Offset context khi jump đến (trừ hao header)
 const SCROLL_OFFSET_CTX = 60;
-
 function getTargetPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
     const rectTop = element.getBoundingClientRect().top;
@@ -20,7 +18,6 @@ function getReadingPosition(element) {
     
     const configVal = AppConfig.TTS?.SCROLL_OFFSET_TOP || '30vh';
     let offsetPx = 0;
-    
     if (configVal.endsWith('vh')) {
         const percent = parseFloat(configVal) / 100;
         offsetPx = viewportHeight * percent;
@@ -38,15 +35,16 @@ export const Scroller = {
 
     restoreScrollTop: function(y) {
         if (typeof y !== 'number') return;
-        // Sử dụng setTimeout 0 để đẩy xuống cuối hàng đợi render -> đảm bảo Instant
+        // Dùng instant để tránh scroll chạy từ từ
         setTimeout(() => {
+            document.documentElement.style.scrollBehavior = 'auto';
             window.scrollTo({ top: y, behavior: 'instant' });
+            setTimeout(() => { document.documentElement.style.scrollBehavior = ''; }, 50);
         }, 0);
     },
 
     /**
-     * [REFACTORED] Instant Jump (Mặc định cho toàn App)
-     * Thay thế cho scrollToId cũ.
+     * [REFACTORED] Instant Jump (Teleport)
      */
     jumpTo: function(targetId) {
         if (!targetId) {
@@ -58,25 +56,18 @@ export const Scroller = {
     },
 
     /**
-     * Smooth Scroll (Chỉ dùng cho các trường hợp đặc biệt cần animation, vd: Context links)
+     * Smooth Scroll
      */
     smoothScrollTo: function(targetId) {
         if (!targetId) return;
         this._findAndScroll(targetId, getTargetPosition, 'smooth');
     },
 
-    /**
-     * Dùng riêng cho TTS (giữ nguyên logic smooth để đọc dễ chịu hơn)
-     */
     scrollToReadingPosition: function(targetId) {
         if (!targetId) return;
         this._findAndScroll(targetId, getReadingPosition, 'smooth');
     },
 
-    /**
-     * Alias cũ để tương thích ngược (nếu còn sót chỗ nào gọi)
-     * Nhưng map sang jumpTo để đảm bảo độ phản hồi nhanh.
-     */
     scrollToId: function(targetId, behavior = 'instant') {
         if (behavior === 'smooth') {
             this.smoothScrollTo(targetId);
@@ -85,22 +76,16 @@ export const Scroller = {
         }
     },
 
-    /**
-     * Alias cũ cho animation, giờ trỏ về smoothScrollTo
-     */
     animateScrollTo: function(targetId) {
         this.smoothScrollTo(targetId);
     },
 
     highlightElement: function(targetId) {
-        // 1. Xóa highlight cũ
         document.querySelectorAll('.highlight, .highlight-container').forEach(el => {
             el.classList.remove('highlight', 'highlight-container');
         });
-
         if (!targetId) return;
 
-        // 2. Highlight mới
         const el = document.getElementById(targetId);
         if (el) {
             if (el.classList.contains('segment')) {
@@ -113,14 +98,9 @@ export const Scroller = {
 
     transitionTo: async function(renderAction, targetId) {
         if (renderAction) await renderAction();
-        
-        // Chờ 1 frame để DOM cập nhật
         await new Promise(r => requestAnimationFrame(r));
-        
         if (targetId) {
-            // Context Links thường dùng transition, nên dùng smooth scroll cho mượt
             this.smoothScrollTo(targetId);
-            // Highlight sau khi scroll
             this.highlightElement(targetId);
         } else {
             this.restoreScrollTop(0);
@@ -129,27 +109,39 @@ export const Scroller = {
 
     _findAndScroll(targetId, positionCalculator, behavior) {
         let retries = 0;
-        const maxRetries = 60; // Thử trong khoảng 1s (60 frames)
+        const maxRetries = 60; 
 
+        // [OPTIMIZED] Logic cuộn
+        const executeScroll = (element) => {
+            const targetY = positionCalculator(element);
+            
+            // Cưỡng chế tắt smooth scroll của trình duyệt nếu muốn instant
+            if (behavior === 'instant') {
+                document.documentElement.style.scrollBehavior = 'auto';
+            }
+
+            window.scrollTo({ top: targetY, behavior: behavior });
+
+            if (behavior === 'instant') {
+                setTimeout(() => {
+                    document.documentElement.style.scrollBehavior = '';
+                }, 50);
+            }
+        };
+
+        // 1. Try Sync First (Quan trọng cho Teleport)
+        // Nếu phần tử đã có sẵn, cuộn ngay lập tức trong cùng tick
+        const elSync = document.getElementById(targetId);
+        if (elSync) {
+            executeScroll(elSync);
+            return;
+        }
+
+        // 2. Async Retry Fallback
         const attemptFind = () => {
             const element = document.getElementById(targetId);
             if (element) {
-                const targetY = positionCalculator(element);
-
-                // [CRITICAL] Override CSS scroll-behavior để đảm bảo Instant tuyệt đối
-                if (behavior === 'instant') {
-                    document.documentElement.style.scrollBehavior = 'auto';
-                }
-
-                window.scrollTo({ top: targetY, behavior: behavior });
-
-                // Restore CSS behavior sau khi jump xong
-                if (behavior === 'instant') {
-                    // Timeout ngắn để đảm bảo lệnh scroll đã thực thi xong trước khi reset style
-                    setTimeout(() => {
-                        document.documentElement.style.scrollBehavior = '';
-                    }, 50);
-                }
+                executeScroll(element);
             } else {
                 retries++;
                 if (retries < maxRetries) {
