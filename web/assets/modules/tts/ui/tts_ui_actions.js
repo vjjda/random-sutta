@@ -41,6 +41,7 @@ export const TTSUIActions = {
         
         els.btnSettings?.addEventListener("click", (e) => {
             e.stopPropagation();
+            orchestrator.refreshOfflineVoicesStatus();
             renderer.toggleSettings();
         });
 

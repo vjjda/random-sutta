@@ -166,11 +166,29 @@ export const TTSOrchestrator = {
         }
     },
 
+    // --- Voice Status Sync ---
+    
+    async refreshOfflineVoicesStatus() {
+        if (!this.engine || typeof this.engine.getOfflineVoices !== 'function') return;
+        if (!this.isSessionActive()) return;
+
+        const texts = TTSStateStore.playlist.map(item => item.text);
+        try {
+            const offlineVoiceURIs = await this.engine.getOfflineVoices(texts);
+            if (this.ui) {
+                this.ui.updateVoiceOfflineMarkers(offlineVoiceURIs);
+            }
+        } catch (e) {
+            logger.warn("OfflineStatus", "Failed to check offline voices", e);
+        }
+    },
+
     // --- Public Facade (Clean API) ---
 
     startSession() { 
         TTSSessionManager.start(); 
         this.checkOfflineStatus();
+        this.refreshOfflineVoicesStatus(); // [NEW] Check all voices
     },
     endSession() { TTSSessionManager.end(); },
     refreshSession(autoPlay) { 

@@ -267,6 +267,23 @@ export class TTSGoogleCloudEngine {
         return true;
     }
 
+    /**
+     * Identify which voices from the available list are fully offline-ready for the given text list.
+     * @param {string[]} textList 
+     * @returns {Promise<string[]>} List of voiceURIs
+     */
+    async getOfflineVoices(textList) {
+        if (!textList || textList.length === 0) return [];
+        
+        const offlineVoices = [];
+        // Check sequentially to avoid flooding IDB
+        for (const voice of this.availableVoices) {
+            const isReady = await this.checkOfflineStatusForVoice(textList, voice.voiceURI);
+            if (isReady) offlineVoices.push(voice.voiceURI);
+        }
+        return offlineVoices;
+    }
+
     pause() { this.player.pause(); }
     resume() { this.player.resume(); }
     stop() { 

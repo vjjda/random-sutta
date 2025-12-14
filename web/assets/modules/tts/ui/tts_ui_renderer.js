@@ -110,6 +110,26 @@ export const TTSUIRenderer = {
         if (currentVoice) select.value = currentVoice.voiceURI;
     },
 
+    updateVoiceOfflineMarkers(offlineVoiceURIs) {
+        if (!this.elements.voiceSelect) return;
+        const options = this.elements.voiceSelect.options;
+        const offlineSet = new Set(offlineVoiceURIs);
+        
+        for (let i = 0; i < options.length; i++) {
+            const opt = options[i];
+            // Use a data attribute to store the original name to prevent cumulative appends
+            if (!opt.dataset.originalName) {
+                opt.dataset.originalName = opt.textContent;
+            }
+            
+            if (offlineSet.has(opt.value)) {
+                opt.textContent = opt.dataset.originalName + " ✓";
+            } else {
+                opt.textContent = opt.dataset.originalName;
+            }
+        }
+    },
+
     updateRateDisplay(value) {
         if (this.elements.rateRange) this.elements.rateRange.value = value;
         if (this.elements.rateVal) this.elements.rateVal.textContent = value;
