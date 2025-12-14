@@ -185,6 +185,7 @@
   background: var(--border-light);
   border-radius: 3px;
   -webkit-appearance: none;
+  transition: opacity 0.3s;
 }
 #tts-rate-range::-webkit-slider-thumb,
 #tts-pitch-range::-webkit-slider-thumb {
@@ -194,6 +195,21 @@
   background: var(--primary-color);
   border-radius: 50%;
   cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+/* --- Disabled State for Range --- */
+#tts-rate-range:disabled,
+#tts-pitch-range:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+}
+
+#tts-rate-range:disabled::-webkit-slider-thumb,
+#tts-pitch-range:disabled::-webkit-slider-thumb {
+  background-color: #999; /* Silver/Gray */
+  box-shadow: none;
 }
 
 @keyframes slideUp {
