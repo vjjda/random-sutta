@@ -1,6 +1,7 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api build-data dev view-server view-serverless release zip release-web beta publish clean build official
+.PHONY: help setup sync sync-text sync-api dry data build re dev live serve view-server view-sl release zip deploy beta publish clean
 
+# Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
 
 # ==============================================================================
@@ -55,6 +56,7 @@ dry:
 	@echo "🧠 Processing Data (Dry Run)..."
 	$(PYTHON) -m src.sutta_processor -d
 
+# [FIXED] Target này trùng tên với folder /data nên BẮT BUỘC phải có trong .PHONY
 data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
