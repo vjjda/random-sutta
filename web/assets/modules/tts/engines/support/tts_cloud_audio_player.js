@@ -28,8 +28,9 @@ export class TTSCloudAudioPlayer {
      * Plays an audio blob or URL.
      * @param {Blob|string} source - The audio source.
      * @param {Function} onEndCallback - Called when playback finishes.
+     * @param {number} rate - Playback speed (default 1.0).
      */
-    play(source, onEndCallback) {
+    play(source, onEndCallback, rate = 1.0) {
         this.stop(); // Stop any previous playback
 
         this.onEnd = onEndCallback;
@@ -42,6 +43,8 @@ export class TTSCloudAudioPlayer {
         }
 
         this.audio.src = url;
+        this.audio.playbackRate = rate; // [NEW] Set playback rate
+        
         this.audio.play()
             .then(() => {
                 this.isPlaying = true;
@@ -51,6 +54,12 @@ export class TTSCloudAudioPlayer {
                 logger.error("Playback", "Play request failed", err);
                 if (this.onEnd) this.onEnd();
             });
+    }
+
+    setRate(rate) {
+        if (this.audio) {
+            this.audio.playbackRate = rate;
+        }
     }
 
     pause() {

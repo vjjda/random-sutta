@@ -174,6 +174,10 @@ export class TTSGoogleCloudEngine {
     setRate(rate) {
         this.rate = parseFloat(rate);
         localStorage.setItem("tts_gcloud_rate", this.rate);
+        // [NEW] Update player rate immediately for real-time control
+        if (this.player && this.player.setRate) {
+            this.player.setRate(this.rate);
+        }
     }
 
     setPitch(pitch) {
@@ -218,8 +222,8 @@ export class TTSGoogleCloudEngine {
             return;
         }
 
-        // 2. Generate Key for Cache
-        const key = this.cache.generateKey(text, this.voice.voiceURI, this.rate, this.pitch);
+        // 2. Generate Key for Cache (Always use rate 1.0)
+        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, this.pitch);
 
         try {
             // 3. Check Cache
@@ -229,9 +233,9 @@ export class TTSGoogleCloudEngine {
             if (reqId !== this.currentReqId) return;
 
             if (!blob) {
-                // 4. Fetch from Cloud
+                // 4. Fetch from Cloud (Always fetch at rate 1.0)
                 logger.info("Speak", "Fetching from Cloud...");
-                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, this.rate, this.pitch);
+                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, this.pitch);
                 
                 // Check Race Condition 2: If request changed while fetching (slow, likely)
                 if (reqId !== this.currentReqId) {
@@ -247,8 +251,8 @@ export class TTSGoogleCloudEngine {
                 logger.info("Speak", "Using Cached Audio");
             }
 
-            // 6. Play
-            this.player.play(blob, onEnd);
+            // 6. Play (Apply user rate here)
+            this.player.play(blob, onEnd, this.rate);
 
         } catch (e) {
             if (reqId !== this.currentReqId) return; // Ignore errors from stale requests
@@ -262,7 +266,8 @@ export class TTSGoogleCloudEngine {
      * Check if text is cached (for Smart Markers)
      */
     async isCached(text) {
-        const key = this.cache.generateKey(text, this.voice.voiceURI, this.rate, this.pitch);
+        // Check for rate 1.0 version
+        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, this.pitch);
         const blob = await this.cache.get(key);
         return !!blob;
     }
@@ -273,13 +278,14 @@ export class TTSGoogleCloudEngine {
     async prefetch(text) {
         if (!text || !this.apiKey) return;
         
-        const key = this.cache.generateKey(text, this.voice.voiceURI, this.rate, this.pitch);
+        // Prefetch rate 1.0 version
+        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, this.pitch);
         const cached = await this.cache.get(key);
         
         if (!cached) {
             logger.debug("Prefetch", `Downloading: "${text.substring(0, 20)}..."`);
             try {
-                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, this.rate, this.pitch);
+                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, this.pitch);
                 await this.cache.put(key, blob);
                 if (this.onAudioCached) this.onAudioCached(text);
             } catch (e) {
