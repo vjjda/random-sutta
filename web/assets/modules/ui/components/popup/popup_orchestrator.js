@@ -6,15 +6,14 @@ import { PopupState } from './state/popup_state.js';
 import { CommentUI } from './ui/comment_ui.js';
 import { QuicklookUI } from './ui/quicklook_ui.js';
 import { AppConfig } from 'core/app_config.js';
+import { Scroller } from 'ui/common/scroller.js'; // [NEW] Import Scroller
 
 export const PopupOrchestrator = {
     init() {
         this._applyLayoutConfig();
-
         // 1. Init Controllers
         CommentController.init();
         QuicklookController.init();
-
         // 2. Listen for Custom Events (Bus)
         window.addEventListener('popup:close-all', () => this.closeAll());
         window.addEventListener('popup:request-link', (e) => {
@@ -22,7 +21,6 @@ export const PopupOrchestrator = {
                 QuicklookController.handleLinkRequest(e.detail.href);
             }
         });
-
         // 3. Bind Global Interactions
         this._bindGlobalEvents();
     },
@@ -40,6 +38,10 @@ export const PopupOrchestrator = {
         QuicklookUI.hide();
         PopupState.loadingUid = null;
         PopupState.clearActive();
+        
+        // [UX IMPROVEMENT] Xóa highlight khi đóng popup
+        // Giúp giao diện sạch sẽ, người dùng không bị rối mắt bởi vệt sáng cũ
+        Scroller.highlightElement(null);
     },
 
     _bindGlobalEvents() {
