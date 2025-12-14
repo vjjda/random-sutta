@@ -7,6 +7,7 @@ export const TTSUILayout = {
                 <button id="tts-settings-toggle" class="tts-btn" title="Voice Settings">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
+    
                 <button id="tts-prev" class="tts-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
                 </button>
@@ -32,8 +33,10 @@ export const TTSUILayout = {
                     </div>
 
                     <div class="tts-setting-row hidden" id="tts-apikey-row">
-                        <label>API Key</label>
-                        <input type="password" id="tts-apikey-input" placeholder="Enter GCloud API Key" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color);">
+                        <form onsubmit="return false;" style="display: contents;">
+                            <label>API Key</label>
+                            <input type="password" id="tts-apikey-input" placeholder="Enter GCloud API Key" autocomplete="new-password" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color);">
+                        </form>
                     </div>
 
                     <div class="tts-setting-row">
