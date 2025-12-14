@@ -96,21 +96,27 @@ export const TTSUIRenderer = {
     },
 
     populateVoices(voices, currentVoice) {
-        if (!voices || voices.length === 0 || !this.elements.voiceSelect) return;
+        if (!this.elements.voiceSelect) return;
         const select = this.elements.voiceSelect;
-        select.innerHTML = "";
+        select.innerHTML = ""; // Clear previous options
         
         voices.forEach(v => {
             const option = document.createElement("option");
             option.value = v.voiceURI;
             
+            // 1. Store the clean, original name without any prefixes.
             const cleanName = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60);
-            option.dataset.originalName = cleanName; // Store clean name
-            option.textContent = "  " + cleanName; // Add padding by default
+            option.dataset.originalName = cleanName;
+            
+            // 2. Set a default padded state. Use non-breaking spaces to prevent trimming.
+            option.textContent = "\u00A0\u00A0" + cleanName; 
             
             select.appendChild(option);
         });
-        if (currentVoice) select.value = currentVoice.voiceURI;
+
+        if (currentVoice) {
+            select.value = currentVoice.voiceURI;
+        }
     },
 
     updateVoiceOfflineMarkers(offlineVoiceURIs) {
@@ -122,11 +128,14 @@ export const TTSUIRenderer = {
             const opt = options[i];
             const originalName = opt.dataset.originalName;
 
-            if (originalName) { // Ensure dataset is populated
+            // Always work from the clean original name stored in the dataset
+            if (originalName) {
                 if (offlineSet.has(opt.value)) {
+                    // Prepend checkmark for offline voices
                     opt.textContent = "✓ " + originalName;
                 } else {
-                    opt.textContent = "  " + originalName;
+                    // Prepend non-breaking spaces for alignment for online voices
+                    opt.textContent = "\u00A0\u00A0" + originalName;
                 }
             }
         }
