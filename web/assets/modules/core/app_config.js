@@ -20,8 +20,8 @@ export const AppConfig = {
         
         // Cấu hình giọng đọc Google Cloud mặc định
         DEFAULT_VOICE: {
-            voiceURI: "en-US-Neural2-D",
-            name: "Google US Neural2-D",
+            voiceURI: "en-US-Chirp3-HD-Iapetus",
+            name: "Iapetus",
             lang: "en-US"
         },
         
