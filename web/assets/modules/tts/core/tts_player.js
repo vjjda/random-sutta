@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/core/tts_player.js
 import { TTSStateStore } from './tts_state_store.js';
-import { AppConfig } from '../../core/app_config.js'; // [NEW] Import
+import { AppConfig } from '../../core/app_config.js';
 
 export const TTSPlayer = {
     engine: null,
@@ -34,18 +34,22 @@ export const TTSPlayer = {
     pause() {
         TTSStateStore.isPlaying = false;
         if (this.ui) this.ui.updatePlayState(false);
-        this.engine.pause();
+        // [FIX] Null check
+        if (this.engine) this.engine.pause();
     },
 
     stop() {
         TTSStateStore.isPlaying = false;
         if (this.ui) this.ui.updatePlayState(false);
-        this.engine.stop();
+        // [FIX] Null check (Critical for startup)
+        if (this.engine) this.engine.stop();
         // Player stop không có trách nhiệm clear highlight (để giữ vị trí đọc)
     },
 
     next() {
-        this.engine.stop();
+        // [FIX] Null check
+        if (this.engine) this.engine.stop();
+        
         if (TTSStateStore.hasNext()) {
             TTSStateStore.advance();
             this._activateAndPlayIfRunning();
@@ -55,7 +59,9 @@ export const TTSPlayer = {
     },
 
     prev() {
-        this.engine.stop();
+        // [FIX] Null check
+        if (this.engine) this.engine.stop();
+
         if (TTSStateStore.hasPrev()) {
             TTSStateStore.retreat();
             this._activateAndPlayIfRunning();
@@ -65,12 +71,13 @@ export const TTSPlayer = {
     jumpTo(index) {
         if (index < 0 || index >= TTSStateStore.playlist.length) return;
         
-        this.engine.stop();
+        // [FIX] Null check
+        if (this.engine) this.engine.stop();
+        
         TTSStateStore.currentIndex = index;
         
         // Highlight ngay lập tức
         this.highlighter.activate(index);
-
         // Nếu đang play thì đọc luôn, không thì thôi
         if (TTSStateStore.isPlaying) {
             this._speakCurrent();
@@ -90,10 +97,12 @@ export const TTSPlayer = {
     async _speakCurrent() {
         const item = TTSStateStore.getCurrentItem();
         if (!item) return;
+        
+        // [FIX] Safety check if engine is lost
+        if (!this.engine) return;
 
         // Đảm bảo highlight đúng câu đang đọc
         this.highlighter.activate(TTSStateStore.currentIndex);
-        
         try {
             // Priority 1: Await prefetch of the CURRENT item to ensure it's ready.
             if (this.engine.prefetch) {
@@ -124,10 +133,9 @@ export const TTSPlayer = {
                 this.stop();
                 if (this.ui && this.ui.showError) this.ui.showError("Playback error.");
             });
-
+            
             // Priority 3: Manage the rest of the rolling buffer in the background.
             this._managePrefetchBuffer();
-
         } catch (e) {
             // This catch is for prefetch/setup errors (e.g., missing API key).
             console.error("TTS Player Setup Error:", e);
@@ -139,14 +147,11 @@ export const TTSPlayer = {
     },
 
     _managePrefetchBuffer() {
-        if (!this.engine.prefetch) return;
-
+        if (!this.engine || !this.engine.prefetch) return;
         const { currentIndex, playlist } = TTSStateStore;
         const bufferSize = AppConfig.TTS?.BUFFER_AHEAD || 7;
-
         // The index of the farthest item we want to have in our buffer
         const desiredFarthestIndex = Math.min(currentIndex + bufferSize, playlist.length - 1);
-
         // If we've already queued everything up to this point, no need to do more.
         if (this.farthestPrefetchedIndex >= desiredFarthestIndex) {
             return;
