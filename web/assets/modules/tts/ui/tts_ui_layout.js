@@ -2,6 +2,7 @@
 export const TTSUILayout = {
     getHTML() {
         // [CONSISTENT FIX] Đọc trực tiếp từ LocalStorage để render HTML đúng trạng thái ngay lập tức
+        // Tránh hiện tượng UI bị "nháy" hoặc hiển thị sai trạng thái mặc định khi refresh.
         
         // 1. Auto Next (Mặc định là TRUE nếu chưa có setting)
         const savedAutoNext = localStorage.getItem("tts_auto_next");

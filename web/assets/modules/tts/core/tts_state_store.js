@@ -1,15 +1,17 @@
 // Path: web/assets/modules/tts/core/tts_state_store.js
 export const TTSStateStore = {
-    // ... (Giữ nguyên state runtime) ...
+    // Runtime State
     playlist: [],
     currentIndex: -1,
     isPlaying: false,
+    
+    // [NEW] Session State: Chỉ True khi người dùng chủ động mở Player
     isSessionActive: false,
     
     // Settings Defaults
     autoNextEnabled: true,
-    playbackMode: 'paragraph',
-    activeEngine: 'wsa',
+    playbackMode: 'paragraph', // 'segment' | 'paragraph'
+    activeEngine: 'wsa', // 'wsa' | 'gcloud'
 
     init() {
         this._loadSettings();
@@ -56,13 +58,52 @@ export const TTSStateStore = {
         console.log("StateStore: Saved Engine ->", engineId); // LOG
     },
 
-    // ... (Giữ nguyên phần Session & Playlist logic) ...
-    setSessionActive(active) { this.isSessionActive = active; },
-    resetPlaylist(newPlaylist) { this.playlist = newPlaylist; this.currentIndex = 0; },
-    getCurrentItem() { return (this.currentIndex >= 0 && this.currentIndex < this.playlist.length) ? this.playlist[this.currentIndex] : null; },
-    getNextItem() { const nextIndex = this.currentIndex + 1; return (nextIndex < this.playlist.length) ? this.playlist[nextIndex] : null; },
-    hasNext() { return this.currentIndex < this.playlist.length - 1; },
-    hasPrev() { return this.currentIndex > 0; },
-    advance() { if (this.hasNext()) { this.currentIndex++; return true; } return false; },
-    retreat() { if (this.hasPrev()) { this.currentIndex--; return true; } return false; }
+    // [NEW] Session Management
+    setSessionActive(active) {
+        this.isSessionActive = active;
+    },
+
+    resetPlaylist(newPlaylist) {
+        this.playlist = newPlaylist;
+        this.currentIndex = 0;
+    },
+
+    getCurrentItem() {
+        if (this.currentIndex >= 0 && this.currentIndex < this.playlist.length) {
+            return this.playlist[this.currentIndex];
+        }
+        return null;
+    },
+
+    getNextItem() {
+        const nextIndex = this.currentIndex + 1;
+        if (nextIndex < this.playlist.length) {
+            return this.playlist[nextIndex];
+        }
+        return null;
+    },
+
+    hasNext() {
+        return this.currentIndex < this.playlist.length - 1;
+    },
+
+    hasPrev() {
+        return this.currentIndex > 0;
+    },
+
+    advance() {
+        if (this.hasNext()) {
+            this.currentIndex++;
+            return true;
+        }
+        return false;
+    },
+
+    retreat() {
+        if (this.hasPrev()) {
+            this.currentIndex--;
+            return true;
+        }
+        return false;
+    }
 };

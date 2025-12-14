@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/ui/tts_ui_actions.js
 import { AppConfig } from 'core/app_config.js';
-// ... (Giữ nguyên helper debounce) ...
+// Simple debounce helper
 const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {
@@ -14,12 +14,42 @@ const debounce = (func, delay) => {
 export const TTSUIActions = {
     bind(orchestrator, renderer) {
         const els = renderer.elements;
+        // [SAFETY CHECK] Quan trọng: Nếu DOM chưa inject được thì log và thoát
         if (!els.trigger || !els.player) {
             console.error("TTSUIActions: Critical elements missing. Inject failed?");
             return;
         }
 
-        // ... (Giữ nguyên các binding khác) ...
+        // 1. Magic Corner Trigger
+        els.trigger.addEventListener("click", (e) => {
+            e.stopPropagation();
+            orchestrator.startSession();
+        });
+        // 2. Close Button
+        els.btnClose?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            orchestrator.endSession();
+        });
+        // Controls
+        els.btnPlay?.addEventListener("click", () => orchestrator.togglePlay());
+        els.btnPrev?.addEventListener("click", () => orchestrator.prev());
+        els.btnNext?.addEventListener("click", () => orchestrator.next());
+        
+        els.btnSettings?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            orchestrator.refreshOfflineVoicesStatus();
+            renderer.toggleSettings();
+        });
+        // Settings Inputs
+        const debouncedSetRate = debounce((val) => orchestrator.engine.setRate(val), 300);
+        els.rateRange?.addEventListener("input", (e) => {
+            const val = e.target.value;
+            if (renderer.elements.rateVal) renderer.elements.rateVal.textContent = val;
+            debouncedSetRate(val);
+        });
+        els.voiceSelect?.addEventListener("change", (e) => {
+            orchestrator.setVoice(e.target.value);
+        });
 
         // [LOGGING ADDED] Settings Inputs
         els.autoNextCheckbox?.addEventListener("change", (e) => {
@@ -52,7 +82,6 @@ export const TTSUIActions = {
                  orchestrator.refreshVoices(); 
             }
         });
-
         // Refresh Voices
         els.btnRefreshVoices?.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -64,7 +93,6 @@ export const TTSUIActions = {
             
             orchestrator.refreshVoices();
         });
-
         // Click outside to close settings
         document.addEventListener("click", (e) => {
             if (els.settingsPanel && !els.settingsPanel.classList.contains("hidden") && 
@@ -72,7 +100,6 @@ export const TTSUIActions = {
                 renderer.closeSettings();
             }
         });
-
         // --- GLOBAL INTERACTIONS ---
         
         // Marker Trigger: Handle clicks on generated markers
