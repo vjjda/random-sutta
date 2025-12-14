@@ -1,18 +1,17 @@
 // Path: web/assets/modules/tts/ui/tts_ui_layout.js
 export const TTSUILayout = {
     getHTML() {
-        // [CONSISTENCY FIX] Đọc trạng thái trực tiếp từ LocalStorage để render HTML đúng ngay lập tức
-        // Tránh hiện tượng UI bị "nháy" hoặc hiển thị sai trạng thái mặc định khi refresh.
+        // [CONSISTENT FIX] Đọc trực tiếp từ LocalStorage để render HTML đúng trạng thái ngay lập tức
         
-        // 1. Auto Next (Mặc định: True)
+        // 1. Auto Next (Mặc định là TRUE nếu chưa có setting)
         const savedAutoNext = localStorage.getItem("tts_auto_next");
         const isAutoNext = savedAutoNext === null ? true : (savedAutoNext === "true");
 
-        // 2. Paragraph Mode (Mặc định: True - paragraph)
+        // 2. Paragraph Mode (Mặc định là TRUE/paragraph nếu chưa có setting)
         const savedMode = localStorage.getItem("tts_playback_mode");
         const isParagraph = savedMode ? (savedMode === "paragraph") : true; 
 
-        // 3. Engine (Mặc định: wsa)
+        // 3. Engine (Mặc định là 'wsa' - Browser Default)
         const savedEngine = localStorage.getItem("tts_active_engine");
         const isGCloud = (savedEngine === "gcloud");
 
@@ -20,7 +19,7 @@ export const TTSUILayout = {
             <button id="magic-tts-trigger" title="Enable TTS"></button>
             <div id="tts-player">
                 <button id="tts-settings-toggle" class="tts-btn" title="Voice Settings">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0 2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
     
                 <button id="tts-prev" class="tts-btn">
