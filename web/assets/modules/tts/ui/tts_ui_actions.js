@@ -47,7 +47,7 @@ export const TTSUIActions = {
         });
 
         els.voiceSelect?.addEventListener("change", (e) => {
-            orchestrator.engine.setVoice(e.target.value);
+            orchestrator.setVoice(e.target.value);
         });
         els.autoNextCheckbox?.addEventListener("change", (e) => {
             orchestrator.setAutoNext(e.target.checked);
@@ -69,6 +69,18 @@ export const TTSUIActions = {
         // API Key Input
         els.apiKeyInput?.addEventListener("change", (e) => {
             orchestrator.setGCloudApiKey(e.target.value);
+        });
+
+        // Refresh Voices
+        els.btnRefreshVoices?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Add simple rotation animation
+            const svg = e.currentTarget.querySelector("svg");
+            if (svg) svg.style.transition = "transform 0.5s";
+            if (svg) svg.style.transform = "rotate(180deg)";
+            setTimeout(() => { if (svg) svg.style.transform = "rotate(0deg)"; }, 500);
+            
+            orchestrator.refreshVoices();
         });
 
         // Click outside to close settings

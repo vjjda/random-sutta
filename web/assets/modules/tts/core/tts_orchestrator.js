@@ -121,6 +121,24 @@ export const TTSOrchestrator = {
         }
     },
 
+    refreshVoices() {
+        if (this.engine.refreshVoices) {
+            this.engine.refreshVoices(true); // Force refresh
+        }
+    },
+
+    setVoice(voiceURI) {
+        if (this.engine && this.engine.setVoice) {
+            this.engine.setVoice(voiceURI);
+            
+            // Trigger status updates
+            this.checkOfflineStatus();
+            if (this.isSessionActive()) {
+                TTSMarkerManager.checkCacheStatus(this.engine);
+            }
+        }
+    },
+
     setCallbacks(callbacks) {
         if (callbacks && typeof callbacks.onAutoNext === 'function') {
             this.onAutoNextRequest = callbacks.onAutoNext;
