@@ -3,7 +3,7 @@ import logging
 import sys
 
 # [UPDATED] Import hằng số mới
-from .release_config import BUILD_SERVERLESS_DIR, BUILD_SERVER_DIR, CRITICAL_ASSETS
+from .release_config import BUILD_SERVERLESS_DIR, BUILD_PWA_DIR, CRITICAL_ASSETS
 from .logic import (
     release_versioning,
     asset_validator,
@@ -51,46 +51,44 @@ def run_release_process(
 
     try:
         # =========================================================
-        # PHASE 1: SERVER BUILD (Standard Web / PWA)
+        # PHASE 1: PWA BUILD (Standard Web / HTTP Server)
         # =========================================================
-        # Trước đây là "Online Build"
-        if not build_preparer.prepare_build_directory(BUILD_SERVER_DIR):
-             raise Exception("Failed to prepare Server Build.")
+        if not build_preparer.prepare_build_directory(BUILD_PWA_DIR):
+             raise Exception("Failed to prepare PWA Build.")
         
         # 1. Inject SW Version
-        if not version_injector.inject_version_into_sw(BUILD_SERVER_DIR, version_tag):
-             raise Exception("Failed to inject version into SW (Server).")
+        if not version_injector.inject_version_into_sw(BUILD_PWA_DIR, version_tag):
+             raise Exception("Failed to inject version into SW (PWA).")
 
         # 2. Inject App Version
-        version_injector.inject_version_into_app_js(BUILD_SERVER_DIR, version_tag)
-        version_injector.inject_version_into_offline_manager(BUILD_SERVER_DIR, version_tag)
+        version_injector.inject_version_into_app_js(BUILD_PWA_DIR, version_tag)
+        version_injector.inject_version_into_offline_manager(BUILD_PWA_DIR, version_tag)
 
         # 3. Bundle CSS
-        if not css_bundler.bundle_css(BUILD_SERVER_DIR):
-            raise Exception("Server CSS Bundling failed.")
+        if not css_bundler.bundle_css(BUILD_PWA_DIR):
+            raise Exception("PWA CSS Bundling failed.")
 
         # 4. Patch SW Assets
-        sw_patcher.patch_sw_style_bundle(BUILD_SERVER_DIR)
-        sw_patcher.patch_online_assets(BUILD_SERVER_DIR)
+        sw_patcher.patch_sw_style_bundle(BUILD_PWA_DIR)
+        sw_patcher.patch_online_assets(BUILD_PWA_DIR)
 
         # 5. Patch HTML
-        if not html_patcher.patch_online_html(BUILD_SERVER_DIR, version_tag):
-             raise Exception("Server HTML patching failed.")
+        if not html_patcher.patch_online_html(BUILD_PWA_DIR, version_tag):
+             raise Exception("PWA HTML patching failed.")
 
         # 6. Cleanup & Zip
-        web_content_modifier.remove_monolithic_index(BUILD_SERVER_DIR)
-        if not zip_packager.create_db_bundle(BUILD_SERVER_DIR):
+        web_content_modifier.remove_monolithic_index(BUILD_PWA_DIR)
+        if not zip_packager.create_db_bundle(BUILD_PWA_DIR):
              logger.warning("⚠️ Failed to create DB bundle zip.")
 
-        # Deploy (Server Build goes to GH Pages)
+        # Deploy (PWA Build goes to GH Pages)
         if deploy_web:
-            if not web_deployer.deploy_web_to_ghpages(BUILD_SERVER_DIR, version_tag):
+            if not web_deployer.deploy_web_to_ghpages(BUILD_PWA_DIR, version_tag):
                 raise Exception("Web deployment failed.")
 
         # =========================================================
         # PHASE 2: SERVERLESS BUILD (Standalone / file://)
         # =========================================================
-        # Trước đây là "Offline Build"
         if not build_preparer.prepare_build_directory(BUILD_SERVERLESS_DIR):
             raise Exception("Failed to prepare Serverless Build.")
 
@@ -158,7 +156,7 @@ def run_release_process(
                     raise Exception("GitHub Release failed.")
     
         logger.info(f"🛡️  Builds Ready:")
-        logger.info(f"   👉 Server (Web/PWA):     {BUILD_SERVER_DIR}")
+        logger.info(f"   👉 PWA (Standard):       {BUILD_PWA_DIR}")
         logger.info(f"   👉 Serverless (Bundled): {BUILD_SERVERLESS_DIR}")
 
     except Exception as e:

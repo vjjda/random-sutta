@@ -24,19 +24,19 @@ SERVERS_CONFIG: List[Dict[str, Any]] = [
         ]
     },
     {
-        "name": "BUILD SERVER", # [RENAMED]
+        "name": "BUILD PWA", # [RENAMED]
         "port": 8001,
-        "root": PROJECT_ROOT / "build" / "server", # [UPDATED]
+        "root": PROJECT_ROOT / "build" / "pwa", # [UPDATED]
         "watch": [
-            "build/server/index.html",
-            "build/server/assets/style.bundle.css",
-            "build/server/sw.js"
+            "build/pwa/index.html",
+            "build/pwa/assets/style.bundle.css",
+            "build/pwa/sw.js"
         ]
     },
     {
-        "name": "BUILD SERVERLESS", # [RENAMED]
+        "name": "BUILD SERVERLESS",
         "port": 8002,
-        "root": PROJECT_ROOT / "build" / "serverless", # [UPDATED]
+        "root": PROJECT_ROOT / "build" / "serverless",
         "watch": [
             "build/serverless/index.html",
             "build/serverless/assets/app.bundle.js",

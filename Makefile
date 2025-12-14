@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api dry data build re dev live serve view-server view-sl release zip deploy beta publish clean
+.PHONY: help setup sync sync-text sync-api dry data build re dev live serve view-pwa view-sl release zip deploy beta publish clean
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -22,13 +22,13 @@ help:
 	@echo "  make build          - Run Full Build (Data + Release)"
 	@echo "  make re             - Quick Re-build (Release Only)"
 	@echo "  make dev            - Live Source Server (port 8000)"
-	@echo "  make serve          - Multi-port Server (Source/Server/Serverless)"
-	@echo "  make view-server    - Preview 'Server' Build (port 8001)"
+	@echo "  make serve          - Multi-port Server (Source/PWA/Serverless)"
+	@echo "  make view-pwa       - Preview 'PWA' Build (port 8001)"
 	@echo "  make view-sl        - Preview 'Serverless' Build (file://)"
 	@echo ""
 	@echo "🚀 RELEASE & DEPLOY:"
 	@echo "  make zip            - Build & Create Zip Artifact"
-	@echo "  make deploy         - Build & Deploy 'Server' to GH-Pages"
+	@echo "  make deploy         - Build & Deploy 'PWA' to GH-Pages"
 	@echo "  make beta           - Publish Pre-release (Commit -> Push -> GH Release)"
 	@echo "  make publish        - Publish OFFICIAL (Commit -> Push -> GH Release -> Deploy)"
 	@echo ""
@@ -56,7 +56,6 @@ dry:
 	@echo "🧠 Processing Data (Dry Run)..."
 	$(PYTHON) -m src.sutta_processor -d
 
-# [FIXED] Target này trùng tên với folder /data nên BẮT BUỘC phải có trong .PHONY
 data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
@@ -83,11 +82,11 @@ live:
 serve:
 	$(PYTHON) src/multi_server.py
 
-# Preview bản Server Build (Web/PWA)
-view-server:
-	@echo "🌍 Starting SERVER Build Preview..."
+# Preview bản PWA Build (Web/Standard)
+view-pwa:
+	@echo "🌍 Starting PWA Build Preview..."
 	@echo "   👉 http://localhost:8001/"
-	$(PYTHON) -m http.server 8001 --directory build/server
+	$(PYTHON) -m http.server 8001 --directory build/pwa
 
 # Preview bản Serverless Build (Standalone)
 view-sl:
@@ -102,7 +101,7 @@ view-sl:
 zip:
 	$(PYTHON) -m src.release_system --zip
 
-# Deploy Web (Server Build -> GH Pages)
+# Deploy Web (PWA Build -> GH Pages)
 deploy:
 	$(PYTHON) -m src.release_system --web
 
