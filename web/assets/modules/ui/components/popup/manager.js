@@ -10,11 +10,14 @@ import { getCleanTextContent } from 'ui/components/toh/text_utils.js';
 
 const logger = getLogger("PopupManager");
 
+// [CONFIG] Offset cho Quicklook (thấp hơn header popup một chút)
+const QUICKLOOK_SCROLL_OFFSET = 60; 
+
 export const PopupManager = {
     state: {
         comments: [],
         currentIndex: -1,
-        loadingUid: null // [NEW] Biến cờ để khóa process đang tải
+        loadingUid: null 
     },
 
     init() {
@@ -28,7 +31,8 @@ export const PopupManager = {
             onDeepLink: (href) => this._navigateToMain(href),
             onOpenOriginal: (href) => this._handleExternalLink(href)
         });
-        
+
+        // ... (Event listeners giữ nguyên) ...
         const container = document.getElementById("sutta-container");
         if (container) {
             container.addEventListener("click", (e) => {
@@ -62,10 +66,9 @@ export const PopupManager = {
     },
 
     saveState() {
+        // ... (Giữ nguyên) ...
         try {
             const currentState = window.history.state || {};
-            
-            // [LOGIC UPDATE] If Quicklook is visible, we assume Comment is also valid context underneath
             const isCommentActive = CommentLayer.isVisible() || (QuicklookLayer.isVisible() && this.state.currentIndex !== -1);
             
             const popupState = {
@@ -81,6 +84,7 @@ export const PopupManager = {
     },
 
     async restoreState() {
+        // ... (Giữ nguyên) ...
         try {
             const state = window.history.state;
             if (!state || !state.popupState) {
@@ -91,9 +95,7 @@ export const PopupManager = {
             const { commentIndex, quicklookUrl } = state.popupState;
             logger.info("StateRestore", `Restoring: CommentIdx=${commentIndex}, QL=${quicklookUrl}`);
 
-            // Restore Comment
             if (commentIndex !== undefined && commentIndex !== -1) {
-                // Ensure comments are scanned
                 if (this.state.comments.length === 0) {
                     this.scanComments();
                 }
@@ -107,7 +109,6 @@ export const PopupManager = {
                 }
             }
 
-            // Restore Quicklook
             if (quicklookUrl) {
                 await this._handleCommentLink(quicklookUrl, true);
             }
@@ -166,7 +167,7 @@ export const PopupManager = {
         const item = this.state.comments[nextIdx];
         
         CommentLayer.show(item.text, nextIdx, this.state.comments.length, this._getCurrentContextText());
-        if (item.id) Scroller.scrollToId(item.id);
+        if (item.id) Scroller.scrollToId(item.id); // Main Page scroll
         
         QuicklookLayer.hide();
     },
@@ -186,14 +187,12 @@ export const PopupManager = {
             hash = urlObj.hash;
             if (!uid) return;
 
-            // [OPTIMIZATION] Chặn double-fetch nếu đang load chính UID này
             if (this.state.loadingUid === uid) {
                 logger.info("Quicklook", `Debounced duplicate request for ${uid}`);
                 return;
             }
-            // Set lock
             this.state.loadingUid = uid;
-
+            
             QuicklookLayer.show(
                 '<div style="text-align:center; padding: 20px;">Loading...</div>', 
                 uid.toUpperCase()
@@ -201,14 +200,11 @@ export const PopupManager = {
             
             try {
                 const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
-                
                 if (data && data.content) {
                     const renderRes = LeafRenderer.render(data);
-                    // [UPDATED] Construct Rich Title for Header
                     const meta = data.meta || {};
                     const acronym = meta.acronym || uid.toUpperCase();
                     const titleText = meta.translated_title || meta.original_title || "";
-                    // HTML format to separate styling
                     const displayTitle = titleText 
                         ? `<span class="ql-uid-badge">${acronym}</span><span class="ql-sutta-title">${titleText}</span>` 
                         : `<span class="ql-uid-badge">${acronym}</span>`;
@@ -224,14 +220,20 @@ export const PopupManager = {
                             }
                         }
 
+                        // [FIXED] Instant Jump Logic trong Popup
                         setTimeout(() => {
                             const qBody = document.querySelector("#quicklook-popup .popup-body");
                             const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
                             
                             if (targetEl && qBody) {
+                                // Tính offsetTop thủ công để kiểm soát context
                                 const offsetTop = targetEl.offsetTop;
-                                qBody.scrollTop = offsetTop - 60;
+                                
+                                // Scroll trực tiếp container (Instant)
+                                // Trừ đi QUICKLOOK_SCROLL_OFFSET để chừa khoảng trống bên trên
+                                qBody.scrollTop = offsetTop - QUICKLOOK_SCROLL_OFFSET;
 
+                                // Highlight
                                 qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
                                 targetEl.classList.add('highlight');
                             }
@@ -241,7 +243,6 @@ export const PopupManager = {
                     QuicklookLayer.show('<p class="error-message">Content not available.</p>', "Error");
                 }
             } finally {
-                // [OPTIMIZATION] Release lock sau khi xong (dù thành công hay thất bại)
                 this.state.loadingUid = null;
             }
 
@@ -266,7 +267,8 @@ export const PopupManager = {
             }
             if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
-                window.loadSutta(uid, true, 0);
+                // [FIXED] Gọi loadSutta với transition: false để kích hoạt instant scroll
+                window.loadSutta(uid, true, 0, { transition: false });
             }
         } catch(e){}
     },
@@ -274,7 +276,6 @@ export const PopupManager = {
     hideAll() {
         CommentLayer.hide();
         QuicklookLayer.hide();
-        // Reset loading state if manually closed
         this.state.loadingUid = null;
     }
 };

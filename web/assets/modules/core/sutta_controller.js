@@ -13,11 +13,13 @@ const logger = getLogger("SuttaController");
 const PopupAPI = initPopupSystem();
 
 export const SuttaController = {
-  // ... (Code logic giữ nguyên)
+  // ... (Các phần khác giữ nguyên) ...
+
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
 
+    // ... (Logic URL & TTS giữ nguyên) ...
     if (shouldUpdateUrl) {
         try {
             const currentState = window.history.state || {};
@@ -31,6 +33,7 @@ export const SuttaController = {
 
     PopupAPI.hideAll();
     
+    // ... (Stop TTS logic giữ nguyên) ...
     const wasTTSActive = TTSOrchestrator.isSessionActive();
     const wasPlaying = TTSOrchestrator.isPlaying();
     TTSOrchestrator.stop();
@@ -38,6 +41,7 @@ export const SuttaController = {
         TTSOrchestrator.endSession();
     }
 
+    // Parse Input
     let suttaId;
     let scrollTarget = null;
     if (typeof input === 'object') {
@@ -71,6 +75,7 @@ export const SuttaController = {
         if (result.isAlias) {
             let redirectId = result.targetUid;
             if (result.hashId) redirectId += `#${result.hashId}`;
+            // Redirect -> Tắt transition
             this.loadSutta(redirectId, true, 0, { transition: false });
             logger.timerEnd(`Render: ${suttaId}`);
             return true;
@@ -82,7 +87,6 @@ export const SuttaController = {
             if (!shouldUpdateUrl) {
                 PopupAPI.restore();
             }
-            
             if (wasTTSActive) {
                 setTimeout(() => {
                     TTSOrchestrator.refreshSession(wasPlaying);
@@ -100,11 +104,15 @@ export const SuttaController = {
     };
 
     if (isTransition) {
+        // Có hiệu ứng chuyển trang -> Scroll Smooth sau khi render
         await Scroller.transitionTo(performRender, scrollTarget);
     } else {
+        // Load trực tiếp/Quicklook -> Scroll Instant
         await performRender();
         if (scrollTarget) {
-            setTimeout(() => Scroller.scrollToId(scrollTarget), 0);
+            // [FIXED] Gọi scrollToId với mode 'instant'
+            // setTimeout 0 để đảm bảo stack render xong
+            setTimeout(() => Scroller.scrollToId(scrollTarget, 'instant'), 0);
         } else if (scrollY > 0) {
             Scroller.restoreScrollTop(scrollY);
         } else {
@@ -113,6 +121,7 @@ export const SuttaController = {
     }
   },
 
+  // ... (loadRandomSutta giữ nguyên) ...
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     PopupAPI.hideAll();
     logger.timer('Random Process Total');

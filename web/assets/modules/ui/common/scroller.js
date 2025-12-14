@@ -1,55 +1,38 @@
 // Path: web/assets/modules/ui/common/scroller.js
 import { getLogger } from 'utils/logger.js';
-import { AppConfig } from 'core/app_config.js'; // [NEW] Import config
+import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("Scroller");
-const SCROLL_OFFSET = 0; 
+
+// [CONFIG] Khoảng cách đệm bên trên khi cuộn tới ID (để tạo context)
+const SCROLL_OFFSET_CTX = 60; // Pixels
 
 function getTargetPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
     const rectTop = element.getBoundingClientRect().top;
-    return currentScrollY + rectTop - SCROLL_OFFSET;
+    // Trừ đi offset để element nằm thấp hơn mép trên một chút
+    return currentScrollY + rectTop - SCROLL_OFFSET_CTX;
 }
 
-// [UPDATED] Tính toán vị trí dựa trên AppConfig
+// Giữ nguyên logic tính vị trí cho TTS Reading
 function getReadingPosition(element) {
     const currentScrollY = window.scrollY || window.pageYOffset;
     const rectTop = element.getBoundingClientRect().top;
     const viewportHeight = window.innerHeight;
     
-    // Lấy config (mặc định 30vh nếu lỗi)
     const configVal = AppConfig.TTS?.SCROLL_OFFSET_TOP || '30vh';
     let offsetPx = 0;
 
-    // Parse Config: Hỗ trợ 'vh' hoặc 'px'
     if (configVal.endsWith('vh')) {
         const percent = parseFloat(configVal) / 100;
         offsetPx = viewportHeight * percent;
     } else if (configVal.endsWith('px')) {
         offsetPx = parseFloat(configVal);
     } else {
-        // Fallback đơn giản nếu chỉ nhập số
-        offsetPx = parseFloat(configVal); 
+        offsetPx = parseFloat(configVal);
     }
 
     return currentScrollY + rectTop - offsetPx;
-}
-
-function clearHighlights() {
-    document.querySelectorAll('.highlight, .highlight-container, .tts-active').forEach(el => {
-        el.classList.remove('highlight');
-        el.classList.remove('highlight-container');
-    });
-}
-
-function applyHighlight(element) {
-    if (!element) return;
-    clearHighlights();
-    if (element.classList.contains('segment')) {
-        element.classList.add('highlight');
-    } else {
-        element.classList.add('highlight-container');
-    }
 }
 
 export const Scroller = {
@@ -59,25 +42,28 @@ export const Scroller = {
 
     restoreScrollTop: function(y) {
         if (typeof y !== 'number') return;
+        // Restore luôn dùng instant
         setTimeout(() => {
             window.scrollTo({ top: y, behavior: 'instant' });
         }, 0);
     },
 
-    scrollToId: function(targetId) {
+    // [UPDATED] Hàm Scroll chính: Mặc định là smooth, nhưng cho phép override thành instant
+    scrollToId: function(targetId, behavior = 'smooth') {
         if (!targetId) {
             this.restoreScrollTop(0);
             return;
         }
-        this._findAndScroll(targetId, getTargetPosition);
+        // Luôn dùng _findAndScroll để tính toán vị trí chính xác (có offset)
+        this._findAndScroll(targetId, getTargetPosition, behavior);
     },
 
-    scrollToReadingPosition: function(targetId) {
+    scrollToReadingPosition: function(targetId, behavior = 'smooth') {
         if (!targetId) return;
-        this._findAndScroll(targetId, getReadingPosition);
+        this._findAndScroll(targetId, getReadingPosition, behavior);
     },
 
-    _findAndScroll(targetId, positionCalculator) {
+    _findAndScroll(targetId, positionCalculator, behavior) {
         let retries = 0;
         const maxRetries = 60;
 
@@ -85,7 +71,8 @@ export const Scroller = {
             const element = document.getElementById(targetId);
             if (element) {
                 const targetY = positionCalculator(element);
-                window.scrollTo({ top: targetY, behavior: 'smooth' });
+                // Thực hiện cuộn với behavior được chỉ định
+                window.scrollTo({ top: targetY, behavior: behavior });
             } else {
                 retries++;
                 if (retries < maxRetries) {
@@ -96,15 +83,19 @@ export const Scroller = {
         requestAnimationFrame(attemptFind);
     },
 
+    // Hàm legacy dùng cho các click bình thường (vẫn smooth)
     animateScrollTo: function(targetId) {
-        this.scrollToId(targetId);
+        this.scrollToId(targetId, 'smooth');
     },
 
     transitionTo: async function(renderAction, targetId) {
         if (renderAction) await renderAction();
+        // Chờ 1 frame để DOM render xong
         await new Promise(r => requestAnimationFrame(r));
+        
         if (targetId) {
-            this.scrollToId(targetId);
+            // Khi chuyển trang (Transition), dùng smooth cho mượt
+            this.scrollToId(targetId, 'smooth');
         } else {
             this.restoreScrollTop(0);
         }
