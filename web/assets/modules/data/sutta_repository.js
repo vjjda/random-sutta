@@ -1,7 +1,7 @@
 // Path: web/assets/modules/data/sutta_repository.js
 import { CoreNetwork } from './core_network.js';
 import { ZipLoader } from './zip_loader.js';
-import { getLogger } from '../utils/logger.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("SuttaRepository");
 const DB_PATH = "assets/db";

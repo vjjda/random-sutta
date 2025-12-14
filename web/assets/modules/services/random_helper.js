@@ -1,6 +1,6 @@
 // Path: web/assets/modules/services/random_helper.js
-import { PRIMARY_BOOKS, SECONDARY_BOOKS, SUB_BOOKS, RANDOM_POOLS } from '../data/constants.js'; // [UPDATED] Import SECONDARY_BOOKS
-import { getLogger } from '../utils/logger.js';
+import { PRIMARY_BOOKS, SECONDARY_BOOKS, SUB_BOOKS, RANDOM_POOLS } from 'data/constants.js'; // [UPDATED] Import SECONDARY_BOOKS
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("RandomHelper");
 

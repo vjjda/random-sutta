@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/core/tts_player.js
 import { TTSStateStore } from './tts_state_store.js';
-import { AppConfig } from '../../core/app_config.js';
+import { AppConfig } from 'core/app_config.js';
 
 export const TTSPlayer = {
     engine: null,

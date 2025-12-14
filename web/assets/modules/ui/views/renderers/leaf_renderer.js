@@ -1,5 +1,5 @@
 // Path: web/assets/modules/ui/views/renderers/leaf_renderer.js
-import { ContentCompiler } from "../../../data/content_compiler.js";
+import { ContentCompiler } from "data/content_compiler.js";
 
 function createContextFooter(currentUid, metaEntry, contextMeta) {
     if (!metaEntry || !metaEntry.parent_uid) return "";

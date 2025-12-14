@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/core/tts_highlighter.js
 import { TTSStateStore } from './tts_state_store.js';
-import { Scroller } from '../../ui/common/scroller.js';
+import { Scroller } from 'ui/common/scroller.js';
 
 export const TTSHighlighter = {
     ui: null, // Tham chiếu tới UI để cập nhật số đếm (1/10)

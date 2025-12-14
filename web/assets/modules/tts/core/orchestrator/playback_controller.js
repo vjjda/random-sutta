@@ -1,7 +1,7 @@
 // Path: web/assets/modules/tts/core/orchestrator/playback_controller.js
-import { TTSStateStore } from '../tts_state_store.js';
-import { TTSSessionManager } from '../tts_session_manager.js';
-import { TTSPlayer } from '../tts_player.js';
+import { TTSStateStore } from 'tts/core/tts_state_store.js';
+import { TTSSessionManager } from 'tts/core/tts_session_manager.js';
+import { TTSPlayer } from 'tts/core/tts_player.js';
 import { getLogger } from 'utils/logger.js'; // [FUTURE PROOF]
 
 const logger = getLogger("TTS_PlaybackCtrl");

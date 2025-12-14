@@ -1,6 +1,6 @@
 // Path: web/assets/modules/ui/managers/theme_manager.js
-import { AppConfig } from '../../core/app_config.js';
-import { getLogger } from '../../utils/logger.js';
+import { AppConfig } from 'core/app_config.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("ThemeManager");
 

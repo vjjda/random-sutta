@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/engines/tts_web_speech_engine.js
-import { getLogger } from '../../utils/logger.js'; 
+import { getLogger } from 'utils/logger.js'; 
 
 const logger = getLogger("TTS_WebSpeech");
 

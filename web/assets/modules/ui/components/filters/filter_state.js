@@ -1,6 +1,6 @@
 // Path: web/assets/modules/ui/components/filters/filter_state.js
 // [FIXED] Đường dẫn import lùi 3 cấp: filters -> components -> ui -> modules -> data
-import { PRIMARY_BOOKS } from '../../../data/constants.js';
+import { PRIMARY_BOOKS } from 'data/constants.js';
 
 const filterSet = new Set();
 

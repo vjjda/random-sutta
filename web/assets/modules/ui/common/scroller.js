@@ -1,6 +1,6 @@
 // Path: web/assets/modules/ui/common/scroller.js
-import { getLogger } from '../../utils/logger.js';
-import { AppConfig } from '../../core/app_config.js'; // [NEW] Import config
+import { getLogger } from 'utils/logger.js';
+import { AppConfig } from 'core/app_config.js'; // [NEW] Import config
 
 const logger = getLogger("Scroller");
 const SCROLL_OFFSET = 0; 

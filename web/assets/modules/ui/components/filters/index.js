@@ -1,5 +1,5 @@
 // Path: web/assets/modules/ui/components/filters/index.js
-import { Router } from '../../../core/router.js';
+import { Router } from 'core/router.js';
 import { FilterState } from './filter_state.js';
 import { FilterView } from './filter_view.js';
 import { FilterGestures } from './filter_gestures.js';

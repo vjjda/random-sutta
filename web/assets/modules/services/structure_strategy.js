@@ -1,6 +1,6 @@
 // Path: web/assets/modules/services/structure_strategy.js
-import { SuttaRepository } from '../data/sutta_repository.js';
-import { getLogger } from '../utils/logger.js';
+import { SuttaRepository } from 'data/sutta_repository.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("StructureStrategy");
 

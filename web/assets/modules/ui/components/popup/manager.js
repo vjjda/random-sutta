@@ -1,12 +1,12 @@
 // Path: web/assets/modules/ui/components/popup/manager.js
 import { CommentLayer } from './comment_layer.js';
 import { QuicklookLayer } from './quicklook_layer.js';
-import { Scroller } from '../../common/scroller.js';
-import { getLogger } from '../../../utils/logger.js';
-import { SuttaService } from '../../../services/sutta_service.js';
-import { LeafRenderer } from '../../views/renderers/leaf_renderer.js';
-import { AppConfig } from '../../../core/app_config.js';
-import { getCleanTextContent } from '../toh/text_utils.js';
+import { Scroller } from 'ui/common/scroller.js';
+import { getLogger } from 'utils/logger.js';
+import { SuttaService } from 'services/sutta_service.js';
+import { LeafRenderer } from 'ui/views/renderers/leaf_renderer.js';
+import { AppConfig } from 'core/app_config.js';
+import { getCleanTextContent } from 'ui/components/toh/text_utils.js';
 
 const logger = getLogger("PopupManager");
 

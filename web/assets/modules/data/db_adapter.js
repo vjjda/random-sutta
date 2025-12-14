@@ -1,5 +1,5 @@
 // Path: web/assets/modules/data/db_adapter.js
-import { getLogger } from '../utils/logger.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("DbAdapter");
 const DB_NAME = "SuttaDB";

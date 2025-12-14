@@ -1,10 +1,10 @@
 // Path: web/assets/modules/ui/views/renderer.js
 import { LeafRenderer } from "./renderers/leaf_renderer.js";
 import { BranchRenderer } from "./renderers/branch_renderer.js";
-import { setupTableOfHeadings } from "../components/toh/toh_controller.js";
-import { UIFactory } from "../common/ui_factory.js";
+import { setupTableOfHeadings } from "ui/components/toh/toh_controller.js";
+import { UIFactory } from "ui/common/ui_factory.js";
 import { HeaderView } from "./header_view.js";
-import { MagicNav } from "../components/magic_nav/magic_nav_controller.js";
+import { MagicNav } from "ui/components/magic_nav/magic_nav_controller.js";
 
 let tohInstance = null;
 

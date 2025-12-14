@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/engines/gcloud/config_manager.js
-import { AppConfig } from '../../../core/app_config.js';
+import { AppConfig } from 'core/app_config.js';
 
 const KEYS = {
     API_KEY: "tts_gcloud_key",

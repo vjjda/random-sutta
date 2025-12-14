@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/engines/support/tts_audio_cache.js
-import { getLogger } from '../../../utils/logger.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("TTS_AudioCache");
 

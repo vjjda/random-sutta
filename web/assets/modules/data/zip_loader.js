@@ -1,5 +1,5 @@
 // Path: web/assets/modules/data/zip_loader.js
-import { getLogger } from '../utils/logger.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("ZipLoader");
 

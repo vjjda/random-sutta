@@ -1,8 +1,8 @@
 // Path: web/assets/modules/ui/managers/offline/offline_service.js
 // [UPDATED PATHS] Thêm một cấp '../' vào các đường dẫn import
-import { SuttaRepository } from '../../../data/sutta_repository.js';
-import { getLogger } from '../../../utils/logger.js';
-import { AppConfig } from '../../../core/app_config.js';
+import { SuttaRepository } from 'data/sutta_repository.js';
+import { getLogger } from 'utils/logger.js';
+import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("OfflineService");
 export const APP_VERSION = "dev-placeholder";

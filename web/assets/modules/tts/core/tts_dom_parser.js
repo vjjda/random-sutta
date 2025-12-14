@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/core/tts_dom_parser.js
-import { getLogger } from '../../utils/logger.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("TTS_DOMParser");
 

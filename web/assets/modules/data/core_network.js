@@ -1,5 +1,5 @@
 // Path: web/assets/modules/data/core_network.js
-import { getLogger } from '../utils/logger.js';
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("CoreNetwork");
 

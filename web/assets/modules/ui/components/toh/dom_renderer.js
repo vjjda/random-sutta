@@ -1,5 +1,5 @@
 // Path: web/assets/modules/ui/components/toh/dom_renderer.js
-import { Scroller } from '../../common/scroller.js';
+import { Scroller } from 'ui/common/scroller.js';
 
 export const DomRenderer = {
     renderList(items, listElement, callbacks) {

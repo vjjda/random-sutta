@@ -1,5 +1,5 @@
 // Path: web/assets/modules/ui/components/popup/comment_layer.js
-import { Scroller } from '../../common/scroller.js';
+import { Scroller } from 'ui/common/scroller.js';
 
 export const CommentLayer = {
     elements: {},

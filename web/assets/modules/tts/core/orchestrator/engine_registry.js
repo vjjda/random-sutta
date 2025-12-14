@@ -1,7 +1,7 @@
 // Path: web/assets/modules/tts/core/orchestrator/engine_registry.js
-import { TTSWebSpeechEngine } from '../../engines/tts_web_speech_engine.js';
-import { TTSGoogleCloudEngine } from '../../engines/tts_gcloud_engine.js';
-import { TTSStateStore } from '../tts_state_store.js';
+import { TTSWebSpeechEngine } from 'tts/engines/tts_web_speech_engine.js';
+import { TTSGoogleCloudEngine } from 'tts/engines/tts_gcloud_engine.js';
+import { TTSStateStore } from 'tts/core/tts_state_store.js';
 import { getLogger } from 'utils/logger.js'; // [FUTURE PROOF]
 
 const logger = getLogger("TTS_EngineRegistry");

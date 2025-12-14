@@ -2,7 +2,7 @@
 import { TTSUILayout } from './tts_ui_layout.js';
 import { TTSUIRenderer } from './tts_ui_renderer.js';
 import { TTSUIActions } from './tts_ui_actions.js';
-import { AppConfig } from '../../core/app_config.js';
+import { AppConfig } from 'core/app_config.js';
 
 export const TTSUICoordinator = {
     orchestrator: null,

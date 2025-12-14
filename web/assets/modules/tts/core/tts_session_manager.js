@@ -2,9 +2,9 @@
 import { TTSStateStore } from './tts_state_store.js';
 import { TTSDOMParser } from './tts_dom_parser.js';
 import { TTSMarkerManager } from './tts_marker_manager.js';
-import { getLogger } from '../../utils/logger.js';
-import { TextSplitter } from '../../utils/text_splitter.js';
-import { AppConfig } from '../../core/app_config.js';
+import { getLogger } from 'utils/logger.js';
+import { TextSplitter } from 'utils/text_splitter.js';
+import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("TTS_SessionManager");
 

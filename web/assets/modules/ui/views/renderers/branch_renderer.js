@@ -1,5 +1,5 @@
 // Path: web/assets/modules/ui/views/renderers/branch_renderer.js
-import { ContentCompiler } from "../../../data/content_compiler.js";
+import { ContentCompiler } from "data/content_compiler.js";
 
 // [NEW] Helper để làm phẳng cây cấu trúc (Hoisting)
 function flattenSingleChains(structure, metaMap) {

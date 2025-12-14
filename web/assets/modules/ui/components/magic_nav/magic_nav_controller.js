@@ -2,7 +2,7 @@
 import { BreadcrumbRenderer } from './breadcrumb_renderer.js';
 import { TocRenderer } from './toc_renderer.js';
 import { UIManager } from './ui_manager.js';
-import { AppConfig } from '../../../core/app_config.js';
+import { AppConfig } from 'core/app_config.js';
 
 export const MagicNav = {
     _closeTimer: null,

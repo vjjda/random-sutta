@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/ui/tts_ui_actions.js
-import { AppConfig } from '../../core/app_config.js';
+import { AppConfig } from 'core/app_config.js';
 
 // Simple debounce helper
 const debounce = (func, delay) => {
