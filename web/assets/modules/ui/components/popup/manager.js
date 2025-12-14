@@ -9,12 +9,9 @@ import { AppConfig } from 'core/app_config.js';
 import { getCleanTextContent } from 'ui/components/toh/text_utils.js';
 
 const logger = getLogger("PopupManager");
-
-// [CONFIG] Offset để nhìn thấy context bên trên (tương tự 60px cũ)
 const QUICKLOOK_SCROLL_OFFSET = 60; 
 
 export const PopupManager = {
-    // ... (state, init, saveState, restoreState giữ nguyên) ...
     state: {
         comments: [],
         currentIndex: -1,
@@ -23,13 +20,16 @@ export const PopupManager = {
 
     init() {
         this._applyLayoutConfig();
+        
         CommentLayer.init({
             onClose: () => this.hideAll(),
             onNavigate: (dir) => this._navigateComment(dir),
             onLinkClick: (href) => this._handleCommentLink(href)
         });
+        
         QuicklookLayer.init({
             onDeepLink: (href) => this._navigateToMain(href),
+            // [CRITICAL] Handler này chịu trách nhiệm lưu state trước khi đi
             onOpenOriginal: (href) => this._handleExternalLink(href)
         });
 
@@ -41,6 +41,7 @@ export const PopupManager = {
                     const text = e.target.dataset.comment;
                     this._openComment(text);
                 } else {
+                    // Click outside logic
                     if (QuicklookLayer.isVisible() && !document.getElementById("quicklook-popup").contains(e.target)) {
                         QuicklookLayer.hide();
                     } else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
@@ -52,11 +53,8 @@ export const PopupManager = {
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "Escape") {
-                if (QuicklookLayer.isVisible()) {
-                    QuicklookLayer.hide();
-                } else if (CommentLayer.isVisible()) {
-                    this.hideAll();
-                }
+                if (QuicklookLayer.isVisible()) QuicklookLayer.hide();
+                else if (CommentLayer.isVisible()) this.hideAll();
             }
             if (CommentLayer.isVisible() && !QuicklookLayer.isVisible()) {
                 if (e.key === "ArrowLeft") this._navigateComment(-1);
@@ -65,45 +63,75 @@ export const PopupManager = {
         });
     },
 
-    // ... (saveState, restoreState, scanComments, navigateComment giữ nguyên) ...
     saveState() {
         try {
             const currentState = window.history.state || {};
-            const isCommentActive = CommentLayer.isVisible() || (QuicklookLayer.isVisible() && this.state.currentIndex !== -1);
+            
+            // Logic xác định state: Nếu Quicklook mở, ta vẫn cần biết Comment nào đang active bên dưới
+            // CommentLayer có thể bị che khuất nhưng logic vẫn active
+            const isCommentActive = this.state.currentIndex !== -1;
             
             const popupState = {
                 commentIndex: isCommentActive ? this.state.currentIndex : -1,
+                // Chỉ lưu URL quicklook nếu nó đang thực sự mở
                 quicklookUrl: QuicklookLayer.isVisible() ? QuicklookLayer.elements.externalLinkBtn.href : null
             };
-            logger.info("StateSave", `Saving: CommentIdx=${popupState.commentIndex}, QL=${popupState.quicklookUrl ? 'Yes' : 'No'}`);
-            window.history.replaceState({ ...currentState, popupState }, document.title, window.location.href);
-        } catch (e) { logger.error("StateSave", e); }
+
+            logger.info("StateSave", `Snapshot: CommentIdx=${popupState.commentIndex}, QL=${popupState.quicklookUrl ? 'Yes' : 'No'}`);
+            
+            // Ghi đè state hiện tại với thông tin popup
+            window.history.replaceState(
+                { ...currentState, popupState }, 
+                document.title, 
+                window.location.href
+            );
+        } catch (e) {
+            logger.error("StateSave", e);
+        }
     },
 
     async restoreState() {
         try {
             const state = window.history.state;
             if (!state || !state.popupState) {
-                logger.info("StateRestore", "No popup state found.");
                 return;
             }
+
             const { commentIndex, quicklookUrl } = state.popupState;
             logger.info("StateRestore", `Restoring: CommentIdx=${commentIndex}, QL=${quicklookUrl}`);
 
+            // 1. Khôi phục Comment Popup trước
             if (commentIndex !== undefined && commentIndex !== -1) {
-                if (this.state.comments.length === 0) this.scanComments();
+                // Quét lại comment markers nếu cần (vì trang vừa load xong)
+                if (this.state.comments.length === 0) {
+                    this.scanComments();
+                }
+
                 if (this.state.comments.length > 0 && commentIndex < this.state.comments.length) {
                     this.state.currentIndex = commentIndex;
                     const item = this.state.comments[commentIndex];
+                    // Hiển thị popup
                     CommentLayer.show(item.text, commentIndex, this.state.comments.length, this._getCurrentContextText());
+                    // Scroll trang chính đến vị trí comment
+                    if (item.id) Scroller.scrollToId(item.id, 'instant');
                 }
             }
-            if (quicklookUrl) await this._handleCommentLink(quicklookUrl, true);
-        } catch (e) { logger.error("StateRestore", e); }
+
+            // 2. Khôi phục Quicklook Popup (nếu có)
+            if (quicklookUrl) {
+                await this._handleCommentLink(quicklookUrl, true);
+            }
+        } catch (e) {
+            logger.error("StateRestore", e);
+        }
     },
 
+    // [CRITICAL FIX] Hàm xử lý khi bấm nút "Open Link" (Mũi tên chéo)
     _handleExternalLink(href) {
+        // 1. Lưu trạng thái hiện tại (Popup đang mở) vào History Entry HIỆN TẠI
         this.saveState();
+        
+        // 2. Chuyển hướng sang trang mới (Tạo History Entry MỚI)
         this._navigateToMain(href);
     },
 
@@ -125,30 +153,40 @@ export const PopupManager = {
             text: marker.dataset.comment,
             element: marker.closest('.segment') 
         }));
-        this.state.currentIndex = -1;
+        // Không reset currentIndex = -1 ở đây để tránh mất state khi restore gọi scan
     },
 
     _getCurrentContextText() {
         if (this.state.currentIndex !== -1 && this.state.comments[this.state.currentIndex]) {
             const currentSeg = this.state.comments[this.state.currentIndex].element;
-            if (currentSeg) return getCleanTextContent(currentSeg);
+            if (currentSeg) {
+                return getCleanTextContent(currentSeg);
+            }
         }
         return "";
     },
 
     _openComment(text) {
+        // Quét lại để đảm bảo đồng bộ
+        if (this.state.comments.length === 0) this.scanComments();
+        
         this.state.currentIndex = this.state.comments.findIndex(c => c.text === text);
-        CommentLayer.show(text, this.state.currentIndex, this.state.comments.length, this._getCurrentContextText());
-        QuicklookLayer.hide(); 
+        if (this.state.currentIndex !== -1) {
+            CommentLayer.show(text, this.state.currentIndex, this.state.comments.length, this._getCurrentContextText());
+            QuicklookLayer.hide(); 
+        }
     },
 
     _navigateComment(dir) {
         const nextIdx = this.state.currentIndex + dir;
         if (nextIdx < 0 || nextIdx >= this.state.comments.length) return;
+
         this.state.currentIndex = nextIdx;
         const item = this.state.comments[nextIdx];
+        
         CommentLayer.show(item.text, nextIdx, this.state.comments.length, this._getCurrentContextText());
         if (item.id) Scroller.scrollToId(item.id);
+        
         QuicklookLayer.hide();
     },
 
@@ -166,16 +204,15 @@ export const PopupManager = {
             hash = urlObj.hash;
             if (!uid) return;
 
-            if (this.state.loadingUid === uid) {
-                logger.info("Quicklook", `Debounced duplicate request for ${uid}`);
-                return;
-            }
+            if (this.state.loadingUid === uid) return;
             this.state.loadingUid = uid;
             
-            QuicklookLayer.show(
-                '<div style="text-align:center; padding: 20px;">Loading...</div>', 
-                uid.toUpperCase()
-            );
+            if (!isRestoring) {
+                QuicklookLayer.show(
+                    '<div style="text-align:center; padding: 20px;">Loading...</div>', 
+                    uid.toUpperCase()
+                );
+            }
             
             try {
                 const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
@@ -188,35 +225,30 @@ export const PopupManager = {
                         ? `<span class="ql-uid-badge">${acronym}</span><span class="ql-sutta-title">${titleText}</span>` 
                         : `<span class="ql-uid-badge">${acronym}</span>`;
                     
+                    // Show popup với nội dung đã load
                     QuicklookLayer.show(renderRes.html, displayTitle, href);
                     
+                    // Xử lý scroll đến anchor (hash)
                     if (hash) {
                         let targetId = hash.substring(1);
                         if (targetId && !targetId.includes(':')) {
                             const isSegmentNumber = /^[\d\.]+$/.test(targetId);
-                            if (isSegmentNumber) {
-                                targetId = `${uid}:${targetId}`;
-                            }
+                            if (isSegmentNumber) targetId = `${uid}:${targetId}`;
                         }
 
-                        // [FIXED] Sử dụng logic tính toán toạ độ tuyệt đối để tránh lỗi offsetTop
+                        // Instant Jump Logic
                         setTimeout(() => {
                             const qBody = document.querySelector("#quicklook-popup .popup-body");
                             const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
                             
                             if (targetEl && qBody) {
-                                // 1. Tính toán vị trí tương đối chuẩn xác
                                 const containerRect = qBody.getBoundingClientRect();
                                 const elementRect = targetEl.getBoundingClientRect();
                                 const currentScroll = qBody.scrollTop;
-                                
-                                // Vị trí đích = (Vị trí hiện tại) + (Khoảng cách giữa Element và Container) - Offset
                                 const targetPosition = currentScroll + (elementRect.top - containerRect.top) - QUICKLOOK_SCROLL_OFFSET;
 
-                                // 2. Scroll trực tiếp (Instant)
                                 qBody.scrollTop = targetPosition;
 
-                                // 3. Highlight visual
                                 qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
                                 targetEl.classList.add('highlight');
                             }
@@ -237,8 +269,10 @@ export const PopupManager = {
     },
 
     _navigateToMain(href) {
+        // Ẩn Popup ngay lập tức để chuyển trang mượt mà
         QuicklookLayer.hide();
         CommentLayer.hide();
+        
         try {
             const urlObj = new URL(href, window.location.origin);
             let uid = "";
@@ -250,10 +284,10 @@ export const PopupManager = {
             }
             if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
-                // [FIXED] Transition: false để báo hiệu dùng instant scroll
+                // Transition false -> Instant Scroll
                 window.loadSutta(uid, true, 0, { transition: false });
             }
-        } catch(e){}
+        } catch(e) {}
     },
     
     hideAll() {
