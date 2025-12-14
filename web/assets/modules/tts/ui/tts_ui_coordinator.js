@@ -17,8 +17,8 @@ export const TTSUICoordinator = {
 
         TTSUIActions.bind(this.orchestrator, TTSUIRenderer);
         
-        this.orchestrator.engine.onVoicesChanged = (voices) => {
-            TTSUIRenderer.populateVoices(voices, this.orchestrator.engine.voice);
+        this.orchestrator.engine.onVoicesChanged = (voices, currentVoice) => {
+            TTSUIRenderer.populateVoices(voices, currentVoice || this.orchestrator.engine.voice);
         };
 
         setTimeout(() => {

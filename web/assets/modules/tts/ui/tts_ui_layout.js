@@ -45,7 +45,15 @@ export const TTSUILayout = {
                         <input type="range" id="tts-pitch-range" min="-10.0" max="10.0" step="1.0" value="0.0">
                     </div>
                     <div class="tts-setting-row">
-                        <label>Voice <span id="tts-voice-offline-badge" class="hidden" style="color: #2e7d32; margin-left: 5px;">✓ Offline Ready</span></label>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="margin-bottom: 0;">Voice</label>
+                                <button id="tts-refresh-voices" class="tts-icon-btn" title="Refresh List">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                </button>
+                            </div>
+                            <span id="tts-voice-offline-badge" class="hidden" style="font-size: 0.75rem; color: #2e7d32; font-weight: 600;">✓ Offline Ready</span>
+                        </div>
                         <select id="tts-voice-select"></select>
                     </div>
                     

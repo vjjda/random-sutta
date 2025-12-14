@@ -43,14 +43,27 @@ export class TTSGoogleCloudEngine {
         this.fetcher.setApiKey(key);
         localStorage.setItem("tts_gcloud_key", key);
         
-        // Auto fetch voices if key is present
+        // Auto fetch voices if key is present (with cache check)
         if (key) {
-            this.refreshVoices();
+            this.refreshVoices(false);
         }
     }
     
-    async refreshVoices() {
+    async refreshVoices(force = false) {
         if (!this.apiKey) return;
+        
+        // Check cache validity (e.g. 7 days)
+        const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000;
+        const lastUpdate = parseInt(localStorage.getItem("tts_gcloud_voices_ts") || "0");
+        const now = Date.now();
+        
+        if (!force && this.availableVoices.length > 0 && (now - lastUpdate < CACHE_DURATION)) {
+            logger.info("Voices", "Using cached voice list.");
+            // Ensure UI is synced even if we don't fetch
+            if (this.onVoicesChanged) this.onVoicesChanged(this.availableVoices);
+            return;
+        }
+
         try {
             const rawVoices = await this.fetcher.fetchVoices();
             // Filter and Map
@@ -66,9 +79,18 @@ export class TTSGoogleCloudEngine {
             this.availableVoices.sort((a, b) => a.name.localeCompare(b.name));
 
             localStorage.setItem("tts_gcloud_voices_list", JSON.stringify(this.availableVoices));
+            localStorage.setItem("tts_gcloud_voices_ts", now.toString());
             
+            // [Fix] Re-sync current voice object with new list to ensure UI consistency
+            if (this.voice && this.voice.name) {
+                const updatedVoice = this.availableVoices.find(v => v.voiceURI === this.voice.name);
+                if (updatedVoice) {
+                    this.voice = { name: updatedVoice.voiceURI, lang: updatedVoice.lang };
+                }
+            }
+
             if (this.onVoicesChanged) {
-                this.onVoicesChanged(this.availableVoices);
+                this.onVoicesChanged(this.availableVoices, this.voice);
             }
             logger.info("Voices", `Loaded ${this.availableVoices.length} voices from GCloud.`);
         } catch (e) {
