@@ -153,6 +153,9 @@
   --radius-popup: 12px;
   --popup-padding-mobile: 20px 16px;
   --popup-padding-desktop: 25px 30px;
+
+  /* TTS Specific */
+  --tts-cached-color: #2e7d32;
 }
 
 /* =========================================
@@ -189,4 +192,7 @@
   /* Highlights */
   --highlight-color-background: rgba(255, 255, 255, 0.08);
   --highlight-color-segment: rgba(255, 179, 0, 0.15);
+
+  /* TTS Specific */
+  --tts-cached-color: #66bb6a;
 }

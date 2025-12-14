@@ -53,13 +53,8 @@
 
 /* Cached State (Available Offline) */
 .tts-marker.cached::before {
-  background-color: #2e7d32; /* Green */
-  box-shadow: 0 0 0 1px #2e7d32; /* Subtle ring */
-}
-
-[data-theme="dark"] .tts-marker.cached::before {
-  background-color: #66bb6a; /* Lighter Green */
-  box-shadow: 0 0 0 1px #66bb6a;
+  background-color: var(--tts-cached-color);
+  box-shadow: 0 0 0 1px var(--tts-cached-color);
 }
 
 /* Hover/Active State */
@@ -81,6 +76,12 @@
   background-color: var(--primary-color); /* Bright primary */
   transform: scale(1.4);
   box-shadow: 0 0 8px var(--primary-color); /* Glow effect */
+}
+
+/* Special state: Active AND Cached marker */
+.tts-active .tts-marker.cached::before {
+  background-color: var(--tts-cached-color); /* Use variable for consistency */
+  box-shadow: 0 0 8px var(--tts-cached-color); /* Glow with the correct theme color */
 }
 
 /* --- 3. Positioning Context --- */
