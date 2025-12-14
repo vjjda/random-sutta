@@ -1,5 +1,5 @@
-// Path: web/assets/modules/ui/components/popup/comment_popup_ui.js
-export const CommentPopupUI = {
+// Path: web/assets/modules/ui/components/popup/ui/comment_ui.js
+export const CommentUI = {
     elements: {},
     
     init(callbacks) {
@@ -28,7 +28,6 @@ export const CommentPopupUI = {
             this.elements.btnNext.addEventListener("click", () => callbacks.onNavigate(1));
         }
 
-        // Horizontal scroll for header text
         if (this.elements.headerContext) {
             this.elements.headerContext.addEventListener("wheel", (e) => {
                 if (this.elements.headerContext.scrollWidth > this.elements.headerContext.clientWidth) {
@@ -41,13 +40,10 @@ export const CommentPopupUI = {
         this.elements.content.addEventListener("click", (e) => {
             const link = e.target.closest("a");
             if (link && link.href) {
-                // Check internal links
-                const isInternal = link.href.includes("suttacentral.net") || link.href.includes("?q=") || !link.href.startsWith("http");
-                if (isInternal) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    callbacks.onLinkClick(link.href);
-                }
+                // Delegate link handling to controller
+                e.preventDefault();
+                e.stopPropagation();
+                callbacks.onLinkClick(link.href);
             }
         });
     },

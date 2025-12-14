@@ -1,5 +1,5 @@
-// Path: web/assets/modules/ui/components/popup/quicklook_popup_ui.js
-export const QuicklookPopupUI = {
+// Path: web/assets/modules/ui/components/popup/ui/quicklook_ui.js
+export const QuicklookUI = {
     elements: {},
 
     init(callbacks) {
@@ -23,7 +23,6 @@ export const QuicklookPopupUI = {
             this.elements.externalLinkBtn.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // [CRITICAL] Gọi callback để Orchestrator xử lý việc lưu state
                 if (callbacks.onOpenOriginal && this.elements.externalLinkBtn.href) {
                     callbacks.onOpenOriginal(this.elements.externalLinkBtn.href);
                 }
