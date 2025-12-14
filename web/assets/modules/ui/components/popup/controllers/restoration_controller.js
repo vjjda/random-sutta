@@ -11,31 +11,40 @@ export const RestorationController = {
     restore() {
         const snapshot = PopupState.getSnapshot();
         
-        // Debug Log
-        if (snapshot) {
-            logger.info("Restore", `Found snapshot type: ${snapshot.type}`, snapshot);
-        } else {
+        if (!snapshot) {
             logger.debug("Restore", "No snapshot found.");
             return;
         }
 
-        if (snapshot.type === 'none') return;
+        // [CRITICAL FIX] Bỏ qua kiểm tra snapshot.type === 'none'
+        // Vì trong một số trường hợp race condition, type có thể bị reset về 'none' 
+        // nhưng dữ liệu (commentIndex, url) vẫn còn lưu trong snapshot.
+        // Chúng ta ưu tiên phục hồi dữ liệu nếu nó tồn tại.
+        
+        logger.info("Exec", `Analyzing snapshot...`, snapshot);
 
-        // 1. Luôn restore comment nền nếu có index hợp lệ
+        let restoredAnything = false;
+
+        // 1. Phục hồi Comment (Lớp dưới)
+        // Kiểm tra kỹ: phải là số và không phải -1
         if (typeof snapshot.commentIndex === 'number' && snapshot.commentIndex !== -1) {
+            
             // Đảm bảo dữ liệu comment đã được quét
             if (PopupState.getComments().length === 0) {
                 logger.info("Restore", "Rescanning comments...");
                 CommentController.scanComments();
             }
             
-            logger.info("Restore", `Activating comment index: ${snapshot.commentIndex}`);
-            // Activate Comment (UI)
-            CommentController.activate(snapshot.commentIndex);
-            
-            // Scroll trang chính tới vị trí cũ
             const comments = PopupState.getComments();
-            if (comments[snapshot.commentIndex]) {
+            // Double check index hợp lệ
+            if (snapshot.commentIndex < comments.length) {
+                logger.info("Restore", `Restoring Comment at index: ${snapshot.commentIndex}`);
+                
+                // Activate Comment (UI)
+                CommentController.activate(snapshot.commentIndex);
+                restoredAnything = true;
+
+                // Scroll trang chính tới vị trí cũ (nếu cần thiết)
                 const item = comments[snapshot.commentIndex];
                 if (item && item.id) {
                     // Dùng 'instant' để tránh hiệu ứng cuộn gây chóng mặt khi restore
@@ -44,11 +53,18 @@ export const RestorationController = {
             }
         }
 
-        // 2. Nếu type là Quicklook, restore đè lên
-        if (snapshot.type === 'quicklook' && snapshot.quicklookUrl) {
-            logger.info("Restore", `Re-opening Quicklook: ${snapshot.quicklookUrl}`);
-            // isRestoring = true
+        // 2. Phục hồi Quicklook (Lớp trên - Đè lên comment nếu có)
+        // Kiểm tra: quicklookUrl phải tồn tại và không rỗng
+        if (snapshot.quicklookUrl) {
+            logger.info("Restore", `Restoring Quicklook: ${snapshot.quicklookUrl}`);
+            
+            // Gọi hàm mở Quicklook với cờ isRestoring = true (nếu controller hỗ trợ logic riêng)
             QuicklookController.handleLinkRequest(snapshot.quicklookUrl, true);
+            restoredAnything = true;
+        }
+
+        if (!restoredAnything) {
+            logger.debug("Restore", "Snapshot had no actionable data.");
         }
     }
 };
