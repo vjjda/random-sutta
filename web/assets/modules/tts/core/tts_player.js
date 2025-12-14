@@ -121,26 +121,34 @@ export const TTSPlayer = {
 
         const { currentIndex, playlist } = TTSStateStore;
         const bufferSize = AppConfig.TTS?.BUFFER_AHEAD || 7;
+        
+        console.log(`[DEBUG_BUFFER] --- Managing Buffer at index: ${currentIndex} ---`);
+        console.log(`[DEBUG_BUFFER] Farthest index previously prefetched: ${this.farthestPrefetchedIndex}`);
 
         // The index of the farthest item we want to have in our buffer
         const desiredFarthestIndex = Math.min(currentIndex + bufferSize, playlist.length - 1);
+        console.log(`[DEBUG_BUFFER] Desired farthest index: ${desiredFarthestIndex}`);
 
         // If we've already queued everything up to this point, no need to do more.
         if (this.farthestPrefetchedIndex >= desiredFarthestIndex) {
+            console.log("[DEBUG_BUFFER] Buffer is already full. No action needed.");
             return;
         }
 
         // Fetch the items from our last known point to the new desired point.
         const startIndex = this.farthestPrefetchedIndex + 1;
+        console.log(`[DEBUG_BUFFER] Fetching items from index ${startIndex} to ${desiredFarthestIndex}`);
         for (let i = startIndex; i <= desiredFarthestIndex; i++) {
             const item = playlist[i];
             if (item) {
+                console.log(`[DEBUG_BUFFER] Calling prefetch for item ${i}: "${item.text.substring(0, 20)}..."`);
                 this.engine.prefetch(item.text);
             }
         }
         
         // Update the high-water mark
         this.farthestPrefetchedIndex = desiredFarthestIndex;
+        console.log(`[DEBUG_BUFFER] New farthest index updated to: ${this.farthestPrefetchedIndex}`);
     },
 
     _triggerEnd() {

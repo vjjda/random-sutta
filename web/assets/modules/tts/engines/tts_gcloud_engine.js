@@ -237,19 +237,28 @@ export class TTSGoogleCloudEngine {
     async prefetch(text) {
         if (!text || !this.apiKey) return;
         
+        const shortText = `"${text.substring(0, 30)}..."`;
+        console.log(`[DEBUG_PREFETCH] Request to prefetch: ${shortText}`);
+
         // Prefetch rate 1.0, pitch 0.0 version
         const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, 0.0);
         const cached = await this.cache.get(key);
         
         if (!cached) {
-            logger.debug("Prefetch", `Downloading: "${text.substring(0, 20)}..."`);
+            console.log(`[DEBUG_PREFETCH] NOT in cache. Downloading: ${shortText}`);
             try {
                 const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, 1.0, 0.0);
+                console.log(`[DEBUG_PREFETCH] Downloaded ${shortText}. Caching...`);
                 await this.cache.put(key, blob);
-                if (this.onAudioCached) this.onAudioCached(text);
+                if (this.onAudioCached) {
+                    console.log(`[DEBUG_PREFETCH] Calling onAudioCached for ${shortText}`);
+                    this.onAudioCached(text);
+                }
             } catch (e) {
-                logger.warn("Prefetch", "Failed", e);
+                logger.warn("Prefetch", `Failed for ${shortText}`, e);
             }
+        } else {
+            console.log(`[DEBUG_PREFETCH] ALREADY in cache: ${shortText}`);
         }
     }
 
