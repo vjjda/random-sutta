@@ -168,27 +168,27 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Active Segment --- */
-.segment.tts-active {
-  background-color: var(--highlight-color-segment);
-  transition: background-color 0.2s;
-  border-radius: 6px;
-  box-shadow: 0 0 0 4px var(--highlight-color-segment);
+/* --- Active Highlight (Unified Style) --- */
+/* Apply to both Segments and Blocks (Paragraphs/Headings) */
+.segment.tts-active,
+:not(.segment).tts-active {
+  background-color: rgba(139, 69, 19, 0.05); /* Subtle tint */
+  border-right: 4px solid var(--primary-color);
+  border-radius: 8px 0 0 8px; /* Rounded left corners */
+  
+  /* Layout Compensation for Border */
+  padding-right: 12px;
+  margin-right: -12px;
+  
+  transition: all 0.2s ease;
   position: relative;
   z-index: 1;
+  
+  /* Reset old segment styles */
+  box-shadow: none;
 }
 
-/* --- Active Block (Paragraph/Heading) --- */
-/* Target elements that are NOT .segment but have .tts-active */
-:not(.segment).tts-active {
-  border-right: 4px solid var(--primary-color);
-  padding-right: 12px;
-  margin-right: -12px; /* Pull slightly right to align visual weight */
-  background-color: rgba(139, 69, 19, 0.05); /* Subtle tint */
-  border-radius: 8px 0 0 8px;
-  transition: all 0.2s ease;
-}
-
+[data-theme="dark"] .segment.tts-active,
 [data-theme="dark"] :not(.segment).tts-active {
   background-color: rgba(255, 255, 255, 0.05);
 }
