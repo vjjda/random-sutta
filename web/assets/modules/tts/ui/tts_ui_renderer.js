@@ -103,7 +103,11 @@ export const TTSUIRenderer = {
         voices.forEach(v => {
             const option = document.createElement("option");
             option.value = v.voiceURI;
-            option.textContent = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60); 
+            
+            const cleanName = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60);
+            option.dataset.originalName = cleanName; // Store clean name
+            option.textContent = "  " + cleanName; // Add padding by default
+            
             select.appendChild(option);
         });
         if (currentVoice) select.value = currentVoice.voiceURI;
@@ -116,10 +120,14 @@ export const TTSUIRenderer = {
         
         for (let i = 0; i < options.length; i++) {
             const opt = options[i];
-            if (offlineSet.has(opt.value)) {
-                opt.classList.add("offline-ready");
-            } else {
-                opt.classList.remove("offline-ready");
+            const originalName = opt.dataset.originalName;
+
+            if (originalName) { // Ensure dataset is populated
+                if (offlineSet.has(opt.value)) {
+                    opt.textContent = "✓ " + originalName;
+                } else {
+                    opt.textContent = "  " + originalName;
+                }
             }
         }
     },
