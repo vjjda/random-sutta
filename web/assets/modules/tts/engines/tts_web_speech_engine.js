@@ -1,5 +1,4 @@
 // Path: web/assets/modules/tts/engines/tts_web_speech_engine.js
-// [CRITICAL] Import path must be exactly 2 levels up to reach 'modules/utils'
 import { getLogger } from '../../utils/logger.js'; 
 
 const logger = getLogger("TTS_WebSpeech");
@@ -12,7 +11,6 @@ export class TTSWebSpeechEngine {
         this.pitch = 1.0;
         this.onVoicesChanged = null;
         this.currentUtterance = null;
-        
         if (speechSynthesis.onvoiceschanged !== undefined) {
             speechSynthesis.onvoiceschanged = () => {
                 this._loadVoices();
@@ -21,13 +19,13 @@ export class TTSWebSpeechEngine {
         }
         this._loadVoices();
         this._loadSettings();
-        this.stop(); 
+        this.stop();
     }
 
     _loadVoices() {
         const voices = this.synth.getVoices();
         if (!this.voice && voices.length > 0) {
-             this.voice = voices.find(v => v.name.includes("Google US English")) || 
+             this.voice = voices.find(v => v.name.includes("Google US English")) ||
                           voices.find(v => v.lang === "en-US") || 
                           voices.find(v => v.lang.startsWith("en"));
         }
@@ -40,7 +38,6 @@ export class TTSWebSpeechEngine {
         
         if (savedRate) this.rate = parseFloat(savedRate);
         if (savedPitch) this.pitch = parseFloat(savedPitch);
-        
         if (savedVoiceURI) {
             const voices = this.synth.getVoices();
             const found = voices.find(v => v.voiceURI === savedVoiceURI);
@@ -71,21 +68,19 @@ export class TTSWebSpeechEngine {
         localStorage.setItem("tts_pitch", this.pitch);
     }
 
+    // [FIX] Return a resolved Promise for interface consistency
     speak(text, onEnd, onBoundary) {
         this.synth.cancel();
-
         if (!text) { 
             if (onEnd) onEnd(); 
-            return; 
+            return Promise.resolve();
         }
 
         const utterance = new SpeechSynthesisUtterance(text);
         this.currentUtterance = utterance;
-
         if (this.voice) utterance.voice = this.voice;
         utterance.rate = this.rate;
         utterance.pitch = this.pitch;
-
         utterance.onend = () => { 
             this.currentUtterance = null;
             if (onEnd) onEnd(); 
@@ -106,6 +101,8 @@ export class TTSWebSpeechEngine {
         setTimeout(() => {
             this.synth.speak(utterance);
         }, 10);
+
+        return Promise.resolve();
     }
 
     pause() { this.synth.pause(); }

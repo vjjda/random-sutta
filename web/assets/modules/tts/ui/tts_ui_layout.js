@@ -34,6 +34,7 @@ export const TTSUILayout = {
 
                     <div class="tts-setting-row hidden" id="tts-apikey-row">
                         <form onsubmit="return false;" style="display: contents;">
+                            <input type="text" autocomplete="username" style="display:none;">
                             <label>API Key</label>
                             <input type="password" id="tts-apikey-input" placeholder="Enter GCloud API Key" autocomplete="new-password" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color);">
                         </form>
@@ -75,7 +76,6 @@ export const TTSUILayout = {
         `;
     },
     inject() {
-        // [SAFETY] Chỉ inject nếu chưa tồn tại
         if (document.getElementById("magic-tts-trigger")) return;
         document.body.insertAdjacentHTML('beforeend', this.getHTML());
     }

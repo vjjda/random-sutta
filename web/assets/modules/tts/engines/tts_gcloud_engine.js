@@ -53,8 +53,6 @@ export class TTSGoogleCloudEngine {
     getVoices() { return this.voiceMgr.getList(); }
     
     setVoice(uri) { 
-        // Pass to manager to validate and set
-        // (Simplified logic: Engine doesn't need to know detail)
         const list = this.voiceMgr.getList();
         const found = list.find(v => v.voiceURI === uri);
         if (found) this.config.setVoice(found);
@@ -66,8 +64,16 @@ export class TTSGoogleCloudEngine {
         this.player.setRate(rate);
     }
 
-    speak(text, onEnd, onBoundary) { this.synth.speak(text, onEnd); }
-    prefetch(text) { this.synth.prefetch(text); }
+    // [FIX] Added 'return' to expose the Promise from synthesizer
+    speak(text, onEnd, onBoundary) { 
+        return this.synth.speak(text, onEnd); 
+    }
+    
+    // [FIX] Added 'return' just in case caller awaits it
+    prefetch(text) { 
+        return this.synth.prefetch(text); 
+    }
+    
     stop() { this.synth.cancel(); }
     pause() { this.player.pause(); }
     resume() { this.player.resume(); }
