@@ -191,11 +191,14 @@
   background: var(--border-light);
   border-radius: 3px;
   -webkit-appearance: none;
+  appearance: none; /* [FIX] Standard property compatibility */
   transition: opacity 0.3s;
 }
+
 #tts-rate-range::-webkit-slider-thumb,
 #tts-pitch-range::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none; /* [FIX] Standard property compatibility */
   width: 18px;
   height: 18px;
   background: var(--primary-color);
