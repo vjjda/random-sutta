@@ -4,34 +4,57 @@ import { getLogger } from 'utils/logger.js';
 const logger = getLogger("PopupState");
 
 export const PopupState = {
-    // Runtime Data
-    comments: [], // Danh sách comment đã quét từ DOM
-    currentIndex: -1, // Index comment đang active
-    loadingUid: null, // UID đang được fetch (để tránh race condition)
+    // --- RUNTIME MEMORY (Nguồn chân lý) ---
+    // Thay vì lưu rời rạc, ta lưu một object đại diện cho popup đang active
+    activePopup: {
+        type: 'none', // 'comment' | 'quicklook' | 'none'
+        data: null    // { index: 0 } hoặc { url: 'mn1' }
+    },
 
-    // --- HELPER METHODS ---
+    // Dữ liệu phụ trợ (Cache)
+    comments: [],     // Cache danh sách comment của trang hiện tại
+    loadingUid: null, // Lock để tránh race condition khi fetch
+
+    // --- STATE SETTERS (Gọi khi UI thay đổi) ---
+
+    setCommentActive(index) {
+        this.activePopup = {
+            type: 'comment',
+            data: { index: index }
+        };
+    },
+
+    setQuicklookActive(url) {
+        this.activePopup = {
+            type: 'quicklook',
+            data: { url: url }
+        };
+    },
+
+    clearActive() {
+        this.activePopup = { type: 'none', data: null };
+    },
+
+    // --- HISTORY API INTERFACE ---
 
     /**
-     * Lưu snapshot hiện tại vào History State.
-     * @param {boolean} isQuicklookOpen - Quicklook có đang mở không?
-     * @param {string|null} quicklookUrl - URL của Quicklook (nếu có)
+     * Lưu trạng thái hiện tại (trong RAM) vào History Browser.
+     * Được gọi ngay trước khi chuyển trang.
      */
-    saveSnapshot(isQuicklookOpen, quicklookUrl) {
+    saveSnapshot() {
         try {
             const currentState = window.history.state || {};
             
-            // Logic: Comment vẫn được coi là active nếu index hợp lệ, 
-            // dù nó đang bị Quicklook che khuất.
+            // Chỉ lưu những gì đang thực sự active trong RAM
             const snapshot = {
-                commentIndex: this.currentIndex,
-                quicklookUrl: isQuicklookOpen ? quicklookUrl : null
+                type: this.activePopup.type,
+                data: this.activePopup.data
             };
 
-            logger.debug("Snapshot", `Saved: CIdx=${snapshot.commentIndex}, QL=${snapshot.quicklookUrl ? 'Yes' : 'No'}`);
+            logger.info("Snapshot", `Saving: Type=${snapshot.type}`, snapshot.data);
             
-            // Ghi đè vào entry hiện tại của Browser History
             window.history.replaceState(
-                { ...currentState, popupState: snapshot }, 
+                { ...currentState, popupSnapshot: snapshot }, 
                 document.title, 
                 window.location.href
             );
@@ -41,13 +64,13 @@ export const PopupState = {
     },
 
     /**
-     * Lấy snapshot từ History State (dùng khi Back/Forward).
+     * Lấy snapshot từ History Browser (dùng khi Restore).
      */
     getSnapshot() {
         try {
             const state = window.history.state;
-            if (state && state.popupState) {
-                return state.popupState;
+            if (state && state.popupSnapshot) {
+                return state.popupSnapshot;
             }
         } catch (e) {
             logger.error("Snapshot", "Get failed", e);
@@ -55,18 +78,7 @@ export const PopupState = {
         return null;
     },
 
-    resetRuntime() {
-        this.currentIndex = -1;
-        this.loadingUid = null;
-        // Không reset comments[] ở đây vì comments phụ thuộc vào nội dung trang chính,
-        // chỉ reset khi trang chính đổi.
-    },
-
-    setComments(list) {
-        this.comments = list || [];
-    },
-
-    hasComments() {
-        return this.comments.length > 0;
-    }
+    // --- DATA HELPERS ---
+    setComments(list) { this.comments = list || []; },
+    hasComments() { return this.comments.length > 0; }
 };
