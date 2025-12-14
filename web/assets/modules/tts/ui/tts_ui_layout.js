@@ -1,26 +1,34 @@
 // Path: web/assets/modules/tts/ui/tts_ui_layout.js
 export const TTSUILayout = {
     getHTML() {
-        // [CONSISTENT FIX] Đọc trực tiếp từ LocalStorage để render HTML đúng trạng thái ngay lập tức
-        // Tránh hiện tượng UI bị "nháy" hoặc hiển thị sai trạng thái mặc định khi refresh.
+        // --- LOGIC ĐỌC TRẠNG THÁI (SYNC VỚI STATE STORE) ---
         
-        // 1. Auto Next (Mặc định là TRUE nếu chưa có setting)
+        // 1. Auto Next
         const savedAutoNext = localStorage.getItem("tts_auto_next");
+        // Nếu chưa có setting (null), mặc định là TRUE. Nếu có, so sánh chuỗi "true".
         const isAutoNext = savedAutoNext === null ? true : (savedAutoNext === "true");
 
-        // 2. Paragraph Mode (Mặc định là TRUE/paragraph nếu chưa có setting)
+        // 2. Paragraph Mode
         const savedMode = localStorage.getItem("tts_playback_mode");
+        // Nếu chưa có (null) hoặc là "paragraph" -> TRUE.
         const isParagraph = savedMode ? (savedMode === "paragraph") : true; 
 
-        // 3. Engine (Mặc định là 'wsa' - Browser Default)
+        // 3. Engine
         const savedEngine = localStorage.getItem("tts_active_engine");
         const isGCloud = (savedEngine === "gcloud");
+
+        // [DEBUG] Log để kiểm tra xem lúc vẽ HTML, nó đọc được gì
+        console.log("[Layout] Rendering HTML with state:", { 
+            autoNext: isAutoNext, 
+            paragraph: isParagraph, 
+            gcloud: isGCloud 
+        });
 
         return `
             <button id="magic-tts-trigger" title="Enable TTS"></button>
             <div id="tts-player">
                 <button id="tts-settings-toggle" class="tts-btn" title="Voice Settings">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0 2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
     
                 <button id="tts-prev" class="tts-btn">
@@ -41,7 +49,7 @@ export const TTSUILayout = {
                 <div id="tts-settings-panel" class="hidden">
                     <div class="tts-setting-row">
                         <label>Provider</label>
-                        <select id="tts-engine-select">
+                        <select id="tts-engine-select" autocomplete="off">
                             <option value="wsa" ${!isGCloud ? 'selected' : ''}>Browser Default</option>
                             <option value="gcloud" ${isGCloud ? 'selected' : ''}>Google Cloud</option>
                         </select>
@@ -57,7 +65,7 @@ export const TTSUILayout = {
 
                     <div class="tts-setting-row">
                         <label>Speed: <span id="tts-rate-val">1.0</span>x</label>
-                        <input type="range" id="tts-rate-range" min="0.5" max="2.0" step="0.1" value="1.0">
+                        <input type="range" id="tts-rate-range" min="0.5" max="2.0" step="0.1" value="1.0" autocomplete="off">
                     </div>
                     <div class="tts-setting-row">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
@@ -68,13 +76,13 @@ export const TTSUILayout = {
                                 </button>
                             </div>
                         </div>
-                        <select id="tts-voice-select"></select>
+                        <select id="tts-voice-select" autocomplete="off"></select>
                     </div>
                     
                     <div class="tts-toggle-wrapper">
                         <label for="tts-auto-next" class="tts-toggle-label">Auto-play Next</label>
                         <label class="tts-switch">
-                            <input type="checkbox" id="tts-auto-next" ${isAutoNext ? 'checked' : ''}>
+                            <input type="checkbox" id="tts-auto-next" ${isAutoNext ? 'checked' : ''} autocomplete="off">
                             <span class="tts-slider"></span>
                         </label>
                     </div>
@@ -82,7 +90,7 @@ export const TTSUILayout = {
                     <div class="tts-toggle-wrapper">
                         <label for="tts-mode-toggle" class="tts-toggle-label">Paragraph Mode</label>
                         <label class="tts-switch">
-                             <input type="checkbox" id="tts-mode-toggle" ${isParagraph ? 'checked' : ''}>
+                             <input type="checkbox" id="tts-mode-toggle" ${isParagraph ? 'checked' : ''} autocomplete="off">
                             <span class="tts-slider"></span>
                         </label>
                     </div>

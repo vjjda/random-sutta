@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/core/orchestrator/ui_synchronizer.js
 import { TTSStateStore } from 'tts/core/tts_state_store.js';
-import { getLogger } from 'utils/logger.js'; // [FUTURE PROOF]
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("TTS_UISync");
 
@@ -21,28 +21,36 @@ export class TTSUISynchronizer {
 
     setUI(uiInstance) {
         this.ui = uiInstance;
+        // Gọi sync ngay khi UI được kết nối
         this._syncInitialState();
     }
 
     _syncInitialState() {
         if (!this.ui) return;
         
-        const engine = this.registry.getActiveEngine();
+        const engineId = TTSStateStore.activeEngine;
+        const engine = this.registry.getEngine(engineId); // Lấy đúng engine hiện tại
         const gcloud = this.registry.getEngine('gcloud');
 
+        logger.info("UISync", `Syncing initial state. AutoNext: ${TTSStateStore.autoNextEnabled}, Engine: ${engineId}`);
+
+        // 1. Force update checkbox states
         this.ui.updateAutoNextState(TTSStateStore.autoNextEnabled);
         this.ui.updatePlaybackModeState(TTSStateStore.playbackMode === 'paragraph');
         
+        // 2. Force update Engine & API Key visibility
         const apiKey = gcloud ? gcloud.apiKey : "";
-        this.ui.updateEngineState(TTSStateStore.activeEngine, apiKey);
+        this.ui.updateEngineState(engineId, apiKey);
         
-        this.ui.populateVoices(engine.getVoices(), engine.voice);
-        this.ui.updateRateDisplay(engine.rate);
+        // 3. Populate Voices
+        if (engine) {
+             this.ui.populateVoices(engine.getVoices(), engine.voice);
+             this.ui.updateRateDisplay(engine.rate);
+        }
     }
 
     onEngineChanged(newEngine) {
         if (!this.ui) return;
-        
         this.ui.populateVoices(newEngine.getVoices(), newEngine.voice);
         this.ui.updateRateDisplay(newEngine.rate);
         
@@ -51,7 +59,6 @@ export class TTSUISynchronizer {
 
     async refreshOfflineVoicesStatus() {
         if (!TTSStateStore.isSessionActive) return;
-
         const engine = this.registry.getActiveEngine();
         if (!engine || typeof engine.getOfflineVoices !== 'function') return;
 
