@@ -1,7 +1,6 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api build-data dev dev-online dev-offline release release-zip release-beta publish clean build official
+.PHONY: help setup sync sync-text sync-api build-data dev view-server view-serverless release zip release-web beta publish clean build official
 
-# Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
 
 # ==============================================================================
@@ -11,26 +10,29 @@ help:
 	@echo "📚 RANDOM SUTTA DEVELOPER TOOLS"
 	@echo "----------------------------------------------------------------"
 	@echo "🛠️  SETUP & SYNC:"
-	@echo "  make setup          - Cài đặt Git hooks"
-	@echo "  make sync           - Đồng bộ TOÀN BỘ dữ liệu (Bilara Text + API Meta)"
+	@echo "  make setup          - Install Git hooks"
+	@echo "  make sync           - Sync ALL data (Bilara Text + API Meta)"
 	@echo ""
-	@echo "⚙️  BUILD & DEV:"
-	@echo "  make dry     - Chạy Sutta Processor (Dry Run, không ghi file)"
-	@echo "  make data     - Chạy Sutta Processor (JSON -> Assets)"
-	@echo "  make build          - Chạy Full Build (Data + Release)"
-	@echo "  make dev            - Server Web gốc (Source)  -> http://localhost:8000"
-	@echo "  make dev-on     - Server Build Online      -> http://localhost:8001"
-	@echo "  make dev-off    - Server Build Offline     -> http://localhost:8002"
+	@echo "⚙️  DATA PROCESSING:"
+	@echo "  make data           - Process JSON -> Optimized Assets"
+	@echo "  make dry            - Process Data (Dry Run)"
 	@echo ""
-	@echo "🚀 RELEASE SYSTEM:"
-	@echo "  make re        - Build Local kiểm tra (Không zip, không commit)"
-	@echo "  make zip    - Build & Tạo file .zip (-z)"
-	@echo "  make reweb    - Build & Deploy lên GitHub Pages (-w)"
-	@echo "  make beta   - PUBLISH PRE-RELEASE (-p) (Commit -> Push -> GH Release)"
-	@echo "  make publish        - PUBLISH OFFICIAL (-p -w) (Commit -> Push -> GH Release -> Deploy Web)"
+	@echo "🏗️  BUILD & PREVIEW:"
+	@echo "  make build          - Run Full Build (Data + Release)"
+	@echo "  make re             - Quick Re-build (Release Only)"
+	@echo "  make dev            - Live Source Server (port 8000)"
+	@echo "  make serve          - Multi-port Server (Source/Server/Serverless)"
+	@echo "  make view-server    - Preview 'Server' Build (port 8001)"
+	@echo "  make view-sl        - Preview 'Serverless' Build (file://)"
+	@echo ""
+	@echo "🚀 RELEASE & DEPLOY:"
+	@echo "  make zip            - Build & Create Zip Artifact"
+	@echo "  make deploy         - Build & Deploy 'Server' to GH-Pages"
+	@echo "  make beta           - Publish Pre-release (Commit -> Push -> GH Release)"
+	@echo "  make publish        - Publish OFFICIAL (Commit -> Push -> GH Release -> Deploy)"
 	@echo ""
 	@echo "🧹 MAINTENANCE:"
-	@echo "  make clean          - Dọn dẹp file rác, cache, build cũ"
+	@echo "  make clean          - Remove all build artifacts & cache"
 	@echo "----------------------------------------------------------------"
 
 # ==============================================================================
@@ -47,69 +49,69 @@ sync:
 	$(PYTHON) -m src.api_fetcher
 
 # ==============================================================================
-# ⚙️ BUILD & DEV
+# ⚙️ BUILD & PROCESS
 # ==============================================================================
 dry:
-	@echo "🧠 Processing Data..."
+	@echo "🧠 Processing Data (Dry Run)..."
 	$(PYTHON) -m src.sutta_processor -d
 
 data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
 
-build:
-	@echo "🧠 Full Build (Data + Release)..."
-	$(PYTHON) -m src.sutta_processor
+build: data re
+
+# Chỉ chạy Release System (không chạy lại Data Processor)
+re:
+	@echo "🔨 Running Release System..."
 	$(PYTHON) -m src.release_system
 
+# ==============================================================================
+# 🌍 SERVERS & PREVIEW
+# ==============================================================================
 # Server cho Source Code (web/) - Port 8000
 dev:
 	@echo "🌍 Starting SOURCE Server..."
 	@echo "   👉 http://localhost:8000/"
 	$(PYTHON) -m http.server 8000 --directory web
 
-# Server cho bản Build Online - Port 8001
-# Yêu cầu: Phải chạy 'make release' trước để có thư mục build
-dev-on:
-	@echo "� Starting BUILD ONLINE Server..."
+live:
+	$(PYTHON) src/live_server.py
+
+serve:
+	$(PYTHON) src/multi_server.py
+
+# Preview bản Server Build (Web/PWA)
+view-server:
+	@echo "🌍 Starting SERVER Build Preview..."
 	@echo "   👉 http://localhost:8001/"
-	$(PYTHON) -m http.server 8001 --directory build/dev-online
+	$(PYTHON) -m http.server 8001 --directory build/server
 
-# Server cho bản Build Offline - Mở trực tiếp file HTML
-# Giả lập môi trường không mạng, chạy trên protocol file://
-dev-off:
-	@echo "📂 Opening BUILD OFFLINE (file://)..."
-	open build/dev-offline/index.html
+# Preview bản Serverless Build (Standalone)
+view-sl:
+	@echo "📂 Opening SERVERLESS Build (file://)..."
+	open build/serverless/index.html
 
 # ==============================================================================
-# 🚀 RELEASE SYSTEM (Wrappers for src.release_system)
+# 🚀 RELEASE ACTIONS
 # ==============================================================================
 
-# 1. Local Build Check (Mặc định)
-re:
-	$(PYTHON) -m src.release_system
-
-# 2. Tạo Zip Artifact (-z)
+# Tạo Zip (Serverless Build)
 zip:
 	$(PYTHON) -m src.release_system --zip
 
-# 3. Deploy Web GH-Pages (-w)
-reweb:
+# Deploy Web (Server Build -> GH Pages)
+deploy:
 	$(PYTHON) -m src.release_system --web
 
-# 4. [MỚI] Publish Pre-release (-p)
-# Dùng cho các bản beta, test, chưa phải official
+# Publish Pre-release
 beta:
-	@echo "🚀 PUBLISHING PRE-RELEASE (Beta)..."
+	@echo "🚀 PUBLISHING BETA..."
 	$(PYTHON) -m src.release_system --publish
 
-official:
-	@echo "🚀 PUBLISHING OFFICIAL RELEASE..."
-	$(PYTHON) -m src.release_system --official
-
-# Dùng cho bản chính thức (Latest)
+# Publish Official
 publish:
-	@echo "🌟 PUBLISHING OFFICIAL RELEASE..."
+	@echo "🌟 PUBLISHING OFFICIAL..."
 	$(PYTHON) -m src.release_system --official --web
 
 # ==============================================================================
@@ -123,20 +125,8 @@ clean:
 	find . -type d -name ".pytest_cache" -exec rm -rf {} +
 	@echo "✅ Clean complete."
 
-# ==============================================================================
-# Git
-# ==============================================================================
+# Git helpers
 noedit:
 	@git add . && git commit --amend --no-edit
 undo:
 	@git reset --soft HEAD~1
-
-# [Thêm vào cuối Makefile]
-live:
-	@echo "🔥 Starting Live Reload Server..."
-	$(PYTHON) src/live_server.py
-
-# [NEW] Multi-port Live Server
-serve:
-	@echo "🌐 Starting Omni-Channel Server..."
-	$(PYTHON) src/multi_server.py

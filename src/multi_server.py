@@ -24,23 +24,23 @@ SERVERS_CONFIG: List[Dict[str, Any]] = [
         ]
     },
     {
-        "name": "BUILD ONLINE",
+        "name": "BUILD SERVER", # [RENAMED]
         "port": 8001,
-        "root": PROJECT_ROOT / "build" / "dev-online",
+        "root": PROJECT_ROOT / "build" / "server", # [UPDATED]
         "watch": [
-            "build/dev-online/index.html",
-            "build/dev-online/assets/style.bundle.css",
-            "build/dev-online/sw.js"
+            "build/server/index.html",
+            "build/server/assets/style.bundle.css",
+            "build/server/sw.js"
         ]
     },
     {
-        "name": "BUILD OFFLINE",
+        "name": "BUILD SERVERLESS", # [RENAMED]
         "port": 8002,
-        "root": PROJECT_ROOT / "build" / "dev-offline",
+        "root": PROJECT_ROOT / "build" / "serverless", # [UPDATED]
         "watch": [
-            "build/dev-offline/index.html",
-            "build/dev-offline/assets/app.bundle.js",
-            "build/dev-offline/assets/db_index.js"
+            "build/serverless/index.html",
+            "build/serverless/assets/app.bundle.js",
+            "build/serverless/assets/db_index.js"
         ]
     }
 ]

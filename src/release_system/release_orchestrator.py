@@ -2,7 +2,8 @@
 import logging
 import sys
 
-from .release_config import BUILD_OFFLINE_DIR, BUILD_ONLINE_DIR, CRITICAL_ASSETS
+# [UPDATED] Import hằng số mới
+from .release_config import BUILD_SERVERLESS_DIR, BUILD_SERVER_DIR, CRITICAL_ASSETS
 from .logic import (
     release_versioning,
     asset_validator,
@@ -50,100 +51,93 @@ def run_release_process(
 
     try:
         # =========================================================
-        # PHASE 1: ONLINE BUILD
+        # PHASE 1: SERVER BUILD (Standard Web / PWA)
         # =========================================================
-        if not build_preparer.prepare_build_directory(BUILD_ONLINE_DIR):
-             raise Exception("Failed to prepare Online Build.")
+        # Trước đây là "Online Build"
+        if not build_preparer.prepare_build_directory(BUILD_SERVER_DIR):
+             raise Exception("Failed to prepare Server Build.")
         
         # 1. Inject SW Version
-        if not version_injector.inject_version_into_sw(BUILD_ONLINE_DIR, version_tag):
-             raise Exception("Failed to inject version into SW (Online).")
+        if not version_injector.inject_version_into_sw(BUILD_SERVER_DIR, version_tag):
+             raise Exception("Failed to inject version into SW (Server).")
 
-        # [NEW] 2. Inject App Version (vào app.js và offline_manager.js)
-        # Quan trọng để OfflineManager biết phiên bản hiện tại
-        version_injector.inject_version_into_app_js(BUILD_ONLINE_DIR, version_tag)
-        version_injector.inject_version_into_offline_manager(BUILD_ONLINE_DIR, version_tag)
+        # 2. Inject App Version
+        version_injector.inject_version_into_app_js(BUILD_SERVER_DIR, version_tag)
+        version_injector.inject_version_into_offline_manager(BUILD_SERVER_DIR, version_tag)
 
         # 3. Bundle CSS
-        if not css_bundler.bundle_css(BUILD_ONLINE_DIR):
-            raise Exception("Online CSS Bundling failed.")
+        if not css_bundler.bundle_css(BUILD_SERVER_DIR):
+            raise Exception("Server CSS Bundling failed.")
 
-        # [NEW] 4. Patch SW Assets (Replace style.css -> style.bundle.css)
-        sw_patcher.patch_sw_style_bundle(BUILD_ONLINE_DIR)
-        
-        # [NEW] 4b. Inject all JS modules for Online (Unbundled) Offline capability
-        sw_patcher.patch_online_assets(BUILD_ONLINE_DIR)
+        # 4. Patch SW Assets
+        sw_patcher.patch_sw_style_bundle(BUILD_SERVER_DIR)
+        sw_patcher.patch_online_assets(BUILD_SERVER_DIR)
 
         # 5. Patch HTML
-        if not html_patcher.patch_online_html(BUILD_ONLINE_DIR, version_tag):
-             raise Exception("Online HTML patching failed.")
+        if not html_patcher.patch_online_html(BUILD_SERVER_DIR, version_tag):
+             raise Exception("Server HTML patching failed.")
 
-        # [NEW] 6. Cleanup Redundant Index
-        web_content_modifier.remove_monolithic_index(BUILD_ONLINE_DIR)
+        # 6. Cleanup & Zip
+        web_content_modifier.remove_monolithic_index(BUILD_SERVER_DIR)
+        if not zip_packager.create_db_bundle(BUILD_SERVER_DIR):
+             logger.warning("⚠️ Failed to create DB bundle zip.")
 
-        # [NEW] 7. Create DB Bundle Zip (for Offline Download feature)
-        if not zip_packager.create_db_bundle(BUILD_ONLINE_DIR):
-             logger.warning("⚠️ Failed to create DB bundle zip (Offline download may fail).")
-
-        # Deploy
+        # Deploy (Server Build goes to GH Pages)
         if deploy_web:
-            if not web_deployer.deploy_web_to_ghpages(BUILD_ONLINE_DIR, version_tag):
+            if not web_deployer.deploy_web_to_ghpages(BUILD_SERVER_DIR, version_tag):
                 raise Exception("Web deployment failed.")
 
         # =========================================================
-        # PHASE 2: OFFLINE BUILD (Bundle JS + Bundle CSS)
+        # PHASE 2: SERVERLESS BUILD (Standalone / file://)
         # =========================================================
-        if not build_preparer.prepare_build_directory(BUILD_OFFLINE_DIR):
-            raise Exception("Failed to prepare Offline Build.")
+        # Trước đây là "Offline Build"
+        if not build_preparer.prepare_build_directory(BUILD_SERVERLESS_DIR):
+            raise Exception("Failed to prepare Serverless Build.")
 
         # 1. Inject SW Version
-        if not version_injector.inject_version_into_sw(BUILD_OFFLINE_DIR, version_tag):
-             raise Exception("Failed to inject version into SW (Offline).")
+        if not version_injector.inject_version_into_sw(BUILD_SERVERLESS_DIR, version_tag):
+             raise Exception("Failed to inject version into SW (Serverless).")
 
         # 2. Inject App Version
-        version_injector.inject_version_into_app_js(BUILD_OFFLINE_DIR, version_tag)
-        version_injector.inject_version_into_offline_manager(BUILD_OFFLINE_DIR, version_tag)
+        version_injector.inject_version_into_app_js(BUILD_SERVERLESS_DIR, version_tag)
+        version_injector.inject_version_into_offline_manager(BUILD_SERVERLESS_DIR, version_tag)
 
-        # 3. Bundle JS
-        if not js_bundler.bundle_javascript(BUILD_OFFLINE_DIR):
+        # 3. Bundle JS (Crucial for Serverless)
+        if not js_bundler.bundle_javascript(BUILD_SERVERLESS_DIR):
              raise Exception("JS Bundling failed.")
             
-        if not sw_patcher.patch_sw_assets_for_offline(BUILD_OFFLINE_DIR):
+        if not sw_patcher.patch_sw_assets_for_offline(BUILD_SERVERLESS_DIR):
              logger.warning("⚠️ Could not patch SW asset list")
 
         # 4. Bundle CSS
-        if not css_bundler.bundle_css(BUILD_OFFLINE_DIR):
-            raise Exception("Offline CSS Bundling failed.")
+        if not css_bundler.bundle_css(BUILD_SERVERLESS_DIR):
+            raise Exception("Serverless CSS Bundling failed.")
 
         # 5. Patch SW Style
-        sw_patcher.patch_sw_style_bundle(BUILD_OFFLINE_DIR)
+        sw_patcher.patch_sw_style_bundle(BUILD_SERVERLESS_DIR)
 
         # 6. Patch HTML
-        if not html_patcher.patch_offline_html(BUILD_OFFLINE_DIR, version_tag):
+        if not html_patcher.patch_offline_html(BUILD_SERVERLESS_DIR, version_tag):
             raise Exception("HTML patching failed.")
 
-        # 7. Offline Data Injection
-        if not offline_converter.create_offline_index_js(BUILD_OFFLINE_DIR):
+        # 7. Data Injection (JSONP/Global Var for file:// access)
+        if not offline_converter.create_offline_index_js(BUILD_SERVERLESS_DIR):
              logger.warning("⚠️ Failed to create offline index JS")
         
-        if not offline_converter.convert_db_json_to_js(BUILD_OFFLINE_DIR):
+        if not offline_converter.convert_db_json_to_js(BUILD_SERVERLESS_DIR):
              logger.warning("⚠️ Failed to convert DB JSON to JS")
 
-        if not html_patcher.inject_offline_index_script(BUILD_OFFLINE_DIR):
+        if not html_patcher.inject_offline_index_script(BUILD_SERVERLESS_DIR):
              logger.warning("⚠️ Failed to inject offline index script")
 
-        # [NEW] 8. Remove redundant Zip
-        # Bản Offline không dùng tính năng "Download All" (vì đã có sẵn data), nên xóa zip đi cho nhẹ
-        web_content_modifier.remove_db_bundle(BUILD_OFFLINE_DIR)
-        
-        # [NEW] 9. Remove redundant Index directory
-        # Bản Offline dùng db_index.js, không cần folder index/
-        web_content_modifier.remove_redundant_index(BUILD_OFFLINE_DIR)
+        # 8. Cleanup
+        web_content_modifier.remove_db_bundle(BUILD_SERVERLESS_DIR)
+        web_content_modifier.remove_redundant_index(BUILD_SERVERLESS_DIR)
 
-        # Create Zip Artifact (Final Output)
+        # Create Zip Artifact (Serverless Build is the downloadable artifact)
         if create_zip:
-            if zip_packager.create_zip_from_build(BUILD_OFFLINE_DIR, version_tag):
-                 logger.info("✨ Offline Artifacts Created.")
+            if zip_packager.create_zip_from_build(BUILD_SERVERLESS_DIR, version_tag):
+                 logger.info("✨ Serverless Artifacts Created.")
             else:
                 raise Exception("Archiving failed")
         else:
@@ -162,10 +156,10 @@ def run_release_process(
                 
                 if not github_publisher.publish_release(version_tag, is_official):
                     raise Exception("GitHub Release failed.")
-        
+    
         logger.info(f"🛡️  Builds Ready:")
-        logger.info(f"   👉 Online (ESM + CSS Bundle): {BUILD_ONLINE_DIR}")
-        logger.info(f"   👉 Offline (Full Bundle): {BUILD_OFFLINE_DIR}")
+        logger.info(f"   👉 Server (Web/PWA):     {BUILD_SERVER_DIR}")
+        logger.info(f"   👉 Serverless (Bundled): {BUILD_SERVERLESS_DIR}")
 
     except Exception as e:
         logger.error(f"❌ FAILED: {e}")
