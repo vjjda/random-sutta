@@ -118,6 +118,12 @@
   /* background: var(--bg-hover); */
   padding: 4px 8px;
   border-radius: 4px;
+  transition: color 0.3s;
+}
+
+.tts-info.error-text {
+  color: var(--primitive-amber-800);
+  font-weight: 700;
 }
 
 /* --- SETTINGS PANEL (Popup inside Player) --- */

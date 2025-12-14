@@ -59,6 +59,27 @@ export const TTSUIRenderer = {
         }
     },
 
+    showError(message, duration = 5000) {
+        const infoEl = this.elements.infoText;
+        if (!infoEl) return;
+
+        // Save current state to revert back to
+        const originalText = infoEl.textContent;
+
+        // Apply error state
+        infoEl.classList.add("error-text");
+        infoEl.textContent = message;
+
+        // Revert after duration
+        setTimeout(() => {
+            infoEl.classList.remove("error-text");
+            // Check if the text is still our error message before reverting
+            if (infoEl.textContent === message) {
+                infoEl.textContent = originalText;
+            }
+        }, duration);
+    },
+
     updateAutoNextState(isChecked) {
         if (this.elements.autoNextCheckbox) {
             this.elements.autoNextCheckbox.checked = isChecked;

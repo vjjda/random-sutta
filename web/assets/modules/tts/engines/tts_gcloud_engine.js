@@ -171,8 +171,12 @@ export class TTSGoogleCloudEngine {
         const reqId = this.currentReqId;
 
         // 1. Validate
-        if (!text || !this.apiKey) {
-            logger.warn("Speak", "Missing text or API Key. Falling back to silence/skip.");
+        if (!this.apiKey) {
+            logger.error("Speak", "API key is missing for Google Cloud TTS.");
+            throw new Error("API key is missing.");
+        }
+        if (!text) {
+            logger.warn("Speak", "Missing text. Falling back to silence/skip.");
             if (onEnd) onEnd();
             return;
         }

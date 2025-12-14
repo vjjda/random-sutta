@@ -89,29 +89,29 @@ export const TTSPlayer = {
         // Đảm bảo highlight đúng câu đang đọc
         this.highlighter.activate(TTSStateStore.currentIndex);
         
-        // [NEW] Prefetch next items (Buffered)
-        if (this.engine.prefetch) {
-            const bufferCount = AppConfig.TTS?.BUFFER_AHEAD || 1;
-            for (let i = 1; i <= bufferCount; i++) {
-                const nextIdx = TTSStateStore.currentIndex + i;
-                if (nextIdx < TTSStateStore.playlist.length) {
-                    const nextItem = TTSStateStore.playlist[nextIdx];
-                    this.engine.prefetch(nextItem.text);
+        // ... existing prefetch logic ...
+
+        try {
+            this.engine.speak(item.text, () => {
+                // Callback khi đọc xong 1 câu
+                if (TTSStateStore.isPlaying) {
+                    if (TTSStateStore.hasNext()) {
+                        TTSStateStore.advance();
+                        this._speakCurrent(); // Đệ quy đọc câu tiếp
+                    }
+                    else {
+                        this._triggerEnd();
+                    }
                 }
+            });
+        }
+        catch (e) {
+            console.error("TTS Player Error:", e);
+            this.stop(); // Stop playback on hard error
+            if (this.ui && this.ui.showError) {
+                this.ui.showError(e.message);
             }
         }
-
-        this.engine.speak(item.text, () => {
-            // Callback khi đọc xong 1 câu
-            if (TTSStateStore.isPlaying) {
-                if (TTSStateStore.hasNext()) {
-                    TTSStateStore.advance();
-                    this._speakCurrent(); // Đệ quy đọc câu tiếp
-                } else {
-                    this._triggerEnd();
-                }
-            }
-        });
     },
 
     _triggerEnd() {
