@@ -14,7 +14,6 @@ export const QuicklookController = {
         QuicklookUI.init({
             onClose: () => {
                 QuicklookUI.hide();
-                // Revert state về Comment nếu có
                 if (PopupState.activeIndex !== -1) {
                     PopupState.activeType = 'comment';
                     PopupState.activeUrl = null;
@@ -38,24 +37,24 @@ export const QuicklookController = {
 
         if (PopupState.loadingUid === uid) return;
         PopupState.loadingUid = uid;
-
-        // [UX] Show immediately
         QuicklookUI.showLoading(uid.toUpperCase());
 
         try {
             const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
-            
             if (data && data.content) {
                 const renderRes = LeafRenderer.render(data);
                 const displayTitle = this._buildTitle(data.meta, uid);
                 
+                // 1. Render HTML vào DOM ngay lập tức
                 QuicklookUI.render(renderRes.html, displayTitle, href);
                 
                 // Update State
                 PopupState.setQuicklookActive(href);
-
+                
                 if (hash) {
-                    this._scrollToAnchor(hash, uid);
+                    // 2. Gọi hàm cuộn ĐỒNG BỘ (Synchronous) ngay lập tức
+                    // Không dùng setTimeout, không dùng opacity hack
+                    this._scrollToAnchorSync(hash, uid);
                 }
             } else {
                 QuicklookUI.showError("Content not available.");
@@ -68,28 +67,49 @@ export const QuicklookController = {
         }
     },
 
-    _scrollToAnchor(hash, uid) {
+    _scrollToAnchorSync(hash, uid) {
+        // Xử lý ID mục tiêu
         let targetId = hash.substring(1);
         if (targetId && !targetId.includes(':') && /^[\d\.]+$/.test(targetId)) {
             targetId = `${uid}:${targetId}`;
         }
 
-        setTimeout(() => {
-            const qBody = QuicklookUI.elements.popupBody;
-            const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
+        const qBody = QuicklookUI.elements.popupBody;
+        if (!qBody) return;
 
-            if (targetEl && qBody) {
-                const containerRect = qBody.getBoundingClientRect();
-                const elementRect = targetEl.getBoundingClientRect();
-                const currentScroll = qBody.scrollTop;
-                const targetPosition = currentScroll + (elementRect.top - containerRect.top) - SCROLL_OFFSET;
+        // [TELEPORT CORE]
+        // Vì chúng ta vừa gọi .innerHTML = ... ở dòng trên, trình duyệt chưa Paint.
+        // Ta truy vấn DOM ngay lập tức để lấy phần tử mục tiêu.
+        const targetEl = qBody.querySelector(`[id="${targetId}"]`);
 
-                qBody.scrollTop = targetPosition;
+        if (targetEl) {
+            // Highlight ngay lập tức
+            qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
+            targetEl.classList.add('highlight');
 
-                qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
-                targetEl.classList.add('highlight');
-            }
-        }, 100);
+            // Tính toán vị trí tương đối
+            // Việc gọi offsetTop sẽ ép trình duyệt tính toán Layout (Reflow) ngay lập tức, nhưng CHƯA Paint.
+            // Offset này tương đối với offsetParent (chính là qBody nếu nó có position relative/fixed/absolute)
+            // Nếu cấu trúc HTML phức tạp, dùng getBoundingClientRect an toàn hơn.
+            
+            // Cách 1: Dùng offsetTop (Nhanh nhất nếu cấu trúc đơn giản)
+            // const targetTop = targetEl.offsetTop;
+            // qBody.scrollTop = targetTop - SCROLL_OFFSET;
+
+            // Cách 2: Dùng getBoundingClientRect (Chính xác nhất)
+            // Lưu ý: Lúc này scrollTop có thể đang là 0
+            const containerRect = qBody.getBoundingClientRect();
+            const elementRect = targetEl.getBoundingClientRect();
+            
+            // Tính toán vị trí cần cuộn tới
+            // scrollTop hiện tại + (khoảng cách từ đỉnh element tới đỉnh container) - offset
+            const currentScroll = qBody.scrollTop;
+            const targetPosition = currentScroll + (elementRect.top - containerRect.top) - SCROLL_OFFSET;
+
+            // Gán trực tiếp scrollTop. 
+            // Trình duyệt sẽ Paint frame đầu tiên tại vị trí này.
+            qBody.scrollTop = targetPosition;
+        }
     },
 
     _buildTitle(meta, uid) {
