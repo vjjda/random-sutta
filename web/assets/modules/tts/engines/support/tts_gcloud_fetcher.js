@@ -20,9 +20,10 @@ export class TTSGoogleCloudFetcher {
      * @param {string} languageCode (e.g., "en-US")
      * @param {string} voiceName (e.g., "en-US-Neural2-D")
      * @param {number} speakingRate (0.25 to 4.0)
+     * @param {number} pitch (-20.0 to 20.0)
      * @returns {Promise<Blob>} Audio Blob
      */
-    async fetchAudio(text, languageCode = "en-US", voiceName = "en-US-Neural2-D", speakingRate = 1.0) {
+    async fetchAudio(text, languageCode = "en-US", voiceName = "en-US-Neural2-D", speakingRate = 1.0, pitch = 0.0) {
         if (!this.apiKey) {
             throw new Error("Missing Google Cloud API Key");
         }
@@ -37,7 +38,7 @@ export class TTSGoogleCloudFetcher {
             audioConfig: {
                 audioEncoding: "MP3",
                 speakingRate: speakingRate,
-                pitch: 0.0,
+                pitch: pitch,
                 effectsProfileId: ["headphone-class-device"] // Optimization for headphones
             }
         };

@@ -35,8 +35,12 @@ export class TTSWebSpeechEngine {
 
     _loadSettings() {
         const savedRate = localStorage.getItem("tts_rate");
+        const savedPitch = localStorage.getItem("tts_pitch");
         const savedVoiceURI = localStorage.getItem("tts_voice_uri");
+        
         if (savedRate) this.rate = parseFloat(savedRate);
+        if (savedPitch) this.pitch = parseFloat(savedPitch);
+        
         if (savedVoiceURI) {
             const voices = this.synth.getVoices();
             const found = voices.find(v => v.voiceURI === savedVoiceURI);
@@ -60,6 +64,11 @@ export class TTSWebSpeechEngine {
     setRate(rate) {
         this.rate = parseFloat(rate);
         localStorage.setItem("tts_rate", this.rate);
+    }
+
+    setPitch(pitch) {
+        this.pitch = parseFloat(pitch);
+        localStorage.setItem("tts_pitch", this.pitch);
     }
 
     speak(text, onEnd, onBoundary) {

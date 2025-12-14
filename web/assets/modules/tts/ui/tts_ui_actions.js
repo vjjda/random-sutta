@@ -39,6 +39,13 @@ export const TTSUIActions = {
             if (renderer.elements.rateVal) renderer.elements.rateVal.textContent = val;
             orchestrator.engine.setRate(val);
         });
+
+        els.pitchRange?.addEventListener("input", (e) => {
+            const val = e.target.value;
+            if (renderer.elements.pitchVal) renderer.elements.pitchVal.textContent = val;
+            orchestrator.engine.setPitch(val);
+        });
+
         els.voiceSelect?.addEventListener("change", (e) => {
             orchestrator.engine.setVoice(e.target.value);
         });

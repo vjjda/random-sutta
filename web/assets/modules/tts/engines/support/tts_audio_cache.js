@@ -43,12 +43,13 @@ export class TTSAudioCache {
      * @param {string} text 
      * @param {string} voiceURI 
      * @param {number} rate 
+     * @param {number} pitch 
      */
-    generateKey(text, voiceURI, rate) {
+    generateKey(text, voiceURI, rate, pitch = 0.0) {
         // Simple hash for now. In production, a proper hash function (SHA-256) is better,
         // but for client-side caching of short strings, a composite string key is acceptable.
         // We trim text and handle simple params.
-        return `${voiceURI}|${rate}|${text.trim()}`;
+        return `${voiceURI}|${rate}|${pitch}|${text.trim()}`;
     }
 
     async get(key) {

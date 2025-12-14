@@ -15,6 +15,7 @@ export class TTSGoogleCloudEngine {
         // Default Config
         this.voice = { name: "en-US-Neural2-D", lang: "en-US" }; // Default high quality voice
         this.rate = 1.0;
+        this.pitch = 0.0;
         this.apiKey = localStorage.getItem("tts_gcloud_key") || "";
         
         this.fetcher.setApiKey(this.apiKey);
@@ -30,7 +31,11 @@ export class TTSGoogleCloudEngine {
         }
 
         // Callbacks
-        this.onVoicesChanged = null; 
+        this.onVoicesChanged = null;
+        this.onAudioCached = null; // [NEW] Callback for smart marker update
+        
+        // Race Condition Handling
+        this.currentReqId = 0;
     }
 
     setApiKey(key) {
@@ -94,12 +99,22 @@ export class TTSGoogleCloudEngine {
         if (found) {
             this.voice = { name: found.voiceURI, lang: found.lang };
             localStorage.setItem("tts_gcloud_voice", voiceURI);
+        } else if (voiceURI) {
+            // [Fix] Allow setting saved voice even if list not fully loaded yet
+            // Assume it's a valid Google Voice URI
+            this.voice = { name: voiceURI, lang: "en-US" }; // Default lang assumption or extract from ID
+            localStorage.setItem("tts_gcloud_voice", voiceURI);
         }
     }
 
     setRate(rate) {
         this.rate = parseFloat(rate);
         localStorage.setItem("tts_gcloud_rate", this.rate);
+    }
+
+    setPitch(pitch) {
+        this.pitch = parseFloat(pitch);
+        localStorage.setItem("tts_gcloud_pitch", this.pitch);
     }
     
     _loadSettings() {
@@ -108,12 +123,19 @@ export class TTSGoogleCloudEngine {
          
          const savedRate = localStorage.getItem("tts_gcloud_rate");
          if (savedRate) this.rate = parseFloat(savedRate);
+
+         const savedPitch = localStorage.getItem("tts_gcloud_pitch");
+         if (savedPitch) this.pitch = parseFloat(savedPitch);
     }
 
     /**
      * Main Speak Function
      */
     async speak(text, onEnd, onBoundary) {
+        // Increment Request ID
+        this.currentReqId++;
+        const reqId = this.currentReqId;
+
         // 1. Validate
         if (!text || !this.apiKey) {
             logger.warn("Speak", "Missing text or API Key. Falling back to silence/skip.");
@@ -122,19 +144,30 @@ export class TTSGoogleCloudEngine {
         }
 
         // 2. Generate Key for Cache
-        const key = this.cache.generateKey(text, this.voice.name, this.rate);
+        const key = this.cache.generateKey(text, this.voice.name, this.rate, this.pitch);
 
         try {
             // 3. Check Cache
             let blob = await this.cache.get(key);
             
+            // Check Race Condition 1: If request changed while reading cache (fast, but possible)
+            if (reqId !== this.currentReqId) return;
+
             if (!blob) {
                 // 4. Fetch from Cloud
                 logger.info("Speak", "Fetching from Cloud...");
-                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.name, this.rate);
+                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.name, this.rate, this.pitch);
                 
+                // Check Race Condition 2: If request changed while fetching (slow, likely)
+                if (reqId !== this.currentReqId) {
+                    logger.debug("Speak", "Request cancelled (stale)");
+                    return;
+                }
+
                 // 5. Save to Cache (Background)
-                this.cache.put(key, blob);
+                this.cache.put(key, blob).then(() => {
+                    if (this.onAudioCached) this.onAudioCached(text);
+                });
             } else {
                 logger.info("Speak", "Using Cached Audio");
             }
@@ -143,9 +176,20 @@ export class TTSGoogleCloudEngine {
             this.player.play(blob, onEnd);
 
         } catch (e) {
+            if (reqId !== this.currentReqId) return; // Ignore errors from stale requests
+            
             logger.error("Speak", "Failed to synthesize", e);
             if (onEnd) onEnd(); // Prevent app hang on error
         }
+    }
+    
+    /**
+     * Check if text is cached (for Smart Markers)
+     */
+    async isCached(text) {
+        const key = this.cache.generateKey(text, this.voice.name, this.rate, this.pitch);
+        const blob = await this.cache.get(key);
+        return !!blob;
     }
     
     /**
@@ -154,21 +198,43 @@ export class TTSGoogleCloudEngine {
     async prefetch(text) {
         if (!text || !this.apiKey) return;
         
-        const key = this.cache.generateKey(text, this.voice.name, this.rate);
+        const key = this.cache.generateKey(text, this.voice.name, this.rate, this.pitch);
         const cached = await this.cache.get(key);
         
         if (!cached) {
             logger.debug("Prefetch", `Downloading: "${text.substring(0, 20)}..."`);
             try {
-                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.name, this.rate);
+                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.name, this.rate, this.pitch);
                 await this.cache.put(key, blob);
+                if (this.onAudioCached) this.onAudioCached(text);
             } catch (e) {
                 logger.warn("Prefetch", "Failed", e);
             }
         }
     }
 
+    /**
+     * Check if all texts in the list are cached for a specific voice.
+     * @param {string[]} textList 
+     * @param {string} voiceURI 
+     */
+    async checkOfflineStatusForVoice(textList, voiceURI) {
+        if (!textList || textList.length === 0 || !voiceURI) return false;
+        
+        // Use Promise.all with short-circuit
+        // But for many items, we want to fail fast.
+        for (const text of textList) {
+            const key = this.cache.generateKey(text, voiceURI, this.rate, this.pitch);
+            const blob = await this.cache.get(key);
+            if (!blob) return false;
+        }
+        return true;
+    }
+
     pause() { this.player.pause(); }
     resume() { this.player.resume(); }
-    stop() { this.player.stop(); }
+    stop() { 
+        this.currentReqId++; // Invalidate pending fetches
+        this.player.stop(); 
+    }
 }

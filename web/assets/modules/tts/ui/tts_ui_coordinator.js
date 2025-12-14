@@ -27,6 +27,7 @@ export const TTSUICoordinator = {
                  this.orchestrator.engine.voice
              );
              TTSUIRenderer.updateRateDisplay(this.orchestrator.engine.rate);
+             TTSUIRenderer.updatePitchDisplay(this.orchestrator.engine.pitch || 0); // WSA might default to 1, GCloud 0
         }, 500);
     },
 
@@ -45,6 +46,9 @@ export const TTSUICoordinator = {
     updatePlaybackModeState(isParagraph) { TTSUIRenderer.updatePlaybackModeState(isParagraph); },
     updateEngineState(engineId, apiKey) { TTSUIRenderer.updateEngineState(engineId, apiKey); },
     populateVoices(voices, currentVoice) { TTSUIRenderer.populateVoices(voices, currentVoice); },
+    updateRateDisplay(val) { TTSUIRenderer.updateRateDisplay(val); },
+    updatePitchDisplay(val) { TTSUIRenderer.updatePitchDisplay(val); },
+    updateOfflineStatus(val) { TTSUIRenderer.updateOfflineStatus(val); },
     togglePlayer(show) { TTSUIRenderer.togglePlayer(show); }, 
     closeSettings() { TTSUIRenderer.closeSettings(); } 
 };

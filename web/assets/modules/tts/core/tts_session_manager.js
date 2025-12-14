@@ -68,6 +68,13 @@ export const TTSSessionManager = {
         TTSStateStore.resetPlaylist(items);
         TTSMarkerManager.inject(items); // [NEW] Inject markers based on new playlist
         
+        // [NEW] Check Cache Status (Async)
+        if (this.player && this.player.engine) {
+            setTimeout(() => {
+                TTSMarkerManager.checkCacheStatus(this.player.engine);
+            }, 100);
+        }
+        
         if (items.length > 0) {
             if (autoPlay) {
                 if (this.player) this.player.play();

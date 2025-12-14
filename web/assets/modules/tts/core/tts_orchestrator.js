@@ -4,6 +4,7 @@ import { TTSGoogleCloudEngine } from '../engines/tts_gcloud_engine.js'; // [NEW]
 import { TTSStateStore } from './tts_state_store.js';
 import { TTSPlayer } from './tts_player.js';
 import { TTSHighlighter } from './tts_highlighter.js';
+import { TTSMarkerManager } from './tts_marker_manager.js'; // [NEW] Import needed
 import { TTSSessionManager } from './tts_session_manager.js';
 import { getLogger } from '../../utils/logger.js';
 
@@ -27,6 +28,14 @@ export const TTSOrchestrator = {
         // 2. Select Engine based on stored state
         const savedEngine = TTSStateStore.activeEngine;
         this.engine = this.engines[savedEngine] || this.engines['wsa'];
+        
+        // Bind Cache Event
+        if (this.engines['gcloud']) {
+            this.engines['gcloud'].onAudioCached = (text) => {
+                 TTSMarkerManager.markAsCached(text);
+                 this.checkOfflineStatus();
+            };
+        }
         
         logger.info("Init", `Active Engine: ${savedEngine || 'wsa'}`);
         
@@ -86,12 +95,23 @@ export const TTSOrchestrator = {
         // 3. Re-bind Player
         TTSPlayer.init(this.engine, TTSHighlighter, this.ui);
         
+        // 3.1 Bind Events (Cache updates)
+        if (this.engine.onAudioCached === null) {
+             this.engine.onAudioCached = (text) => {
+                 TTSMarkerManager.markAsCached(text);
+             };
+        }
+        
         // 4. Update UI Voices List (Different engines have different voices)
-        if (this.ui && this.engine.onVoicesChanged) {
-            // Trigger manual update
+        if (this.ui) {
             this.ui.populateVoices(this.engine.getVoices(), this.engine.voice);
-        } else if (this.ui) {
-             this.ui.populateVoices(this.engine.getVoices(), this.engine.voice);
+            this.ui.updateRateDisplay(this.engine.rate);
+            this.ui.updatePitchDisplay(this.engine.pitch || 0);
+        }
+
+        // 5. Update Markers (Cache status might change)
+        if (this.isSessionActive()) {
+            TTSMarkerManager.checkCacheStatus(this.engine);
         }
     },
 
@@ -107,11 +127,30 @@ export const TTSOrchestrator = {
         }
     },
 
+    // --- Status Checks ---
+    
+    async checkOfflineStatus() {
+        if (this.engine instanceof TTSGoogleCloudEngine && this.isSessionActive()) {
+            const texts = TTSStateStore.playlist.map(i => i.text);
+            const isOffline = await this.engine.checkOfflineStatusForVoice(texts, this.engine.voice.name);
+            
+            if (this.ui) {
+                this.ui.updateOfflineStatus(isOffline);
+            }
+        }
+    },
+
     // --- Public Facade (Clean API) ---
 
-    startSession() { TTSSessionManager.start(); },
+    startSession() { 
+        TTSSessionManager.start(); 
+        this.checkOfflineStatus();
+    },
     endSession() { TTSSessionManager.end(); },
-    refreshSession(autoPlay) { TTSSessionManager.refresh(autoPlay); },
+    refreshSession(autoPlay) { 
+        TTSSessionManager.refresh(autoPlay); 
+        this.checkOfflineStatus();
+    },
     
     isSessionActive() { return TTSSessionManager.isActive(); },
     isPlaying() { return TTSStateStore.isPlaying; },

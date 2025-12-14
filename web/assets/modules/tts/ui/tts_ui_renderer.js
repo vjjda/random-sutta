@@ -17,7 +17,10 @@ export const TTSUIRenderer = {
             infoText: document.getElementById("tts-info-text"),
             rateRange: document.getElementById("tts-rate-range"),
             rateVal: document.getElementById("tts-rate-val"),
+            pitchRange: document.getElementById("tts-pitch-range"),
+            pitchVal: document.getElementById("tts-pitch-val"),
             voiceSelect: document.getElementById("tts-voice-select"),
+            offlineBadge: document.getElementById("tts-voice-offline-badge"),
             autoNextCheckbox: document.getElementById("tts-auto-next"),
             modeCheckbox: document.getElementById("tts-mode-toggle"),
             engineSelect: document.getElementById("tts-engine-select"),
@@ -111,5 +114,17 @@ export const TTSUIRenderer = {
     updateRateDisplay(value) {
         if (this.elements.rateRange) this.elements.rateRange.value = value;
         if (this.elements.rateVal) this.elements.rateVal.textContent = value;
+    },
+
+    updatePitchDisplay(value) {
+        if (this.elements.pitchRange) this.elements.pitchRange.value = value;
+        if (this.elements.pitchVal) this.elements.pitchVal.textContent = value;
+    },
+
+    updateOfflineStatus(isOffline) {
+        if (this.elements.offlineBadge) {
+            if (isOffline) this.elements.offlineBadge.classList.remove('hidden');
+            else this.elements.offlineBadge.classList.add('hidden');
+        }
     }
 };
