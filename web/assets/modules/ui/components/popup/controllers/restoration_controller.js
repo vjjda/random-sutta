@@ -16,10 +16,10 @@ export const RestorationController = {
             return;
         }
 
-        // [CRITICAL FIX] Bỏ qua kiểm tra snapshot.type === 'none'
-        // Vì trong một số trường hợp race condition, type có thể bị reset về 'none' 
-        // nhưng dữ liệu (commentIndex, url) vẫn còn lưu trong snapshot.
-        // Chúng ta ưu tiên phục hồi dữ liệu nếu nó tồn tại.
+        // [CRITICAL STRATEGY] Data Availability Check
+        // Do NOT rely on snapshot.type check here (e.g. if type === 'none').
+        // Race conditions in NavigationController might reset 'type' to 'none' 
+        // but valid data (commentIndex, url) often persists. Always attempt restore if data exists.
         
         logger.info("Exec", `Analyzing snapshot...`, snapshot);
 
