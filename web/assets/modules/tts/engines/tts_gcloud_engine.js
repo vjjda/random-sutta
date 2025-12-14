@@ -219,7 +219,7 @@ export class TTSGoogleCloudEngine {
         }
 
         // 2. Generate Key for Cache
-        const key = this.cache.generateKey(text, this.voice.name, this.rate, this.pitch);
+        const key = this.cache.generateKey(text, this.voice.voiceURI, this.rate, this.pitch);
 
         try {
             // 3. Check Cache
@@ -231,7 +231,7 @@ export class TTSGoogleCloudEngine {
             if (!blob) {
                 // 4. Fetch from Cloud
                 logger.info("Speak", "Fetching from Cloud...");
-                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.name, this.rate, this.pitch);
+                blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, this.rate, this.pitch);
                 
                 // Check Race Condition 2: If request changed while fetching (slow, likely)
                 if (reqId !== this.currentReqId) {
@@ -262,7 +262,7 @@ export class TTSGoogleCloudEngine {
      * Check if text is cached (for Smart Markers)
      */
     async isCached(text) {
-        const key = this.cache.generateKey(text, this.voice.name, this.rate, this.pitch);
+        const key = this.cache.generateKey(text, this.voice.voiceURI, this.rate, this.pitch);
         const blob = await this.cache.get(key);
         return !!blob;
     }
@@ -273,13 +273,13 @@ export class TTSGoogleCloudEngine {
     async prefetch(text) {
         if (!text || !this.apiKey) return;
         
-        const key = this.cache.generateKey(text, this.voice.name, this.rate, this.pitch);
+        const key = this.cache.generateKey(text, this.voice.voiceURI, this.rate, this.pitch);
         const cached = await this.cache.get(key);
         
         if (!cached) {
             logger.debug("Prefetch", `Downloading: "${text.substring(0, 20)}..."`);
             try {
-                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.name, this.rate, this.pitch);
+                const blob = await this.fetcher.fetchAudio(text, this.voice.lang, this.voice.voiceURI, this.rate, this.pitch);
                 await this.cache.put(key, blob);
                 if (this.onAudioCached) this.onAudioCached(text);
             } catch (e) {
