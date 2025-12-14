@@ -1,77 +1,68 @@
 # Path: src/release_system/logic/zip_packager.py
 import logging
-import os
 import zipfile
+import os
+import json
+import hashlib
 from pathlib import Path
+from ..shared.app_config import DIST_DB_DIR
 
-from ..release_config import RELEASE_DIR, APP_NAME
+logger = logging.getLogger("SuttaProcessor.Output.ZipGen")
 
-logger = logging.getLogger("Release.ZipPackager")
+def _calculate_file_hash(file_path: Path) -> str:
+    """Tính SHA-256 hash của một file."""
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        # Read in chunks to avoid memory issues with large files
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest()
 
-def create_zip_from_build(build_dir: Path, version_tag: str) -> bool:
-    """Nén toàn bộ thư mục build thành zip."""
-    if not RELEASE_DIR.exists():
-        RELEASE_DIR.mkdir(parents=True)
+def create_db_bundle() -> bool:
+    """
+    Nén toàn bộ folder assets/db thành db_bundle.zip
+    Và tạo file db_manifest.json chứa hash.
+    """
+    if not DIST_DB_DIR.exists():
+        logger.warning("⚠️ DB Directory not found, skipping zip bundle.")
+        return False
 
-    zip_filename = RELEASE_DIR / f"{APP_NAME}-{version_tag}.zip"
-    if zip_filename.exists():
-        os.remove(zip_filename)
-
-    logger.info(f"📦 Zipping artifacts from {build_dir.name}...")
+    zip_path = DIST_DB_DIR / "db_bundle.zip"
+    manifest_path = DIST_DB_DIR / "db_manifest.json"
+    
+    logger.info("📦 Creating optimized DB bundle (db_bundle.zip)...")
     
     try:
-        with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zf:
-            for root, _, files in os.walk(build_dir):
-                for file in files:
-                    file_path = Path(root) / file
-                    # Relative path bên trong zip sẽ bắt đầu từ gốc folder
-                    relative_path = file_path.relative_to(build_dir)
-                    
-                    # Cấu trúc zip: random-sutta/index.html ...
-                    archive_name = Path(APP_NAME) / relative_path
-                    zf.write(file_path, archive_name)
-        return True
-    except Exception as e:
-        logger.error(f"❌ Zip failed: {e}")
-        return False
-
-def create_db_bundle(build_dir: Path) -> bool:
-    """
-    [NEW] Tạo file db_bundle.zip chứa toàn bộ dữ liệu (meta + content).
-    File này sẽ được dùng cho tính năng 'Download Offline' của bản Online.
-    """
-    db_dir = build_dir / "assets" / "db"
-    if not db_dir.exists():
-        logger.error(f"❌ DB directory missing: {db_dir}")
-        return False
-
-    zip_path = db_dir / "db_bundle.zip"
-    logger.info("📦 Creating db_bundle.zip...")
-
-    try:
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf: # Dùng STORED (không nén) hoặc DEFLATED nhẹ để giải nén nhanh
-            # Add meta files
-            meta_dir = db_dir / "meta"
-            if meta_dir.exists():
-                for file in meta_dir.glob("*.json"):
-                    zf.write(file, arcname=f"meta/{file.name}")
-            
-            # Add index files (Split Index)
-            index_dir = db_dir / "index"
-            if index_dir.exists():
-                for file in index_dir.glob("*.json"):
-                    zf.write(file, arcname=f"index/{file.name}")
-
-            # Add content files
-            content_dir = db_dir / "content"
-            if content_dir.exists():
-                for file in content_dir.glob("*.json"):
-                    zf.write(file, arcname=f"content/{file.name}")
+        # 1. Create ZIP
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            # Duyệt qua meta, content và index
+            for subdir in ["meta", "content", "index"]:
+                target_dir = DIST_DB_DIR / subdir
+                if not target_dir.exists(): continue
+                
+                for file_path in target_dir.glob("*.json"):
+                    # Lưu vào zip với cấu trúc: meta/mn.json
+                    arcname = f"{subdir}/{file_path.name}"
+                    zf.write(file_path, arcname)
         
-        # Check size
         size_mb = zip_path.stat().st_size / (1024 * 1024)
-        logger.info(f"   ✅ Created db_bundle.zip ({size_mb:.2f} MB)")
+        
+        # 2. Generate Hash & Manifest
+        file_hash = _calculate_file_hash(zip_path)
+        
+        manifest_data = {
+            "hash": file_hash,
+            "size_bytes": zip_path.stat().st_size,
+            "generated_at": os.path.getmtime(zip_path)
+        }
+        
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest_data, f, indent=2)
+
+        logger.info(f"   ✅ Bundle created: {size_mb:.2f} MB")
+        logger.info(f"   ✅ Manifest generated: {file_hash[:8]}...")
         return True
+        
     except Exception as e:
-        logger.error(f"❌ Failed to create db_bundle.zip: {e}")
+        logger.error(f"❌ Failed to create DB bundle: {e}")
         return False
