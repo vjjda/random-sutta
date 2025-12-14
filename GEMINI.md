@@ -56,6 +56,22 @@ Khi viết/chỉnh sửa mã, bạn phải tuân thủ nghiêm ngặt các nguy�
 - Dự án quy mô: Bắt buộc dùng **`logging`** và tách cấu hình ra file `logging_config.py` với hàm `setup_logging`.
 - Phân tách Output: Console Output dùng Emoji (`✅`, `❌`, `⚠️`). File Log phải chi tiết để debug.
 
-## 5\. LƯU Ý SAU KHI CHỈNH SỬA CODE
+## 5\. HƯỚNG DẪN CODE JAVASCRIPT (FRONTEND)
+
+Khi phát triển hoặc refactor mã JavaScript cho Frontend, bạn bắt buộc tuân thủ các quy tắc sau để đảm bảo kiến trúc bền vững và dễ bảo trì.
+
+1. **Tận dụng Import Maps (Absolute Imports):**
+   - **BẮT BUỘC:** Thay thế toàn bộ đường dẫn tương đối phức tạp (ví dụ: `../../utils/logger.js`) bằng **Alias** đã định nghĩa trong `importmap` tại `index.html`.
+   - Các Alias chuẩn bao gồm: `core/`, `services/`, `utils/`, `ui/`, `tts/`, `data/`.
+   - **Mục đích:** Tránh "địa ngục đường dẫn" (path hell), giúp di chuyển file dễ dàng mà không phá vỡ cấu trúc import.
+   - **Ví dụ:**
+     - ❌ `import { Logger } from '../../../utils/logger.js';`
+     - ✅ `import { Logger } from 'utils/logger.js';`
+
+2. **Module hóa (Modularization):**
+   - Ưu tiên chia nhỏ code thành các ES Modules độc lập.
+   - Sử dụng `export` tường minh thay vì `export default` để hỗ trợ refactor tốt hơn.
+
+## 6\. LƯU Ý SAU KHI CHỈNH SỬA CODE
 
 - Sau mỗi lần bạn chỉnh sửa code, bạn **phải** cung cấp một câu lệnh `git add` cho những files đã thay đổi, và một lệnh `git commit -m "nội dung commit"` khớp với những sửa đổi đó, trước khi bạn tiếp tục trao đổi thêm.
