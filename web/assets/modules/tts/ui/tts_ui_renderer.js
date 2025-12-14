@@ -99,13 +99,25 @@ export const TTSUIRenderer = {
         if (this.elements.apiKeyRow) {
             if (engineId === 'gcloud') {
                 this.elements.apiKeyRow.classList.remove('hidden');
+                
+                // [UX] Auto focus if key is missing
+                if (!apiKey && this.elements.apiKeyInput) {
+                    setTimeout(() => this.elements.apiKeyInput.focus(), 100);
+                }
             } else {
                 this.elements.apiKeyRow.classList.add('hidden');
             }
         }
-        if (this.elements.apiKeyInput && apiKey) {
-            this.elements.apiKeyInput.value = apiKey;
+        if (this.elements.apiKeyInput) {
+            // Chỉ set value nếu có apiKey truyền vào (để tránh overwrite khi đang gõ)
+            if (apiKey !== null && apiKey !== undefined) {
+                this.elements.apiKeyInput.value = apiKey;
+            }
         }
+        
+        // [QUAN TRỌNG] Trigger lại UI giọng đọc để áp dụng logic khóa/mở
+        // Tuy nhiên populateVoices cần danh sách voices. 
+        // Logic này tốt nhất nên nằm ở Orchestrator hoặc Action binding.
     },
 
     toggleSettings() {
@@ -118,18 +130,44 @@ export const TTSUIRenderer = {
 
     populateVoices(voices, currentVoice) {
         if (!this.elements.voiceSelect) return;
-        const select = this.elements.voiceSelect;
-        select.innerHTML = ""; // Clear previous options
         
+        const select = this.elements.voiceSelect;
+        const engineSelect = this.elements.engineSelect;
+        const apiKeyInput = this.elements.apiKeyInput;
+        
+        // [LOGIC MỚI] Kiểm tra xem có phải GCloud và thiếu Key không
+        const isGCloud = engineSelect && engineSelect.value === 'gcloud';
+        const hasKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
+
+        select.innerHTML = ""; // Clear old options
+        select.disabled = false; // Reset state
+
+        // TRƯỜNG HỢP 1: GCloud nhưng chưa có Key
+        if (isGCloud && !hasKey) {
+            const option = document.createElement("option");
+            option.textContent = "✨ Enter API Key to load voices...";
+            option.value = "";
+            select.appendChild(option);
+            select.disabled = true; // Khóa menu lại
+            return; // Dừng, không render danh sách fallback
+        }
+
+        // TRƯỜNG HỢP 2: Render danh sách bình thường (WSA hoặc GCloud đã có Key)
+        if (!voices || voices.length === 0) {
+            const option = document.createElement("option");
+            option.textContent = "No voices available";
+            select.appendChild(option);
+            select.disabled = true;
+            return;
+        }
+
         voices.forEach(v => {
             const option = document.createElement("option");
             option.value = v.voiceURI;
             
-            // 1. Store the clean, original name without any prefixes.
+            // Clean name logic
             const cleanName = v.name.replace("Microsoft ", "").replace("Google ", "").substring(0, 60);
             option.dataset.originalName = cleanName;
-            
-            // 2. Set a default padded state. Use non-breaking spaces to prevent trimming.
             option.textContent = "\u00A0\u00A0\u00A0" + cleanName; 
             
             select.appendChild(option);

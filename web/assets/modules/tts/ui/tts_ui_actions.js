@@ -75,8 +75,15 @@ export const TTSUIActions = {
         });
 
         // API Key Input
-        els.apiKeyInput?.addEventListener("change", (e) => {
-            orchestrator.setGCloudApiKey(e.target.value);
+        els.apiKeyInput?.addEventListener("input", (e) => { // Dùng sự kiện 'input' thay vì 'change' để phản hồi tức thì
+            const key = e.target.value;
+            orchestrator.setGCloudApiKey(key);
+            
+            // [UX] Ngay khi có key, thử refresh lại list giọng (mở khóa dropdown)
+            // Orchestrator sẽ gọi lại updateUI -> populateVoices
+            if (key.length > 0) {
+                 orchestrator.refreshVoices(); 
+            }
         });
 
         // Refresh Voices
