@@ -7,7 +7,7 @@ import { AppConfig } from '../../core/app_config.js';
 
 const logger = getLogger("TTS_GCloudEngine");
 
-// [IMPORTANT] Đổi key cache để invalidate dữ liệu cũ bị lỗi
+// Cache keys (v2 to invalidate old bad data)
 const CACHE_KEY_LIST = "tts_gcloud_voices_list_v2";
 const CACHE_KEY_TS = "tts_gcloud_voices_ts_v2";
 
@@ -30,7 +30,7 @@ export class TTSGoogleCloudEngine {
         this.availableVoices = []; 
         this._loadSettings();
 
-        // Try loading cached voices first
+        // Try loading cached voices
         const cachedVoices = localStorage.getItem(CACHE_KEY_LIST);
         if (cachedVoices) {
             try {
@@ -43,6 +43,12 @@ export class TTSGoogleCloudEngine {
         this.onAudioCached = null;
         
         this.currentReqId = 0;
+
+        // [FIX] Tự động tải danh sách giọng ngay khi khởi tạo nếu đã có Key
+        if (this.apiKey) {
+            // Dùng setTimeout để đảm bảo UI (Orchestrator) đã kịp bind event onVoicesChanged
+            setTimeout(() => this.refreshVoices(false), 100);
+        }
     }
 
     setApiKey(key) {
@@ -51,7 +57,7 @@ export class TTSGoogleCloudEngine {
         localStorage.setItem("tts_gcloud_key", key);
         
         if (key) {
-            this.refreshVoices(true); 
+            this.refreshVoices(true); // Force refresh khi nhập key mới
         }
     }
     
@@ -62,34 +68,35 @@ export class TTSGoogleCloudEngine {
         const lastUpdate = parseInt(localStorage.getItem(CACHE_KEY_TS) || "0");
         const now = Date.now();
 
+        // Nếu cache còn mới và không force -> Dùng cache
         if (!force && this.availableVoices.length > 0 && (now - lastUpdate < CACHE_DURATION)) {
             logger.info("Voices", "Using cached voice list.");
+            // Trigger UI update ngay để đồng bộ
             if (this.onVoicesChanged) this.onVoicesChanged(this.availableVoices, this.voice);
             return;
         }
 
         try {
+            logger.info("Voices", "Fetching voice list from Google API...");
             const rawVoices = await this.fetcher.fetchVoices();
             
-            // [FIXED] Strict Filter & Mapping
+            // Strict Filter
             this.availableVoices = rawVoices
                 .filter(v => {
                     const id = v.name;
-                    // Chỉ lấy ID chuẩn (có chứa 'en-' và dấu gạch ngang)
                     return (v.languageCodes.includes("en-US") || v.languageCodes.includes("en-GB")) &&
                            id.startsWith("en-") && 
                            id.includes("-");
                 })
                 .map(v => ({
-                    // Giữ nguyên tên gốc, không format ở đây để tránh lỗi logic
-                    name: `${v.name} (${v.ssmlGender})`, 
-                    voiceURI: v.name, // QUAN TRỌNG: Đây phải là ID gốc (vd: en-US-Chirp3-HD-Algenib)
+                    name: `${v.name} (${v.ssmlGender})`,
+                    voiceURI: v.name,
                     lang: v.languageCodes[0]
                 }));
             
             this.availableVoices.sort((a, b) => a.name.localeCompare(b.name));
 
-            // AUTO-SELECT DEFAULT
+            // Auto-select Default if current is invalid
             const isCurrentValid = this.availableVoices.some(v => v.voiceURI === this.voice.voiceURI);
             if (!isCurrentValid) {
                 const defaultURI = AppConfig.TTS?.DEFAULT_VOICE?.voiceURI;
@@ -103,7 +110,7 @@ export class TTSGoogleCloudEngine {
                 }
             }
 
-            // Save Cache (New Keys)
+            // Save Cache
             localStorage.setItem(CACHE_KEY_LIST, JSON.stringify(this.availableVoices));
             localStorage.setItem(CACHE_KEY_TS, now.toString());
             
@@ -114,8 +121,10 @@ export class TTSGoogleCloudEngine {
 
         } catch (e) {
             logger.error("Voices", "Failed to refresh voices", e);
+            // Xóa cache để tránh kẹt
             this.availableVoices = [];
             localStorage.removeItem(CACHE_KEY_LIST); 
+            
             if (this.onVoicesChanged) {
                 this.onVoicesChanged([], null);
             }
@@ -163,7 +172,6 @@ export class TTSGoogleCloudEngine {
             if (onEnd) onEnd(); return;
         }
 
-        // Validate URI before sending
         if (!this.voice.voiceURI || !this.voice.voiceURI.includes("-")) {
              logger.error("Speak", `Invalid Voice ID: ${this.voice.voiceURI}`);
              if (onEnd) onEnd();

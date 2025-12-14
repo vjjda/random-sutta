@@ -1,32 +1,21 @@
 // Path: web/assets/modules/tts/ui/tts_ui_renderer.js
 import { AppConfig } from '../../core/app_config.js';
 
-// [UPDATED] Robust Name Formatter
 function formatVoiceName(rawName) {
-    // Expected rawName: "en-US-Neural2-D (MALE)" or "en-US-Chirp3-HD-Algenib (MALE)"
-    
-    // 1. Strip language prefix
     let clean = rawName.replace(/^(en-US-|en-GB-)/, '');
-    
-    // 2. Format Types
     clean = clean.replace('Neural2', 'Neural 2')
                  .replace('Studio', 'Studio')
                  .replace('Wavenet', 'Wavenet')
                  .replace('Polyglot', 'Polyglot')
                  .replace('Standard', 'Standard');
 
-    // 3. Format Chirp (Handle both Chirp and Chirp3)
     if (clean.includes('Chirp')) {
         clean = clean.replace('Chirp3-HD-', 'Chirp 3 ');
         clean = clean.replace('Chirp-HD-', 'Chirp ');
     } 
     
-    // 4. Format Letters (e.g. "-D " -> " D ")
     clean = clean.replace(/-([A-Z])\s/, ' $1 ');
-    
-    // 5. Remove any remaining dashes that look ugly
     clean = clean.replace(/-/g, ' ');
-
     return clean;
 }
 
@@ -159,6 +148,7 @@ export const TTSUIRenderer = {
         select.innerHTML = ""; 
         select.disabled = false; 
 
+        // CASE 1: Thiếu Key
         if (isGCloud && !hasKey) {
             const option = document.createElement("option");
             option.textContent = "✨ Enter API Key to load voices...";
@@ -168,15 +158,18 @@ export const TTSUIRenderer = {
             return;
         }
 
+        // CASE 2: Đã có Key nhưng list rỗng (Lỗi hoặc đang tải)
         if (isGCloud && hasKey && (!voices || voices.length === 0)) {
             const option = document.createElement("option");
-            option.textContent = "⏳ Loading voices or Invalid Key...";
+            // [UX] Thông báo rõ ràng hơn
+            option.textContent = "⚠️ Failed to load. Check Key/Network.";
             option.value = "";
             select.appendChild(option);
             select.disabled = true; 
             return;
         }
 
+        // CASE 3: Không có voice nào (cho cả WSA)
         if (!voices || voices.length === 0) {
             const option = document.createElement("option");
             option.textContent = "No voices available";
@@ -193,10 +186,7 @@ export const TTSUIRenderer = {
         const otherList = [];
 
         voices.forEach(v => {
-            // [CRITICAL] v.voiceURI must be the raw ID (e.g. en-US-Chirp3-HD-Algenib)
             const recEntry = recommendedMap.get(v.voiceURI);
-            
-            // Format name for display only
             const prettyName = formatVoiceName(v.name);
 
             if (recEntry) {
@@ -216,7 +206,7 @@ export const TTSUIRenderer = {
 
         const createOption = (v) => {
             const option = document.createElement("option");
-            option.value = v.voiceURI; // [CRITICAL] This sets the value sent to API
+            option.value = v.voiceURI;
             option.dataset.displayName = v.displayName;
             option.textContent = "\u00A0\u00A0\u00A0" + v.displayName; 
             return option;
