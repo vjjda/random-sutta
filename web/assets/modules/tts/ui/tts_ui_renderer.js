@@ -109,7 +109,7 @@ export const TTSUIRenderer = {
             option.dataset.originalName = cleanName;
             
             // 2. Set a default padded state. Use non-breaking spaces to prevent trimming.
-            option.textContent = "\u00A0\u00A0" + cleanName; 
+            option.textContent = "\u00A0\u00A0\u00A0" + cleanName; 
             
             select.appendChild(option);
         });
@@ -135,7 +135,7 @@ export const TTSUIRenderer = {
                     opt.textContent = "• " + originalName;
                 } else {
                     // Prepend non-breaking spaces for alignment for online voices
-                    opt.textContent = "\u00A0\u00A0" + originalName;
+                    opt.textContent = "\u00A0\u00A0\u00A0" + originalName;
                 }
             }
         }
