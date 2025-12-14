@@ -17,6 +17,7 @@ export const PopupOrchestrator = {
     init() {
         this._applyLayoutConfig();
 
+        // 1. Init UI
         CommentPopupUI.init({
             onClose: () => this.closeAll(),
             onNavigate: (dir) => this._navigateComment(dir),
@@ -25,51 +26,55 @@ export const PopupOrchestrator = {
 
         QuicklookPopupUI.init({
             onClose: () => {
-                // Khi đóng Quicklook bằng nút X, ta đóng Quicklook 
-                // nhưng nếu bên dưới có Comment thì Comment sẽ hiện ra (State logic)
+                // Đóng Quicklook, nếu có comment nền thì hiển thị lại comment (UX)
+                // Hoặc đơn giản là đóng tất cả cho gọn.
+                // Logic cũ là: Ẩn Quicklook, không làm gì Comment (nếu Comment đang mở nó sẽ lộ ra)
                 QuicklookPopupUI.hide();
-                // Nếu đang có comment active, state tự quay về comment (do Quicklook chỉ là layer trên)
-                // Tuy nhiên để đơn giản, ta close all hoặc check logic sâu hơn.
-                // Ở đây chọn giải pháp an toàn: Close All để đồng bộ state.
-                this.closeAll(); 
+                // Update State: Quay về Comment nếu có
+                if (PopupState.activeIndex !== -1) {
+                    PopupState.activeType = 'comment';
+                    PopupState.activeUrl = null;
+                } else {
+                    PopupState.clearActive();
+                }
             },
             onDeepLink: (href) => this._navigateToMain(href),
             onOpenOriginal: (href) => this._handleFullPageNavigation(href)
         });
 
+        // 2. Global Events
         this._bindGlobalEvents();
     },
 
-    // --- RESTORATION LOGIC (UNIFIED) ---
+    // --- RESTORATION LOGIC (FIXED) ---
 
     restoreState() {
         const snapshot = PopupState.getSnapshot();
         if (!snapshot || snapshot.type === 'none') return;
 
-        logger.info("Restore", `Restoring Type: ${snapshot.type}`);
+        logger.info("Restore", `Type: ${snapshot.type}`, snapshot);
 
-        // CASE 1: COMMENT
-        if (snapshot.type === 'comment' && snapshot.data) {
-            const idx = snapshot.data.index;
-            if (!PopupState.hasComments()) {
-                const list = PopupScanner.scan("sutta-container");
-                PopupState.setComments(list);
-            }
-            if (PopupState.hasComments() && idx >= 0 && idx < PopupState.comments.length) {
-                this._activateComment(idx);
-                // Scroll main view
-                const item = PopupState.comments[idx];
+        // 1. Restore Comment (Nền tảng)
+        // Dù type là quicklook, nếu có commentIndex thì cũng nên restore comment ở dưới
+        if (snapshot.commentIndex !== undefined && snapshot.commentIndex !== -1) {
+            // Đảm bảo dữ liệu đã có
+            this.scanComments(); 
+            const comments = PopupState.getComments();
+            
+            if (comments.length > 0 && snapshot.commentIndex < comments.length) {
+                // Render nhưng chưa chắc đã set là activeType cuối cùng (nếu quicklook đè lên)
+                this._activateCommentUI(snapshot.commentIndex);
+                
+                // Scroll main page instant
+                const item = comments[snapshot.commentIndex];
                 if (item && item.id) Scroller.scrollToId(item.id, 'instant');
             }
         }
-        
-        // CASE 2: QUICKLOOK
-        else if (snapshot.type === 'quicklook' && snapshot.data) {
-            const url = snapshot.data.url;
-            if (url) {
-                // Gọi với cờ isRestoring = true
-                this._handleLinkRequest(url, true);
-            }
+
+        // 2. Restore Quicklook (Lớp phủ)
+        if (snapshot.type === 'quicklook' && snapshot.quicklookUrl) {
+            // [CRITICAL] Gọi với flag isRestoring = true
+            this._handleLinkRequest(snapshot.quicklookUrl, true);
         }
     },
 
@@ -78,6 +83,7 @@ export const PopupOrchestrator = {
     _handleFullPageNavigation(href) {
         // 1. Lưu state hiện tại (đang nằm trong RAM của PopupState) vào History
         PopupState.saveSnapshot();
+        
         // 2. Chuyển trang
         this._navigateToMain(href);
     },
@@ -94,58 +100,55 @@ export const PopupOrchestrator = {
 
     // --- CORE ACTIONS ---
 
+    scanComments() {
+        const list = PopupScanner.scan("sutta-container");
+        PopupState.setComments(list);
+    },
+
     closeAll() {
         CommentPopupUI.hide();
         QuicklookPopupUI.hide();
         PopupState.loadingUid = null;
-        PopupState.clearActive(); // Xóa state
+        PopupState.clearActive();
     },
 
     // 1. Comment Actions
     _openCommentByText(text) {
-        if (!PopupState.hasComments()) this.scanComments();
-        const index = PopupState.comments.findIndex(c => c.text === text);
+        const comments = PopupState.getComments();
+        if (comments.length === 0) this.scanComments();
+        
+        const index = PopupState.getComments().findIndex(c => c.text === text);
         if (index !== -1) {
-            this._activateComment(index);
+            this._activateCommentUI(index);
             QuicklookPopupUI.hide();
         }
     },
 
-    _activateComment(index) {
-        // Update State
-        PopupState.setCommentActive(index);
+    _activateCommentUI(index) {
+        PopupState.setCommentActive(index); // Update State
         
-        // Update UI
-        const total = PopupState.comments.length;
-        const item = PopupState.comments[index];
-        const context = PopupScanner.getContextText(PopupState.comments, index);
+        const comments = PopupState.getComments();
+        const total = comments.length;
+        const item = comments[index];
+        const context = PopupScanner.getContextText(comments, index);
+        
         CommentPopupUI.render(item.text, index, total, context);
     },
 
     _navigateComment(dir) {
-        // Lấy index từ state hiện tại (hoặc từ biến local cũ nếu chưa refactor hết, nhưng nên dùng state)
-        // Lưu ý: PopupState.activePopup.data.index có thể chưa đồng bộ nếu ta dùng biến currentIndex cũ.
-        // Để an toàn, ta dùng currentIndex cũ trong PopupState (đã refactor ở file state).
-        // Check lại popup_state.js: ta chưa expose currentIndex getter.
-        // Sửa nhanh: Ta sẽ dựa vào logic cũ: activePopup.data.index
-        
-        const currentData = PopupState.activePopup.data;
-        let currentIdx = (currentData && typeof currentData.index === 'number') ? currentData.index : -1;
+        // Lấy index từ state
+        let currentIdx = PopupState.activeIndex;
+        const comments = PopupState.getComments();
         
         const nextIdx = currentIdx + dir;
-        if (nextIdx >= 0 && nextIdx < PopupState.comments.length) {
-            this._activateComment(nextIdx);
+        if (nextIdx >= 0 && nextIdx < comments.length) {
+            this._activateCommentUI(nextIdx);
             
-            const item = PopupState.comments[nextIdx];
+            const item = comments[nextIdx];
             if (item.id) Scroller.scrollToId(item.id, 'smooth');
             
             QuicklookPopupUI.hide();
         }
-    },
-
-    scanComments() {
-        const list = PopupScanner.scan("sutta-container");
-        PopupState.setComments(list);
     },
 
     // 2. Quicklook Actions
@@ -169,7 +172,7 @@ export const PopupOrchestrator = {
                 
                 QuicklookPopupUI.render(renderRes.html, displayTitle, href);
                 
-                // Update State thành Quicklook (Lưu URL)
+                // Update State thành Quicklook
                 PopupState.setQuicklookActive(href);
 
                 if (hash) {
@@ -197,6 +200,7 @@ export const PopupOrchestrator = {
             const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
 
             if (targetEl && qBody) {
+                // Calculation logic (Instant Jump)
                 const containerRect = qBody.getBoundingClientRect();
                 const elementRect = targetEl.getBoundingClientRect();
                 const currentScroll = qBody.scrollTop;
@@ -210,6 +214,7 @@ export const PopupOrchestrator = {
         }, 100);
     },
 
+    // --- UTILS ---
     _parseUrl(href) {
         try {
             const urlObj = new URL(href, window.location.origin);
@@ -245,15 +250,13 @@ export const PopupOrchestrator = {
                 } else {
                     if (QuicklookPopupUI.isVisible() && !QuicklookPopupUI.elements.popup.contains(e.target)) {
                         QuicklookPopupUI.hide();
-                        // Nếu đóng Quicklook mà bên dưới có comment, ta nên active lại comment state?
-                        // Logic hiện tại đơn giản hóa: Click ra ngoài Quicklook -> đóng QL.
-                        // Click ra ngoài Comment -> đóng Comment.
-                        // Nếu cần phục hồi comment state khi đóng QL, cần logic phức tạp hơn.
-                        // Hiện tại tạm thời giữ logic cũ: Đóng là đóng.
-                        // Update state:
-                        // Nếu đóng QL, mà Comment vẫn hiện (do UI layer), thì state nên về comment?
-                        // Để đơn giản, khi click outside Quicklook, ta coi như trạng thái là 'none' hoặc 'comment' tùy logic UI.
-                        // Ở đây ta gọi closeAll cho chắc ăn.
+                        // Update state: Nếu đóng QL, revert về comment nếu có
+                        if (PopupState.activeIndex !== -1) {
+                            PopupState.activeType = 'comment';
+                            PopupState.activeUrl = null;
+                        } else {
+                            PopupState.clearActive();
+                        }
                     } else if (CommentPopupUI.isVisible() && !CommentPopupUI.elements.popup.contains(e.target)) {
                         this.closeAll();
                     }
@@ -265,10 +268,13 @@ export const PopupOrchestrator = {
             if (e.key === "Escape") {
                 if (QuicklookPopupUI.isVisible()) {
                     QuicklookPopupUI.hide();
-                    // Nếu ẩn QL, state nên quay về comment nếu comment đang mở?
-                    // Hiện tại set về none hoặc giữ nguyên comment cũ nếu không reset.
-                    // Tạm thời Close All.
-                    this.closeAll(); 
+                    // Revert state logic tương tự click outside
+                    if (PopupState.activeIndex !== -1) {
+                        PopupState.activeType = 'comment';
+                        PopupState.activeUrl = null;
+                    } else {
+                        PopupState.clearActive();
+                    }
                 }
                 else if (CommentPopupUI.isVisible()) this.closeAll();
             }

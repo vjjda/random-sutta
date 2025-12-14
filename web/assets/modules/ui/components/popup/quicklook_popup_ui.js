@@ -1,5 +1,4 @@
 // Path: web/assets/modules/ui/components/popup/quicklook_popup_ui.js
-// (Code được refactor từ quicklook_layer.js cũ)
 export const QuicklookPopupUI = {
     elements: {},
 
@@ -17,15 +16,14 @@ export const QuicklookPopupUI = {
 
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            // Call callback to allow orchestrator to handle state saving if needed
-            callbacks.onClose(); 
+            callbacks.onClose();
         });
 
         if (this.elements.externalLinkBtn) {
             this.elements.externalLinkBtn.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Logic chuyển trang chính
+                // [CRITICAL] Gọi callback để Orchestrator xử lý việc lưu state
                 if (callbacks.onOpenOriginal && this.elements.externalLinkBtn.href) {
                     callbacks.onOpenOriginal(this.elements.externalLinkBtn.href);
                 }

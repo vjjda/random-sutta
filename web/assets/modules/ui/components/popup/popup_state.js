@@ -4,55 +4,65 @@ import { getLogger } from 'utils/logger.js';
 const logger = getLogger("PopupState");
 
 export const PopupState = {
-    // --- RUNTIME MEMORY (Nguồn chân lý) ---
-    // Thay vì lưu rời rạc, ta lưu một object đại diện cho popup đang active
-    activePopup: {
-        type: 'none', // 'comment' | 'quicklook' | 'none'
-        data: null    // { index: 0 } hoặc { url: 'mn1' }
+    // --- RUNTIME MEMORY ---
+    // Cache danh sách comment của trang hiện tại (để không phải quét DOM liên tục)
+    comments: [],     
+    
+    // Trạng thái đang active trong phiên làm việc này
+    activeType: 'none', // 'comment' | 'quicklook' | 'none'
+    activeIndex: -1,    // Dùng cho Comment
+    activeUrl: null,    // Dùng cho Quicklook
+    
+    // Lock để tránh race condition khi fetch dữ liệu
+    loadingUid: null, 
+
+    // --- HELPER METHODS ---
+
+    setComments(list) {
+        this.comments = list || [];
     },
 
-    // Dữ liệu phụ trợ (Cache)
-    comments: [],     // Cache danh sách comment của trang hiện tại
-    loadingUid: null, // Lock để tránh race condition khi fetch
-
-    // --- STATE SETTERS (Gọi khi UI thay đổi) ---
+    getComments() {
+        return this.comments;
+    },
 
     setCommentActive(index) {
-        this.activePopup = {
-            type: 'comment',
-            data: { index: index }
-        };
+        this.activeType = 'comment';
+        this.activeIndex = index;
+        this.activeUrl = null;
     },
 
     setQuicklookActive(url) {
-        this.activePopup = {
-            type: 'quicklook',
-            data: { url: url }
-        };
+        this.activeType = 'quicklook';
+        this.activeUrl = url;
+        // Giữ nguyên activeIndex của comment bên dưới (nếu có) để khi đóng Quicklook thì restore lại được
     },
 
     clearActive() {
-        this.activePopup = { type: 'none', data: null };
+        this.activeType = 'none';
+        // Không reset activeIndex/activeUrl ngay để có thể restore nếu cần undo, 
+        // nhưng về mặt logic save thì coi như đóng.
     },
 
-    // --- HISTORY API INTERFACE ---
-
     /**
-     * Lưu trạng thái hiện tại (trong RAM) vào History Browser.
-     * Được gọi ngay trước khi chuyển trang.
+     * [CORE] Lưu trạng thái hiện tại vào History của trình duyệt.
+     * Gọi hàm này NGAY TRƯỚC KHI chuyển trang (unload/navigate).
      */
     saveSnapshot() {
         try {
             const currentState = window.history.state || {};
             
-            // Chỉ lưu những gì đang thực sự active trong RAM
+            // Snapshot chỉ quan tâm cái gì đang hiển thị "trên cùng"
+            // Tuy nhiên, nếu Quicklook đang mở, ta cũng nên lưu comment index nền
             const snapshot = {
-                type: this.activePopup.type,
-                data: this.activePopup.data
+                type: this.activeType,
+                commentIndex: this.activeIndex,
+                quicklookUrl: this.activeUrl
             };
 
-            logger.info("Snapshot", `Saving: Type=${snapshot.type}`, snapshot.data);
+            logger.info("Snapshot", `Saving: ${snapshot.type}`, snapshot);
             
+            // Ghi đè state của trang HIỆN TẠI (trước khi rời đi)
             window.history.replaceState(
                 { ...currentState, popupSnapshot: snapshot }, 
                 document.title, 
@@ -64,7 +74,7 @@ export const PopupState = {
     },
 
     /**
-     * Lấy snapshot từ History Browser (dùng khi Restore).
+     * [CORE] Đọc trạng thái từ History (dùng khi trang vừa load lại do Back/Forward).
      */
     getSnapshot() {
         try {
@@ -76,9 +86,5 @@ export const PopupState = {
             logger.error("Snapshot", "Get failed", e);
         }
         return null;
-    },
-
-    // --- DATA HELPERS ---
-    setComments(list) { this.comments = list || []; },
-    hasComments() { return this.comments.length > 0; }
+    }
 };

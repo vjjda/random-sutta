@@ -1,5 +1,4 @@
 // Path: web/assets/modules/ui/components/popup/comment_popup_ui.js
-// (Code được refactor từ comment_layer.js cũ)
 export const CommentPopupUI = {
     elements: {},
     
@@ -17,7 +16,6 @@ export const CommentPopupUI = {
 
         if (!this.elements.popup) return;
 
-        // Event Binding
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             callbacks.onClose();
@@ -40,10 +38,10 @@ export const CommentPopupUI = {
             }, { passive: false });
         }
 
-        // Handle internal links
         this.elements.content.addEventListener("click", (e) => {
             const link = e.target.closest("a");
             if (link && link.href) {
+                // Check internal links
                 const isInternal = link.href.includes("suttacentral.net") || link.href.includes("?q=") || !link.href.startsWith("http");
                 if (isInternal) {
                     e.preventDefault();
@@ -64,8 +62,6 @@ export const CommentPopupUI = {
         }
 
         this.elements.popup.classList.remove("hidden");
-        
-        // Reset scroll
         if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
 
         this._updateNav(index, total);
