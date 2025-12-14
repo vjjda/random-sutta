@@ -4,6 +4,21 @@
 :root {
   --popup-comment-height: 40vh;
   --popup-quicklook-top: 70px;
+  
+  /* [NEW] Biến offset cho popup khi có TTS Player */
+  /* Mặc định bằng 0. Khi TTS bật, body sẽ có class .tts-open và set giá trị này */
+  --tts-popup-offset: 0px; 
+}
+
+/* [NEW] Khi TTS Open -> Đẩy popup lên cao hơn Player.
+   Tính toán: 
+   - Player height ~70px 
+   - Player bottom spacing ~15px
+   - Extra visual buffer ~15px
+   => Total: 100px
+*/
+body.tts-open {
+  --tts-popup-offset: 100px;
 }
 
 .popup-container {
@@ -54,7 +69,7 @@
   justify-content: center;
   cursor: pointer;
   border-radius: 50%;
-  flex-shrink: 0; /* Không bị co lại khi text dài */
+  flex-shrink: 0;
   
   /* Căn chỉnh vị trí so với padding của header */
   margin-right: -10px;
@@ -67,27 +82,29 @@
 }
 
 /* --- POPUP HEADERS (SHARED LAYOUT) --- */
-/* Class chung hoặc style lặp lại để đảm bảo consistent */
 .comment-header, 
 .quicklook-header {
   padding: 10px 15px;
-  /* border-bottom: 1px solid var(--border-light); */
   background-color: var(--bg-body);
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* Căn trên để xử lý text dài nhiều dòng */
+  align-items: flex-start;
   gap: 10px;
-  min-height: 50px; /* Chiều cao tối thiểu đồng bộ */
+  min-height: 50px;
 }
 
 /* --- COMMENT POPUP (Layer 1) --- */
 #comment-popup {
-  bottom: 0;
+  /* [UPDATED] Dùng biến offset để tự động trượt lên khi có Player */
+  bottom: var(--tts-popup-offset);
+  
   max-height: var(--popup-comment-height);
   height: var(--popup-comment-height);
-  /* border-radius: var(--radius-popup) var(--radius-popup) 0 0; */
   border-left: 5px solid var(--primary-color);
   z-index: 1020;
+  
+  /* [NEW] Thêm transition cho bottom để hiệu ứng mượt mà */
+  transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Style riêng cho text trong Comment Header */
@@ -98,32 +115,38 @@
   font-style: italic;
   color: var(--text-muted);
   
-  /* Căn giữa dọc với nút close */
   align-self: center;
-  
-  /* Scrollable instead of truncate */
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-  padding-right: 5px; /* Prevent text clipping at very end */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-right: 5px;
 }
 
 .comment-header-text::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
 }
 
 /* --- QUICKLOOK POPUP (Layer 2) --- */
 #quicklook-popup {
   top: var(--popup-quicklook-top);
-  bottom: var(--popup-comment-height);
+  
+  /* [UPDATED] Tính toán vị trí đáy:
+     Chiều cao Comment Popup (40vh) + Khoảng đệm TTS (nếu có)
+     Giúp Quicklook co lại nhường chỗ cho Comment Popup trượt lên
+  */
+  bottom: calc(var(--popup-comment-height) + var(--tts-popup-offset));
+  
   height: auto;
   max-height: none;
   border-radius: 0;
   border-left: 5px solid var(--primitive-brown-300);
   border-bottom: 1px solid var(--border-color);
   z-index: 1010;
+  
+  /* [NEW] Transition mượt mà đồng bộ với Comment Popup */
+  transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s;
 }
 
 #quicklook-popup.hidden {
@@ -138,18 +161,14 @@
   align-items: center;
   gap: 8px;
   flex: 1;
-  min-width: 0; /* Enable truncation for flex children */
+  min-width: 0;
 }
 
 .ql-uid-badge {
-  /* background-color: var(--bg-hover); */
   color: var(--primary-color);
-  font-family: var(--font-main); /* Or monospace for technical look */
+  font-family: var(--font-main);
   font-weight: 700;
   font-size: 0.95rem;
-  /* padding: 3px 8px; */
-  /* border-radius: 6px; */
-  /* border: 1px solid var(--border-light); */
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: 0.5px;
@@ -163,7 +182,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 
 .ql-header-content {
   flex: 1;
@@ -206,23 +224,22 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 15px; /* Mobile: Tighter padding */
+  padding: 5px 15px;
   background: transparent;
-  pointer-events: none; /* Allow clicks to pass through empty space */
+  pointer-events: none;
   z-index: 10;
 }
 
 @media (min-width: 600px) {
   .popup-nav-bar {
-    padding: 10px 15px; /* Desktop: More space */
+    padding: 10px 15px;
   }
 }
 
-/* Ensure controls are clickable and visible against text */
 .popup-nav-bar > * {
   pointer-events: auto;
-  background-color: var(--bg-card); /* Match popup background */
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* Lift effect */
+  background-color: var(--bg-card);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .popup-nav-info { 
@@ -234,7 +251,7 @@
 }
 
 .popup-nav-btn {
-  background-color: var(--bg-card); /* Explicit bg */
+  background-color: var(--bg-card);
   border: 1px none var(--border-light);
   border-radius: 50%;
   width: 36px;
@@ -245,7 +262,8 @@
   color: var(--text-muted);
   cursor: pointer;
 }
-.popup-nav-btn:hover:not(:disabled) { background-color: var(--bg-hover); color: var(--primary-color); border-color: var(--primary-color); }
+.popup-nav-btn:hover:not(:disabled) { background-color: var(--bg-hover); color: var(--primary-color); border-color: var(--primary-color);
+}
 .popup-nav-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 
 /* Ensure content isn't hidden behind floating nav */
@@ -258,7 +276,7 @@
   position: absolute;
   bottom: 10px;
   right: 10px;
-  width: 20px; /* Large touch target */
+  width: 20px;
   height: 20px;
   background-color: transparent;
   border-radius: 50%;
@@ -268,9 +286,8 @@
   cursor: pointer;
   z-index: 20;
   opacity: 0.4;
-  box-shadow: none; /* No shadow as requested */
+  box-shadow: none;
   
-  /* [CONFIG] Adjust dot size here */
   --dot-size: 6px;
 }
 
@@ -281,7 +298,7 @@
   width: var(--dot-size);
   height: var(--dot-size);
   border-radius: 50%;
-  background-color: var(--text-muted); /* Solid, low profile color */
+  background-color: var(--text-muted);
 }
 
 .quicklook-fab:hover {
@@ -299,6 +316,8 @@
 
 .comment-marker {
   color: var(--primary-color); font-weight: bold; cursor: pointer; font-size: 0.75em;
-  vertical-align: super; margin-left: 2px; padding: 0 3px; user-select: none;
+  vertical-align: super; margin-left: 2px;
+  padding: 0 3px; user-select: none;
 }
-.comment-marker:hover { background-color: var(--highlight-color-segment); border-radius: 50%; }
+.comment-marker:hover { background-color: var(--highlight-color-segment); border-radius: 50%;
+}
