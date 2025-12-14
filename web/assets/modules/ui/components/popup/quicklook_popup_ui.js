@@ -1,5 +1,6 @@
-// Path: web/assets/modules/ui/components/popup/quicklook_layer.js
-export const QuicklookLayer = {
+// Path: web/assets/modules/ui/components/popup/quicklook_popup_ui.js
+// (Code được refactor từ quicklook_layer.js cũ)
+export const QuicklookPopupUI = {
     elements: {},
 
     init(callbacks) {
@@ -8,7 +9,6 @@ export const QuicklookLayer = {
             content: document.getElementById("quicklook-content"),
             title: document.getElementById("quicklook-title"),
             closeBtn: document.getElementById("close-quicklook"),
-            // [NEW] Cache element body để xử lý scroll
             popupBody: document.querySelector("#quicklook-popup .popup-body"),
             externalLinkBtn: document.getElementById("btn-quicklook-open")
         };
@@ -17,13 +17,15 @@ export const QuicklookLayer = {
 
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            this.hide();
+            // Call callback to allow orchestrator to handle state saving if needed
+            callbacks.onClose(); 
         });
 
         if (this.elements.externalLinkBtn) {
             this.elements.externalLinkBtn.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                // Logic chuyển trang chính
                 if (callbacks.onOpenOriginal && this.elements.externalLinkBtn.href) {
                     callbacks.onOpenOriginal(this.elements.externalLinkBtn.href);
                 }
@@ -39,29 +41,29 @@ export const QuicklookLayer = {
         });
     },
 
-    show(htmlContent, title = "Preview", sourceUrl = null) {
-        if (this.elements.title) {
-            this.elements.title.innerHTML = title;
-        }
+    render(htmlContent, title = "Preview", sourceUrl = null) {
+        if (this.elements.title) this.elements.title.innerHTML = title;
         this.elements.content.innerHTML = htmlContent;
-        
-        // Handle External Link Button
+
         if (this.elements.externalLinkBtn) {
             if (sourceUrl) {
                 this.elements.externalLinkBtn.href = sourceUrl;
                 this.elements.externalLinkBtn.classList.remove("hidden");
             } else {
                 this.elements.externalLinkBtn.classList.add("hidden");
-                this.elements.externalLinkBtn.removeAttribute("href");
             }
         }
 
         this.elements.popup.classList.remove("hidden");
+        if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
+    },
 
-        // [FIXED] Reset scroll position lên đầu khi load nội dung mới
-        if (this.elements.popupBody) {
-            this.elements.popupBody.scrollTop = 0;
-        }
+    showLoading(title = "Loading...") {
+        this.render('<div style="text-align:center; padding: 20px;">Loading...</div>', title);
+    },
+
+    showError(msg) {
+        this.render(`<p class="error-message">${msg}</p>`, "Error");
     },
 
     hide() {

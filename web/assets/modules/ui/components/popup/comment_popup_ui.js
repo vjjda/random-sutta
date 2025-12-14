@@ -1,7 +1,6 @@
-// Path: web/assets/modules/ui/components/popup/comment_layer.js
-import { Scroller } from 'ui/common/scroller.js';
-
-export const CommentLayer = {
+// Path: web/assets/modules/ui/components/popup/comment_popup_ui.js
+// (Code được refactor từ comment_layer.js cũ)
+export const CommentPopupUI = {
     elements: {},
     
     init(callbacks) {
@@ -13,22 +12,12 @@ export const CommentLayer = {
             btnPrev: document.getElementById("btn-comment-prev"),
             btnNext: document.getElementById("btn-comment-next"),
             infoLabel: document.getElementById("comment-index-info"),
-            // Container chịu trách nhiệm scroll
             popupBody: document.querySelector("#comment-popup .popup-body") 
         };
 
         if (!this.elements.popup) return;
 
-        // [FIXED] Transform vertical scroll to horizontal scroll for header text
-        if (this.elements.headerContext) {
-            this.elements.headerContext.addEventListener("wheel", (e) => {
-                if (this.elements.headerContext.scrollWidth > this.elements.headerContext.clientWidth) {
-                    e.preventDefault();
-                    this.elements.headerContext.scrollLeft += e.deltaY;
-                }
-            }, { passive: false });
-        }
-
+        // Event Binding
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
             callbacks.onClose();
@@ -41,14 +30,22 @@ export const CommentLayer = {
             this.elements.btnNext.addEventListener("click", () => callbacks.onNavigate(1));
         }
 
+        // Horizontal scroll for header text
+        if (this.elements.headerContext) {
+            this.elements.headerContext.addEventListener("wheel", (e) => {
+                if (this.elements.headerContext.scrollWidth > this.elements.headerContext.clientWidth) {
+                    e.preventDefault();
+                    this.elements.headerContext.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
+        }
+
+        // Handle internal links
         this.elements.content.addEventListener("click", (e) => {
             const link = e.target.closest("a");
             if (link && link.href) {
-                const isSuttaCentral = link.href.includes("suttacentral.net");
-                const isInternalQuery = link.href.includes("?q=");
-                const isRelative = !link.href.startsWith("http");
-
-                if (isSuttaCentral || isInternalQuery || isRelative) {
+                const isInternal = link.href.includes("suttacentral.net") || link.href.includes("?q=") || !link.href.startsWith("http");
+                if (isInternal) {
                     e.preventDefault();
                     e.stopPropagation();
                     callbacks.onLinkClick(link.href);
@@ -57,23 +54,19 @@ export const CommentLayer = {
         });
     },
 
-    show(text, index, total, contextText = "") {
+    render(text, index, total, contextText = "") {
         if (!this.elements.content) return;
-        
         this.elements.content.innerHTML = text;
         
         if (this.elements.headerContext) {
             this.elements.headerContext.textContent = contextText ? `"${contextText}"` : "";
-            // [FIXED] Reset header horizontal scroll
             this.elements.headerContext.scrollLeft = 0;
         }
 
         this.elements.popup.classList.remove("hidden");
         
-        // [FIXED] Reset scroll position lên đầu trang khi nội dung thay đổi
-        if (this.elements.popupBody) {
-            this.elements.popupBody.scrollTop = 0;
-        }
+        // Reset scroll
+        if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
 
         this._updateNav(index, total);
     },
@@ -87,7 +80,7 @@ export const CommentLayer = {
     },
 
     _updateNav(index, total) {
-        if (total === 0 || !this.elements.infoLabel) return;
+        if (!this.elements.infoLabel) return;
         this.elements.infoLabel.textContent = `${index + 1} / ${total}`;
         if (this.elements.btnPrev) this.elements.btnPrev.disabled = index <= 0;
         if (this.elements.btnNext) this.elements.btnNext.disabled = index >= total - 1;

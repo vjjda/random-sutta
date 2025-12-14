@@ -1,19 +1,11 @@
 // Path: web/assets/modules/ui/components/popup/index.js
-import { PopupManager } from './manager.js';
+import { PopupOrchestrator } from './popup_orchestrator.js';
 
 export function initPopupSystem() {
-    PopupManager.init();
+    PopupOrchestrator.init();
     return {
-        scan: () => PopupManager.scanComments(),
-        hideAll: () => PopupManager.hideAll(),
-        restore: () => PopupManager.restoreState()
+        scan: () => PopupOrchestrator.scanComments(),
+        hideAll: () => PopupOrchestrator.closeAll(),
+        restore: () => PopupOrchestrator.restoreState()
     };
 }
-
-// Backward Compatibility (cho các file chưa refactor)
-export const initCommentPopup = () => {
-    // PopupManager tự init trong app.js nên ở đây chỉ trả về API
-    return { 
-        hideComment: () => PopupManager.hideAll() 
-    };
-};
