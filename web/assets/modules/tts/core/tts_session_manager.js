@@ -56,7 +56,13 @@ export const TTSSessionManager = {
 
         if (this.player) this.player.stop();
 
-        const items = TTSDOMParser.parse("sutta-container");
+        let items = [];
+        if (TTSStateStore.playbackMode === 'paragraph') {
+            items = TTSDOMParser.parseParagraphs("sutta-container");
+        } else {
+            items = TTSDOMParser.parse("sutta-container");
+        }
+        
         TTSStateStore.resetPlaylist(items);
         
         if (items.length > 0) {

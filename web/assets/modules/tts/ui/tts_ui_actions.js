@@ -46,6 +46,11 @@ export const TTSUIActions = {
             orchestrator.setAutoNext(e.target.checked);
         });
 
+        els.modeCheckbox?.addEventListener("change", (e) => {
+            const mode = e.target.checked ? 'paragraph' : 'segment';
+            orchestrator.setPlaybackMode(mode);
+        });
+
         // Click outside to close settings
         document.addEventListener("click", (e) => {
             if (els.settingsPanel && !els.settingsPanel.classList.contains("hidden") && 

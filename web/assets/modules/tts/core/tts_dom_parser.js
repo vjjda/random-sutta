@@ -37,5 +37,40 @@ export const TTSDOMParser = {
 
         logger.info("Parse", `Extracted ${playlist.length} segments.`);
         return playlist;
+    },
+
+    /**
+     * Group segments by parent element (Paragraph/Block mode)
+     */
+    parseParagraphs(containerId) {
+        // Reuse the logic to get valid segments
+        const rawSegments = this.parse(containerId);
+        if (rawSegments.length === 0) return [];
+
+        const blocks = [];
+        let currentBlock = null;
+
+        rawSegments.forEach(item => {
+            // Check parent of the segment element
+            const parent = item.element.parentElement;
+            
+            if (currentBlock && currentBlock.element === parent) {
+                // Same block, append
+                currentBlock.text += " " + item.text;
+                currentBlock.segments.push(item);
+            } else {
+                // New block
+                currentBlock = {
+                    id: item.id, // Use first segment's ID as anchor
+                    text: item.text,
+                    element: parent, // Highlight parent
+                    segments: [item]
+                };
+                blocks.push(currentBlock);
+            }
+        });
+
+        logger.info("ParsePara", `Grouped into ${blocks.length} blocks.`);
+        return blocks;
     }
 };

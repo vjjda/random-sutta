@@ -39,6 +39,14 @@ export const TTSUILayout = {
                             <span class="tts-slider"></span>
                         </label>
                     </div>
+
+                    <div class="tts-toggle-wrapper">
+                        <label for="tts-mode-toggle" class="tts-toggle-label">Paragraph Mode</label>
+                        <label class="tts-switch">
+                            <input type="checkbox" id="tts-mode-toggle">
+                            <span class="tts-slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
         `;

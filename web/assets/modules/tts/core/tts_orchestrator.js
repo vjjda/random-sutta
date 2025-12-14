@@ -43,6 +43,7 @@ export const TTSOrchestrator = {
         // Sync UI state ban đầu
         if (this.ui) {
             this.ui.updateAutoNextState(TTSStateStore.autoNextEnabled);
+            this.ui.updatePlaybackModeState(TTSStateStore.playbackMode === 'paragraph');
         }
     },
 
@@ -98,6 +99,51 @@ export const TTSOrchestrator = {
 
     setAutoNext(enabled) {
         TTSStateStore.setAutoNext(enabled);
+    },
+
+    setPlaybackMode(mode) {
+        if (TTSStateStore.playbackMode === mode) return;
+        
+        // 1. Save state
+        TTSStateStore.setPlaybackMode(mode);
+
+        if (!this.isSessionActive()) return;
+
+        // 2. Capture current position (best effort)
+        const currentItem = TTSStateStore.getCurrentItem();
+        let targetId = currentItem ? currentItem.id : null;
+
+        // 3. Refresh playlist (stops player)
+        TTSSessionManager.refresh(false);
+
+        // 4. Try to jump back to context
+        if (targetId) {
+            // If switching Seg -> Para: Para ID is the first seg ID.
+            // If switching Para -> Seg: targetId is the Para ID (first seg ID).
+            // So logic works both ways if we just look for ID existence.
+            
+            // However, if we were in middle of Para (e.g. seg 3), and switch to Para Mode.
+            // We need to find the Para containing seg 3.
+            // But standard JumpToID searches by ID.
+            // Para ID = First Seg ID.
+            // If we are at Seg 3, Para ID != Seg 3 ID.
+            // We need a smarter lookup?
+            
+            // Simple approach first: Just try jump.
+            this.jumpToID(targetId);
+            
+            // Smart approach (if simple fails):
+            // If we are in Para mode now, and simple jump failed (because targetId was a sub-segment),
+            // we should find which block contains that segment.
+            if (TTSStateStore.playbackMode === 'paragraph') {
+                const foundIndex = TTSStateStore.playlist.findIndex(block => {
+                    return block.segments && block.segments.some(s => s.id === targetId);
+                });
+                if (foundIndex !== -1) {
+                    TTSPlayer.jumpTo(foundIndex);
+                }
+            }
+        }
     },
 
     // --- Business Logic: Playlist End Strategy ---

@@ -10,6 +10,7 @@ export const TTSStateStore = {
     
     // Settings
     autoNextEnabled: true,
+    playbackMode: 'segment', // 'segment' | 'paragraph'
 
     init() {
         this._loadSettings();
@@ -20,11 +21,21 @@ export const TTSStateStore = {
         if (savedAutoNext !== null) {
             this.autoNextEnabled = (savedAutoNext === "true");
         }
+        
+        const savedMode = localStorage.getItem("tts_playback_mode");
+        if (savedMode) {
+            this.playbackMode = savedMode;
+        }
     },
 
     setAutoNext(enabled) {
         this.autoNextEnabled = enabled;
         localStorage.setItem("tts_auto_next", enabled);
+    },
+    
+    setPlaybackMode(mode) {
+        this.playbackMode = mode;
+        localStorage.setItem("tts_playback_mode", mode);
     },
 
     // [NEW] Session Management

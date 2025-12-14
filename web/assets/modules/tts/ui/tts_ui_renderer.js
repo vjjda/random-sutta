@@ -19,6 +19,7 @@ export const TTSUIRenderer = {
             rateVal: document.getElementById("tts-rate-val"),
             voiceSelect: document.getElementById("tts-voice-select"),
             autoNextCheckbox: document.getElementById("tts-auto-next"),
+            modeCheckbox: document.getElementById("tts-mode-toggle"),
         };
         return this.elements;
     },
@@ -57,6 +58,12 @@ export const TTSUIRenderer = {
     updateAutoNextState(isChecked) {
         if (this.elements.autoNextCheckbox) {
             this.elements.autoNextCheckbox.checked = isChecked;
+        }
+    },
+
+    updatePlaybackModeState(isParagraph) {
+        if (this.elements.modeCheckbox) {
+            this.elements.modeCheckbox.checked = isParagraph;
         }
     },
 
