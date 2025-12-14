@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api dry data build re dev live serve view-pwa view-sl release zip deploy beta publish clean
+.PHONY: help setup sync sync-text sync-api dry data build re dev live serve view-pwa view-sl release zip deploy beta publish clean official noedit undo
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -111,6 +111,11 @@ beta:
 	$(PYTHON) -m src.release_system --publish
 
 # Publish Official
+official:
+	@echo "🚀 PUBLISHING OFFICIAL..."
+	$(PYTHON) -m src.release_system --official
+
+# Publish + Deploy
 publish:
 	@echo "🌟 PUBLISHING OFFICIAL..."
 	$(PYTHON) -m src.release_system --official --web
