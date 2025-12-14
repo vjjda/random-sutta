@@ -181,11 +181,11 @@
 /* --- Active Block (Paragraph/Heading) --- */
 /* Target elements that are NOT .segment but have .tts-active */
 :not(.segment).tts-active {
-  border-left: 4px solid var(--primary-color);
-  padding-left: 12px;
-  margin-left: -16px; /* Compensate for border+padding to align text */
+  border-right: 4px solid var(--primary-color);
+  padding-right: 12px;
+  margin-right: -12px; /* Pull slightly right to align visual weight */
   background-color: rgba(139, 69, 19, 0.05); /* Subtle tint */
-  border-radius: 0 8px 8px 0;
+  border-radius: 8px 0 0 8px;
   transition: all 0.2s ease;
 }
 
