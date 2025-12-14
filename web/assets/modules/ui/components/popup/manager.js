@@ -10,10 +10,11 @@ import { getCleanTextContent } from 'ui/components/toh/text_utils.js';
 
 const logger = getLogger("PopupManager");
 
-// [CONFIG] Offset cho Quicklook (thấp hơn header popup một chút)
+// [CONFIG] Offset để nhìn thấy context bên trên (tương tự 60px cũ)
 const QUICKLOOK_SCROLL_OFFSET = 60; 
 
 export const PopupManager = {
+    // ... (state, init, saveState, restoreState giữ nguyên) ...
     state: {
         comments: [],
         currentIndex: -1,
@@ -32,7 +33,6 @@ export const PopupManager = {
             onOpenOriginal: (href) => this._handleExternalLink(href)
         });
 
-        // ... (Event listeners giữ nguyên) ...
         const container = document.getElementById("sutta-container");
         if (container) {
             container.addEventListener("click", (e) => {
@@ -65,8 +65,8 @@ export const PopupManager = {
         });
     },
 
+    // ... (saveState, restoreState, scanComments, navigateComment giữ nguyên) ...
     saveState() {
-        // ... (Giữ nguyên) ...
         try {
             const currentState = window.history.state || {};
             const isCommentActive = CommentLayer.isVisible() || (QuicklookLayer.isVisible() && this.state.currentIndex !== -1);
@@ -76,45 +76,30 @@ export const PopupManager = {
                 quicklookUrl: QuicklookLayer.isVisible() ? QuicklookLayer.elements.externalLinkBtn.href : null
             };
             logger.info("StateSave", `Saving: CommentIdx=${popupState.commentIndex}, QL=${popupState.quicklookUrl ? 'Yes' : 'No'}`);
-            
             window.history.replaceState({ ...currentState, popupState }, document.title, window.location.href);
-        } catch (e) {
-            logger.error("StateSave", e);
-        }
+        } catch (e) { logger.error("StateSave", e); }
     },
 
     async restoreState() {
-        // ... (Giữ nguyên) ...
         try {
             const state = window.history.state;
             if (!state || !state.popupState) {
                 logger.info("StateRestore", "No popup state found.");
                 return;
             }
-
             const { commentIndex, quicklookUrl } = state.popupState;
             logger.info("StateRestore", `Restoring: CommentIdx=${commentIndex}, QL=${quicklookUrl}`);
 
             if (commentIndex !== undefined && commentIndex !== -1) {
-                if (this.state.comments.length === 0) {
-                    this.scanComments();
-                }
-
+                if (this.state.comments.length === 0) this.scanComments();
                 if (this.state.comments.length > 0 && commentIndex < this.state.comments.length) {
                     this.state.currentIndex = commentIndex;
                     const item = this.state.comments[commentIndex];
                     CommentLayer.show(item.text, commentIndex, this.state.comments.length, this._getCurrentContextText());
-                } else {
-                     logger.warn("StateRestore", `Comment index ${commentIndex} out of bounds (Total: ${this.state.comments.length})`);
                 }
             }
-
-            if (quicklookUrl) {
-                await this._handleCommentLink(quicklookUrl, true);
-            }
-        } catch (e) {
-            logger.error("StateRestore", e);
-        }
+            if (quicklookUrl) await this._handleCommentLink(quicklookUrl, true);
+        } catch (e) { logger.error("StateRestore", e); }
     },
 
     _handleExternalLink(href) {
@@ -146,9 +131,7 @@ export const PopupManager = {
     _getCurrentContextText() {
         if (this.state.currentIndex !== -1 && this.state.comments[this.state.currentIndex]) {
             const currentSeg = this.state.comments[this.state.currentIndex].element;
-            if (currentSeg) {
-                return getCleanTextContent(currentSeg);
-            }
+            if (currentSeg) return getCleanTextContent(currentSeg);
         }
         return "";
     },
@@ -162,13 +145,10 @@ export const PopupManager = {
     _navigateComment(dir) {
         const nextIdx = this.state.currentIndex + dir;
         if (nextIdx < 0 || nextIdx >= this.state.comments.length) return;
-
         this.state.currentIndex = nextIdx;
         const item = this.state.comments[nextIdx];
-        
         CommentLayer.show(item.text, nextIdx, this.state.comments.length, this._getCurrentContextText());
-        if (item.id) Scroller.scrollToId(item.id); // Main Page scroll
-        
+        if (item.id) Scroller.scrollToId(item.id);
         QuicklookLayer.hide();
     },
 
@@ -176,7 +156,6 @@ export const PopupManager = {
         try {
             let uid = "";
             let hash = "";
-            
             const urlObj = new URL(href, window.location.origin);
             if (urlObj.searchParams.has("q")) {
                 uid = urlObj.searchParams.get("q");
@@ -220,20 +199,24 @@ export const PopupManager = {
                             }
                         }
 
-                        // [FIXED] Instant Jump Logic trong Popup
+                        // [FIXED] Sử dụng logic tính toán toạ độ tuyệt đối để tránh lỗi offsetTop
                         setTimeout(() => {
                             const qBody = document.querySelector("#quicklook-popup .popup-body");
                             const targetEl = qBody?.querySelector(`[id="${targetId}"]`);
                             
                             if (targetEl && qBody) {
-                                // Tính offsetTop thủ công để kiểm soát context
-                                const offsetTop = targetEl.offsetTop;
+                                // 1. Tính toán vị trí tương đối chuẩn xác
+                                const containerRect = qBody.getBoundingClientRect();
+                                const elementRect = targetEl.getBoundingClientRect();
+                                const currentScroll = qBody.scrollTop;
                                 
-                                // Scroll trực tiếp container (Instant)
-                                // Trừ đi QUICKLOOK_SCROLL_OFFSET để chừa khoảng trống bên trên
-                                qBody.scrollTop = offsetTop - QUICKLOOK_SCROLL_OFFSET;
+                                // Vị trí đích = (Vị trí hiện tại) + (Khoảng cách giữa Element và Container) - Offset
+                                const targetPosition = currentScroll + (elementRect.top - containerRect.top) - QUICKLOOK_SCROLL_OFFSET;
 
-                                // Highlight
+                                // 2. Scroll trực tiếp (Instant)
+                                qBody.scrollTop = targetPosition;
+
+                                // 3. Highlight visual
                                 qBody.querySelectorAll('.highlight').forEach(el => el.classList.remove('highlight'));
                                 targetEl.classList.add('highlight');
                             }
@@ -267,7 +250,7 @@ export const PopupManager = {
             }
             if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
-                // [FIXED] Gọi loadSutta với transition: false để kích hoạt instant scroll
+                // [FIXED] Transition: false để báo hiệu dùng instant scroll
                 window.loadSutta(uid, true, 0, { transition: false });
             }
         } catch(e){}
