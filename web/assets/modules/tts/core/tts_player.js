@@ -89,30 +89,45 @@ export const TTSPlayer = {
         // Đảm bảo highlight đúng câu đang đọc
         this.highlighter.activate(TTSStateStore.currentIndex);
         
-        // ... existing prefetch logic ...
-
-        try {
-            this.engine.speak(item.text, () => {
-                // Callback khi đọc xong 1 câu
-                if (TTSStateStore.isPlaying) {
-                    if (TTSStateStore.hasNext()) {
-                        TTSStateStore.advance();
-                        this._speakCurrent(); // Đệ quy đọc câu tiếp
+                // ... existing prefetch logic ...
+        
+        
+        
+                this.engine.speak(item.text, () => {
+        
+                    // Callback khi đọc xong 1 câu
+        
+                    if (TTSStateStore.isPlaying) {
+        
+                        if (TTSStateStore.hasNext()) {
+        
+                            TTSStateStore.advance();
+        
+                            this._speakCurrent(); // Đệ quy đọc câu tiếp
+        
+                        } else {
+        
+                            this._triggerEnd();
+        
+                        }
+        
                     }
-                    else {
-                        this._triggerEnd();
+        
+                }).catch(e => {
+        
+                    console.error("TTS Player Error:", e);
+        
+                    this.stop(); // Stop playback on hard error
+        
+                    if (this.ui && this.ui.showError) {
+        
+                        this.ui.showError(e.message);
+        
                     }
-                }
-            });
-        }
-        catch (e) {
-            console.error("TTS Player Error:", e);
-            this.stop(); // Stop playback on hard error
-            if (this.ui && this.ui.showError) {
-                this.ui.showError(e.message);
-            }
-        }
-    },
+        
+                });
+        
+            },
 
     _triggerEnd() {
         if (this.onPlaylistEnd) this.onPlaylistEnd();
