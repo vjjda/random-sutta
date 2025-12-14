@@ -45,8 +45,8 @@ export const AppConfig = {
                 name: "Neural 2 D (Male)"
             },
             { 
-                voiceURI: "en-US-Neural2-F",
-                name: "Neural 2 F (Female)"
+                voiceURI: "en-en-US-Polyglot-1",
+                name: "Polyglot (Male)"
             }
         ],
         
