@@ -50,9 +50,17 @@ export const TTSDOMParser = {
         const blocks = [];
         let currentBlock = null;
 
+        // Semantic Block Selectors: These are the elements we want to treat as "Paragraphs"
+        const blockSelectors = 'p, blockquote, h1, h2, h3, h4, h5, h6, li, article, section, .sutta-text-view > div';
+
         rawSegments.forEach(item => {
-            // Check parent of the segment element
-            const parent = item.element.parentElement;
+            // [FIX] Instead of direct parent, find the closest semantic block.
+            // This fixes issues where segments are inside <span class="evam"> inside a <p>.
+            // We want the <p> to be the block, not the <span>.
+            let parent = item.element.closest(blockSelectors);
+            
+            // Fallback: If no semantic block found (rare), use direct parent
+            if (!parent) parent = item.element.parentElement;
             
             if (currentBlock && currentBlock.element === parent) {
                 // Same block, append
@@ -63,7 +71,7 @@ export const TTSDOMParser = {
                 currentBlock = {
                     id: item.id, // Use first segment's ID as anchor
                     text: item.text,
-                    element: parent, // Highlight parent
+                    element: parent, // Highlight parent (the Block)
                     segments: [item]
                 };
                 blocks.push(currentBlock);
