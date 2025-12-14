@@ -34,6 +34,18 @@
       crossorigin
     />
     <link rel="stylesheet" href="assets/style.css?v=dev-placeholder" />
+    <script type="importmap">
+    {
+      "imports": {
+        "core/": "./assets/modules/core/",
+        "utils/": "./assets/modules/utils/",
+        "services/": "./assets/modules/services/",
+        "ui/": "./assets/modules/ui/",
+        "tts/": "./assets/modules/tts/",
+        "data/": "./assets/modules/data/"
+      }
+    }
+    </script>
     <script src="assets/libs/jszip.min.js"></script>
     <script
       type="module"

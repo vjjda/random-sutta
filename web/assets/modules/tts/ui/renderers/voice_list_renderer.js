@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/ui/renderers/voice_list_renderer.js
-import { AppConfig } from '../../../core/app_config.js';
+import { AppConfig } from 'core/app_config.js'; // [FUTURE PROOF]
 
 // Helper: Format Name
 function formatVoiceName(rawName) {

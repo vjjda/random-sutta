@@ -1,5 +1,5 @@
 // Path: web/assets/modules/tts/engines/gcloud/synthesizer.js
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels up
+import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("GCloud_Synth");
 

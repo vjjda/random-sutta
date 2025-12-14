@@ -2,7 +2,7 @@
 import { TTSWebSpeechEngine } from '../../engines/tts_web_speech_engine.js';
 import { TTSGoogleCloudEngine } from '../../engines/tts_gcloud_engine.js';
 import { TTSStateStore } from '../tts_state_store.js';
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels
+import { getLogger } from 'utils/logger.js'; // [FUTURE PROOF]
 
 const logger = getLogger("TTS_EngineRegistry");
 

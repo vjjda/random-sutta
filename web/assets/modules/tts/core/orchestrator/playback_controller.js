@@ -2,7 +2,7 @@
 import { TTSStateStore } from '../tts_state_store.js';
 import { TTSSessionManager } from '../tts_session_manager.js';
 import { TTSPlayer } from '../tts_player.js';
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels
+import { getLogger } from 'utils/logger.js'; // [FUTURE PROOF]
 
 const logger = getLogger("TTS_PlaybackCtrl");
 

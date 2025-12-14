@@ -1,6 +1,6 @@
 // Path: web/assets/modules/tts/core/orchestrator/ui_synchronizer.js
 import { TTSStateStore } from '../tts_state_store.js';
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels
+import { getLogger } from 'utils/logger.js'; // [FUTURE PROOF]
 
 const logger = getLogger("TTS_UISync");
 

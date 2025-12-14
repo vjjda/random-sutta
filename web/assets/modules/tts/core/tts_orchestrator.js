@@ -1,13 +1,12 @@
 // Path: web/assets/modules/tts/core/tts_orchestrator.js
-import { TTSStateStore } from './tts_state_store.js';
+import { TTSStateStore } from './tts_state_store.js'; // Cùng thư mục thì giữ ./ cũng được
 import { TTSPlayer } from './tts_player.js';
 import { TTSHighlighter } from './tts_highlighter.js';
 import { TTSSessionManager } from './tts_session_manager.js';
 import { TTSMarkerManager } from './tts_marker_manager.js';
-// [FIXED] Lùi 2 cấp (core -> tts -> modules) để tìm thấy utils
-import { getLogger } from '../../utils/logger.js'; 
+// [FUTURE PROOF]
+import { getLogger } from 'utils/logger.js'; 
 
-// Sub-modules
 import { TTSEngineRegistry } from './orchestrator/engine_registry.js';
 import { TTSPlaybackController } from './orchestrator/playback_controller.js';
 import { TTSUISynchronizer } from './orchestrator/ui_synchronizer.js';

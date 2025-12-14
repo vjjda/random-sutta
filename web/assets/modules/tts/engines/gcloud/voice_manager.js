@@ -1,7 +1,6 @@
 // Path: web/assets/modules/tts/engines/gcloud/voice_manager.js
-import { getLogger } from '../../../utils/logger.js'; // [FIXED] 3 levels up (modules/utils/logger.js)
-import { AppConfig } from '../../../core/app_config.js'; // 3 levels up (modules/core/app_config.js)
-
+import { getLogger } from 'utils/logger.js'; 
+import { AppConfig } from 'core/app_config.js';
 const logger = getLogger("GCloud_VoiceMgr");
 
 // [UPDATED] Bump version to v3 to force refresh list without Standard/Wavenet
