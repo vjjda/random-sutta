@@ -1,13 +1,12 @@
 // Path: web/assets/modules/ui/managers/offline/index.js
-// [UPDATED PATHS] Import 3 cấp '../'
-import { getLogger } from '../../../utils/logger.js';
-// Import cùng thư mục thì dùng './'
-import { OfflineService, APP_VERSION } from './offline_service.js';
-import { OfflineView } from './offline_view.js';
+import { getLogger } from "utils/logger.js";
+import { OfflineService, APP_VERSION } from "./offline_service.js";
+import { OfflineView } from "./offline_view.js";
 
 const logger = getLogger("OfflineManager");
 
 export const OfflineManager = {
+    // ... (Giữ nguyên logic)
     init() {
         window.OfflineManager = this;
         const els = OfflineView.init();
@@ -48,7 +47,6 @@ export const OfflineManager = {
 
     async runSmartBackgroundDownload() {
         if (window.__DB_INDEX__ || window.location.protocol === 'file:') return;
-
         if (OfflineService.isOfflineReady()) {
             logger.info("BackgroundDL", `Cache up-to-date.`);
             OfflineView.renderState('ready', "Offline Ready");
@@ -60,13 +58,11 @@ export const OfflineManager = {
 
         logger.info("BackgroundDL", "Downloading...");
         OfflineView.renderState('syncing', "Syncing...");
-
         try {
             await OfflineService.performFullDownload((current, total) => {
                 const percent = (current / total * 100).toFixed(2);
                 OfflineView.renderState('syncing', "Syncing...", percent);
             });
-
             OfflineView.renderState('ready', "Offline Ready");
             this.checkQuota();
 

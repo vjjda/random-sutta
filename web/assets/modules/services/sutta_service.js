@@ -1,12 +1,12 @@
-/* Path: web/assets/modules/services/sutta_service.js */
-import { SuttaRepository } from '../data/sutta_repository.js';
-import { SuttaExtractor } from '../data/sutta_extractor.js';
-import { getLogger } from '../utils/logger.js';
-import { RandomHelper } from './random_helper.js';
-import { StructureStrategy } from './structure_strategy.js';
+// Path: web/assets/modules/services/sutta_service.js
+import { SuttaRepository } from "data/sutta_repository.js";
+import { SuttaExtractor } from "data/sutta_extractor.js";
+import { getLogger } from "utils/logger.js";
+import { RandomHelper } from "services/random_helper.js";
+import { StructureStrategy } from "services/structure_strategy.js";
 
 const logger = getLogger("SuttaService");
-
+// ... (Phần logic còn lại giữ nguyên)
 let _tpkCache = null;
 
 function findNodeInTree(structure, targetId) {
@@ -95,7 +95,6 @@ export const SuttaService = {
             }).catch(() => null);
         }
 
-        // [RESTORED & UPDATED] Timer với unique ID để tránh trùng
         const timerId = Math.random().toString(36).substr(2, 5);
         const fetchLabel = `Data Fetch (${uid}) [${timerId}]`;
         logger.timer(fetchLabel);
@@ -126,7 +125,6 @@ export const SuttaService = {
 
         const { tree: finalTree, contextMeta: finalContextMeta } = 
             await StructureStrategy.resolveContext(bookMeta, uid, shouldMergeTree);
-
         const currentNode = findNodeInTree(finalTree, uid);
         const singleChildTarget = getSingleChildTarget(currentNode);
 
@@ -177,7 +175,6 @@ export const SuttaService = {
 
         checkAndAdd(nav.prev);
         checkAndAdd(nav.next);
-
         if (neighborsToFetch.length > 0) {
             const extraMeta = await SuttaRepository.fetchMetaList(neighborsToFetch);
             Object.assign(navMeta, extraMeta);

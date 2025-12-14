@@ -1,18 +1,19 @@
 // Path: web/assets/modules/core/sutta_controller.js
-import { SuttaService } from '../services/sutta_service.js';
-import { RandomBuffer } from '../services/random_buffer.js';
-import { renderSutta } from '../ui/views/renderer.js';
-import { Router } from './router.js';
-import { FilterComponent } from '../ui/components/filters/index.js';
-import { initPopupSystem } from '../ui/components/popup/index.js';
-import { Scroller } from '../ui/common/scroller.js';
-import { getLogger } from '../utils/logger.js';
-import { TTSOrchestrator } from '../tts/core/tts_orchestrator.js';
+import { SuttaService } from "services/sutta_service.js";
+import { RandomBuffer } from "services/random_buffer.js";
+import { renderSutta } from "ui/views/renderer.js";
+import { Router } from "core/router.js";
+import { FilterComponent } from "ui/components/filters/index.js";
+import { initPopupSystem } from "ui/components/popup/index.js";
+import { Scroller } from "ui/common/scroller.js";
+import { getLogger } from "utils/logger.js";
+import { TTSOrchestrator } from "tts/core/tts_orchestrator.js";
 
 const logger = getLogger("SuttaController");
 const PopupAPI = initPopupSystem();
 
 export const SuttaController = {
+  // ... (Code logic giữ nguyên)
   loadSutta: async function (input, shouldUpdateUrl = true, scrollY = 0, options = {}) {
     const isTransition = options.transition === true;
     const currentScroll = Scroller.getScrollTop();
@@ -30,16 +31,9 @@ export const SuttaController = {
 
     PopupAPI.hideAll();
     
-    // [LOGIC MỚI] 
-    // 1. Kiểm tra xem session có active không
     const wasTTSActive = TTSOrchestrator.isSessionActive();
-    // 2. Kiểm tra xem ĐANG PLAY hay ĐANG PAUSE (Quan trọng)
-    const wasPlaying = TTSOrchestrator.isPlaying(); 
-    
-    // Dừng âm thanh ngay lập tức để load bài mới
-    TTSOrchestrator.stop(); 
-
-    // Nếu Session không active từ đầu, đảm bảo tắt hẳn
+    const wasPlaying = TTSOrchestrator.isPlaying();
+    TTSOrchestrator.stop();
     if (!wasTTSActive) {
         TTSOrchestrator.endSession();
     }
@@ -89,10 +83,8 @@ export const SuttaController = {
                 PopupAPI.restore();
             }
             
-            // [LOGIC MỚI] Khôi phục trạng thái TTS
             if (wasTTSActive) {
                 setTimeout(() => {
-                    // Truyền wasPlaying vào đây. Nếu true -> Tự động play bài mới.
                     TTSOrchestrator.refreshSession(wasPlaying);
                 }, 100);
             }
@@ -123,12 +115,10 @@ export const SuttaController = {
 
   loadRandomSutta: async function (shouldUpdateUrl = true) {
     PopupAPI.hideAll();
-    
     logger.timer('Random Process Total');
 
     const filters = FilterComponent.getActiveFilters();
     const payload = await RandomBuffer.getPayload(filters);
-
     if (!payload) {
       alert("Database loading or no suttas found.");
       logger.timerEnd('Random Process Total');
@@ -137,7 +127,6 @@ export const SuttaController = {
     
     logger.info('loadRandom', `Selected: ${payload.uid}`);
     await this.loadSutta(payload, shouldUpdateUrl, 0, { transition: false });
-    
     logger.timerEnd('Random Process Total');
   }
 };

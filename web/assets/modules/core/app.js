@@ -1,23 +1,24 @@
 // Path: web/assets/modules/core/app.js
-import { Router } from "./router.js";
-import { SuttaController } from "./sutta_controller.js";
-import { SuttaService, RandomBuffer } from "../services/index.js";
-import { setupLogging, LogLevel, getLogger } from "../utils/logger.js";
-import { FilterComponent } from "../ui/components/filters/index.js";
-import { setupQuickNav } from "../ui/components/search.js";
-import { initPopupSystem } from "../ui/components/popup/index.js";
+import { Router } from "core/router.js";
+import { SuttaController } from "core/sutta_controller.js";
+import { SuttaService, RandomBuffer } from "services/index.js";
+import { setupLogging, LogLevel, getLogger } from "utils/logger.js";
+import { FilterComponent } from "ui/components/filters/index.js";
+import { setupQuickNav } from "ui/components/search.js";
+import { initPopupSystem } from "ui/components/popup/index.js";
 import {
   DrawerManager,
   OfflineManager,
   ThemeManager,
   FontSizeManager,
-} from "../ui/managers/index.js";
-import { TTSBootstrap } from "../tts/tts_bootstrap.js"; // [UPDATED] explicit name
+} from "ui/managers/index.js";
+import { TTSBootstrap } from "tts/tts_bootstrap.js";
 
 const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // ... (Code giữ nguyên)
   console.time("🚀 App Start to Ready");
 
   if ("scrollRestoration" in history) history.scrollRestoration = "manual";
@@ -35,7 +36,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   FilterComponent.init();
   initPopupSystem();
 
-  // [UPDATED] Init TTS with AutoNext
   TTSBootstrap.init({
     onAutoNext: async () => {
       logger.info("TTS", "Triggering auto-random...");
@@ -75,11 +75,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     randomBtn.disabled = false;
 
     const initialParams = Router.getParams();
-
     if (initialParams.q) {
       let loadId = initialParams.q;
       if (window.location.hash) loadId += window.location.hash;
-
       console.time("⏱️ Direct Load Total");
       await SuttaController.loadSutta(loadId, true);
       console.timeEnd("⏱️ Direct Load Total");
