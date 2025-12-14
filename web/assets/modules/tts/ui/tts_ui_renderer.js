@@ -122,6 +122,22 @@ export const TTSUIRenderer = {
         if (this.elements.pitchVal) this.elements.pitchVal.textContent = value;
     },
 
+    setPitchEnabled(enabled) {
+        const range = this.elements.pitchRange;
+        const val = this.elements.pitchVal;
+        if (!range) return;
+
+        if (enabled) {
+            range.removeAttribute("disabled");
+            range.classList.remove("opacity-50");
+        } else {
+            range.setAttribute("disabled", "true");
+            range.classList.add("opacity-50");
+            range.value = 0;
+            if (val) val.textContent = "0";
+        }
+    },
+
     updateOfflineStatus(isOffline) {
         if (this.elements.offlineBadge) {
             if (isOffline) this.elements.offlineBadge.classList.remove('hidden');

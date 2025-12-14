@@ -168,6 +168,15 @@ export class TTSGoogleCloudEngine {
     }
 
     /**
+     * Check if the current voice supports pitch adjustment.
+     * Heuristic: 'Journey' voices typically do not support pitch.
+     */
+    supportsPitch() {
+        if (!this.voice || !this.voice.voiceURI) return true;
+        return !this.voice.voiceURI.toLowerCase().includes("journey");
+    }
+
+    /**
      * Main Speak Function
      */
     async speak(text, onEnd, onBoundary) {
