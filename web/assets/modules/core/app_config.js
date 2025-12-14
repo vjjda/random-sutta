@@ -33,8 +33,8 @@ export const AppConfig = {
                 name: "Chirp 3 Algenib (Deep)" 
             },
             { 
-                voiceURI: "en-US-Chirp3-HD-Charon", 
-                name: "Chirp 3 Charon (Trustworthy)" 
+                voiceURI: "en-US-Chirp3-HD-Puck", 
+                name: "Chirp 3 Puck (Clear)" 
             },
             { 
                 voiceURI: "en-US-Chirp3-HD-Kore", 
