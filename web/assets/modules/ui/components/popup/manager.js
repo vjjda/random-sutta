@@ -29,7 +29,7 @@ export const PopupManager = {
         
         QuicklookLayer.init({
             onDeepLink: (href) => this._navigateToMain(href),
-            // [CRITICAL] Handler này chịu trách nhiệm lưu state trước khi đi
+            // [CRITICAL] Handler này lưu state trước khi chuyển trang
             onOpenOriginal: (href) => this._handleExternalLink(href)
         });
 
@@ -41,7 +41,6 @@ export const PopupManager = {
                     const text = e.target.dataset.comment;
                     this._openComment(text);
                 } else {
-                    // Click outside logic
                     if (QuicklookLayer.isVisible() && !document.getElementById("quicklook-popup").contains(e.target)) {
                         QuicklookLayer.hide();
                     } else if (CommentLayer.isVisible() && !document.getElementById("comment-popup").contains(e.target)) {
@@ -67,8 +66,7 @@ export const PopupManager = {
         try {
             const currentState = window.history.state || {};
             
-            // Logic xác định state: Nếu Quicklook mở, ta vẫn cần biết Comment nào đang active bên dưới
-            // CommentLayer có thể bị che khuất nhưng logic vẫn active
+            // Logic: Comment Index luôn được lưu nếu nó hợp lệ
             const isCommentActive = this.state.currentIndex !== -1;
             
             const popupState = {
@@ -79,7 +77,6 @@ export const PopupManager = {
 
             logger.info("StateSave", `Snapshot: CommentIdx=${popupState.commentIndex}, QL=${popupState.quicklookUrl ? 'Yes' : 'No'}`);
             
-            // Ghi đè state hiện tại với thông tin popup
             window.history.replaceState(
                 { ...currentState, popupState }, 
                 document.title, 
@@ -100,9 +97,9 @@ export const PopupManager = {
             const { commentIndex, quicklookUrl } = state.popupState;
             logger.info("StateRestore", `Restoring: CommentIdx=${commentIndex}, QL=${quicklookUrl}`);
 
-            // 1. Khôi phục Comment Popup trước
+            // 1. Khôi phục Comment Popup
             if (commentIndex !== undefined && commentIndex !== -1) {
-                // Quét lại comment markers nếu cần (vì trang vừa load xong)
+                // Quét lại nếu mảng rỗng (do mới load trang)
                 if (this.state.comments.length === 0) {
                     this.scanComments();
                 }
@@ -110,15 +107,14 @@ export const PopupManager = {
                 if (this.state.comments.length > 0 && commentIndex < this.state.comments.length) {
                     this.state.currentIndex = commentIndex;
                     const item = this.state.comments[commentIndex];
-                    // Hiển thị popup
                     CommentLayer.show(item.text, commentIndex, this.state.comments.length, this._getCurrentContextText());
-                    // Scroll trang chính đến vị trí comment
                     if (item.id) Scroller.scrollToId(item.id, 'instant');
                 }
             }
 
-            // 2. Khôi phục Quicklook Popup (nếu có)
+            // 2. Khôi phục Quicklook Popup
             if (quicklookUrl) {
+                // Truyền isRestoring = true
                 await this._handleCommentLink(quicklookUrl, true);
             }
         } catch (e) {
@@ -126,12 +122,10 @@ export const PopupManager = {
         }
     },
 
-    // [CRITICAL FIX] Hàm xử lý khi bấm nút "Open Link" (Mũi tên chéo)
     _handleExternalLink(href) {
-        // 1. Lưu trạng thái hiện tại (Popup đang mở) vào History Entry HIỆN TẠI
+        // Lưu state hiện tại (đang mở popup) vào history entry hiện tại
         this.saveState();
-        
-        // 2. Chuyển hướng sang trang mới (Tạo History Entry MỚI)
+        // Chuyển hướng (tạo history entry mới)
         this._navigateToMain(href);
     },
 
@@ -153,7 +147,6 @@ export const PopupManager = {
             text: marker.dataset.comment,
             element: marker.closest('.segment') 
         }));
-        // Không reset currentIndex = -1 ở đây để tránh mất state khi restore gọi scan
     },
 
     _getCurrentContextText() {
@@ -167,9 +160,7 @@ export const PopupManager = {
     },
 
     _openComment(text) {
-        // Quét lại để đảm bảo đồng bộ
         if (this.state.comments.length === 0) this.scanComments();
-        
         this.state.currentIndex = this.state.comments.findIndex(c => c.text === text);
         if (this.state.currentIndex !== -1) {
             CommentLayer.show(text, this.state.currentIndex, this.state.comments.length, this._getCurrentContextText());
@@ -207,12 +198,12 @@ export const PopupManager = {
             if (this.state.loadingUid === uid) return;
             this.state.loadingUid = uid;
             
-            if (!isRestoring) {
-                QuicklookLayer.show(
-                    '<div style="text-align:center; padding: 20px;">Loading...</div>', 
-                    uid.toUpperCase()
-                );
-            }
+            // [FIXED] Luôn hiển thị trạng thái "Loading..." kể cả khi restoring
+            // Điều này đảm bảo Popup xuất hiện ngay lập tức, tránh cảm giác "bị đóng"
+            QuicklookLayer.show(
+                '<div style="text-align:center; padding: 20px;">Loading...</div>', 
+                uid.toUpperCase()
+            );
             
             try {
                 const data = await SuttaService.loadSutta(uid, { prefetchNav: false });
@@ -225,10 +216,8 @@ export const PopupManager = {
                         ? `<span class="ql-uid-badge">${acronym}</span><span class="ql-sutta-title">${titleText}</span>` 
                         : `<span class="ql-uid-badge">${acronym}</span>`;
                     
-                    // Show popup với nội dung đã load
                     QuicklookLayer.show(renderRes.html, displayTitle, href);
                     
-                    // Xử lý scroll đến anchor (hash)
                     if (hash) {
                         let targetId = hash.substring(1);
                         if (targetId && !targetId.includes(':')) {
@@ -269,10 +258,8 @@ export const PopupManager = {
     },
 
     _navigateToMain(href) {
-        // Ẩn Popup ngay lập tức để chuyển trang mượt mà
         QuicklookLayer.hide();
         CommentLayer.hide();
-        
         try {
             const urlObj = new URL(href, window.location.origin);
             let uid = "";
@@ -284,7 +271,6 @@ export const PopupManager = {
             }
             if (uid) {
                 if (urlObj.hash) uid += urlObj.hash;
-                // Transition false -> Instant Scroll
                 window.loadSutta(uid, true, 0, { transition: false });
             }
         } catch(e) {}
