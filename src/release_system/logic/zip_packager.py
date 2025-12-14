@@ -5,7 +5,9 @@ import os
 import json
 import hashlib
 from pathlib import Path
-from ..shared.app_config import DIST_DB_DIR
+
+# [FIXED] Import đúng đường dẫn từ module sutta_processor
+from src.sutta_processor.shared.app_config import DIST_DB_DIR
 
 logger = logging.getLogger("SuttaProcessor.Output.ZipGen")
 
