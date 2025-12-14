@@ -77,6 +77,9 @@ export const TTSMarkerManager = {
 
         logger.debug("CacheCheck", "Checking cache status for markers...");
         
+        // Reset all markers first
+        this.markers.forEach(m => m.classList.remove("cached"));
+        
         for (const item of this.playlist) {
             try {
                 const isCached = await engine.isCached(item.text);
