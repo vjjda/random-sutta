@@ -41,10 +41,6 @@ export const TTSUILayout = {
                         <input type="range" id="tts-rate-range" min="0.5" max="2.0" step="0.1" value="1.0">
                     </div>
                     <div class="tts-setting-row">
-                        <label>Pitch: <span id="tts-pitch-val">0.0</span></label>
-                        <input type="range" id="tts-pitch-range" min="-10.0" max="10.0" step="1.0" value="0.0">
-                    </div>
-                    <div class="tts-setting-row">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <label style="margin-bottom: 0;">Voice</label>

@@ -39,7 +39,6 @@ export const TTSOrchestrator = {
             this.engines['gcloud'].onVoicesChanged = (voices, currentVoice) => {
                 if (this.ui) {
                     this.ui.populateVoices(voices, currentVoice);
-                    this._updatePitchUIState();
                 }
             };
         }
@@ -80,22 +79,6 @@ export const TTSOrchestrator = {
             
             // Sync Voice and Pitch
             this.ui.populateVoices(this.engine.getVoices(), this.engine.voice);
-            this._updatePitchUIState();
-        }
-    },
-
-    _updatePitchUIState() {
-        if (!this.ui) return;
-        
-        let supportsPitch = true;
-        if (this.engine.supportsPitch) {
-            supportsPitch = this.engine.supportsPitch();
-        }
-        
-        this.ui.setPitchEnabled(supportsPitch);
-        
-        if (supportsPitch) {
-             this.ui.updatePitchDisplay(this.engine.pitch || 0);
         }
     },
 
@@ -132,7 +115,6 @@ export const TTSOrchestrator = {
         if (this.ui) {
             this.ui.populateVoices(this.engine.getVoices(), this.engine.voice);
             this.ui.updateRateDisplay(this.engine.rate);
-            this._updatePitchUIState();
         }
 
         // 5. Update Markers (Cache status might change)
@@ -158,7 +140,6 @@ export const TTSOrchestrator = {
             this.engine.setVoice(voiceURI);
             
             // Trigger status updates
-            this._updatePitchUIState();
             this.checkOfflineStatus();
             if (this.isSessionActive()) {
                 TTSMarkerManager.checkCacheStatus(this.engine);

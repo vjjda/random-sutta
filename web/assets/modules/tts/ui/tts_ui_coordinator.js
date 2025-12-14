@@ -36,8 +36,6 @@ export const TTSUICoordinator = {
     updateEngineState(engineId, apiKey) { TTSUIRenderer.updateEngineState(engineId, apiKey); },
     populateVoices(voices, currentVoice) { TTSUIRenderer.populateVoices(voices, currentVoice); },
     updateRateDisplay(val) { TTSUIRenderer.updateRateDisplay(val); },
-    updatePitchDisplay(val) { TTSUIRenderer.updatePitchDisplay(val); },
-    setPitchEnabled(enabled) { TTSUIRenderer.setPitchEnabled(enabled); },
     updateOfflineStatus(val) { TTSUIRenderer.updateOfflineStatus(val); },
     togglePlayer(show) { TTSUIRenderer.togglePlayer(show); }, 
     closeSettings() { TTSUIRenderer.closeSettings(); } 

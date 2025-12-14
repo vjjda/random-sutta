@@ -46,18 +46,11 @@ export const TTSUIActions = {
 
         // Settings Inputs
         const debouncedSetRate = debounce((val) => orchestrator.engine.setRate(val), 300);
-        const debouncedSetPitch = debounce((val) => orchestrator.engine.setPitch(val), 300);
 
         els.rateRange?.addEventListener("input", (e) => {
             const val = e.target.value;
             if (renderer.elements.rateVal) renderer.elements.rateVal.textContent = val;
             debouncedSetRate(val);
-        });
-
-        els.pitchRange?.addEventListener("input", (e) => {
-            const val = e.target.value;
-            if (renderer.elements.pitchVal) renderer.elements.pitchVal.textContent = val;
-            debouncedSetPitch(val);
         });
 
         els.voiceSelect?.addEventListener("change", (e) => {
