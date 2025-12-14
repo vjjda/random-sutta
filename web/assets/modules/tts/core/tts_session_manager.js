@@ -3,8 +3,11 @@ import { TTSStateStore } from './tts_state_store.js';
 import { TTSDOMParser } from './tts_dom_parser.js';
 import { TTSMarkerManager } from './tts_marker_manager.js';
 import { getLogger } from '../../utils/logger.js';
+import { TextSplitter } from '../../utils/text_splitter.js';
 
 const logger = getLogger("TTS_SessionManager");
+
+const SPLIT_THRESHOLD = 450; // Character limit for splitting paragraphs
 
 export const TTSSessionManager = {
     // Dependencies
@@ -58,15 +61,33 @@ export const TTSSessionManager = {
 
         if (this.player) this.player.stop();
 
-        let items = [];
+        let originalItems = [];
         if (TTSStateStore.playbackMode === 'paragraph') {
-            items = TTSDOMParser.parseParagraphs("sutta-container");
+            originalItems = TTSDOMParser.parseParagraphs("sutta-container");
         } else {
-            items = TTSDOMParser.parse("sutta-container");
+            originalItems = TTSDOMParser.parse("sutta-container");
         }
         
-        TTSStateStore.resetPlaylist(items);
-        TTSMarkerManager.inject(items); // [NEW] Inject markers based on new playlist
+        // [NEW] Process items to split long paragraphs
+        const processedItems = [];
+        originalItems.forEach(item => {
+            if (TTSStateStore.playbackMode === 'paragraph' && item.text.length > SPLIT_THRESHOLD) {
+                logger.info("Splitting", `Paragraph ${item.id} is too long (${item.text.length} chars), splitting.`);
+                const chunks = TextSplitter.split(item.text, { maxLength: SPLIT_THRESHOLD });
+                chunks.forEach((chunk, index) => {
+                    processedItems.push({
+                        ...item, // Inherit element, etc.
+                        id: `${item.id}_${index}`, // Create unique sub-ID
+                        text: chunk
+                    });
+                });
+            } else {
+                processedItems.push(item);
+            }
+        });
+
+        TTSStateStore.resetPlaylist(processedItems);
+        TTSMarkerManager.inject(processedItems); // Inject markers based on new playlist
         
         // [NEW] Check Cache Status (Async)
         if (this.player && this.player.engine) {
@@ -75,7 +96,7 @@ export const TTSSessionManager = {
             }, 100);
         }
         
-        if (items.length > 0) {
+        if (processedItems.length > 0) {
             if (autoPlay) {
                 if (this.player) this.player.play();
             } else {
