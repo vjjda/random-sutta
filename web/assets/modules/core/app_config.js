@@ -33,21 +33,17 @@ export const AppConfig = {
                 name: "Chirp 3 Algenib (Deep)" 
             },
             { 
-                voiceURI: "en-US-Chirp3-HD-Puck", 
-                name: "Chirp 3 Puck (Clear)" 
+                voiceURI: "en-US-Chirp3-HD-Charon", 
+                name: "Chirp 3 Charon (Trustworthy)" 
             },
             { 
-                voiceURI: "en-GB-Chirp3-HD-Orion", 
-                name: "Chirp 3 Orion (British)" 
+                voiceURI: "en-US-Chirp3-HD-Kore", 
+                name: "Chirp 3 Kore (Firm) (Female)" 
             },
             { 
-                voiceURI: "en-US-Neural2-D",
-                name: "Neural 2 D (Male)"
+                voiceURI: "en-US-Chirp3-HD-Zephyr", 
+                name: "Chirp 3 Zephyr (Soft) (Female)" 
             },
-            { 
-                voiceURI: "en-en-US-Polyglot-1",
-                name: "Polyglot (Male)"
-            }
         ],
         
         BUFFER_AHEAD: 7,
