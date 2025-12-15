@@ -41,21 +41,25 @@ export const TTSUILayout = {
                 </div>
                 
                 <div id="tts-settings-panel" class="hidden">
-                    <div class="tts-setting-row">
-                        <label for="tts-engine-select">Provider</label>
-                        <select id="tts-engine-select" name="tts_provider" autocomplete="off">
-                            <option value="wsa" ${!isGCloud ? 'selected' : ''}>Browser Default</option>
-                            <option value="gcloud" ${isGCloud ? 'selected' : ''}>Google Cloud</option>
-                        </select>
-                    </div>
+                    
+                    <!-- MAIN SETTINGS VIEW -->
+                    <div id="tts-settings-main">
+                        <!-- Top Right Key Toggle -->
+                        <div style="position: absolute; top: 12px; right: 12px; z-index: 5;">
+                            <button id="tts-keys-toggle" class="tts-icon-btn" title="Manage API Keys" style="opacity: 0.7;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                                </svg>
+                            </button>
+                        </div>
 
-                    <div class="tts-setting-row ${isGCloud ? '' : 'hidden'}" id="tts-apikey-row">
-                        <form onsubmit="return false;" style="display: contents;">
-                            <input type="text" name="username" autocomplete="username" style="display:none;">
-                            <label for="tts-apikey-input">API Key</label>
-                            <input type="password" id="tts-apikey-input" name="api_key" placeholder="Enter GCloud API Key" autocomplete="new-password" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color);">
-                        </form>
-                    </div>
+                        <div class="tts-setting-row">
+                            <label for="tts-engine-select">Provider</label>
+                            <select id="tts-engine-select" name="tts_provider" autocomplete="off">
+                                <option value="wsa" ${!isGCloud ? 'selected' : ''}>Browser Default</option>
+                                <option value="gcloud" ${isGCloud ? 'selected' : ''}>Google Cloud</option>
+                            </select>
+                        </div>
 
                         <!-- Speed -->
                         <div class="tts-setting-row">
@@ -63,33 +67,57 @@ export const TTSUILayout = {
                             <input type="range" id="tts-rate-range" name="tts_speed" min="0.5" max="2.5" step="0.05" value="1.0" autocomplete="off">
                         </div>
                     
-                    <div class="tts-setting-row">
-                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <label for="tts-voice-select" style="margin-bottom: 0;">Voice</label>
-                                <button id="tts-refresh-voices" class="tts-icon-btn" title="Refresh List">
-                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                                </button>
+                        <div class="tts-setting-row">
+                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label for="tts-voice-select" style="margin-bottom: 0;">Voice</label>
+                                    <button id="tts-refresh-voices" class="tts-icon-btn" title="Refresh List">
+                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                    </button>
+                                </div>
                             </div>
+                            <select id="tts-voice-select" name="tts_voice" autocomplete="off"></select>
                         </div>
-                        <select id="tts-voice-select" name="tts_voice" autocomplete="off"></select>
-                    </div>
-                    
-                     <div class="tts-toggle-wrapper">
-                        <label for="tts-auto-next" class="tts-toggle-label">Auto-play Next</label>
-                        <label class="tts-switch">
-                            <input type="checkbox" id="tts-auto-next" name="tts_auto_next" ${isAutoNext ? 'checked' : ''} autocomplete="off">
-                            <span class="tts-slider"></span>
-                        </label>
+                        
+                         <div class="tts-toggle-wrapper">
+                            <label for="tts-auto-next" class="tts-toggle-label">Auto-play Next</label>
+                            <label class="tts-switch">
+                                <input type="checkbox" id="tts-auto-next" name="tts_auto_next" ${isAutoNext ? 'checked' : ''} autocomplete="off">
+                                <span class="tts-slider"></span>
+                            </label>
+                        </div>
+    
+                        <div class="tts-toggle-wrapper">
+                            <label for="tts-mode-toggle" class="tts-toggle-label">Paragraph Mode</label>
+                            <label class="tts-switch">
+                                 <input type="checkbox" id="tts-mode-toggle" name="tts_mode" ${isParagraph ? 'checked' : ''} autocomplete="off">
+                                <span class="tts-slider"></span>
+                            </label>
+                        </div>
                     </div>
 
-                    <div class="tts-toggle-wrapper">
-                        <label for="tts-mode-toggle" class="tts-toggle-label">Paragraph Mode</label>
-                        <label class="tts-switch">
-                             <input type="checkbox" id="tts-mode-toggle" name="tts_mode" ${isParagraph ? 'checked' : ''} autocomplete="off">
-                            <span class="tts-slider"></span>
-                        </label>
+                    <!-- KEYS MANAGEMENT VIEW -->
+                    <div id="tts-settings-keys" class="hidden" style="display: flex; flex-direction: column; gap: 15px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; margin-bottom: 5px;">
+                            <span style="font-weight: 700; color: var(--text-main);">API Keys</span>
+                            <button id="tts-keys-back" class="tts-icon-btn" title="Back">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- GCloud Key (Always visible in this view) -->
+                        <div class="tts-setting-row" id="tts-apikey-row">
+                            <form onsubmit="return false;" style="display: contents;">
+                                <input type="text" name="username" autocomplete="username" style="display:none;">
+                                <label for="tts-apikey-input">Google Cloud API Key</label>
+                                <input type="password" id="tts-apikey-input" name="api_key" placeholder="Enter Key..." autocomplete="new-password" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-body); color: var(--text-main);">
+                            </form>
+                            <p style="font-size: 0.75rem; color: var(--text-light); margin-top: 4px;">Required for high-quality neural voices.</p>
+                        </div>
+                        
+                        <!-- Future Azure/OpenAI keys go here -->
                     </div>
+
                 </div>
             </div>
         `;

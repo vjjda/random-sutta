@@ -42,9 +42,35 @@ export const TTSUIActions = {
         
         els.btnSettings?.addEventListener("click", (e) => {
             e.stopPropagation();
+            // [UX] Reset to main view when opening
+            if (els.viewMain && els.viewKeys) {
+                els.viewMain.classList.remove('hidden');
+                els.viewKeys.classList.add('hidden');
+                if (els.btnKeysToggle) els.btnKeysToggle.classList.remove('hidden');
+            }
             orchestrator.refreshOfflineVoicesStatus();
             renderer.toggleSettings();
         });
+
+        // [NEW] Keys Management Navigation
+        els.btnKeysToggle?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (els.viewMain && els.viewKeys) {
+                els.viewMain.classList.add('hidden');
+                els.viewKeys.classList.remove('hidden');
+                els.btnKeysToggle.classList.add('hidden');
+            }
+        });
+
+        els.btnKeysBack?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (els.viewMain && els.viewKeys) {
+                els.viewKeys.classList.add('hidden');
+                els.viewMain.classList.remove('hidden');
+                els.btnKeysToggle.classList.remove('hidden');
+            }
+        });
+
         // Settings Inputs
         const debouncedSetRate = debounce((val) => orchestrator.engine.setRate(val), 300);
         els.rateRange?.addEventListener("input", (e) => {

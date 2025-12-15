@@ -28,6 +28,12 @@ export const TTSUIRenderer = {
             engineSelect: document.getElementById("tts-engine-select"),
             apiKeyRow: document.getElementById("tts-apikey-row"),
             apiKeyInput: document.getElementById("tts-apikey-input"),
+            
+            // [NEW] Keys Management
+            btnKeysToggle: document.getElementById("tts-keys-toggle"),
+            btnKeysBack: document.getElementById("tts-keys-back"),
+            viewMain: document.getElementById("tts-settings-main"),
+            viewKeys: document.getElementById("tts-settings-keys"),
         };
         return this.elements;
     },

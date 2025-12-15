@@ -4,17 +4,8 @@ export const TTSSettingsRenderer = {
         if (elements.engineSelect) {
             elements.engineSelect.value = engineId;
         }
-        if (elements.apiKeyRow) {
-            if (engineId === 'gcloud') {
-                elements.apiKeyRow.classList.remove('hidden');
-                // Auto focus logic
-                if (!apiKey && elements.apiKeyInput) {
-                    setTimeout(() => elements.apiKeyInput.focus(), 100);
-                }
-            } else {
-                elements.apiKeyRow.classList.add('hidden');
-            }
-        }
+        // [UPDATED] Removed apiKeyRow toggling logic as it's now in dedicated view
+        
         if (elements.apiKeyInput) {
             if (apiKey !== null && apiKey !== undefined) {
                 elements.apiKeyInput.value = apiKey;
