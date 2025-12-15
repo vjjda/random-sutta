@@ -341,3 +341,12 @@ input:checked + .tts-slider:before { transform: translateX(18px); }
 body.popup-open #magic-tts-trigger {
   display: none !important;
 }
+
+/* [NEW] Huge bottom padding when TTS is open.
+   Allows scrolling the very last content up above the Popup + Player stack.
+   Popup is ~40vh, Player ~120px. So 50vh or 60vh is safe.
+*/
+body.tts-open {
+  padding-bottom: 60vh !important;
+  transition: padding-bottom 0.3s ease;
+}
