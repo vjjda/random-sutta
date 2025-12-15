@@ -347,6 +347,6 @@ body.popup-open #magic-tts-trigger {
    Popup is ~40vh, Player ~120px. So 50vh or 60vh is safe.
 */
 body.tts-open {
-  padding-bottom: 60vh !important;
+  padding-bottom: 45vh !important;
   transition: padding-bottom 0.3s ease;
 }

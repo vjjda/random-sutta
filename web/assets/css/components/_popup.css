@@ -15,7 +15,7 @@
    Ta để dư ra 115px cộng với safe area để đảm bảo không dính.
 */
 body.tts-open {
-  --tts-popup-offset: calc(115px + env(safe-area-inset-bottom, 0px));
+  --tts-popup-offset: 90px;
 }
 
 .popup-container {
@@ -317,4 +317,13 @@ body.tts-open {
   padding: 0 3px; user-select: none;
 }
 .comment-marker:hover { background-color: var(--highlight-color-segment); border-radius: 50%;
+}
+
+/* [NEW] Body Padding for Popup
+   Ensures content behind popup can be scrolled into view.
+   Popup is ~40vh high.
+*/
+body.popup-open {
+  padding-bottom: 45vh !important;
+  transition: padding-bottom 0.3s ease;
 }

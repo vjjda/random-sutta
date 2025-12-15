@@ -58,6 +58,8 @@ export const CommentUI = {
         }
 
         this.elements.popup.classList.remove("hidden");
+        document.body.classList.add("popup-open"); // [NEW] Add class to body
+
         if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
 
         this._updateNav(index, total);
@@ -65,6 +67,7 @@ export const CommentUI = {
 
     hide() {
         this.elements.popup?.classList.add("hidden");
+        document.body.classList.remove("popup-open"); // [NEW] Remove class from body
     },
 
     isVisible() {
