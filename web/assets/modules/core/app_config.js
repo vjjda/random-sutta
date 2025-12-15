@@ -15,17 +15,6 @@ export const AppConfig = {
             voiceURI: "en-US-Chirp3-HD-Algenib"
         },
 
-        // [NEW] Cấu hình Cờ Quốc Gia
-        VOICE_FLAGS: {
-            "en-US": "🇺🇸",
-            "en-GB": "🇬🇧",
-            "de-DE": "🇩🇪",
-            "ja-JP": "🇯🇵",
-            "zh-CN": "🇨🇳",
-            "zh-TW": "🇹🇼",
-            "vi-VN": "🇻🇳"
-        },
-
         // Danh sách Recommended (Giờ đây không cần hardcode cờ vào name nữa)
         RECOMMENDED_VOICES: [
             { 
