@@ -57,10 +57,11 @@ export const TTSUILayout = {
                         </form>
                     </div>
 
-                    <div class="tts-setting-row">
-                        <label for="tts-rate-range">Speed: <span id="tts-rate-val">1.0</span>x</label>
-                        <input type="range" id="tts-rate-range" name="tts_speed" min="0.5" max="2.0" step="0.1" value="1.0" autocomplete="off">
-                    </div>
+                        <!-- Speed -->
+                        <div class="tts-setting-row">
+                            <label for="tts-rate-range">Speed: <span id="tts-rate-val">1.0</span>x</label>
+                            <input type="range" id="tts-rate-range" name="tts_speed" min="0.5" max="2.5" step="0.05" value="1.0" autocomplete="off">
+                        </div>
                     
                     <div class="tts-setting-row">
                          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
