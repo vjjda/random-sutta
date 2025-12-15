@@ -68,6 +68,10 @@
   color: var(--text-main);
   font-size: 0.9rem;
   outline: none;
+  
+  /* [UPDATED] Restore native appearance (arrow) */
+  -webkit-appearance: menulist;
+  appearance: menulist;
 }
 
 #tts-voice-select:focus,
