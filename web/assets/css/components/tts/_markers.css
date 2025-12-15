@@ -97,3 +97,24 @@ body:not(.tts-open) .tts-marker {
 [data-theme="dark"] :not(.segment).tts-active {
   background-color: rgba(255, 255, 255, 0.05);
 }
+
+/* [FIX] Xử lý marker trong List (OL/UL) */
+/* Đảm bảo li tạo ra ngữ cảnh định vị (positioning context) */
+.sutta-text-view li {
+  position: relative;
+}
+
+/* Khi marker nằm trong li, đẩy nó xa hơn về bên trái */
+/* Mặc định là -24px, giờ tăng lên -48px để nhường chỗ cho số thứ tự (1., 2., 10.) */
+.sutta-text-view li .tts-marker {
+  left: -48px;
+}
+
+/* [OPTIONAL] Tinh chỉnh cho màn hình nhỏ nếu cần */
+@media (max-width: 400px) {
+  /* Trên mobile, nếu lề trái không đủ rộng, ta có thể giảm khoảng cách */
+  /* Hoặc chấp nhận số bị che một chút nếu thụt lề quá sâu */
+  .sutta-text-view li .tts-marker {
+    left: -42px;
+  }
+}
