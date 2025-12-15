@@ -5,8 +5,8 @@ const logger = getLogger("GCloud_VoiceMgr");
 
 // [UPDATED] Bump version to v3 to force refresh list without Standard/Wavenet
 const CACHE_KEYS = {
-    LIST: "tts_gcloud_voices_list_v3", 
-    TS: "tts_gcloud_voices_ts_v3"
+    LIST: "tts_gcloud_voices_list_v4", 
+    TS: "tts_gcloud_voices_ts_v4"
 };
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; 
 
@@ -56,8 +56,8 @@ export class GCloudVoiceManager {
                     return isEnglish &&
                            id.startsWith("en-") && 
                            id.includes("-") &&
-                           !id.includes("Standard"); // Still exclude legacy Standard voices
-                           // !id.includes("Wavenet"); // [Relaxed] Allow Wavenet if Neural2 not available for that region
+                           !id.includes("Standard") &&
+                           !id.includes("Wavenet"); 
                 })
                 .map(v => ({
                     name: `${v.name} (${v.ssmlGender})`,
