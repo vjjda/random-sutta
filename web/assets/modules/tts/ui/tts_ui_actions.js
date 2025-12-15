@@ -23,7 +23,12 @@ export const TTSUIActions = {
         // 1. Magic Corner Trigger
         els.trigger.addEventListener("click", (e) => {
             e.stopPropagation();
-            orchestrator.startSession();
+            if (orchestrator.isSessionActive()) {
+                const isVisible = els.player.classList.contains("active");
+                renderer.togglePlayer(!isVisible);
+            } else {
+                orchestrator.startSession();
+            }
         });
         // 2. Close Button
         els.btnClose?.addEventListener("click", (e) => {
