@@ -12,10 +12,10 @@
 
 /* [NEW] Khi TTS Open -> Đẩy popup lên cao hơn Player.
    Player height ~120px (bao gồm cả Pill và Controls).
-   Ta để dư ra 140px cộng với safe area để đảm bảo không dính.
+   Ta để dư ra 115px cộng với safe area để đảm bảo không dính.
 */
 body.tts-open {
-  --tts-popup-offset: calc(140px + env(safe-area-inset-bottom, 0px));
+  --tts-popup-offset: calc(115px + env(safe-area-inset-bottom, 0px));
 }
 
 .popup-container {
