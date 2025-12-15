@@ -80,6 +80,11 @@ export const TTSOrchestrator = {
         // Ensure we don't overwrite if the engine uses it internally, 
         // but typically the engine calls this.onVoicesChanged() if set.
         engine.onVoicesChanged = (voices) => {
+            // [FIX] Only update UI if this engine is currently active
+            if (this.registry.getActiveEngine() !== engine) {
+                return;
+            }
+
             // Note: 'voices' passed here might differ in format per engine, 
             // but uiSync/UI should handle the standardized format.
             if (this.uiSync.ui) { 
