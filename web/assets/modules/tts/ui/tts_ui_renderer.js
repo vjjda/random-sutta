@@ -21,6 +21,8 @@ export const TTSUIRenderer = {
             infoText: document.getElementById("tts-info-text"),
             rateRange: document.getElementById("tts-rate-range"),
             rateVal: document.getElementById("tts-rate-val"),
+            btnRateDec: document.getElementById("tts-rate-dec"), // [NEW]
+            btnRateInc: document.getElementById("tts-rate-inc"), // [NEW]
             voiceSelect: document.getElementById("tts-voice-select"),
             btnRefreshVoices: document.getElementById("tts-refresh-voices"),
             autoNextCheckbox: document.getElementById("tts-auto-next"),

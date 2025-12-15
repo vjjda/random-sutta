@@ -64,7 +64,29 @@ export const TTSUILayout = {
                         <!-- Speed -->
                         <div class="tts-setting-row">
                             <label for="tts-rate-range">Speed: <span id="tts-rate-val">1.0</span>x</label>
-                            <input type="range" id="tts-rate-range" name="tts_speed" min="0.5" max="2.5" step="0.05" value="1.0" autocomplete="off">
+                            
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button id="tts-rate-dec" class="tts-icon-btn" style="width: 28px; height: 28px; border: 1px solid var(--border-color); border-radius: 50%; flex-shrink: 0;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </button>
+                                
+                                <input type="range" id="tts-rate-range" name="tts_speed" 
+                                       min="0.5" max="2.5" step="0.05" value="1.0" 
+                                       list="tts-speed-markers" autocomplete="off"
+                                       style="flex: 1; margin: 0;">
+                                
+                                <button id="tts-rate-inc" class="tts-icon-btn" style="width: 28px; height: 28px; border: 1px solid var(--border-color); border-radius: 50%; flex-shrink: 0;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </button>
+                            </div>
+
+                            <datalist id="tts-speed-markers">
+                                <option value="0.5"></option>
+                                <option value="1.0"></option>
+                                <option value="1.5"></option>
+                                <option value="2.0"></option>
+                                <option value="2.5"></option>
+                            </datalist>
                         </div>
                     
                         <div class="tts-setting-row">

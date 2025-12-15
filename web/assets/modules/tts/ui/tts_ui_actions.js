@@ -78,6 +78,39 @@ export const TTSUIActions = {
             if (renderer.elements.rateVal) renderer.elements.rateVal.textContent = val;
             debouncedSetRate(val);
         });
+
+        // [NEW] Rate Buttons Logic
+        const adjustRate = (delta) => {
+            const input = els.rateRange;
+            if (!input) return;
+            
+            const current = parseFloat(input.value);
+            const step = 0.05; // Force fine step for buttons even if slider is different
+            const min = parseFloat(input.min);
+            const max = parseFloat(input.max);
+            
+            // Round to avoid float errors (e.g. 1.0500000001)
+            let next = Math.round((current + delta) * 100) / 100;
+            
+            if (next < min) next = min;
+            if (next > max) next = max;
+            
+            if (next !== current) {
+                input.value = next;
+                input.dispatchEvent(new Event('input')); // Trigger existing listener
+            }
+        };
+
+        els.btnRateDec?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            adjustRate(-0.05);
+        });
+
+        els.btnRateInc?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            adjustRate(0.05);
+        });
+
         els.voiceSelect?.addEventListener("change", (e) => {
             orchestrator.setVoice(e.target.value);
         });
