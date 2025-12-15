@@ -18,29 +18,46 @@ export const TextSplitter = {
 
         let sentences = [];
 
-        // [UPDATED] Use Intl.Segmenter for robust, locale-aware sentence splitting
+        // 1. Primary Strategy: Intl.Segmenter (Browser Native NLP)
+        // Supports: EN, VI, ZH, JA, TH, etc. perfectly.
+        // Handles "Mr. Smith" vs "End of sentence." smartly.
         if (typeof Intl !== 'undefined' && Intl.Segmenter) {
-            const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
-            // Array.from is needed to convert the iterator
-            sentences = Array.from(segmenter.segment(text)).map(s => s.segment);
-        } else {
-            // Fallback: Split by punctuation but KEEP the punctuation
-            // This regex matches sentence ending + space, capturing the delimiter
-            sentences = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [text];
+            try {
+                // Use 'en' as base, but it handles CJK punctuation reasonably well too.
+                // For true multi-lang, we might detect lang later.
+                const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
+                sentences = Array.from(segmenter.segment(text)).map(s => s.segment);
+            } catch (e) {
+                console.warn("Intl.Segmenter failed, using regex fallback", e);
+            }
+        }
+
+        // 2. Fallback Strategy: Robust Regex
+        // Only runs if Intl is missing or failed.
+        if (sentences.length === 0) {
+            // Regex Breakdown:
+            // [^.!?。？！]+       -> Body: Anything NOT a terminator (Latin or CJK)
+            // (?:                -> Group for terminator + closers
+            //   [.!?。？！]+     -> Terminator: . ! ? or 。 ！ ？
+            //   ['"”’)}\]]*      -> Optional Closing Marks: quotes, brackets
+            // )?                 -> The whole terminator group is optional (catch end of text)
+            // (?:\s+|$)          -> Followed by space or End of String
+            const robustRegex = /[^.!?。？！]+(?:[.!?。？！]+['"”’)}\]]*)?(?:\s+|$)/g;
+            
+            sentences = text.match(robustRegex) || [text];
         }
 
         const chunks = [];
         let currentChunk = "";
 
         for (const sentence of sentences) {
+            // Trim logic: We usually want to trim for calculation, 
+            // but carefully preserve needed spaces when joining.
+            // Intl.Segmenter usually includes the trailing space in the segment.
             const trimmed = sentence.trim();
             if (!trimmed) continue;
 
-            // Check if adding this sentence exceeds limit
-            // Note: We use 'sentence' (with original spaces) for concatenation flow, 
-            // but 'trimmed' for logic checks to be safe.
-            
-            // Hard limit check: If single sentence is huge, force push it
+            // Hard limit check for massive single sentences
             if (trimmed.length > maxLength) {
                 if (currentChunk.length > 0) {
                     chunks.push(currentChunk.trim());
@@ -50,12 +67,25 @@ export const TextSplitter = {
                 continue;
             }
 
+            // Check fits
             if (currentChunk.length + sentence.length > maxLength) {
                 chunks.push(currentChunk.trim());
-                currentChunk = sentence; // Start new chunk with current sentence (preserve leading space if any? No, usually trim)
-                currentChunk = trimmed;
+                // Start new chunk
+                currentChunk = sentence; 
             } else {
-                currentChunk += (currentChunk.length > 0 ? " " : "") + trimmed;
+                // If currentChunk is empty, just take the sentence (preserve leading format)
+                // If not empty, we need to ensure spacing. 
+                // Note: 'sentence' from Segmenter/Regex often keeps its own trailing space.
+                if (currentChunk.length === 0) {
+                    currentChunk = sentence;
+                } else {
+                    // Rudimentary join: If previous chunk didn't end with space, add one.
+                    // (For CJK in future, this logic needs 'isCJK' check to avoid adding spaces)
+                    if (!currentChunk.match(/\s$/)) {
+                        currentChunk += " ";
+                    }
+                    currentChunk += sentence;
+                }
             }
         }
 
