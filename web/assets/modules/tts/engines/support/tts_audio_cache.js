@@ -10,6 +10,7 @@ const STORE_NAME = 'audio_files';
 export class TTSAudioCache {
     constructor() {
         this.db = null;
+        this.cachedKeys = new Set(); // [NEW] In-memory key index for O(1) checks
         this.readyPromise = this._initDB();
     }
 
@@ -25,7 +26,8 @@ export class TTSAudioCache {
             request.onsuccess = (event) => {
                 this.db = event.target.result;
                 logger.info("DB", "IndexedDB connected");
-                this._migrateLegacyData(); // [NEW] Trigger migration/cleanup
+                this._migrateLegacyData(); 
+                this._loadKeys(); // [NEW] Load keys into memory
                 resolve();
             };
 
@@ -37,6 +39,30 @@ export class TTSAudioCache {
                 }
             };
         });
+    }
+
+    /**
+     * [NEW] Load all keys into memory for fast synchronous checking
+     */
+    _loadKeys() {
+        if (!this.db) return;
+        const transaction = this.db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAllKeys();
+
+        request.onsuccess = () => {
+            if (request.result) {
+                this.cachedKeys = new Set(request.result);
+                logger.info("Cache", `Loaded ${this.cachedKeys.size} keys into memory.`);
+            }
+        };
+    }
+
+    /**
+     * [NEW] Synchronous check if a key exists
+     */
+    hasKey(key) {
+        return this.cachedKeys.has(key);
     }
 
     /**
@@ -151,6 +177,7 @@ export class TTSAudioCache {
 
             request.onsuccess = () => {
                 logger.debug("Cache", "Saved entry");
+                this.cachedKeys.add(key); // [NEW] Update memory index
                 resolve();
             };
 
@@ -167,6 +194,7 @@ export class TTSAudioCache {
          const transaction = this.db.transaction([STORE_NAME], 'readwrite');
          const store = transaction.objectStore(STORE_NAME);
          store.clear();
+         this.cachedKeys.clear(); // [NEW] Clear memory index
          logger.info("Cache", "Cleared all audio.");
     }
 }

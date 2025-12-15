@@ -93,4 +93,17 @@ export class GCloudSynthesizer {
         this.currentReqId++;
         this.player.stop();
     }
+
+    /**
+     * Checks if audio for the text is already cached.
+     * Uses in-memory index for O(1) performance.
+     */
+    isCached(text) {
+        const voice = this.config.getVoice();
+        if (!text || !voice || !voice.voiceURI) return Promise.resolve(false);
+
+        const key = this.cache.generateKey(text, voice.voiceURI);
+        // hasKey is synchronous, but we return Promise to match async interface
+        return Promise.resolve(this.cache.hasKey(key));
+    }
 }
