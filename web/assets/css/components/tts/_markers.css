@@ -1,0 +1,99 @@
+/* Path: web/assets/css/components/tts/_markers.css */
+
+/* Container Adjustment */
+.sutta-text-view {
+  padding-left: 24px; /* Gutter cho marker */
+}
+
+/* Positioning Context */
+.segment,
+p, h1, h2, h3, h4, h5, h6, blockquote, .paragraph-block {
+  position: relative;
+}
+
+/* Marker Styles */
+.tts-marker {
+  position: absolute;
+  left: -24px;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  cursor: pointer;
+  z-index: 10;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  
+  opacity: 0.3; 
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.tts-marker::before {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 6px;
+  background-color: var(--primary-color);
+  border-radius: 50%;
+  transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+
+/* Cached State */
+.tts-marker.cached::before {
+  background-color: var(--tts-cached-color);
+  box-shadow: 0 0 0 1px var(--tts-cached-color);
+}
+
+/* Hover/Active */
+.tts-marker:hover,
+.tts-marker:active {
+  opacity: 1;
+}
+.tts-marker:hover::before {
+  transform: scale(1.5);
+}
+
+/* Active Segment/Block */
+.tts-active .tts-marker {
+  opacity: 1;
+}
+.tts-active .tts-marker::before {
+  background-color: var(--primary-color);
+  transform: scale(1.4);
+  box-shadow: 0 0 8px var(--primary-color);
+}
+.tts-active .tts-marker.cached::before {
+  background-color: var(--tts-cached-color);
+  box-shadow: 0 0 8px var(--tts-cached-color);
+}
+
+/* Hide when closed */
+body:not(.tts-open) .tts-marker {
+  display: none;
+}
+
+/* Text Highlighting */
+.segment.tts-active,
+:not(.segment).tts-active {
+  background-color: rgba(139, 69, 19, 0.05);
+  border-right: 4px solid var(--primary-color);
+  border-radius: 8px 0 0 8px;
+  padding-right: 12px;
+  margin-right: -12px;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="dark"] .segment.tts-active,
+[data-theme="dark"] :not(.segment).tts-active {
+  background-color: rgba(255, 255, 255, 0.05);
+}

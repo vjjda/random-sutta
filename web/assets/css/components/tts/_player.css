@@ -1,0 +1,118 @@
+/* Path: web/assets/css/components/tts/_player.css */
+
+/* --- 1. HEADER INFO PILL (Đảo nổi 1) --- */
+.tts-header-container {
+  width: auto;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.tts-info {
+  background-color: var(--bg-card);
+  border: 0.5px solid var(--border-light);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  padding: 4px 16px;
+  text-align: center;
+  font-family: monospace;
+  font-size: 0.7rem;
+  font-weight: 550;
+  color: var(--text-muted);
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+  transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+}
+
+.tts-info.error-text {
+  color: var(--primitive-amber-800);
+  border-color: var(--primitive-amber-500);
+  background-color: var(--primitive-amber-50);
+}
+
+/* --- 2. CONTROLS ROW (Đảo nổi 2) --- */
+.tts-controls-row {
+  background-color: var(--bg-body);
+  border: 0.5px solid var(--border-light);
+  box-shadow: 0 5px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 40px;
+  
+  padding: 4px 12px;
+  
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  
+  pointer-events: auto;
+  backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .tts-controls-row {
+  background-color: var(--primitive-night-800);
+  border-color: var(--primitive-night-600);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* --- BUTTONS STYLING --- */
+.tts-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.tts-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+  transform: scale(1.1);
+}
+
+.tts-icon-btn {
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+
+.tts-icon-btn:hover {
+  color: var(--primary-color);
+  background-color: var(--bg-hover);
+  opacity: 1;
+}
+
+/* Main Play Button */
+.tts-btn-main {
+  width: 44px;
+  height: 44px;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(139, 69, 19, 0.3);
+  margin: 0 4px;
+}
+
+.tts-btn-main:hover {
+  background-color: var(--primary-hover);
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 6px 14px rgba(139, 69, 19, 0.4);
+}

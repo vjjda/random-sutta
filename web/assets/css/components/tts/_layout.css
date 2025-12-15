@@ -1,0 +1,39 @@
+/* Path: web/assets/css/components/tts/_layout.css */
+
+/* --- GLOBAL WRAPPER (INVISIBLE CONTAINER) --- */
+#tts-player {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(150px);
+  
+  /* Container trong suốt, co giãn theo nội dung */
+  width: auto;
+  max-width: 90%;
+  min-width: 300px;
+  
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px; /* Khoảng cách giữa các đảo nổi (Pill & Bar) */
+  
+  z-index: 1095;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+  opacity: 0;
+  pointer-events: none; /* Cho phép click xuyên qua vùng trống */
+}
+
+#tts-player.active {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* Đẩy padding body khi player mở (Logic cũ vẫn giữ) */
+body.tts-open #sutta-container {
+  padding-bottom: var(--tts-bottom-padding);
+}
