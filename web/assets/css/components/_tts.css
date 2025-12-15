@@ -3,11 +3,11 @@
 /* --- 1. MAGIC TTS CORNER (Fixed for iOS) --- */
 #magic-tts-trigger {
   position: fixed;
-  /* DÃ¹ng biáº¿n mÃ´i trÆ°á»ng Ä‘á»ƒ Ä‘áº©y lÃªn khá»i thanh Home áº£o */
+  /* Dùng biến môi trường để đẩy lên khỏi thanh Home ảo */
   bottom: calc(5px + env(safe-area-inset-bottom));
   right: 15px; 
   
-  /* TÄƒng kÃ­ch thÆ°á»›c vÃ¹ng báº¥m nhÆ°ng váº«n vÃ´ hÃ¬nh */
+  /* Tăng kích thước vùng bấm nhưng vẫn vô hình */
   width: 50px; 
   height: 50px;
   
@@ -22,25 +22,31 @@
 /* --- 2. GLOBAL PLAYER --- */
 #tts-player {
   position: fixed;
-  /* Äáº©y lÃªn cao hÆ¡n trigger má»™t chÃºt */
+  /* Đẩy lên cao hơn trigger một chút */
   bottom: calc(15px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%) translateY(150px);
   width: 94%;
-  max-width: 420px;
+  max-width: 380px; /* [TWEAK] Giảm width tối đa để gọn hơn */
+  
   background-color: var(--bg-body);
-  border: 0.5 solid var(--border-light);
-  border-radius: 16px; /* Bo gÃ³c hiá»‡n Ä‘áº¡i hÆ¡n */
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); /* BÃ³ng Ä‘á»• Ä‘áº­m hÆ¡n */
-  padding: 8px 12px;
+  border: 1px solid var(--border-light); /* 0.5px hơi mờ trên một số màn hình */
+  border-radius: 20px; /* Bo tròn mạnh hơn */
+  
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  
+  /* [LAYOUT CHANGE] Flex Column */
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  align-items: center; /* Center nội dung */
+  
+  padding: 10px 15px; /* Padding đều */
+  gap: 10px; /* Khoảng cách giữa Header và Controls */
+  
   z-index: 1095;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
   opacity: 0;
-  pointer-events: none; /* TrÃ¡nh cháº·n click khi áº©n */
+  pointer-events: none;
 }
 
 #tts-player.active {
@@ -49,7 +55,48 @@
   pointer-events: auto;
 }
 
-/* --- Controls --- */
+/* --- NEW: Header Info Pill --- */
+.tts-header-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.tts-info {
+  text-align: center;
+  font-family: monospace;
+  font-size: 0.75rem; /* Font nhỏ tối giản */
+  font-weight: 600;
+  color: var(--text-muted);
+  
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  /* Pill Styling */
+  background-color: var(--bg-hover);
+  padding: 4px 12px;
+  border-radius: 12px;
+  transition: color 0.3s, background-color 0.3s;
+  max-width: 80%; /* Không quá dài */
+}
+
+.tts-info.error-text {
+  color: var(--primitive-amber-800);
+  background-color: var(--primitive-amber-100);
+}
+
+/* --- NEW: Controls Row --- */
+.tts-controls-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Dàn đều 5 nút để đối xứng */
+  gap: 8px; /* Khoảng cách tối thiểu */
+  padding: 0 5px; /* Padding nhẹ 2 bên */
+}
+
+/* --- Buttons --- */
 .tts-btn {
   background: transparent;
   border: none;
@@ -61,7 +108,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.2s;
   flex-shrink: 0;
 }
 
@@ -90,9 +137,10 @@
   opacity: 1;
 }
 
+/* Main Play Button - Slightly Larger & Centered visually */
 .tts-btn-main {
-  width: 40px;
-  height: 40px;
+  width: 48px; /* To hơn các nút khác (40px) */
+  height: 48px;
   background-color: var(--primary-color);
   color: white;
   border-radius: 50%;
@@ -105,27 +153,6 @@
   transform: scale(1.05);
 }
 
-.tts-info {
-  flex: 0.5;
-  text-align: center;
-  font-family: monospace;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background: transparent;
-  padding: 4px 8px;
-  border-radius: 10px;
-  transition: color 0.3s;
-}
-
-.tts-info.error-text {
-  color: var(--primitive-amber-800);
-  font-weight: 700;
-}
-
 /* --- SETTINGS PANEL (Popup inside Player) --- */
 #tts-settings-panel {
   position: absolute;
@@ -134,7 +161,7 @@
   width: 100%;
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
+  border-radius: 16px; /* Bo góc khớp với player */
   padding: 15px;
   margin-bottom: 10px;
   box-shadow: var(--shadow-card);
@@ -142,7 +169,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  
   animation: slideUp 0.2s ease-out;
 }
 
@@ -224,22 +250,16 @@
 }
 
 /* --- Active Highlight (Unified Style) --- */
-/* Apply to both Segments and Blocks (Paragraphs/Headings) */
 .segment.tts-active,
 :not(.segment).tts-active {
-  background-color: rgba(139, 69, 19, 0.05); /* Subtle tint */
+  background-color: rgba(139, 69, 19, 0.05);
   border-right: 4px solid var(--primary-color);
-  border-radius: 8px 0 0 8px; /* Rounded left corners */
-  
-  /* Layout Compensation for Border */
+  border-radius: 8px 0 0 8px;
   padding-right: 12px;
   margin-right: -12px;
-  
   transition: all 0.2s ease;
   position: relative;
   z-index: 1;
-  
-  /* Reset old segment styles */
   box-shadow: none;
 }
 
@@ -289,7 +309,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--border-light); /* MÃ u khi táº¯t */
+  background-color: var(--border-light);
   transition: .4s;
   border-radius: 34px;
 }
@@ -308,14 +328,13 @@
 }
 
 input:checked + .tts-slider {
-  background-color: var(--primary-color); /* MÃ u khi báº­t */
+  background-color: var(--primary-color);
 }
 
 input:checked + .tts-slider:before {
   transform: translateX(16px);
 }
 
-/* Focus visual */
 input:focus + .tts-slider {
   box-shadow: 0 0 1px var(--primary-color);
 }
