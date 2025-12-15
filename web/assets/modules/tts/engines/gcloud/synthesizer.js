@@ -37,7 +37,7 @@ export class GCloudSynthesizer {
             return;
         }
 
-        const key = this.cache.generateKey(text, voice.voiceURI, 1.0, 0.0);
+        const key = this.cache.generateKey(text, voice.voiceURI);
 
         try {
             // 2. Cache Check
@@ -75,7 +75,7 @@ export class GCloudSynthesizer {
         
         if (!text || !apiKey) return;
 
-        const key = this.cache.generateKey(text, voice.voiceURI, 1.0, 0.0);
+        const key = this.cache.generateKey(text, voice.voiceURI);
         const cached = await this.cache.get(key);
 
         if (!cached) {
