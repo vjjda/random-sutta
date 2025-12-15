@@ -54,8 +54,16 @@ export const TTSVoiceListRenderer = {
             const prettyName = formatVoiceName(v.name);
             const flag = getFlagEmoji(v.lang); // [UPDATED] Auto generate flag
             
-            // Format chung: "🇺🇸 Tên Giọng"
-            const finalName = flag ? `${flag} ${prettyName}` : prettyName;
+            // [NEW] Service Type Icon (Local vs Network)
+            // localService is explicitly true for offline voices. 
+            // Some browsers/OS don't report it correctly, but when they do, it's useful.
+            let typeIcon = "";
+            if (v.localService === true) typeIcon = "📱";
+            else if (v.localService === false) typeIcon = "☁️";
+
+            // Format chung: "🇺🇸 Tên Giọng 📱"
+            let finalName = flag ? `${flag} ${prettyName}` : prettyName;
+            if (typeIcon) finalName += ` ${typeIcon}`;
 
             if (recEntry) {
                 // Với Recommended, ưu tiên tên config, nhưng nếu không có cờ thì tự thêm
