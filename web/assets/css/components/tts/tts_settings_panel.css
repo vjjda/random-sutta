@@ -18,9 +18,13 @@
   
   display: flex;
   flex-direction: column;
+  
   /* Prevent text selection drag */
   user-select: none;
   -webkit-user-select: none;
+  
+  /* [UPDATED] Prevent scroll chaining to background */
+  overscroll-behavior: contain;
   
   pointer-events: auto;
   animation: slideUp 0.2s ease-out;
@@ -41,7 +45,7 @@
 .tts-setting-row {
   display: flex;
   flex-direction: column;
-  gap: 4px; 
+  gap: 8px; 
 }
 
 .tts-setting-row label {
@@ -91,6 +95,9 @@
   margin: 0;
   vertical-align: middle;
   cursor: grab;
+  
+  /* [UPDATED] Prevent browser scrolling while dragging slider */
+  touch-action: none;
 }
 
 #tts-rate-range:active {
@@ -125,8 +132,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
-  /* border-top: -1px dashed var(--border-light); */
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-light);
 }
 
 .tts-toggle-label {
