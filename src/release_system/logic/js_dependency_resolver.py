@@ -71,6 +71,12 @@ def _scan_dependencies(base_dir: Path, file_rel: str, graph: Dict[str, Set[str]]
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
             
+        # [FIX] Remove comments to avoid false positives (e.g., "from 'en-US'" in comments)
+        # Remove /* ... */
+        content = re.sub(r'/\*[\s\S]*?\*/', '', content)
+        # Remove // ...
+        content = re.sub(r'//.*', '', content)
+            
         # Regex to capture paths
         patterns = [
             r'from\s+[\'"]([^\'"]+)[\'"]',      # Matches 'from "path"'

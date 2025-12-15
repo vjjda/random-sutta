@@ -1,5 +1,6 @@
 // Path: web/assets/modules/tts/ui/renderers/voice_list_renderer.js
-import { AppConfig } from 'core/app_config.js'; // [FUTURE PROOF]
+import { AppConfig } from 'core/app_config.js'; 
+import { getFlagEmoji } from 'utils/flag_util.js'; // [NEW]
 
 // Helper: Format Name
 function formatVoiceName(rawName) {
@@ -17,12 +18,6 @@ function formatVoiceName(rawName) {
     clean = clean.replace(/-([A-Z])\s/, ' $1 ');
     clean = clean.replace(/-/g, ' ');
     return clean;
-}
-
-// [NEW] Helper lấy cờ
-function getVoiceFlag(lang) {
-    const flags = AppConfig.TTS?.VOICE_FLAGS || {};
-    return flags[lang] || ""; // Trả về cờ hoặc chuỗi rỗng nếu không support
 }
 
 export const TTSVoiceListRenderer = {
@@ -57,17 +52,17 @@ export const TTSVoiceListRenderer = {
         voices.forEach(v => {
             const recEntry = recommendedMap.get(v.voiceURI);
             const prettyName = formatVoiceName(v.name);
-            const flag = getVoiceFlag(v.lang); // Lấy cờ từ lang code
+            const flag = getFlagEmoji(v.lang); // [UPDATED] Auto generate flag
             
             // Format chung: "🇺🇸 Tên Giọng"
             const finalName = flag ? `${flag} ${prettyName}` : prettyName;
 
             if (recEntry) {
-                // Với Recommended, nếu user config có tên riêng thì dùng, 
-                // nếu không thì dùng tên pretty + cờ tự động.
-                // Nếu user config name chưa có cờ, ta tự thêm vào.
+                // Với Recommended, ưu tiên tên config, nhưng nếu không có cờ thì tự thêm
                 let recName = recEntry.name;
-                if (!recName.includes(flag)) {
+                // Kiểm tra sơ bộ xem trong tên config đã có emoji chưa (đơn giản)
+                // Nếu chưa có (thường là text thuần), thêm cờ vào
+                if (!/\p{Emoji}/u.test(recName) && flag) {
                      recName = `${flag} ${recName}`;
                 }
 
