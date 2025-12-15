@@ -122,6 +122,20 @@ export const TTSUIActions = {
                     return;
                 }
             });
+
+            // [NEW] Marker Double Click Strategy
+            container.addEventListener("dblclick", (e) => {
+                const marker = e.target.closest(".tts-marker");
+                if (marker) {
+                    e.stopPropagation(); // Prevent bubbling
+                    const id = marker.getAttribute("data-tts-id");
+                    if (id && orchestrator.isSessionActive()) {
+                        orchestrator.jumpToID(id);
+                        orchestrator.play();
+                    }
+                    return;
+                }
+            });
         }
     }
 };
