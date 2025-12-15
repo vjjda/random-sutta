@@ -41,7 +41,7 @@
 .tts-setting-row {
   display: flex;
   flex-direction: column;
-  gap: 8px; 
+  gap: 4px; 
 }
 
 .tts-setting-row label {
@@ -84,12 +84,11 @@
 /* RANGE INPUT (Speed Slider) */
 #tts-rate-range {
   width: 100%;
-  height: 4px;
-  background: var(--border-light);
-  border-radius: 2px;
+  /* Remove height from input container, let track define it */
+  background: transparent; 
   -webkit-appearance: none;
   appearance: none;
-  margin: 0; /* Align with buttons */
+  margin: 0;
   vertical-align: middle;
   cursor: grab;
 }
@@ -98,16 +97,26 @@
   cursor: grabbing;
 }
 
+/* TRACK Styling (Crucial for alignment) */
+#tts-rate-range::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: var(--border-light);
+  border-radius: 2px;
+}
+
+/* THUMB Styling */
 #tts-rate-range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
   height: 16px;
-  background: var(--primary-color);
+  width: 16px;
   border-radius: 50%;
+  background: var(--primary-color);
   cursor: pointer;
   border: 2px solid var(--bg-card);
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  /* Centering thumb on track - often needed for cross-browser consistency */
+  /* (Track Height 4px - Thumb Height 16px) / 2 = -6px */
   margin-top: -6px; 
 }
 
@@ -116,9 +125,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-light);
+  margin-bottom: 4px;
+  /* border-top: -1px dashed var(--border-light); */
 }
 
 .tts-toggle-label {

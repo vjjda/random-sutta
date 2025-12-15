@@ -58,10 +58,9 @@ export const TTSVoiceListRenderer = {
             // localService is explicitly true for offline voices. 
             // Some browsers/OS don't report it correctly, but when they do, it's useful.
             let typeIcon = "";
-            if (v.localService === true) typeIcon = "📱";
-            else if (v.localService === false) typeIcon = "☁️";
+            if (v.localService === false) typeIcon = "☁️";
 
-            // Format chung: "🇺🇸 Tên Giọng 📱"
+            // Format chung: "🇺🇸 Tên Giọng ☁️"
             let finalName = flag ? `${flag} ${prettyName}` : prettyName;
             if (typeIcon) finalName += ` ${typeIcon}`;
 
