@@ -49,8 +49,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.triggerRandomSutta = () => SuttaController.loadRandomSutta(true);
 
   const randomBtn = document.getElementById("btn-random");
+  const landingRandomBtn = document.getElementById("btn-landing-random"); // [NEW]
   const statusDiv = document.getElementById("status");
   const navHeader = document.getElementById("nav-header");
+
+  // [NEW] View Switcher Helper
+  const switchView = (viewName) => {
+    const landing = document.getElementById("landing-view");
+    const reader = document.getElementById("reader-view");
+    
+    if (viewName === 'reader') {
+        landing.classList.add("hidden");
+        // Wait for fade out if needed, or just show reader
+        setTimeout(() => {
+             landing.style.display = 'none'; // Ensure clicks pass through
+             reader.classList.remove("hidden");
+        }, 300); // Match CSS transition
+    } else {
+        landing.style.display = 'flex';
+        landing.classList.remove("hidden");
+        reader.classList.add("hidden");
+    }
+  };
 
   const hideSplashScreen = () => {
     const splashScreen = document.getElementById("splash-screen");
@@ -62,9 +82,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
+  // Header Random Button (Reader Mode)
   randomBtn.addEventListener("click", () =>
     SuttaController.loadRandomSutta(true)
   );
+
+  // [NEW] Landing Random Button
+  if (landingRandomBtn) {
+      landingRandomBtn.addEventListener("click", async () => {
+          // Switch view immediately to feel responsive (or show loader?)
+          // Better: Load first then switch? Or Switch then load?
+          // Let's switch then load to show the reader UI skeleton.
+          switchView('reader');
+          await SuttaController.loadRandomSutta(true);
+      });
+  }
 
   try {
     console.time("📡 Service Init");
@@ -73,9 +105,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (navHeader) navHeader.classList.remove("hidden");
     randomBtn.disabled = false;
+    if (landingRandomBtn) landingRandomBtn.disabled = false;
 
     const initialParams = Router.getParams();
+    
+    // [UPDATED] Routing Logic
     if (initialParams.q) {
+      // Direct access to a Sutta -> Go to Reader
+      switchView('reader');
+      
       let loadId = initialParams.q;
       if (window.location.hash) loadId += window.location.hash;
       console.time("⏱️ Direct Load Total");
@@ -84,8 +122,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       RandomBuffer.startBackgroundWork();
     } else {
+      // Root access -> Go to Landing
+      switchView('landing');
+      // Pre-fetch randoms in background while user stares at the landing page
       RandomBuffer.startBackgroundWork();
-      await SuttaController.loadRandomSutta(true);
     }
 
     hideSplashScreen();
@@ -105,13 +145,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       event.state && event.state.scrollY ? event.state.scrollY : 0;
 
     if (currentParams.q) {
+      // [FIX] Ensure we are in reader view when popping state to a sutta
+      const reader = document.getElementById("reader-view");
+      if (reader && reader.classList.contains("hidden")) {
+          switchView('reader');
+      }
+
       let loadId = currentParams.q;
       if (window.location.hash) loadId += window.location.hash;
       SuttaController.loadSutta(loadId, false, savedScroll, {
         transition: false,
       });
     } else {
-      SuttaController.loadRandomSutta(false);
+      // If popped back to root -> Show landing?
+      // Or load random? 
+      // Current UX: Back button at root usually exits app or stays.
+      // If we want to support "Back to Landing", we call switchView('landing').
+      switchView('landing');
     }
   });
 });

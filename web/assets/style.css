@@ -17,6 +17,7 @@
 @import "css/layout/drawer/_drawer_footer.css";
 
 /* Components */
+@import "css/components/_landing.css";
 @import "css/components/_buttons.css";
 @import "css/components/_sutta_text.css";
 @import "css/components/_navigation.css";
