@@ -33,6 +33,7 @@ export const TTSOrchestrator = {
         // When Engine changes -> Rebind Player & Sync UI
         this.registry.onEngineChanged = (newEngine) => {
             this._bindPlayer(newEngine);
+            this._bindEngineEvents(newEngine); // [NEW] Bind events generically
             this.uiSync.onEngineChanged(newEngine);
             
             // Check cache status for markers
@@ -47,20 +48,12 @@ export const TTSOrchestrator = {
             this.uiSync.debouncedRefreshOfflineStatus();
         };
 
-        // When GCloud Voices Loaded -> Sync UI
-        // (Access gcloud engine directly for binding specific event)
-        const gcloud = this.registry.getEngine('gcloud');
-        if (gcloud) {
-            gcloud.onVoicesChanged = (voices, current) => {
-                if (this.uiSync.ui) { // Check if UI is ready
-                    this.uiSync.ui.populateVoices(voices, current);
-                    this.uiSync.refreshOfflineVoicesStatus();
-                }
-            };
-        }
-
+        // [REMOVED] Hardcoded GCloud binding
+        
         // 3. Initial Binding
-        this._bindPlayer(this.registry.getActiveEngine());
+        const initialEngine = this.registry.getActiveEngine();
+        this._bindPlayer(initialEngine);
+        this._bindEngineEvents(initialEngine);
         
         // 4. Setup Session Manager
         TTSSessionManager.init(TTSPlayer, TTSHighlighter, null); // UI injected later
@@ -77,14 +70,30 @@ export const TTSOrchestrator = {
         TTSPlayer.stop(); 
         // Re-init with new engine, keeping existing Highlighter/UI refs
         TTSPlayer.init(engine, TTSHighlighter, this.uiSync.ui);
-        
-        // Re-bind cache event on the engine level if needed 
-        // (Note: Registry handles the global bubble up, but Player uses engine directly)
-        if (engine.onAudioCached === null) {
-             engine.onAudioCached = (text) => {
-                 TTSMarkerManager.markAsCached(text);
-             };
-        }
+    },
+
+    // [NEW] Helper to bind generic engine events (Voices, Cache)
+    _bindEngineEvents(engine) {
+        if (!engine) return;
+
+        // 1. Voice Changed Event
+        // Ensure we don't overwrite if the engine uses it internally, 
+        // but typically the engine calls this.onVoicesChanged() if set.
+        engine.onVoicesChanged = (voices) => {
+            // Note: 'voices' passed here might differ in format per engine, 
+            // but uiSync/UI should handle the standardized format.
+            if (this.uiSync.ui) { 
+                const currentVoice = engine.voice; // Get current selected voice from engine
+                this.uiSync.ui.populateVoices(voices, currentVoice);
+                this.uiSync.refreshOfflineVoicesStatus();
+            }
+        };
+
+        // 2. Audio Cache Event (Re-bind if engine supports it)
+        // Some engines might not have this property initially
+        engine.onAudioCached = (text) => {
+             TTSMarkerManager.markAsCached(text);
+        };
     },
 
     setUI(uiInstance) {
