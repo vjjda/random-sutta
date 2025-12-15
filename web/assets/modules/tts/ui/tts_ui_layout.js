@@ -89,6 +89,12 @@ export const TTSUILayout = {
                             </datalist>
                         </div>
                     
+                        <!-- Accent/Region -->
+                        <div class="tts-setting-row">
+                            <label for="tts-region-select">Accent / Region</label>
+                            <select id="tts-region-select" name="tts_region" autocomplete="off"></select>
+                        </div>
+
                         <div class="tts-setting-row">
                              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
