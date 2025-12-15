@@ -72,6 +72,7 @@
   background: var(--border-light);
   border-radius: 2px;
   -webkit-appearance: none;
+  appearance: none;
   margin-top: 10px;
   margin-bottom: 10px;
 }
