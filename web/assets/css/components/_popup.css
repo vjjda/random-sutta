@@ -18,7 +18,7 @@
    => Total: 100px
 */
 body.tts-open {
-  --tts-popup-offset: 110px;
+  --tts-popup-offset: 80px;
 }
 
 .popup-container {

@@ -5,9 +5,8 @@
   position: fixed;
   bottom: calc(20px + env(safe-area-inset-bottom));
   left: 50%;
-  transform: translateX(-50%) translateY(150px);
+  transform: translateX(-50%) translateY(10px);
   
-  /* Container trong suốt, co giãn theo nội dung */
   width: auto;
   max-width: 90%;
   min-width: 300px;
@@ -20,20 +19,33 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px; /* Khoảng cách giữa các đảo nổi (Pill & Bar) */
+  
+  gap: 8px; 
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s, gap 0.3s;
   
   z-index: 1095;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
   opacity: 0;
-  pointer-events: none; /* Cho phép click xuyên qua vùng trống */
+  visibility: hidden;
+  pointer-events: none;
 }
 
 #tts-player.active {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto; 
 }
 
-/* Đẩy padding body khi player mở (Logic cũ vẫn giữ) */
+/* [UPDATED] Xóa khoảng cách giữa các đảo nổi khi:
+   1. Mở Settings
+   2. HOẶC Mở Popup Comment (để nhường không gian)
+*/
+body.popup-open #tts-player,
+#tts-player.settings-active {
+  gap: 0;
+}
+
+/* Đẩy padding body khi player mở */
 body.tts-open #sutta-container {
   padding-bottom: var(--tts-bottom-padding);
 }

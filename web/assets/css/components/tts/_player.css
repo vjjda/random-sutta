@@ -16,6 +16,7 @@
   padding: 4px 16px;
   text-align: center;
   font-family: monospace;
+  letter-spacing: -0.5px; 
   font-size: 0.7rem;
   font-weight: 550;
   color: var(--text-muted);
@@ -24,7 +25,42 @@
   overflow: hidden;
   text-overflow: ellipsis;
   pointer-events: auto;
-  transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+  
+  /* Transition đầy đủ cho mọi thuộc tính để co giãn mượt */
+  transition: 
+    color 0.3s, background-color 0.3s, border-color 0.3s, 
+    opacity 0.3s, visibility 0.3s, transform 0.3s,
+    max-height 0.3s, padding 0.3s, border-width 0.3s, margin 0.3s;
+  
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  
+  /* Trạng thái bình thường: Có chiều cao */
+  max-height: 40px; 
+  border-width: 0.5px;
+  margin: 0;
+}
+
+/* [UPDATED] COLLAPSE STATE */
+/* Áp dụng cho cả:
+   1. Popup Comment đang mở (body.popup-open ...)
+   2. Settings Panel đang mở (#tts-player.settings-active ...)
+*/
+body.popup-open .tts-info,
+#tts-player.settings-active .tts-info {
+  /* Ẩn hình ảnh */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(5px);
+  
+  /* Thu gọn không gian vật lý về 0 */
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  margin: 0;
 }
 
 .tts-info.error-text {
@@ -40,15 +76,20 @@
   box-shadow: 0 5px 24px rgba(0, 0, 0, 0.15);
   border-radius: 40px;
   
-  padding: 4px 12px;
+  /* Dynamic Spacing */
+  padding: 4px clamp(8px, 2vw, 12px); 
   
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: center; 
+  
+  /* Dynamic Gap */
+  gap: clamp(4px, 3vw, 12px);
   
   pointer-events: auto;
   backdrop-filter: blur(10px);
+  
+  max-width: 100%;
 }
 
 [data-theme="dark"] .tts-controls-row {

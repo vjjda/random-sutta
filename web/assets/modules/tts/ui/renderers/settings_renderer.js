@@ -41,10 +41,30 @@ export const TTSSettingsRenderer = {
 
     togglePanel(elements, forceState) {
         if (!elements.settingsPanel) return;
-        if (forceState === false) {
+        
+        // Helper để đóng
+        const close = () => {
             elements.settingsPanel.classList.add("hidden");
+            elements.player?.classList.remove("settings-active");
+        };
+
+        // Helper để mở
+        const open = () => {
+            elements.settingsPanel.classList.remove("hidden");
+            elements.player?.classList.add("settings-active");
+        };
+
+        if (forceState === false) {
+            close();
+        } else if (forceState === true) {
+            open();
         } else {
-            elements.settingsPanel.classList.toggle("hidden");
+            // Toggle
+            if (elements.settingsPanel.classList.contains("hidden")) {
+                open();
+            } else {
+                close();
+            }
         }
     }
 };
