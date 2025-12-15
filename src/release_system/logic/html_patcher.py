@@ -1,6 +1,7 @@
 # Path: src/release_system/logic/html_patcher.py
 import logging
 import re
+import base64
 from pathlib import Path
 from ..release_config import VERSION_PLACEHOLDER
 
@@ -48,6 +49,22 @@ def _patch_html_assets(index_path: Path, version_tag: str, is_offline: bool) -> 
         # Chạy nhiều lần để xóa hết các dòng font
         # Dùng while loop hoặc re.sub toàn cục (re.sub mặc định replace all)
         _update_file(index_path, font_pattern, font_replace)
+
+        # [NEW] 5. Embed Manifest as Data URI (Fix CORS for file://)
+        manifest_path = index_path.parent / "assets/icons/site.webmanifest"
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, "rb") as f:
+                    manifest_data = f.read()
+                    b64_manifest = base64.b64encode(manifest_data).decode("utf-8")
+                    data_uri = f"data:application/manifest+json;base64,{b64_manifest}"
+                    
+                    manifest_pattern = r'href="assets/icons/site\.webmanifest"'
+                    manifest_replace = f'href="{data_uri}"'
+                    _update_file(index_path, manifest_pattern, manifest_replace)
+                    logger.info("    ✅ Embedded manifest as Data URI")
+            except Exception as e:
+                logger.warning(f"    ⚠️ Failed to embed manifest: {e}")
 
     return True
 
