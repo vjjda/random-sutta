@@ -38,7 +38,7 @@
 #tts-settings-main {
   display: flex;
   flex-direction: column;
-  gap: 20px; /* Increased gap for better breathing room */
+  gap: 10px; /* Increased gap for better breathing room */
 }
 
 /* SETTING ROWS */
