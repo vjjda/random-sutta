@@ -52,6 +52,12 @@ p, h1, h2, h3, h4, h5, h6, blockquote, .paragraph-block {
   box-shadow: 0 0 0 1px var(--tts-cached-color);
 }
 
+/* [NEW] Partial Cache State (Yellow/Amber) */
+.tts-marker.partial::before {
+  background-color: var(--primitive-amber-500);
+  box-shadow: 0 0 0 1px var(--primitive-amber-500);
+}
+
 /* Hover/Active */
 .tts-marker:hover,
 .tts-marker:active {
@@ -73,6 +79,11 @@ p, h1, h2, h3, h4, h5, h6, blockquote, .paragraph-block {
 .tts-active .tts-marker.cached::before {
   background-color: var(--tts-cached-color);
   box-shadow: 0 0 8px var(--tts-cached-color);
+}
+/* Active Partial */
+.tts-active .tts-marker.partial::before {
+  background-color: var(--primitive-amber-500);
+  box-shadow: 0 0 8px var(--primitive-amber-500);
 }
 
 /* Hide when closed */
