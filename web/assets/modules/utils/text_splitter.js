@@ -13,42 +13,52 @@ export const TextSplitter = {
      * @returns {string[]} An array of text chunks.
      */
     split(text, { maxLength = 450 } = {}) {
-        if (!text || text.length <= maxLength) {
-            return [text];
-        }
+        if (!text) return [];
+        if (text.length <= maxLength) return [text];
 
-        // 1. Split the text into sentences. This regex looks for sentence-ending punctuation
-        // followed by a space or the end of the string, which is more robust than a simple split.
-        const sentences = text.match(/[^.!?]+[.!?]+(\s+|$)/g) || [text];
+        let sentences = [];
+
+        // [UPDATED] Use Intl.Segmenter for robust, locale-aware sentence splitting
+        if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+            const segmenter = new Intl.Segmenter('en', { granularity: 'sentence' });
+            // Array.from is needed to convert the iterator
+            sentences = Array.from(segmenter.segment(text)).map(s => s.segment);
+        } else {
+            // Fallback: Split by punctuation but KEEP the punctuation
+            // This regex matches sentence ending + space, capturing the delimiter
+            sentences = text.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [text];
+        }
 
         const chunks = [];
         let currentChunk = "";
 
         for (const sentence of sentences) {
-            const trimmedSentence = sentence.trim();
-            if (!trimmedSentence) continue;
+            const trimmed = sentence.trim();
+            if (!trimmed) continue;
 
-            // If the current chunk is empty and the sentence itself is too long,
-            // we have no choice but to add it as its own chunk.
-            if (currentChunk.length === 0 && trimmedSentence.length > maxLength) {
-                // For very long "sentences", we might need a more aggressive split,
-                // but for now, we'll just add it as is to avoid losing content.
-                chunks.push(trimmedSentence);
+            // Check if adding this sentence exceeds limit
+            // Note: We use 'sentence' (with original spaces) for concatenation flow, 
+            // but 'trimmed' for logic checks to be safe.
+            
+            // Hard limit check: If single sentence is huge, force push it
+            if (trimmed.length > maxLength) {
+                if (currentChunk.length > 0) {
+                    chunks.push(currentChunk.trim());
+                    currentChunk = "";
+                }
+                chunks.push(trimmed);
                 continue;
             }
 
-            // If adding the next sentence exceeds the max length, push the current
-            // chunk and start a new one.
-            if (currentChunk.length + trimmedSentence.length + 1 > maxLength) {
+            if (currentChunk.length + sentence.length > maxLength) {
                 chunks.push(currentChunk.trim());
-                currentChunk = trimmedSentence;
+                currentChunk = sentence; // Start new chunk with current sentence (preserve leading space if any? No, usually trim)
+                currentChunk = trimmed;
             } else {
-                // Otherwise, add the sentence to the current chunk.
-                currentChunk += (currentChunk.length > 0 ? " " : "") + trimmedSentence;
+                currentChunk += (currentChunk.length > 0 ? " " : "") + trimmed;
             }
         }
 
-        // 3. Add the last remaining chunk.
         if (currentChunk.length > 0) {
             chunks.push(currentChunk.trim());
         }
