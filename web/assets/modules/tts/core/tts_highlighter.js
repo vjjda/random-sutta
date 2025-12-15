@@ -17,7 +17,9 @@ export const TTSHighlighter = {
         this._applyClass(item.element);
         
         // 2. Scroll
-        Scroller.scrollToReadingPosition(item.id);
+        // [FIX] Pass the element directly. 
+        // Virtual IDs (from split paragraphs) won't exist in DOM, but item.element is always valid.
+        Scroller.scrollToReadingPosition(item.element || item.id);
         
         // 3. Update Counter UI
         if (this.ui) {

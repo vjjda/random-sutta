@@ -63,9 +63,9 @@ export const Scroller = {
         this._findAndScroll(targetId, getTargetPosition, 'smooth');
     },
 
-    scrollToReadingPosition: function(targetId) {
-        if (!targetId) return;
-        this._findAndScroll(targetId, getReadingPosition, 'smooth');
+    scrollToReadingPosition: function(target) {
+        if (!target) return;
+        this._findAndScroll(target, getReadingPosition, 'smooth');
     },
 
     scrollToId: function(targetId, behavior = 'instant') {
@@ -107,7 +107,7 @@ export const Scroller = {
         }
     },
 
-    _findAndScroll(targetId, positionCalculator, behavior) {
+    _findAndScroll(target, positionCalculator, behavior) {
         let retries = 0;
         const maxRetries = 60; 
 
@@ -129,28 +129,36 @@ export const Scroller = {
             }
         };
 
-        // 1. Try Sync First (Quan trọng cho Teleport)
-        // Nếu phần tử đã có sẵn, cuộn ngay lập tức trong cùng tick
-        const elSync = document.getElementById(targetId);
-        if (elSync) {
-            executeScroll(elSync);
+        // 1. Resolve Element directly or via ID
+        let element = null;
+        if (target instanceof HTMLElement) {
+            element = target;
+        } else if (typeof target === 'string') {
+            element = document.getElementById(target);
+        }
+
+        // 2. Execute if found
+        if (element) {
+            executeScroll(element);
             return;
         }
 
-        // 2. Async Retry Fallback
-        const attemptFind = () => {
-            const element = document.getElementById(targetId);
-            if (element) {
-                executeScroll(element);
-            } else {
-                retries++;
-                if (retries < maxRetries) {
-                    requestAnimationFrame(attemptFind);
+        // 3. Async Retry Fallback (Only for string IDs)
+        if (typeof target === 'string') {
+            const attemptFind = () => {
+                const el = document.getElementById(target);
+                if (el) {
+                    executeScroll(el);
                 } else {
-                    logger.warn("Find", `Target not found after retries: ${targetId}`);
+                    retries++;
+                    if (retries < maxRetries) {
+                        requestAnimationFrame(attemptFind);
+                    } else {
+                        logger.warn("Find", `Target not found after retries: ${target}`);
+                    }
                 }
-            }
-        };
-        requestAnimationFrame(attemptFind);
+            };
+            requestAnimationFrame(attemptFind);
+        }
     }
 };
