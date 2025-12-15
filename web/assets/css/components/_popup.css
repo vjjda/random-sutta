@@ -5,20 +5,17 @@
   --popup-comment-height: 40vh;
   --popup-quicklook-top: 70px;
   
-  /* [NEW] Biến offset cho popup khi có TTS Player */
-  /* Mặc định bằng 0. Khi TTS bật, body sẽ có class .tts-open và set giá trị này */
-  --tts-popup-offset: 0px; 
+  /* [UPDATED] Biến offset cho popup. 
+     Mặc định: Luôn cộng thêm vùng an toàn (Safe Area) để tránh Home Bar trên iPhone X+ */
+  --tts-popup-offset: env(safe-area-inset-bottom, 0px); 
 }
 
 /* [NEW] Khi TTS Open -> Đẩy popup lên cao hơn Player.
-   Tính toán: 
-   - Player height ~70px 
-   - Player bottom spacing ~15px
-   - Extra visual buffer ~15px
-   => Total: 100px
+   Player height ~120px (bao gồm cả Pill và Controls).
+   Ta để dư ra 140px cộng với safe area để đảm bảo không dính.
 */
 body.tts-open {
-  --tts-popup-offset: 80px;
+  --tts-popup-offset: calc(140px + env(safe-area-inset-bottom, 0px));
 }
 
 .popup-container {
