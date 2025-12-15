@@ -1,6 +1,5 @@
 /* Path: web/assets/css/components/tts/_index.css */
-@import "_layout.css";
-@import "_trigger.css";
-@import "_player.css";
-@import "_settings.css";
-@import "_markers.css";
+@import "tts_player_layout.css";
+@import "tts_settings_panel.css";
+@import "tts_markers_highlights.css";
+@import "tts_trigger_button.css";

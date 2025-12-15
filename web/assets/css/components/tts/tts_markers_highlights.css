@@ -1,17 +1,23 @@
-/* Path: web/assets/css/components/tts/_markers.css */
+/* Path: web/assets/css/components/tts/tts_markers_highlights.css */
 
-/* Container Adjustment */
+/* --- BODY STATES --- */
+/* Huge bottom padding when TTS is open to allow scrolling */
+body.tts-open {
+  padding-bottom: 45vh !important;
+  transition: padding-bottom 0.3s ease;
+}
+
+/* --- MARKER STYLES --- */
 .sutta-text-view {
-  padding-left: 24px; /* Gutter cho marker */
+  padding-left: 24px; /* Gutter for markers */
 }
 
 /* Positioning Context */
 .segment,
-p, h1, h2, h3, h4, h5, h6, blockquote, .paragraph-block {
+p, h1, h2, h3, h4, h5, h6, blockquote, .paragraph-block, li {
   position: relative;
 }
 
-/* Marker Styles */
 .tts-marker {
   position: absolute;
   left: -24px;
@@ -46,19 +52,26 @@ p, h1, h2, h3, h4, h5, h6, blockquote, .paragraph-block {
   transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
 }
 
-/* Cached State */
+/* Hide when closed */
+body:not(.tts-open) .tts-marker {
+  display: none;
+}
+
+/* --- STATES --- */
+
+/* Cached State (Green) */
 .tts-marker.cached::before {
   background-color: var(--tts-cached-color);
   box-shadow: 0 0 0 1px var(--tts-cached-color);
 }
 
-/* [NEW] Partial Cache State (Yellow/Amber) */
+/* Partial State (Amber) */
 .tts-marker.partial::before {
   background-color: var(--primitive-amber-500);
   box-shadow: 0 0 0 1px var(--primitive-amber-500);
 }
 
-/* Hover/Active */
+/* Hover */
 .tts-marker:hover,
 .tts-marker:active {
   opacity: 1;
@@ -80,15 +93,9 @@ p, h1, h2, h3, h4, h5, h6, blockquote, .paragraph-block {
   background-color: var(--tts-cached-color);
   box-shadow: 0 0 8px var(--tts-cached-color);
 }
-/* Active Partial */
 .tts-active .tts-marker.partial::before {
   background-color: var(--primitive-amber-500);
   box-shadow: 0 0 8px var(--primitive-amber-500);
-}
-
-/* Hide when closed */
-body:not(.tts-open) .tts-marker {
-  display: none;
 }
 
 /* Text Highlighting */
@@ -109,22 +116,11 @@ body:not(.tts-open) .tts-marker {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* [FIX] Xử lý marker trong List (OL/UL) */
-/* Đảm bảo li tạo ra ngữ cảnh định vị (positioning context) */
-.sutta-text-view li {
-  position: relative;
-}
-
-/* Khi marker nằm trong li, đẩy nó xa hơn về bên trái */
-/* Mặc định là -24px, giờ tăng lên -48px để nhường chỗ cho số thứ tự (1., 2., 10.) */
+/* List Item Adjustment */
 .sutta-text-view li .tts-marker {
   left: -48px;
 }
-
-/* [OPTIONAL] Tinh chỉnh cho màn hình nhỏ nếu cần */
 @media (max-width: 400px) {
-  /* Trên mobile, nếu lề trái không đủ rộng, ta có thể giảm khoảng cách */
-  /* Hoặc chấp nhận số bị che một chút nếu thụt lề quá sâu */
   .sutta-text-view li .tts-marker {
     left: -42px;
   }

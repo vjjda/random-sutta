@@ -1,6 +1,48 @@
-/* Path: web/assets/css/components/tts/_player.css */
+/* Path: web/assets/css/components/tts/tts_player_layout.css */
 
-/* --- 1. HEADER INFO PILL (Đảo nổi 1) --- */
+/* --- 1. GLOBAL PLAYER WRAPPER (INVISIBLE CONTAINER) --- */
+#tts-player {
+  position: fixed;
+  bottom: calc(5px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(150px);
+  
+  width: auto;
+  max-width: 90%;
+  min-width: 300px;
+  
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  gap: 8px; 
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s, gap 0.3s;
+  
+  z-index: 1095;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#tts-player.active {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto; 
+}
+
+/* [COLLAPSE LOGIC] Remove gap when info pill is hidden */
+body.popup-open #tts-player,
+#tts-player.settings-active {
+  gap: 0;
+}
+
+/* --- 2. HEADER INFO PILL (Đảo nổi 1) --- */
 .tts-header-container {
   width: auto;
   display: flex;
@@ -10,15 +52,14 @@
 
 .tts-info {
   background-color: var(--bg-card);
-  border: 0.5px solid var(--border-light);
+  border: 1px solid var(--border-light);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border-radius: 20px;
   padding: 4px 16px;
   text-align: center;
   font-family: monospace;
-  letter-spacing: -1px;
-  font-size: 0.7rem;
-  font-weight: 550;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--text-muted);
   max-width: 250px;
   white-space: nowrap;
@@ -26,35 +67,28 @@
   text-overflow: ellipsis;
   pointer-events: auto;
   
-  /* Transition đầy đủ cho mọi thuộc tính để co giãn mượt */
+  /* Transition for collapsing */
   transition: 
     color 0.3s, background-color 0.3s, border-color 0.3s, 
     opacity 0.3s, visibility 0.3s, transform 0.3s,
     max-height 0.3s, padding 0.3s, border-width 0.3s, margin 0.3s;
+  
+  max-height: 40px;
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
-  
-  /* Trạng thái bình thường: Có chiều cao */
-  max-height: 40px;
-  border-width: 0.5px;
   margin: 0;
+  border-width: 1px;
 }
 
-/* [UPDATED] COLLAPSE STATE */
-/* Áp dụng cho cả:
-   1. Popup Comment đang mở (body.popup-open ...)
-   2. Settings Panel đang mở (#tts-player.settings-active ...)
-*/
+/* [COLLAPSE STATE] Hide pill when Settings open or Popup open */
 body.popup-open .tts-info,
 #tts-player.settings-active .tts-info {
-  /* Ẩn hình ảnh */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateY(5px);
   
-  /* Thu gọn không gian vật lý về 0 */
   max-height: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -68,27 +102,22 @@ body.popup-open .tts-info,
   background-color: var(--primitive-amber-50);
 }
 
-/* --- 2. CONTROLS ROW (Đảo nổi 2) --- */
+/* --- 3. CONTROLS ROW (Đảo nổi 2) --- */
 .tts-controls-row {
   background-color: var(--bg-body);
-  border: 0.5px solid var(--border-light);
-  box-shadow: 0 5px 24px rgba(0, 0, 0, 0.15);
-  border-radius: 40px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 50px;
   
-  /* Dynamic Spacing */
-  padding: 4px clamp(8px, 2vw, 12px); 
+  padding: 6px 12px;
   
   display: flex;
   align-items: center;
-  justify-content: center; 
-  
-  /* Dynamic Gap */
-  gap: clamp(4px, 3vw, 12px);
+  justify-content: space-between;
+  gap: 12px;
   
   pointer-events: auto;
   backdrop-filter: blur(10px);
-  
-  max-width: 100%;
 }
 
 [data-theme="dark"] .tts-controls-row {

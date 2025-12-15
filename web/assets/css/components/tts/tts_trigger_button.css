@@ -1,20 +1,24 @@
-/* Path: web/assets/css/components/tts/_trigger.css */
+/* Path: web/assets/css/components/tts/tts_trigger_button.css */
 
 #magic-tts-trigger {
   position: fixed;
   bottom: calc(5px + env(safe-area-inset-bottom));
-  right: 15px; 
+  right: 15px;
   width: 50px; 
   height: 50px;
   z-index: 1090;
+  
   background: transparent;
   border: none;
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
+  
+  /* Icon handled by SVG inside or CSS background image if not inline */
+  /* Assuming inline SVG injected by JS */
 }
 
-/* Ẩn trigger khi có popup khác đang mở */
+/* Hide trigger when Popup is open */
 body.popup-open #magic-tts-trigger {
   display: none !important;
 }

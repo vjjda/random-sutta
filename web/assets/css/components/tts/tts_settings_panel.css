@@ -1,21 +1,26 @@
-/* Path: web/assets/css/components/tts/_settings.css */
+/* Path: web/assets/css/components/tts/tts_settings_panel.css */
 
+/* --- SETTINGS PANEL (Popup inside Player) --- */
 #tts-settings-panel {
   position: absolute;
+  /* Đẩy lên trên container chính */
   bottom: 100%;
   left: 0;
   width: 100%;
   
+  /* Style riêng biệt cho panel setting */
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 12px; /* Cách xa Pill Header một chút */
   box-shadow: var(--shadow-card);
   
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  /* Prevent text selection drag */
+  user-select: none;
+  -webkit-user-select: none;
   
   pointer-events: auto;
   animation: slideUp 0.2s ease-out;
@@ -26,16 +31,17 @@
   display: none;
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+#tts-settings-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Increased gap for better breathing room */
 }
 
-/* Form Elements */
+/* SETTING ROWS */
 .tts-setting-row {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px; 
 }
 
 .tts-setting-row label {
@@ -44,11 +50,12 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-bottom: 4px; 
 }
 
+/* INPUTS & SELECTS */
 #tts-voice-select,
-#tts-engine-select,
-#tts-apikey-input {
+#tts-engine-select {
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
@@ -64,21 +71,34 @@
   border-color: var(--primary-color);
 }
 
-/* Sliders */
-#tts-rate-range,
-#tts-pitch-range {
+#tts-apikey-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+/* RANGE INPUT (Speed Slider) */
+#tts-rate-range {
   width: 100%;
   height: 4px;
   background: var(--border-light);
   border-radius: 2px;
   -webkit-appearance: none;
   appearance: none;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin: 0; /* Align with buttons */
+  vertical-align: middle;
+  cursor: grab;
 }
 
-#tts-rate-range::-webkit-slider-thumb,
-#tts-pitch-range::-webkit-slider-thumb {
+#tts-rate-range:active {
+  cursor: grabbing;
+}
+
+#tts-rate-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
@@ -87,17 +107,11 @@
   cursor: pointer;
   border: 2px solid var(--bg-card);
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  /* Centering thumb on track - often needed for cross-browser consistency */
+  margin-top: -6px; 
 }
 
-/* Disabled State */
-#tts-rate-range:disabled,
-#tts-pitch-range:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  filter: grayscale(100%);
-}
-
-/* Toggles */
+/* TOGGLES */
 .tts-toggle-wrapper {
   display: flex;
   align-items: center;
@@ -145,3 +159,8 @@
 
 input:checked + .tts-slider { background-color: var(--primary-color); }
 input:checked + .tts-slider:before { transform: translateX(18px); }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
