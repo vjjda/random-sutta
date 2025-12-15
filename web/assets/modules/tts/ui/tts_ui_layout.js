@@ -1,14 +1,11 @@
 // Path: web/assets/modules/tts/ui/tts_ui_layout.js
 export const TTSUILayout = {
     getHTML() {
-        // 1. Auto Next
+        // ... (Giữ nguyên phần đầu: logic lấy biến settings) ...
         const savedAutoNext = localStorage.getItem("tts_auto_next");
         const isAutoNext = savedAutoNext === null ? true : (savedAutoNext === "true");
-        // 2. Paragraph Mode
         const savedMode = localStorage.getItem("tts_playback_mode");
         const isParagraph = savedMode ? (savedMode === "paragraph") : true; 
-
-        // 3. Engine
         const savedEngine = localStorage.getItem("tts_active_engine");
         const isGCloud = (savedEngine === "gcloud");
 
@@ -30,8 +27,8 @@ export const TTSUILayout = {
                     </button>
                     
                     <button id="tts-play" class="tts-btn tts-btn-main">
-                        <svg class="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                        <svg class="icon-pause hidden" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                        <svg class="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <svg class="icon-pause hidden" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
                     </button>
             
                     <button id="tts-next" class="tts-btn">
@@ -66,18 +63,18 @@ export const TTSUILayout = {
                     </div>
                     
                     <div class="tts-setting-row">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <label for="tts-voice-select" style="margin-bottom: 0;">Voice</label>
                                 <button id="tts-refresh-voices" class="tts-icon-btn" title="Refresh List">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                                 </button>
                             </div>
                         </div>
                         <select id="tts-voice-select" name="tts_voice" autocomplete="off"></select>
                     </div>
                     
-                    <div class="tts-toggle-wrapper">
+                     <div class="tts-toggle-wrapper">
                         <label for="tts-auto-next" class="tts-toggle-label">Auto-play Next</label>
                         <label class="tts-switch">
                             <input type="checkbox" id="tts-auto-next" name="tts_auto_next" ${isAutoNext ? 'checked' : ''} autocomplete="off">

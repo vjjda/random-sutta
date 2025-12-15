@@ -16,7 +16,7 @@
   padding: 4px 16px;
   text-align: center;
   font-family: monospace;
-  letter-spacing: -0.5px; 
+  letter-spacing: -1px;
   font-size: 0.7rem;
   font-weight: 550;
   color: var(--text-muted);
@@ -31,13 +31,12 @@
     color 0.3s, background-color 0.3s, border-color 0.3s, 
     opacity 0.3s, visibility 0.3s, transform 0.3s,
     max-height 0.3s, padding 0.3s, border-width 0.3s, margin 0.3s;
-  
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
   
   /* Trạng thái bình thường: Có chiều cao */
-  max-height: 40px; 
+  max-height: 40px;
   border-width: 0.5px;
   margin: 0;
 }
