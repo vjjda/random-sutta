@@ -111,6 +111,21 @@ export const TTSUIActions = {
             adjustRate(0.05);
         });
 
+        // [NEW] Region Change
+        els.regionSelect?.addEventListener("change", (e) => {
+            e.stopPropagation();
+            const newRegion = e.target.value;
+            localStorage.setItem("tts_last_region", newRegion);
+            
+            renderer.updateVoiceListForRegion();
+            
+            // Auto-switch to the first voice in the new list to prevent dead state
+            const newVoiceURI = els.voiceSelect?.value;
+            if (newVoiceURI) {
+                orchestrator.setVoice(newVoiceURI);
+            }
+        });
+
         els.voiceSelect?.addEventListener("change", (e) => {
             orchestrator.setVoice(e.target.value);
         });

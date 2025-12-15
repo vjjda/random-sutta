@@ -21,9 +21,10 @@ export const TTSUIRenderer = {
             infoText: document.getElementById("tts-info-text"),
             rateRange: document.getElementById("tts-rate-range"),
             rateVal: document.getElementById("tts-rate-val"),
-            btnRateDec: document.getElementById("tts-rate-dec"), // [NEW]
-            btnRateInc: document.getElementById("tts-rate-inc"), // [NEW]
+            btnRateDec: document.getElementById("tts-rate-dec"),
+            btnRateInc: document.getElementById("tts-rate-inc"),
             voiceSelect: document.getElementById("tts-voice-select"),
+            regionSelect: document.getElementById("tts-region-select"), // [NEW]
             btnRefreshVoices: document.getElementById("tts-refresh-voices"),
             autoNextCheckbox: document.getElementById("tts-auto-next"),
             modeCheckbox: document.getElementById("tts-mode-toggle"),
@@ -63,7 +64,24 @@ export const TTSUIRenderer = {
         const hasKey = this.elements.apiKeyInput?.value.trim().length > 0;
         const isGCloud = engineId === 'gcloud';
         
-        TTSVoiceListRenderer.render(this.elements.voiceSelect, voices, currentVoice, isGCloud, hasKey); 
+        // [UPDATED] Pass region select
+        TTSVoiceListRenderer.render(
+            this.elements.regionSelect, 
+            this.elements.voiceSelect, 
+            voices, 
+            currentVoice, 
+            isGCloud, 
+            hasKey
+        ); 
     },
+    
+    // [NEW] Helper to update just the voice list when region changes
+    updateVoiceListForRegion() {
+        TTSVoiceListRenderer.renderVoicesForSelectedRegion(
+            this.elements.regionSelect,
+            this.elements.voiceSelect
+        );
+    },
+
     updateVoiceOfflineMarkers(list) { TTSVoiceListRenderer.updateOfflineMarkers(this.elements.voiceSelect, list); }
 };
