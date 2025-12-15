@@ -190,7 +190,9 @@
   
   display: flex;
   flex-direction: column;
-  gap: 16px; /* [UPDATED] Increased gap */
+  /* [UPDATED] Prevent text selection drag */
+  user-select: none;
+  -webkit-user-select: none;
   
   pointer-events: auto;
   animation: slideUp 0.2s ease-out;
@@ -201,11 +203,27 @@
   display: none;
 }
 
+#tts-settings-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* [UPDATED] Increased gap for better breathing room */
+}
+
 /* ... (Phần Settings row bên trong giữ nguyên style cũ) ... */
 .tts-setting-row {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* [UPDATED] Increased gap */
+  gap: 8px; 
+}
+
+/* [UPDATED] Fix Range Input Alignment */
+#tts-rate-range {
+  margin: 0;
+  vertical-align: middle;
+  cursor: grab;
+}
+#tts-rate-range:active {
+  cursor: grabbing;
 }
 
 .tts-setting-row label {
@@ -214,7 +232,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 4px; /* [UPDATED] Added margin */
+  margin-bottom: 4px; 
 }
 
 #tts-voice-select,
