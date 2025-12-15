@@ -91,7 +91,7 @@ export const TTSUILayout = {
                     
                         <!-- Accent/Region -->
                         <div class="tts-setting-row">
-                            <label for="tts-region-select">Accent / Region</label>
+                            <label for="tts-region-select">Accent</label>
                             <select id="tts-region-select" name="tts_region" autocomplete="off"></select>
                         </div>
 

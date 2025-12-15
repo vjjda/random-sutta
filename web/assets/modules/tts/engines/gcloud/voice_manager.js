@@ -46,15 +46,18 @@ export class GCloudVoiceManager {
             logger.info("Voices", "Fetching from API...");
             const rawVoices = await this.fetcher.fetchVoices();
             
-            // 1. Strict Filter: High Quality Only
+            // 1. Strict Filter: High Quality Only (But allow all English accents)
             this.availableVoices = rawVoices
                 .filter(v => {
                     const id = v.name;
-                    return (v.languageCodes.includes("en-US") || v.languageCodes.includes("en-GB")) &&
+                    // Check for ANY English variant (en-US, en-GB, en-IN, en-AU, etc.)
+                    const isEnglish = v.languageCodes && v.languageCodes.some(code => code.startsWith('en-'));
+                    
+                    return isEnglish &&
                            id.startsWith("en-") && 
                            id.includes("-") &&
-                           !id.includes("Standard") && // Remove Legacy Standard
-                           !id.includes("Wavenet");    // [NEW] Remove Legacy Wavenet
+                           !id.includes("Standard"); // Still exclude legacy Standard voices
+                           // !id.includes("Wavenet"); // [Relaxed] Allow Wavenet if Neural2 not available for that region
                 })
                 .map(v => ({
                     name: `${v.name} (${v.ssmlGender})`,

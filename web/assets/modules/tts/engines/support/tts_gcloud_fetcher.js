@@ -109,7 +109,8 @@ export class TTSGoogleCloudFetcher {
             throw new Error("Missing Google Cloud API Key");
         }
 
-        const url = `https://texttospeech.googleapis.com/v1/voices?key=${this.apiKey}&languageCode=en-US`;
+        // [UPDATED] Fetch ALL voices (remove languageCode filter)
+        const url = `https://texttospeech.googleapis.com/v1/voices?key=${this.apiKey}`;
 
         try {
             const response = await fetch(url);
@@ -117,7 +118,34 @@ export class TTSGoogleCloudFetcher {
                 throw new Error("Failed to fetch voices");
             }
             const data = await response.json();
-            return data.voices || [];
+            
+            // Client-side filter for English voices (broad match)
+            // Google returns 'languageCodes': ['en-US', 'zh-CN'] etc.
+            const allVoices = data.voices || [];
+            
+            const englishVoices = allVoices.filter(v => {
+                // Check if any supported language code starts with 'en-'
+                return v.languageCodes && v.languageCodes.some(code => code.startsWith('en-'));
+            });
+
+            // Map to our standard format here if needed, or let the engine handle it.
+            // Engine expects raw list, so we return raw list but filtered.
+            // But wait, the engine wrapper maps it. 
+            // We just return the raw array here.
+            
+            // Note: Google's structure is:
+            // { name: "...", languageCodes: [], ssmlGender: "...", ... }
+            // Our system expects "lang" property. Google gives "languageCodes".
+            // We should map it to standard format expected by our UI?
+            // Actually, TTSGCloudEngine maps it. Let's just return filtered list.
+            // BUT: We must ensure we pick the PRIMARY language code as 'lang' for later filtering.
+            
+            // Let's modify the objects slightly to be friendlier to our Engine
+            return englishVoices.map(v => ({
+                ...v,
+                lang: v.languageCodes[0] // Pick first code (e.g. en-US) as primary lang
+            }));
+
         } catch (e) {
             logger.error("FetchVoices", "Error", e);
             throw e;

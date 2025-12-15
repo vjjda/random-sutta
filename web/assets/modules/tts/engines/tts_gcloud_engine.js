@@ -85,9 +85,8 @@ export class TTSGoogleCloudEngine {
 
     // Offline Helper
     async isCached(text) {
-        const key = this.cache.generateKey(text, this.voice.voiceURI, 1.0, 0.0);
-        const blob = await this.cache.get(key);
-        return !!blob;
+        // Delegate to synth for consistent logic (O(1) check)
+        return this.synth.isCached(text);
     }
 
     async getOfflineVoices(textList) {
@@ -95,8 +94,11 @@ export class TTSGoogleCloudEngine {
         if (!textList.length) return [];
         const offline = [];
         for (const v of list) {
-            const key = this.cache.generateKey(textList[0], v.voiceURI, 1.0, 0.0);
-            if (await this.cache.get(key)) offline.push(v.voiceURI);
+            // Check if the first segment is cached for this voice
+            const key = this.cache.generateKey(textList[0], v.voiceURI);
+            if (this.cache.hasKey(key)) {
+                offline.push(v.voiceURI);
+            }
         }
         return offline;
     }
