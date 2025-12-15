@@ -8,6 +8,9 @@ export const TTSMarkerManager = {
     markers: [],
     playlist: [], // [NEW] Keep ref to playlist
 
+    // Keep track of active engine for real-time updates
+    activeEngine: null,
+
     /**
      * Injects markers into the DOM based on the current playlist.
      * [UPDATED] Ensures only one marker per physical element, even if split into chunks.
@@ -55,6 +58,7 @@ export const TTSMarkerManager = {
         this.markers.forEach(m => m.remove());
         this.markers = [];
         this.playlist = [];
+        this.activeEngine = null; // Clear engine ref
         logger.info("Remove", "Markers cleared.");
     },
 
@@ -66,12 +70,16 @@ export const TTSMarkerManager = {
     markAsCached(text) {
         if (!text) return;
         
-        // Find the item(s) that match this text
-        // (Text *might* be duplicated across different segments, but usually unique enough in context)
         const targetItems = this.playlist.filter(p => p.text === text);
         
         targetItems.forEach(item => {
-            this._updateMarkerStatus(item.element);
+            if (this.activeEngine) {
+                // Robust Check: Verify all chunks for this element
+                this._recheckElementStatus(item.element);
+            } else {
+                // Fallback: Just mark partial blindly
+                this._updateMarkerStatusLegacy(item.element);
+            }
         });
     },
 
@@ -81,11 +89,12 @@ export const TTSMarkerManager = {
      */
     async checkCacheStatus(engine) {
         if (!engine || typeof engine.isCached !== 'function') return;
+        
+        this.activeEngine = engine; // Store for later updates
 
         logger.debug("CacheCheck", "Checking cache status for markers...");
         
         // 1. Bulk check status for all items
-        // Map: item.id -> boolean (isCached)
         const cacheStatusMap = new Map();
         
         for (const item of this.playlist) {
@@ -108,34 +117,41 @@ export const TTSMarkerManager = {
     },
 
     /**
-     * [HELPER] Calculate status for an element and update its marker
+     * [NEW] Async re-check for a specific element group
      */
-    _updateMarkerStatus(element) {
-        // Find all chunks belonging to this element
+    async _recheckElementStatus(element) {
         const chunks = this.playlist.filter(p => p.element === element);
         if (chunks.length === 0) return;
 
-        // Since this is called from markAsCached (sync/async mix), 
-        // we might need to check the engine again or rely on a state store.
-        // But for simplicity, we assume if markAsCached is called, THAT specific chunk is cached.
-        // To be robust, let's trigger a full re-check for this element if possible, 
-        // or just add 'partial' blindly?
-        
-        // Better: Find the marker and assume partial first, then let the full check resolve it later?
-        // OR: Since we don't have the engine here easily, we rely on the caller or just highlight partial.
-        
-        // For now: Just highlight as partial/cached if we find the marker.
-        // To do it properly, we need the Engine. 
-        // But markAsCached is often called from an event where Engine is implicitly known.
-        
-        // Let's use a simple heuristic:
-        // If we just cached a chunk, at least it is PARTIAL.
-        // We can't know if it's FULL without checking all peers.
+        let cachedCount = 0;
+        for (const chunk of chunks) {
+            try {
+                // Double check with DB
+                const isCached = await this.activeEngine.isCached(chunk.text);
+                if (isCached) cachedCount++;
+            } catch (e) { /* ignore */ }
+        }
+
+        const marker = this.markers.find(m => m.getAttribute("data-tts-id") === chunks[0].id);
+        if (!marker) return;
+
+        marker.classList.remove("cached", "partial");
+        if (cachedCount === chunks.length && chunks.length > 0) {
+            marker.classList.add("cached");
+        } else if (cachedCount > 0) {
+            marker.classList.add("partial");
+        }
+    },
+
+    /**
+     * [HELPER] Legacy/Fallback update (Synchronous, Partial assumption)
+     */
+    _updateMarkerStatusLegacy(element) {
+        const chunks = this.playlist.filter(p => p.element === element);
+        if (chunks.length === 0) return;
         
         const marker = this.markers.find(m => m.getAttribute("data-tts-id") === chunks[0].id);
         if (marker) {
-            // Safe bet: Add partial. The full check will upgrade to cached eventually.
-            // Or if it was already cached, keep it.
             if (!marker.classList.contains("cached")) {
                 marker.classList.add("partial");
             }
