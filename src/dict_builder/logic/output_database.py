@@ -91,7 +91,6 @@ class OutputDatabase:
             """)
 
         # Indexes
-        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_headword ON entries(headword_clean);")
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
 
 

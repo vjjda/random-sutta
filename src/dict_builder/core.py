@@ -11,22 +11,19 @@ from .renderer import DpdRenderer
 
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
-from .logic.batch_worker import process_batch_worker
+from .logic.batch_worker import process_batch_worker, process_decon_worker # [IMPORT NEW WORKER]
 
 class DictBuilder:
     def __init__(self, mode: str = "mini"):
         self.config = BuilderConfig(mode=mode)
-        # Renderer không còn dùng ở đây nữa vì đã bỏ render_deconstruction
         
     def run(self):
         start_time = time.time()
-        print(f"🚀 Starting Dictionary Builder (Lite Version)...")
+        print(f"🚀 Starting Dictionary Builder (Parallel Decon)...")
         
-        # 1. Setup Output DB
         output_db = OutputDatabase(self.config)
         output_db.setup()
 
-        # 2. Select Targets
         session = get_db_session(self.config.DPD_DB_PATH)
         selector = WordSelector(self.config)
         target_ids = selector.get_target_ids(session)
@@ -35,10 +32,10 @@ class DictBuilder:
             session.close()
             return
 
-        # 3. Processing Batches (Multiprocessing)
-        BATCH_SIZE = 1000
+        # --- PHASE 1: HEADWORDS (Parallel) ---
+        BATCH_SIZE = 2000 # Tăng batch size lên để giảm overhead process
         chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
-        print(f"[green]Processing {len(target_ids)} items in {len(chunks)} chunks...")
+        print(f"[green]Processing {len(target_ids)} headwords in {len(chunks)} chunks...")
 
         processed_count = 0
         with ProcessPoolExecutor() as executor:
@@ -47,34 +44,44 @@ class DictBuilder:
             for future in as_completed(futures):
                 entries, lookups = future.result()
                 output_db.insert_batch(entries, lookups)
-                
                 processed_count += len(entries)
-                print(f"   Saved batch... ({processed_count}/{len(target_ids)})", end="\r")
+                print(f"   Saved headwords... ({processed_count}/{len(target_ids)})", end="\r")
         
-        print(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
+        print(f"\n[green]Headwords done in {time.time() - start_time:.2f}s")
 
-        # 4. Process Deconstructions
-        print("[green]Processing Deconstructions...")
-        deconstructions = session.query(Lookup).filter(Lookup.deconstructor != "").all()
+        # --- PHASE 2: DECONSTRUCTIONS (Parallel) ---
+        print("[green]Processing Deconstructions (Parallel)...")
         
-        decon_batch = []
-        decon_lookup_batch = []
+        # 1. Lấy tất cả lookup_key cần xử lý
+        # Lưu ý: Query này lấy hết keys về RAM, nhưng chỉ là string nên nhẹ (vài MB)
+        decon_keys = [r.lookup_key for r in session.query(Lookup.lookup_key).filter(Lookup.deconstructor != "").all()]
         
-        for idx, d in enumerate(deconstructions, start=1):
-            split_str = "; ".join(d.deconstructor_unpack_list)
+        # 2. Chia chunk
+        DECON_BATCH_SIZE = 5000
+        decon_chunks = []
+        for i in range(0, len(decon_keys), DECON_BATCH_SIZE):
+            chunk_keys = decon_keys[i : i + DECON_BATCH_SIZE]
+            start_id = i + 1 # ID giả lập: 1, 5001, 10001...
+            decon_chunks.append((chunk_keys, start_id))
             
-            decon_batch.append((idx, d.lookup_key, split_str))
-            
-            # [CHANGED] is_headword = 0 (False) -> Trỏ về bảng deconstructions
-            decon_lookup_batch.append((d.lookup_key, idx, 0, 0))
-            
-        output_db.insert_deconstructions(decon_batch, decon_lookup_batch)
+        print(f"[green]Processing {len(decon_keys)} deconstructions in {len(decon_chunks)} chunks...")
         
-        # 5. Cleanup
+        processed_decon = 0
+        with ProcessPoolExecutor() as executor:
+            # Truyền start_id vào worker để nó tự sinh ID
+            futures = [executor.submit(process_decon_worker, chunk, start_id, self.config) for chunk, start_id in decon_chunks]
+            
+            for future in as_completed(futures):
+                decons, lookups = future.result()
+                output_db.insert_deconstructions(decons, lookups)
+                processed_decon += len(decons)
+                print(f"   Saved deconstructions... ({processed_decon}/{len(decon_keys)})", end="\r")
+
+        # --- PHASE 3: CLEANUP ---
         output_db.close()
         session.close()
         
-        print(f"✅ Build Complete: {self.config.output_path}")
+        print(f"\n✅ Build Complete: {self.config.output_path}")
         print(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
 
 def run_builder():

@@ -1,32 +1,24 @@
 # Path: src/tools/text_scanner.py
 import json
-import pickle
+import marshal  # [CHANGED] Nhanh hơn pickle cho dữ liệu native
 import re
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 from typing import Set, List
 from rich import print
 
-# Cache file location
-CACHE_FILE = Path(".cache/ebts_words_v2.pkl")
+# Đổi đuôi file cache
+CACHE_FILE = Path(".cache/ebts_words_v2.marshal")
 
 def _process_single_file(file_path: Path) -> Set[str]:
-    """Hàm worker: Xử lý 1 file và trả về tập từ vựng của file đó."""
     local_words = set()
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            
-            # [FIXED] Regex cập nhật đầy đủ các biến thể Pali:
-            # - a-z, A-Z: Chữ cái Latin thường
-            # - āīūṅñṭḍṇḷṃ: Các ký tự Pali chấm dưới/ngang phổ biến
-            # - ṁ: [NEW] Ký tự Niggahita chấm trên (dùng trong MS data)
-            # - Các ký tự viết hoa tương ứng
+            # Regex bao gồm cả ṁ (chấm trên)
             pattern = re.compile(r'[a-zA-ZāīūṅñṭḍṇḷṃṁĀĪŪṄÑṬḌṆḶṂṀ]+')
             
-            # data.values() giúp bỏ qua key (ví dụ "an1.1:1.1") chỉ lấy text
             for text in data.values():
-                # lower() trước để đồng nhất, sau đó mới findall
                 words = pattern.findall(text.lower())
                 local_words.update(words)
     except Exception:
@@ -34,47 +26,40 @@ def _process_single_file(file_path: Path) -> Set[str]:
     return local_words
 
 def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[str]:
-    """
-    Quét text Pali với cơ chế Caching và Multiprocessing.
-    """
-    # 1. Kiểm tra Cache
+    # 1. Kiểm tra Cache (Marshal)
     if CACHE_FILE.exists():
-        print(f"[cyan]Loading EBTS word set from cache: {CACHE_FILE}")
+        print(f"[cyan]Loading EBTS word set from cache (Marshal)...")
         try:
             with open(CACHE_FILE, "rb") as f:
-                return pickle.load(f)
+                # Marshal load cực nhanh
+                return set(marshal.load(f))
         except Exception:
             print("[yellow]Cache corrupted, rescanning...")
 
     print(f"[cyan]Scanning text in {bilara_root_path} (Parallel)...")
     
     if not bilara_root_path.exists():
-        print(f"[red]Path not found: {bilara_root_path}")
         return set()
 
-    # 2. Thu thập danh sách file cần quét
     target_files = []
     for path in bilara_root_path.rglob("*.json"):
-        # Lọc sơ bộ theo tên sách để tránh quét toàn bộ tạng kinh nếu không cần
         if any(path.name.startswith(b) for b in books_filter):
             target_files.append(path)
 
     print(f"[cyan]Found {len(target_files)} files to process.")
 
-    # 3. Multiprocessing Scan
     final_word_set = set()
     
-    # ProcessPoolExecutor tự động dùng tối đa số core CPU
     with ProcessPoolExecutor() as executor:
         results = executor.map(_process_single_file, target_files)
-        
         for res in results:
             final_word_set.update(res)
 
-    # 4. Lưu Cache
+    # Lưu Cache bằng Marshal
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(CACHE_FILE, "wb") as f:
-        pickle.dump(final_word_set, f)
+        # Chuyển về list để marshal dump được (marshal không support set ở 1 số phiên bản cũ, list an toàn hơn)
+        marshal.dump(list(final_word_set), f)
     
     print(f"[green]Scanned and cached {len(final_word_set)} unique words.")
     return final_word_set
