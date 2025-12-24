@@ -7,14 +7,11 @@ class BuilderConfig:
     PROJECT_ROOT: Path = Path(__file__).parents[2]
     DPD_DB_PATH: Path = PROJECT_ROOT / "data" / "dpd" / "dpd.db"
     OUTPUT_DIR: Path = PROJECT_ROOT / "data" / "dpd"
-    DB_NAME: str = "dpd_mini.db"
     TEMPLATES_DIR: Path = Path(__file__).parent / "templates"
 
     # --- Settings ---
-    # [NEW] Flag nén dữ liệu. False = Lưu Text thuần (dễ debug). True = Nén Zlib (nhỏ gọn).
     USE_COMPRESSION: bool = False 
 
-    # Sách EBTS dùng để lọc khi ở chế độ Mini
     EBTS_BOOKS: List[str] = [
         "vin1", "vin2", "vin3", "vin4",
         "dn1", "dn2", "dn3",
@@ -27,8 +24,19 @@ class BuilderConfig:
 
     def __init__(self, mode: str = "mini"):
         self.mode = mode
+        
+        # [UPDATED] Đặt tên file DB dựa trên mode
+        if self.mode == "tiny":
+            self.DB_NAME = "dpd_tiny.db"
+        else:
+            self.DB_NAME = "dpd_mini.db"
+            
         self.output_path = self.OUTPUT_DIR / self.DB_NAME
 
     @property
     def is_full_mode(self) -> bool:
         return self.mode == "full"
+        
+    @property
+    def is_tiny_mode(self) -> bool:
+        return self.mode == "tiny"

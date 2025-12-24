@@ -9,13 +9,10 @@ from ..renderer import DpdRenderer
 from ..config import BuilderConfig
 
 def process_html(html_str: str, compress: bool) -> str | bytes:
-    """Xử lý HTML: Nén nếu cần, không thì trả về string gốc."""
     if not html_str:
         return None
-    
     if compress:
         return zlib.compress(html_str.encode('utf-8'))
-    
     return html_str
 
 def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, List]:
@@ -29,32 +26,43 @@ def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, L
         headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
         
         for i in headwords:
-            # Render HTML
-            grammar_html = renderer.render_grammar(i)
-            examples = renderer.render_examples(i)
-            definition = renderer.render_entry(i)
+            # [UPDATED] Logic rẽ nhánh cho Tiny Mode
+            if config.is_tiny_mode:
+                # 1. Tiny Mode: JSON Definition, No Grammar/Example
+                definition_json = renderer.extract_definition_json(i)
+                
+                # Cần nén nếu config yêu cầu
+                if config.USE_COMPRESSION:
+                    # Nén chuỗi JSON cũng dùng zlib được
+                    definition_final = zlib.compress(definition_json.encode('utf-8'))
+                else:
+                    definition_final = definition_json
+
+                entries_data.append((
+                    i.id,
+                    i.lemma_1,
+                    i.lemma_clean,
+                    definition_final
+                ))
+            else:
+                # 2. Mini/Standard Mode: HTML
+                grammar_html = renderer.render_grammar(i)
+                examples = renderer.render_examples(i)
+                definition = renderer.render_entry(i)
+                
+                entries_data.append((
+                    i.id,
+                    i.lemma_1,
+                    i.lemma_clean,
+                    process_html(definition, config.USE_COMPRESSION),
+                    process_html(grammar_html, config.USE_COMPRESSION),
+                    process_html(examples, config.USE_COMPRESSION)
+                ))
             
-            # [CHANGED] Xử lý nén tùy theo config
-            entries_data.append((
-                i.id,
-                i.lemma_1,
-                i.lemma_clean,
-                process_html(definition, config.USE_COMPRESSION),
-                process_html(grammar_html, config.USE_COMPRESSION),
-                process_html(examples, config.USE_COMPRESSION)
-                # [REMOVED] score
-            ))
-            
-            # [CHANGED] Lookups logic: 
-            # is_headword = 1 (True) -> Đây là từ trong bảng entries
-            
-            # 1. Headword chính
+            # Lookups logic giữ nguyên cho cả 2 mode
             lookups_data.append((i.lemma_clean, i.id, 1, 0))
-            
-            # 2. Các biến thể (Inflections)
             for inf in i.inflections_list_all:
                 if inf:
-                    # Vẫn trỏ về bảng entries (is_headword=1), nhưng là biến thể (is_inflection=1)
                     lookups_data.append((inf, i.id, 1, 1))
                     
     except Exception as e:
