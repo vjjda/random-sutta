@@ -10,12 +10,11 @@ CREATE TABLE IF NOT EXISTS entries (
     headword TEXT NOT NULL,
     headword_clean TEXT NOT NULL,
     
-    definition_html TEXT,
+    -- [OPTIMIZED] Chuyển sang BLOB để lưu binary đã nén zlib
+    definition_html BLOB,
+    grammar_html BLOB,
+    example_html BLOB,
     
-    -- [CHANGED] Quay lại dùng HTML cho bảng grammar
-    grammar_html TEXT,
-    
-    example_html TEXT,
     search_score INTEGER DEFAULT 0
 );
 
@@ -28,8 +27,12 @@ CREATE TABLE IF NOT EXISTS deconstructions (
 CREATE TABLE IF NOT EXISTS lookups (
     key TEXT NOT NULL,
     target_id INTEGER NOT NULL,
-    target_type TEXT CHECK(target_type IN ('entry', 'deconstruction')) NOT NULL,
-    is_inflection BOOLEAN DEFAULT 0
+    
+    -- [OPTIMIZED] Dùng số nguyên: 0=entry, 1=deconstruction
+    target_type INTEGER NOT NULL, 
+    
+    -- [OPTIMIZED] Gom nhóm: 1=inflection, 0=headword (giữ nguyên logic nhưng chú ý kiểu dữ liệu)
+    is_inflection INTEGER DEFAULT 0 
 );
 
 CREATE INDEX IF NOT EXISTS idx_entries_headword ON entries(headword_clean);

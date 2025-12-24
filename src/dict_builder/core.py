@@ -61,11 +61,12 @@ class DictBuilder:
         decon_lookup_batch = []
         
         for idx, d in enumerate(deconstructions, start=1):
-            # [UPDATED] Không render HTML nữa
             split_str = "; ".join(d.deconstructor_unpack_list)
             
             decon_batch.append((idx, d.lookup_key, split_str))
-            decon_lookup_batch.append((d.lookup_key, idx, 'deconstruction', 0))
+            
+            # [OPTIMIZED] target_type = 1 (deconstruction), is_inflection = 0
+            decon_lookup_batch.append((d.lookup_key, idx, 1, 0))
             
         output_db.insert_deconstructions(decon_batch, decon_lookup_batch)
         

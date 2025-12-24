@@ -33,11 +33,12 @@ class OutputDatabase:
                             ("version", datetime.now().strftime("%Y-%m-%d")))
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
                             ("mode", self.config.mode))
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
+                            ("compression", "zlib")) # Đánh dấu để Client biết mà giải nén
         self.conn.commit()
 
     def insert_batch(self, entries: list, lookups: list):
         if entries:
-            # [CHANGED] grammar_html
             self.cursor.executemany(
                 "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, search_score) VALUES (?,?,?,?,?,?,?)",
                 entries
