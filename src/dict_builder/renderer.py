@@ -50,8 +50,8 @@ class DpdRenderer:
         grammar_line = make_grammar_line(i)
         return self.tpl_grammar.render(i=i, grammar=grammar_line)
 
-    def render_entry(self, i: DpdHeadword, grammar_html: str, example_html: str) -> str:
-        """Render phần định nghĩa chính."""
+    def render_entry(self, i: DpdHeadword) -> str:
+        """Render phần định nghĩa chính (Chỉ Summary + Meaning)."""
         summary = f"{i.pos}. "
         if i.plus_case:
             summary += f"({i.plus_case}) "
@@ -64,9 +64,8 @@ class DpdRenderer:
 
         return self.tpl_entry.render(
             i=i,
-            summary=summary,
-            grammar_html=grammar_html,
-            example_html=example_html
+            summary=summary
+            # Không truyền grammar và example vào đây nữa
         )
 
     def render_examples(self, i: DpdHeadword) -> str:

@@ -1,7 +1,9 @@
 # Path: src/dict_builder/core.py
 import sqlite3
-import shutil
+import time
 from datetime import datetime
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import List, Tuple
 from rich import print
 
 from src.db.db_helpers import get_db_session
@@ -14,14 +16,64 @@ from src.tools.pali_sort_key import pali_sort_key
 from .config import BuilderConfig
 from .renderer import DpdRenderer
 
+# --- WORKER FUNCTION (Must be top-level for pickling) ---
+def process_batch(ids: List[int], config: BuilderConfig) -> Tuple[List, List]:
+    """
+    Hàm này chạy trong một Process riêng biệt.
+    Nó tự tạo connection DB riêng để tránh lỗi thread-safety của SQLAlchemy.
+    """
+    # Khởi tạo renderer và db session cục bộ cho process này
+    renderer = DpdRenderer(config)
+    session = get_db_session(config.DPD_DB_PATH)
+    
+    entries_data = []
+    lookups_data = []
+    
+    try:
+        # Query một lần lấy hết các items trong batch để tối ưu
+        headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
+        
+        # Sort lại theo thứ tự ID đầu vào (nếu cần, hoặc sort sau)
+        # Ở đây ta không quan trọng thứ tự xử lý, chỉ quan trọng kết quả
+        
+        for i in headwords:
+            # 1. Render HTML
+            grammar = renderer.render_grammar(i)
+            examples = renderer.render_examples(i)
+            # [UPDATED] Không truyền grammar/example vào render_entry nữa
+            definition = renderer.render_entry(i)
+            data_json = renderer.extract_json_data(i)
+            
+            # 2. Prepare Data Tuple
+            entries_data.append((
+                i.id,
+                i.lemma_1,
+                i.lemma_clean,
+                definition,
+                grammar,
+                examples,
+                data_json
+            ))
+            
+            # 3. Lookups
+            lookups_data.append((i.lemma_clean, i.id, 'entry', 0))
+            for inf in i.inflections_list_all:
+                if inf:
+                    lookups_data.append((inf, i.id, 'entry', 1))
+                    
+    except Exception as e:
+        print(f"[red]Error in worker process: {e}")
+    finally:
+        session.close()
+        
+    return entries_data, lookups_data
+
+# --- MAIN CLASS ---
 class DictBuilder:
     def __init__(self, mode: str = "mini"):
-        """
-        Khởi tạo DictBuilder.
-        :param mode: 'mini' (chỉ EBTS) hoặc 'full' (toàn bộ từ điển).
-        """
         self.config = BuilderConfig(mode=mode)
         self.pth = ProjectPaths()
+        # Renderer ở đây chỉ dùng cho các tác vụ đơn lẻ (deconstructions)
         self.renderer = DpdRenderer(self.config)
         
     def _init_db(self):
@@ -35,132 +87,122 @@ class DictBuilder:
         self.conn = sqlite3.connect(self.config.output_path)
         self.cursor = self.conn.cursor()
         
+        # Tắt journal mode hoặc dùng WAL để insert nhanh hơn
+        self.cursor.execute("PRAGMA synchronous = OFF")
+        self.cursor.execute("PRAGMA journal_mode = MEMORY")
+        
         schema_path = self.config.TEMPLATES_DIR.parent / "schema.sql"
         with open(schema_path, "r", encoding="utf-8") as f:
             self.cursor.executescript(f.read())
             
-        self.cursor.execute(
-            "INSERT INTO metadata (key, value) VALUES (?, ?)", 
-            ("version", datetime.now().strftime("%Y-%m-%d"))
-        )
-        self.cursor.execute(
-            "INSERT INTO metadata (key, value) VALUES (?, ?)", 
-            ("mode", self.config.mode)
-        )
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
+                            ("version", datetime.now().strftime("%Y-%m-%d")))
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
+                            ("mode", self.config.mode))
         self.conn.commit()
 
-    def _get_target_headwords(self, session) -> list[DpdHeadword]:
-        """Lọc danh sách từ cần build dựa trên chế độ (Mini/Full)."""
-        print(f"[green]Querying DPD DB (Mode: {self.config.mode})...")
-        all_headwords = session.query(DpdHeadword).all()
+    def _get_target_ids(self, session) -> List[int]:
+        """Lấy danh sách ID cần xử lý (nhanh hơn lấy full object)."""
+        print(f"[green]Scanning DPD DB (Mode: {self.config.mode})...")
+        
+        # Lấy tất cả (ID, Lemma, Inflections) để lọc nhanh
+        # Chỉ lấy cột cần thiết để tiết kiệm RAM
+        query = session.query(DpdHeadword.id, DpdHeadword.lemma_1, DpdHeadword.inflections, DpdHeadword.inflections_api_ca_eva_iti)
         
         if self.config.is_full_mode:
-            print(f"[green]Full Mode: Selected all {len(all_headwords)} headwords.")
-            return all_headwords
+            print("[green]Full Mode: Selecting all IDs.")
+            return [row.id for row in query.all()]
 
-        # --- MINI MODE LOGIC ---
-        print("[yellow]Calculating EBTS word set from Bilara Data...")
-        
+        # --- MINI MODE ---
+        print("[yellow]Calculating EBTS word set...")
         bilara_path = self.config.PROJECT_ROOT / "data/bilara/root/pli/ms"
-        
         if not bilara_path.exists():
-            print(f"[red]Error: Bilara data not found at {bilara_path}")
-            print("[red]Please run 'make sync-text' first!")
+            print(f"[red]Bilara data missing at {bilara_path}")
             return []
 
         target_set = get_ebts_word_set(bilara_path, self.config.EBTS_BOOKS)
-        
-        print("[yellow]Adding words from deconstructions...")
         decon_set = make_words_in_deconstructions(session)
-        
         target_set = target_set | decon_set
-        print(f"[green]Total unique words in target set: {len(target_set)}")
-
-        filtered = []
-        print("[yellow]Filtering headwords...")
-        for i in all_headwords:
-            if i.lemma_clean in target_set:
-                filtered.append(i)
+        
+        print(f"[green]Target words: {len(target_set)}")
+        
+        target_ids = []
+        for row in query.all():
+            # Tái tạo logic lemma_clean
+            lemma_clean = row.lemma_1.split(" ")[0] # basic clean
+            
+            # Logic check nhanh
+            if lemma_clean in target_set:
+                target_ids.append(row.id)
                 continue
             
-            if not set(i.inflections_list_all).isdisjoint(target_set):
-                filtered.append(i)
-
-        print(f"[green]Mini Mode: Filtered down to {len(filtered)} headwords.")
-        return filtered
+            # Check inflections
+            infs = []
+            if row.inflections: infs.extend(row.inflections.split(","))
+            if row.inflections_api_ca_eva_iti: infs.extend(row.inflections_api_ca_eva_iti.split(","))
+            
+            if not set(infs).isdisjoint(target_set):
+                target_ids.append(row.id)
+                
+        print(f"[green]Filtered down to {len(target_ids)} entries.")
+        return target_ids
 
     def run(self):
-        print(f"🚀 Starting Dictionary Builder...")
+        start_time = time.time()
+        print(f"🚀 Starting Multi-process Dictionary Builder...")
         self._init_db()
         
         session = get_db_session(self.config.DPD_DB_PATH)
         
-        headwords = self._get_target_headwords(session)
-        if not headwords:
-            print("[red]No headwords found. Aborting.")
+        # 1. Lấy danh sách ID cần xử lý
+        target_ids = self._get_target_ids(session)
+        if not target_ids:
             return
 
-        print("[yellow]Sorting headwords...")
-        headwords = sorted(headwords, key=lambda x: pali_sort_key(x.lemma_1))
-        
-        print(f"[green]Processing entries and generating HTML...")
-        
-        entries_batch = []
-        lookups_batch = []
-        
-        count = 0
-        total = len(headwords)
-        
-        for i in headwords:
-            grammar = self.renderer.render_grammar(i)
-            examples = self.renderer.render_examples(i)
-            definition = self.renderer.render_entry(i, grammar, examples)
-            data_json = self.renderer.extract_json_data(i)
-            
-            entries_batch.append((
-                i.id,
-                i.lemma_1,
-                i.lemma_clean,
-                definition,
-                grammar,
-                examples,
-                data_json
-            ))
-            
-            lookups_batch.append((i.lemma_clean, i.id, 'entry', 0))
-            
-            for inf in i.inflections_list_all:
-                if inf: 
-                    lookups_batch.append((inf, i.id, 'entry', 1))
-            
-            count += 1
-            if count % 2000 == 0:
-                print(f"   Processed {count}/{total}...")
+        # 2. Chia nhỏ thành batches (Chunks)
+        BATCH_SIZE = 1000
+        chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
+        print(f"[green]Processing {len(target_ids)} items in {len(chunks)} chunks...")
 
-        print("[green]Inserting entries into SQLite...")
-        self.cursor.executemany(
-            "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, data_json) VALUES (?,?,?,?,?,?,?)",
-            entries_batch
-        )
+        # 3. Chạy Multi-processing
+        # Sử dụng số core CPU tối đa
+        processed_count = 0
         
-        print("[green]Inserting lookups into SQLite...")
-        self.cursor.executemany(
-            "INSERT INTO lookups (key, target_id, target_type, is_inflection) VALUES (?,?,?,?)",
-            lookups_batch
-        )
+        with ProcessPoolExecutor() as executor:
+            # Submit tất cả tasks
+            futures = [executor.submit(process_batch, chunk, self.config) for chunk in chunks]
+            
+            for future in as_completed(futures):
+                entries, lookups = future.result()
+                
+                # Ghi vào DB ngay khi có kết quả
+                if entries:
+                    self.cursor.executemany(
+                        "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, data_json) VALUES (?,?,?,?,?,?,?)",
+                        entries
+                    )
+                if lookups:
+                    self.cursor.executemany(
+                        "INSERT INTO lookups (key, target_id, target_type, is_inflection) VALUES (?,?,?,?)",
+                        lookups
+                    )
+                
+                processed_count += len(entries)
+                print(f"   Saved batch... ({processed_count}/{len(target_ids)})", end="\r")
+        
+        print(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
+        # 4. Xử lý Deconstructions (Nhanh nên chạy đơn luồng cũng được)
         print("[green]Processing Deconstructions...")
         deconstructions = session.query(Lookup).filter(Lookup.deconstructor != "").all()
         
         decon_batch = []
         decon_lookup_batch = []
         
-        # [FIXED] Tự sinh ID số nguyên cho Deconstructions vì bảng gốc không có ID
         for idx, d in enumerate(deconstructions, start=1):
             html = self.renderer.render_deconstruction(d)
             split_str = " + ".join(d.deconstructor_unpack_list)
             
-            # Sử dụng idx làm ID
             decon_batch.append((idx, d.lookup_key, split_str, html))
             decon_lookup_batch.append((d.lookup_key, idx, 'deconstruction', 0))
             
@@ -175,14 +217,16 @@ class DictBuilder:
         
         self.conn.commit()
         
-        print("[green]Optimizing Database (VACUUM)...")
+        print("[green]Indexing & Optimizing (VACUUM)...")
         self.conn.execute("VACUUM")
         
         self.conn.close()
         session.close()
         
         print(f"✅ Build Complete: {self.config.output_path}")
+        print(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
 
 def run_builder():
+    # Cần bảo vệ entry point khi dùng multiprocessing trên một số OS
     builder = DictBuilder(mode="mini")
     builder.run()
