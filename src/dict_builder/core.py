@@ -65,8 +65,8 @@ class DictBuilder:
             
             decon_batch.append((idx, d.lookup_key, split_str))
             
-            # [OPTIMIZED] target_type = 1 (deconstruction), is_inflection = 0
-            decon_lookup_batch.append((d.lookup_key, idx, 1, 0))
+            # [CHANGED] is_headword = 0 (False) -> Trỏ về bảng deconstructions
+            decon_lookup_batch.append((d.lookup_key, idx, 0, 0))
             
         output_db.insert_deconstructions(decon_batch, decon_lookup_batch)
         

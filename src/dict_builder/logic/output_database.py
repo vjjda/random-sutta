@@ -33,19 +33,25 @@ class OutputDatabase:
                             ("version", datetime.now().strftime("%Y-%m-%d")))
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
                             ("mode", self.config.mode))
+        
+        # Ghi chú trạng thái nén để Client biết đường xử lý
+        comp_status = "zlib" if self.config.USE_COMPRESSION else "none"
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
-                            ("compression", "zlib")) # Đánh dấu để Client biết mà giải nén
+                            ("compression", comp_status))
+                            
         self.conn.commit()
 
     def insert_batch(self, entries: list, lookups: list):
         if entries:
+            # [CHANGED] Bỏ search_score
             self.cursor.executemany(
-                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, search_score) VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html) VALUES (?,?,?,?,?,?)",
                 entries
             )
         if lookups:
+            # [CHANGED] is_headword
             self.cursor.executemany(
-                "INSERT INTO lookups (key, target_id, target_type, is_inflection) VALUES (?,?,?,?)",
+                "INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)",
                 lookups
             )
         self.conn.commit()
@@ -58,7 +64,7 @@ class OutputDatabase:
             )
         if lookups:
             self.cursor.executemany(
-                "INSERT INTO lookups (key, target_id, target_type, is_inflection) VALUES (?,?,?,?)",
+                "INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)",
                 lookups
             )
         self.conn.commit()
