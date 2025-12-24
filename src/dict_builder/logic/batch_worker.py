@@ -9,11 +9,8 @@ from ..renderer import DpdRenderer
 from ..config import BuilderConfig
 
 def process_data(data_str: str, compress: bool) -> str | bytes:
-    """Hàm helper để nén dữ liệu nếu cần."""
-    if not data_str:
-        return None
-    if compress:
-        return zlib.compress(data_str.encode('utf-8'))
+    if not data_str: return None
+    if compress: return zlib.compress(data_str.encode('utf-8'))
     return data_str
 
 def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Optional[Set[str]]) -> Tuple[List, List]:
@@ -27,40 +24,58 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
         headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
         
         for i in headwords:
-            # 1. Definition JSON (Dùng chung cho cả Tiny và Mini)
-            definition_json = renderer.extract_definition_json(i)
+            # [UPDATED] Logic Rẽ nhánh HTML vs JSON
             
-            if config.is_tiny_mode:
-                # Tiny: Chỉ lưu definition
-                entries_data.append((
-                    i.id,
-                    i.lemma_1,
-                    i.lemma_clean,
-                    process_data(definition_json, config.USE_COMPRESSION)
-                ))
+            if config.html_mode:
+                # --- HTML MODE ---
+                if config.is_tiny_mode:
+                    # Tiny + HTML: Chỉ lấy Definition HTML
+                    definition_html = renderer.render_entry(i)
+                    entries_data.append((
+                        i.id, i.lemma_1, i.lemma_clean,
+                        process_data(definition_html, config.USE_COMPRESSION)
+                    ))
+                else:
+                    # Mini/Full + HTML: 3 cột HTML
+                    grammar_html = renderer.render_grammar(i)
+                    examples_html = renderer.render_examples(i)
+                    definition_html = renderer.render_entry(i)
+                    
+                    entries_data.append((
+                        i.id, i.lemma_1, i.lemma_clean,
+                        process_data(definition_html, config.USE_COMPRESSION),
+                        process_data(grammar_html, config.USE_COMPRESSION),
+                        process_data(examples_html, config.USE_COMPRESSION)
+                    ))
             else:
-                # Mini: Lưu Definition, Grammar, Example đều dạng JSON
-                grammar_json = renderer.extract_grammar_json(i)
-                example_json = renderer.extract_example_json(i)
+                # --- JSON MODE ---
+                definition_json = renderer.extract_definition_json(i)
                 
-                entries_data.append((
-                    i.id,
-                    i.lemma_1,
-                    i.lemma_clean,
-                    process_data(definition_json, config.USE_COMPRESSION),
-                    process_data(grammar_json, config.USE_COMPRESSION),
-                    process_data(example_json, config.USE_COMPRESSION)
-                ))
+                if config.is_tiny_mode:
+                    # Tiny + JSON
+                    entries_data.append((
+                        i.id, i.lemma_1, i.lemma_clean,
+                        process_data(definition_json, config.USE_COMPRESSION)
+                    ))
+                else:
+                    # Mini/Full + JSON
+                    grammar_json = renderer.extract_grammar_json(i)
+                    example_json = renderer.extract_example_json(i)
+                    
+                    entries_data.append((
+                        i.id, i.lemma_1, i.lemma_clean,
+                        process_data(definition_json, config.USE_COMPRESSION),
+                        process_data(grammar_json, config.USE_COMPRESSION),
+                        process_data(example_json, config.USE_COMPRESSION)
+                    ))
             
             # --- Logic Lookups (Giữ nguyên) ---
             lookups_data.append((i.lemma_clean, i.id, 1, 0))
             unique_infs = set(i.inflections_list_all)
             
             for inf in unique_infs:
-                if not inf or inf == i.lemma_clean:
-                    continue
-                if target_set is not None and inf not in target_set:
-                    continue
+                if not inf or inf == i.lemma_clean: continue
+                if target_set is not None and inf not in target_set: continue
                 lookups_data.append((inf, i.id, 1, 1))
                     
     except Exception as e:

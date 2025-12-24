@@ -11,22 +11,23 @@ class BuilderConfig:
 
     # --- Settings ---
     USE_COMPRESSION: bool = False 
+
+    # Lấy TOÀN BỘ sách
     EBTS_BOOKS: List[str] = [""]
 
-    # EBTS_BOOKS: List[str] = [
-    #     "an", "mn", "dn", "sn", "thag", "thig", "iti", "snp", "vbh", "pv", "ps", "ja", "tha-ap", "thi-ap", "ud", "dhp", "mnd", "dnd", "vv", "ds", "dt"
-    # ]
-
-    def __init__(self, mode: str = "mini"):
+    def __init__(self, mode: str = "mini", html_mode: bool = False):
         self.mode = mode
+        self.html_mode = html_mode # [NEW]
         
-        # [FIXED] Logic đặt tên file chính xác cho từng mode
+        # [UPDATED] Logic đặt tên file: dpd_{html_?}{mode}.db
+        prefix = "dpd_html_" if self.html_mode else "dpd_"
+        
         if self.mode == "tiny":
-            self.DB_NAME = "dpd_tiny.db"
+            self.DB_NAME = f"{prefix}tiny.db"
         elif self.mode == "full":
-            self.DB_NAME = "dpd_full.db"
+            self.DB_NAME = f"{prefix}full.db"
         else:
-            self.DB_NAME = "dpd_mini.db"
+            self.DB_NAME = f"{prefix}mini.db"
             
         self.output_path = self.OUTPUT_DIR / self.DB_NAME
 

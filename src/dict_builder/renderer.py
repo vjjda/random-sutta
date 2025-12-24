@@ -11,11 +11,13 @@ class DpdRenderer:
         self._load_templates()
 
     def _load_templates(self):
-        if not self.config.is_tiny_mode and self.config.mode != "mini":
+        # [UPDATED] Load templates nếu đang ở HTML Mode
+        if self.config.html_mode:
             self.tpl_entry = Template(filename=str(self.config.TEMPLATES_DIR / "entry.html"))
             self.tpl_grammar = Template(filename=str(self.config.TEMPLATES_DIR / "grammar.html"))
             self.tpl_example = Template(filename=str(self.config.TEMPLATES_DIR / "example.html"))
         
+        # Deconstruction luôn cần template này (dù mode nào cũng render HTML/String cho nó)
         self.tpl_deconstruction = Template(filename=str(self.config.TEMPLATES_DIR / "deconstruction.html"))
 
     def render_deconstruction(self, i) -> str:
