@@ -3,8 +3,8 @@ import zlib
 from typing import List, Tuple, Set, Optional
 from rich import print
 
-from src.db.db_helpers import get_db_session
-from src.db.models import DpdHeadword, Lookup
+from src.dict_builder.db.db_helpers import get_db_session
+from src.dict_builder.db.models import DpdHeadword, Lookup
 from ..renderer import DpdRenderer
 from ..config import BuilderConfig
 

@@ -1,10 +1,10 @@
-# Path: src/db/models.py
+# Path: src/dict_builder/db/models.py
 import re
 import json
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 
-from src.tools.meaning_construction import make_meaning_combo_html, make_grammar_line
+from src.dict_builder.tools.meaning_construction import make_meaning_combo_html, make_grammar_line
 
 Base = declarative_base()
 

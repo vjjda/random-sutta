@@ -1,5 +1,5 @@
-# Path: src/tools/deconstructed_words.py
-from src.db.models import Lookup
+# Path: src/dict_builder/tools/deconstructed_words.py
+from src.dict_builder.db.models import Lookup
 
 def make_words_in_deconstructions(session):
     """Lấy danh sách tất cả các từ xuất hiện trong phân tách từ ghép."""

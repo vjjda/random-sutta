@@ -1,5 +1,5 @@
 # Path: src/dict_builder/renderer.py
-from src.db.models import DpdHeadword
+from src.dict_builder.db.models import DpdHeadword
 from .config import BuilderConfig
 from .renderers.html_renderer import DpdHtmlRenderer
 from .renderers.json_renderer import DpdJsonRenderer

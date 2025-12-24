@@ -4,9 +4,9 @@ from rich import print
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.db.models import DpdHeadword
-from src.tools.text_scanner import get_ebts_word_set
-from src.tools.deconstructed_words import make_words_in_deconstructions
+from src.dict_builder.db.models import DpdHeadword
+from src.dict_builder.tools.text_scanner import get_ebts_word_set
+from src.dict_builder.tools.deconstructed_words import make_words_in_deconstructions
 from ..config import BuilderConfig
 
 class WordSelector:

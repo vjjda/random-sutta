@@ -1,4 +1,4 @@
-# Path: src/tools/meaning_construction.py
+# Path: src/dict_builder/tools/meaning_construction.py
 
 def make_meaning_combo_html(i):
     """

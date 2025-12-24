@@ -1,4 +1,4 @@
-# Path: src/tools/pali_alphabet.py
+# Path: src/dict_builder/tools/pali_alphabet.py
 # 
 pali_alphabet = [
     "a", "ā", "i", "ī", "u", "ū", "e", "o",

@@ -3,8 +3,8 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from rich import print
 
-from src.db.db_helpers import get_db_session
-from src.db.models import Lookup
+from src.dict_builder.db.db_helpers import get_db_session
+from src.dict_builder.db.models import Lookup
 
 from .config import BuilderConfig
 from .renderer import DpdRenderer

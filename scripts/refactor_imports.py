@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Path: scripts/refactor_imports.py
 import re
 import os

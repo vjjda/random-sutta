@@ -1,4 +1,4 @@
-# Path: src/db/db_helpers.py
+# Path: src/dict_builder/db/db_helpers.py
 import sys
 import os
 from sqlalchemy import create_engine

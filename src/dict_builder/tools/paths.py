@@ -1,4 +1,4 @@
-# Path: src/tools/paths.py
+# Path: src/dict_builder/tools/paths.py
 from pathlib import Path
 import os
 

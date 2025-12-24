@@ -1,7 +1,7 @@
 # Path: src/dict_builder/renderers/html_renderer.py
 from mako.template import Template
-from src.db.models import DpdHeadword
-from src.tools.meaning_construction import make_grammar_line
+from src.dict_builder.db.models import DpdHeadword
+from src.dict_builder.tools.meaning_construction import make_grammar_line
 from ..config import BuilderConfig
 
 class DpdHtmlRenderer:

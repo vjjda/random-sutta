@@ -1,4 +1,4 @@
-# Path: src/tools/text_scanner.py
+# Path: src/dict_builder/tools/text_scanner.py
 import json
 import marshal
 import gzip
