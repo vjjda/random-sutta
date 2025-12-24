@@ -1,14 +1,15 @@
 # Path: src/tools/text_scanner.py
 import json
-import marshal  # [CHANGED] Nhanh hơn pickle cho dữ liệu native
+import marshal
+import gzip  # [NEW] Thêm gzip để nén
 import re
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 from typing import Set, List
 from rich import print
 
-# Đổi đuôi file cache
-CACHE_FILE = Path(".cache/ebts_words_v2.marshal")
+# Đổi đuôi file cache để đánh dấu phiên bản nén
+CACHE_FILE = Path(".cache/ebts_words_v3.marshal.gz")
 
 def _process_single_file(file_path: Path) -> Set[str]:
     local_words = set()
@@ -26,12 +27,12 @@ def _process_single_file(file_path: Path) -> Set[str]:
     return local_words
 
 def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[str]:
-    # 1. Kiểm tra Cache (Marshal)
+    # 1. Kiểm tra Cache (Marshal + Gzip)
     if CACHE_FILE.exists():
-        print(f"[cyan]Loading EBTS word set from cache (Marshal)...")
+        print(f"[cyan]Loading EBTS word set from cache (Gzip+Marshal)...")
         try:
-            with open(CACHE_FILE, "rb") as f:
-                # Marshal load cực nhanh
+            # [OPTIMIZED] Đọc file nén cực nhanh
+            with gzip.open(CACHE_FILE, "rb") as f:
                 return set(marshal.load(f))
         except Exception:
             print("[yellow]Cache corrupted, rescanning...")
@@ -55,10 +56,13 @@ def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[st
         for res in results:
             final_word_set.update(res)
 
-    # Lưu Cache bằng Marshal
+    # 2. Lưu Cache (Marshal + Gzip)
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(CACHE_FILE, "wb") as f:
-        # Chuyển về list để marshal dump được (marshal không support set ở 1 số phiên bản cũ, list an toàn hơn)
+    
+    print("[cyan]Saving cache (Compressing)...")
+    # [OPTIMIZED] Nén dữ liệu trước khi ghi xuống đĩa
+    with gzip.open(CACHE_FILE, "wb", compresslevel=5) as f: 
+        # compresslevel=5 là điểm cân bằng tốt nhất giữa tốc độ nén và dung lượng
         marshal.dump(list(final_word_set), f)
     
     print(f"[green]Scanned and cached {len(final_word_set)} unique words.")
