@@ -1,4 +1,4 @@
-# Path: src/sutta_fetcher/logic/content_manager.py
+# Path: src/data_fetcher/bilara/logic/content_manager.py
 import logging
 import shutil
 import os
@@ -6,23 +6,18 @@ from pathlib import Path
 from typing import Tuple, Dict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from ..shared.config import CACHE_DIR, DATA_ROOT, FETCH_MAPPING, IGNORE_PATTERNS
+from ..config import CACHE_DIR, DATA_ROOT, FETCH_MAPPING, IGNORE_PATTERNS
 
-logger = logging.getLogger("SuttaFetcher.ContentManager")
+logger = logging.getLogger("DataFetcher.Bilara.Content")
 
 class ContentManager:
     def clean_destination(self) -> None:
-        """Xóa thư mục đích để đảm bảo sạch sẽ trước khi copy."""
         if DATA_ROOT.exists():
             logger.info("🧹 Cleaning old data...")
             shutil.rmtree(DATA_ROOT)
         DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
     def _get_book_structure_map(self) -> Dict[str, str]:
-        """
-        Builds map of book_id -> relative_path (e.g. 'dn' -> 'sutta/dn')
-        Optimized to scan only relevant directory levels instead of full rglob.
-        """
         root_src = CACHE_DIR / "sc_bilara_data/root/pli/ms"
         structure_map = {}
         
@@ -30,36 +25,26 @@ class ContentManager:
             logger.warning(f"⚠️ Cannot find root text in cache at {root_src}")
             return structure_map
 
-        # Helper to register books in a directory
         def scan_dir(path: Path, relative_base: str):
             if not path.exists(): return
             for item in path.iterdir():
                 if item.is_dir():
-                     # Construct the logic relative path (e.g. sutta/dn)
-                     # For KN: sutta/kn/dhp
                      structure_map[item.name] = f"{relative_base}/{item.name}"
 
-        # 1. Main Nikayas (sutta/dn, sutta/mn, etc.)
         sutta_dir = root_src / "sutta"
         if sutta_dir.exists():
             for item in sutta_dir.iterdir():
                 if item.is_dir():
                     if item.name == "kn":
-                        # 2. Khuddaka Nikaya (sutta/kn/dhp, etc.)
                         scan_dir(item, "sutta/kn")
                     else:
                         structure_map[item.name] = f"sutta/{item.name}"
         
-        # 3. Vinaya
         scan_dir(root_src / "vinaya", "vinaya")
-        
-        # 4. Abhidhamma
         scan_dir(root_src / "abhidhamma", "abhidhamma")
-
         return structure_map
 
     def _smart_copy_tree(self, src_path: Path, dest_path: Path) -> str:
-        """Logic đặc biệt để sắp xếp file tree vào đúng thư mục con."""
         structure_map = self._get_book_structure_map()
         logger.info(f"   ℹ️  Smart Tree Copy: Mapped {len(structure_map)} books structure.")
 
@@ -90,14 +75,12 @@ class ContentManager:
         if not src_path.exists():
             return f"⚠️ Source not found (skipped): {src_rel}"
 
-        # ROUTING ĐẶC BIỆT CHO TREE
         if dest_rel == "tree":
             if dest_path.exists():
                 shutil.rmtree(dest_path)
             dest_path.mkdir(parents=True, exist_ok=True)
             return self._smart_copy_tree(src_path, dest_path)
 
-        # Logic copy thông thường
         ignore_list = []
         for key, patterns in IGNORE_PATTERNS.items():
             if dest_rel.startswith(key):
@@ -106,15 +89,12 @@ class ContentManager:
         ignore_func = shutil.ignore_patterns(*ignore_list) if ignore_list else None
         
         dest_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Merge mode (dirs_exist_ok=True)
         shutil.copytree(src_path, dest_path, ignore=ignore_func, dirs_exist_ok=True)
         
         return f"   -> Copied: {dest_rel}"
 
     def copy_data(self) -> None:
         logger.info("📂 Copying and filtering data (Multi-threaded)...")
-        
         workers = min(os.cpu_count() or 4, len(FETCH_MAPPING))
         
         with ThreadPoolExecutor(max_workers=workers) as executor:

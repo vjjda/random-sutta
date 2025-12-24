@@ -1,7 +1,7 @@
-# Path: src/sutta_fetcher/shared/config.py
+# Path: src/data_fetcher/bilara/config.py
 from pathlib import Path
 
-# Adjust root path: file -> shared -> sutta_fetcher -> src -> project_root
+# Adjust root path: src/data_fetcher/bilara/config.py -> Project Root
 PROJECT_ROOT = Path(__file__).parents[3]
 
 # Data Paths
@@ -12,7 +12,7 @@ DATA_ROOT = PROJECT_ROOT / "data" / "bilara"
 REPO_URL = "https://github.com/suttacentral/sc-data.git"
 BRANCH_NAME = "main"
 
-# Sparse Checkout Mapping (Git Path -> Local Path)
+# Sparse Checkout Mapping
 FETCH_MAPPING = {
     "sc_bilara_data/root/pli/ms": "root/pli/ms",
     "sc_bilara_data/html/pli/ms": "html/pli/ms",
@@ -24,7 +24,6 @@ FETCH_MAPPING = {
     "structure/tree": "tree",
 }
 
-# Ignore patterns during copy
 IGNORE_PATTERNS = {
     "root": ["xplayground"], 
 }

@@ -1,17 +1,13 @@
-# Path: src/sutta_fetcher/sync_manager.py
+# Path: src/data_fetcher/bilara/sync_manager.py
 import sys
-# [NEW] Import logging config
 from src.logging_config import setup_logging
-
-# Import nội bộ
 from .vcs.git_wrapper import GitWrapper
 from .logic.content_manager import ContentManager
 
-# [CHANGED] Init logger
-logger = setup_logging("SuttaFetcher.SyncManager")
+logger = setup_logging("DataFetcher.Bilara")
 
-def run_sync():
-    """Hàm điều phối quá trình đồng bộ dữ liệu từ Git về Local."""
+def run_bilara_sync() -> None:
+    """Điều phối quá trình đồng bộ dữ liệu Bilara từ Git về Local."""
     try:
         # 1. Sync Git Repo
         git_manager = GitWrapper()
@@ -26,4 +22,5 @@ def run_sync():
         
     except Exception as e:
         logger.error(f"❌ Critical Error: {e}")
-        sys.exit(1)
+        # Không sys.exit(1) ở đây để Orchestrator có thể xử lý tiếp
+        raise e

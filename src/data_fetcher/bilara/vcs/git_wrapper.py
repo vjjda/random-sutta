@@ -1,13 +1,13 @@
-# Path: src/sutta_fetcher/vcs/git_wrapper.py
+# Path: src/data_fetcher/bilara/vcs/git_wrapper.py
 import logging
 import shutil
 import subprocess
 from pathlib import Path
 from typing import List
 
-from ..shared.config import CACHE_DIR, REPO_URL, BRANCH_NAME, FETCH_MAPPING
+from ..config import CACHE_DIR, REPO_URL, BRANCH_NAME, FETCH_MAPPING
 
-logger = logging.getLogger("SuttaFetcher.VCS")
+logger = logging.getLogger("DataFetcher.Bilara.VCS")
 
 class GitWrapper:
     def _run_git(self, cwd: Path, args: List[str]) -> None:
@@ -26,8 +26,6 @@ class GitWrapper:
     def _configure_sparse_checkout(self) -> None:
         self._run_git(CACHE_DIR, ["config", "core.sparseCheckout", "true"])
         sparse_path = CACHE_DIR / ".git" / "info" / "sparse-checkout"
-        
-        # Ensure parent dir exists (critical for fresh init)
         sparse_path.parent.mkdir(parents=True, exist_ok=True)
         
         with open(sparse_path, "w") as f:
@@ -62,7 +60,6 @@ class GitWrapper:
         self._run_git(CACHE_DIR, ["clean", "-fdx"])
 
     def sync_repo(self) -> None:
-        """Đảm bảo Local Cache đồng bộ với Remote Git."""
         logger.info("⚡ Setting up data repository...")
         if CACHE_DIR.exists():
             try:
