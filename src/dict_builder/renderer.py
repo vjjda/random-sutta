@@ -11,7 +11,6 @@ class DpdRenderer:
         self._load_templates()
 
     def _load_templates(self):
-        # Chỉ load template nếu không phải là tiny mode (để tiết kiệm resource)
         if not self.config.is_tiny_mode:
             self.tpl_entry = Template(filename=str(self.config.TEMPLATES_DIR / "entry.html"))
             self.tpl_grammar = Template(filename=str(self.config.TEMPLATES_DIR / "grammar.html"))
@@ -49,25 +48,29 @@ class DpdRenderer:
             deconstruction="<br/>".join(i.deconstructor_unpack_list)
         )
 
-    # [NEW] Hàm trích xuất Definition JSON cho Tiny Mode
+    # [UPDATED] Tối ưu hóa: Chỉ lưu 1 trường 'meaning' duy nhất
     def extract_definition_json(self, i: DpdHeadword) -> str:
         """Đóng gói thông tin định nghĩa vào JSON gọn nhẹ."""
+        
+        # Logic chọn meaning: Ưu tiên meaning_1, fallback sang meaning_2
+        final_meaning = i.meaning_1 if i.meaning_1 else i.meaning_2
+        
         data = {
-            "pos": i.pos,
-            "meaning_1": i.meaning_1,
-            "meaning_2": i.meaning_2,
-            "meaning_lit": i.meaning_lit,
+            "p": i.pos,         # Rút gọn key 'pos' -> 'p'
+            "m": final_meaning  # Rút gọn key 'meaning' -> 'm'
         }
         
-        # Chỉ thêm các trường nếu có dữ liệu để tiết kiệm bytes
+        # Chỉ thêm các trường nếu có dữ liệu
+        if i.meaning_lit:
+            data["l"] = i.meaning_lit # 'lit' -> 'l'
+            
         if i.plus_case:
-            data["plus_case"] = i.plus_case
+            data["c"] = i.plus_case   # 'plus_case' -> 'c' (case)
         
         if i.construction_summary:
-            data["construction"] = i.construction_summary
+            data["s"] = i.construction_summary # 'construction' -> 's' (structure)
             
         if i.degree_of_completion:
-            # Lưu text thay vì html symbol nếu cần, hoặc giữ nguyên symbol
-            data["degree"] = i.degree_of_completion # text version
+            data["d"] = i.degree_of_completion # 'degree' -> 'd'
             
         return json.dumps(data, ensure_ascii=False)
