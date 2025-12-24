@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-from ..config import CACHE_DIR, REPO_URL, BRANCH_NAME, FETCH_MAPPING
+from ...fetcher_config import FetcherConfig, BilaraConfig
 
 logger = logging.getLogger("DataFetcher.Bilara.VCS")
 
@@ -24,44 +24,44 @@ class GitWrapper:
             raise RuntimeError(f"Git command failed: {' '.join(args)}\nError: {e.stderr.strip()}")
 
     def _configure_sparse_checkout(self) -> None:
-        self._run_git(CACHE_DIR, ["config", "core.sparseCheckout", "true"])
-        sparse_path = CACHE_DIR / ".git" / "info" / "sparse-checkout"
+        self._run_git(FetcherConfig.CACHE_DIR, ["config", "core.sparseCheckout", "true"])
+        sparse_path = FetcherConfig.CACHE_DIR / ".git" / "info" / "sparse-checkout"
         sparse_path.parent.mkdir(parents=True, exist_ok=True)
         
         with open(sparse_path, "w") as f:
-            for path in FETCH_MAPPING.keys():
+            for path in BilaraConfig.FETCH_MAPPING.keys():
                 f.write(path.strip("/") + "\n")
 
     def _perform_fresh_clone(self) -> None:
         logger.info("   📥 Cloning fresh repository...")
-        if CACHE_DIR.exists():
-            shutil.rmtree(CACHE_DIR)
+        if FetcherConfig.CACHE_DIR.exists():
+            shutil.rmtree(FetcherConfig.CACHE_DIR)
         
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        self._run_git(CACHE_DIR, ["init"])
-        self._run_git(CACHE_DIR, ["remote", "add", "origin", REPO_URL])
+        FetcherConfig.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        self._run_git(FetcherConfig.CACHE_DIR, ["init"])
+        self._run_git(FetcherConfig.CACHE_DIR, ["remote", "add", "origin", BilaraConfig.REPO_URL])
         
         self._configure_sparse_checkout()
         
-        logger.info(f"   📥 Fetching {BRANCH_NAME}...")
-        self._run_git(CACHE_DIR, ["fetch", "--depth", "1", "origin", BRANCH_NAME])
+        logger.info(f"   📥 Fetching {BilaraConfig.BRANCH_NAME}...")
+        self._run_git(FetcherConfig.CACHE_DIR, ["fetch", "--depth", "1", "origin", BilaraConfig.BRANCH_NAME])
         
         logger.info("   🔨 Resetting to match remote...")
-        self._run_git(CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
+        self._run_git(FetcherConfig.CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
 
     def _update_existing(self) -> None:
-        if not (CACHE_DIR / ".git").exists():
+        if not (FetcherConfig.CACHE_DIR / ".git").exists():
             raise RuntimeError("Invalid git repository")
             
-        logger.info(f"   🔄 Updating existing repository (Target: {BRANCH_NAME})...")
+        logger.info(f"   🔄 Updating existing repository (Target: {BilaraConfig.BRANCH_NAME})...")
         self._configure_sparse_checkout()
-        self._run_git(CACHE_DIR, ["fetch", "--depth", "1", "origin", BRANCH_NAME])
-        self._run_git(CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
-        self._run_git(CACHE_DIR, ["clean", "-fdx"])
+        self._run_git(FetcherConfig.CACHE_DIR, ["fetch", "--depth", "1", "origin", BilaraConfig.BRANCH_NAME])
+        self._run_git(FetcherConfig.CACHE_DIR, ["reset", "--hard", "FETCH_HEAD"])
+        self._run_git(FetcherConfig.CACHE_DIR, ["clean", "-fdx"])
 
     def sync_repo(self) -> None:
         logger.info("⚡ Setting up data repository...")
-        if CACHE_DIR.exists():
+        if FetcherConfig.CACHE_DIR.exists():
             try:
                 self._update_existing()
                 logger.info("✅ Repository updated.")

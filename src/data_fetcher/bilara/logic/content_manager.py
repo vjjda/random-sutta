@@ -6,19 +6,19 @@ from pathlib import Path
 from typing import Tuple, Dict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from ..config import CACHE_DIR, DATA_ROOT, FETCH_MAPPING, IGNORE_PATTERNS
+from ...fetcher_config import FetcherConfig, BilaraConfig
 
 logger = logging.getLogger("DataFetcher.Bilara.Content")
 
 class ContentManager:
     def clean_destination(self) -> None:
-        if DATA_ROOT.exists():
+        if BilaraConfig.DATA_ROOT.exists():
             logger.info("🧹 Cleaning old data...")
-            shutil.rmtree(DATA_ROOT)
-        DATA_ROOT.mkdir(parents=True, exist_ok=True)
+            shutil.rmtree(BilaraConfig.DATA_ROOT)
+        BilaraConfig.DATA_ROOT.mkdir(parents=True, exist_ok=True)
 
     def _get_book_structure_map(self) -> Dict[str, str]:
-        root_src = CACHE_DIR / "sc_bilara_data/root/pli/ms"
+        root_src = FetcherConfig.CACHE_DIR / "sc_bilara_data/root/pli/ms"
         structure_map = {}
         
         if not root_src.exists():
@@ -69,8 +69,8 @@ class ContentManager:
 
     def _copy_worker(self, task: Tuple[str, str]) -> str:
         src_rel, dest_rel = task
-        src_path = CACHE_DIR / src_rel
-        dest_path = DATA_ROOT / dest_rel
+        src_path = FetcherConfig.CACHE_DIR / src_rel
+        dest_path = BilaraConfig.DATA_ROOT / dest_rel
         
         if not src_path.exists():
             return f"⚠️ Source not found (skipped): {src_rel}"
@@ -82,7 +82,7 @@ class ContentManager:
             return self._smart_copy_tree(src_path, dest_path)
 
         ignore_list = []
-        for key, patterns in IGNORE_PATTERNS.items():
+        for key, patterns in BilaraConfig.IGNORE_PATTERNS.items():
             if dest_rel.startswith(key):
                 ignore_list.extend(patterns)
         
@@ -95,12 +95,12 @@ class ContentManager:
 
     def copy_data(self) -> None:
         logger.info("📂 Copying and filtering data (Multi-threaded)...")
-        workers = min(os.cpu_count() or 4, len(FETCH_MAPPING))
+        workers = min(os.cpu_count() or 4, len(BilaraConfig.FETCH_MAPPING))
         
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
                 executor.submit(self._copy_worker, item): item 
-                for item in FETCH_MAPPING.items()
+                for item in BilaraConfig.FETCH_MAPPING.items()
             }
             
             for future in as_completed(futures):
@@ -110,4 +110,4 @@ class ContentManager:
                 except Exception as e:
                     logger.error(f"❌ Error copying: {e}")
 
-        logger.info(f"✅ Data copied to {DATA_ROOT}")
+        logger.info(f"✅ Data copied to {BilaraConfig.DATA_ROOT}")

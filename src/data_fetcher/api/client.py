@@ -1,49 +1,30 @@
 # Path: src/data_fetcher/api/client.py
 import json
-import os
 import urllib.request
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import List, Tuple, Set, Dict
+from typing import List, Tuple
 
 from src.logging_config import setup_logging
-
-# --- Configuration ---
-PROJECT_ROOT = Path(__file__).parents[3]
-DATA_ROOT_DIR = PROJECT_ROOT / "data" / "bilara" / "root"
-DATA_JSON_DIR = PROJECT_ROOT / "data" / "json"
-API_TEMPLATE = "https://suttacentral.net/api/suttaplex/{}"
-
-# Constants
-EXTRA_UIDS: Dict[str, str] = {
-    "pli-tv-bi-pm": "vinaya",
-    "pli-tv-bu-pm": "vinaya"
-}
-SUPER_TARGETS: List[str] = ["sutta", "vinaya", "abhidhamma"]
-LARGE_TARGETS: Set[str] = {"dn", "mn", "sn", "an"}
-TOP_PRIORITY_ORDER_LIST: List[Tuple[str, str]] = [
-    ("sutta", "super"),
-    ("sn", "sutta"),
-    ("an", "sutta"),
-    ("vinaya", "super"),
-    ("mn", "sutta"),
-    ("thag", "sutta/kn"),
-    ("tha-ap", "sutta/kn"),
-    ("ja", "sutta/kn"),
-    ("abhidhamma", "super"),
-]
-TOP_PRIORITY_MAP = {item: i for i, item in enumerate(TOP_PRIORITY_ORDER_LIST)}
+from ..fetcher_config import ApiConfig, BilaraConfig
 
 logger = setup_logging("DataFetcher.API")
 
 class MetadataClient:
+    def __init__(self):
+        # Pre-calculate priority map for O(1) lookup
+        self.priority_map = {item: i for i, item in enumerate(ApiConfig.PRIORITY_ORDER)}
+
     def discover_books(self) -> List[Tuple[str, str]]:
-        if not DATA_ROOT_DIR.exists():
-            logger.error(f"❌ Root data not found at {DATA_ROOT_DIR}. Please fetch Bilara data first.")
+        # Sử dụng đường dẫn từ BilaraConfig để scan dữ liệu đã tải về
+        root_dir = BilaraConfig.DATA_ROOT / "root"
+        
+        if not root_dir.exists():
+            logger.error(f"❌ Root data not found at {root_dir}. Please fetch Bilara data first.")
             return []
 
-        priority_super_raw = [(uid, "super") for uid in SUPER_TARGETS]
+        priority_super_raw = [(uid, "super") for uid in ApiConfig.SUPER_TARGET_CATS]
         found_raw: List[Tuple[str, str]] = []
 
         def scan_dir(path: Path, category: str) -> None:
@@ -58,21 +39,20 @@ class MetadataClient:
                         found_raw.append((item.name, category))
 
         logger.info("   🔍 Scanning directories for API targets...")
-        scan_dir(DATA_ROOT_DIR / "sutta", "sutta")
-        scan_dir(DATA_ROOT_DIR / "vinaya", "vinaya")
-        scan_dir(DATA_ROOT_DIR / "abhidhamma", "abhidhamma")
+        scan_dir(root_dir / "sutta", "sutta")
+        scan_dir(root_dir / "vinaya", "vinaya")
+        scan_dir(root_dir / "abhidhamma", "abhidhamma")
 
-        for uid, category in EXTRA_UIDS.items():
+        for uid, category in ApiConfig.EXTRA_UIDS.items():
             found_raw.append((uid, category))
 
-        params_to_ignore = {'xplayground', '__pycache__', '.git', '.DS_Store'}
         all_discovered: List[Tuple[str, str]] = []
         seen = set()
 
         for book, cat in found_raw + priority_super_raw:
-            processed_cat = "super" if book in SUPER_TARGETS else cat
+            processed_cat = "super" if book in ApiConfig.SUPER_TARGET_CATS else cat
             
-            if book in params_to_ignore or (book, processed_cat) in seen:
+            if book in ApiConfig.SYSTEM_IGNORE or (book, processed_cat) in seen:
                 continue
             
             seen.add((book, processed_cat))
@@ -83,28 +63,31 @@ class MetadataClient:
         remaining = []
         
         for info in all_discovered:
-            if info in TOP_PRIORITY_MAP:
+            if info in self.priority_map:
                 top_priority.append(info)
             else:
                 remaining.append(info)
 
-        top_priority.sort(key=lambda x: TOP_PRIORITY_MAP[x])
+        top_priority.sort(key=lambda x: self.priority_map[x])
         remaining.sort(key=lambda x: x[0])
 
         return top_priority + remaining
 
     def fetch_book_json(self, book_info: Tuple[str, str]) -> str:
         book_id, category_path = book_info
-        url = API_TEMPLATE.format(book_id)
+        url = ApiConfig.API_TEMPLATE.format(book_id)
         
-        category_dir = DATA_JSON_DIR / category_path
+        category_dir = ApiConfig.DATA_JSON_DIR / category_path
         category_dir.mkdir(parents=True, exist_ok=True)
         dest_file = category_dir / f"{book_id}.json"
         
         try:
-            timeout = 60
-            if category_path == "super": timeout = 120
-            elif book_id in LARGE_TARGETS: timeout = 90
+            # Configurable Timeouts
+            timeout = ApiConfig.TIMEOUT_DEFAULT
+            if category_path == "super": 
+                timeout = ApiConfig.TIMEOUT_SUPER
+            elif book_id in ApiConfig.LARGE_BOOKS: 
+                timeout = ApiConfig.TIMEOUT_LARGE
             
             with urllib.request.urlopen(url, timeout=timeout) as response:
                 if response.status != 200:
@@ -131,10 +114,10 @@ class MetadataClient:
             logger.warning("⚠️ No targets found. Ensure Bilara data is synced first.")
             return
 
-        if not DATA_JSON_DIR.exists():
-            DATA_JSON_DIR.mkdir(parents=True)
+        if not ApiConfig.DATA_JSON_DIR.exists():
+            ApiConfig.DATA_JSON_DIR.mkdir(parents=True)
 
-        workers = min(12, (os.cpu_count() or 1) * 2)
+        workers = ApiConfig.get_worker_count()
         logger.info(f"   Using {workers} threads for {len(target_books)} requests...")
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
