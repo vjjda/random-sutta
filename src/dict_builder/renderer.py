@@ -3,8 +3,9 @@ import json
 from mako.template import Template
 from typing import Any, Dict
 
+# Import đúng từ src.db và src.tools
 from src.db.models import DpdHeadword, Lookup
-from src.tools.meaning_construction import make_grammar_line
+from src.tools.meaning_construction import make_grammar_line, make_meaning_combo_html
 from .config import BuilderConfig
 
 class DpdRenderer:
@@ -36,14 +37,13 @@ class DpdRenderer:
             "synonym": i.synonym,
             "variant": i.variant,
             "sanskrit": i.sanskrit,
-            "audio_url": None # Placeholder nếu sau này có audio link
+            "audio_url": None 
         }
-        # Loại bỏ các key có value là None hoặc rỗng để tiết kiệm dung lượng
         clean_data = {k: v for k, v in data.items() if v}
         return json.dumps(clean_data, ensure_ascii=False)
 
     def render_grammar(self, i: DpdHeadword) -> str:
-        """Render bảng ngữ pháp (Logic giống ebook_grammar.html)."""
+        """Render bảng ngữ pháp."""
         if not i.meaning_1:
             return ""
         
@@ -52,7 +52,6 @@ class DpdRenderer:
 
     def render_entry(self, i: DpdHeadword, grammar_html: str, example_html: str) -> str:
         """Render phần định nghĩa chính."""
-        # Tái tạo logic summary string từ kindle_exporter 
         summary = f"{i.pos}. "
         if i.plus_case:
             summary += f"({i.plus_case}) "
@@ -76,7 +75,8 @@ class DpdRenderer:
         return ""
 
     def render_deconstruction(self, i: Lookup) -> str:
+        # [FIXED] Sử dụng property list mới từ model
         return self.tpl_deconstruction.render(
             construction=i.lookup_key,
-            deconstruction="<br/>".join(i.deconstructor_unpack)
+            deconstruction="<br/>".join(i.deconstructor_unpack_list)
         )
