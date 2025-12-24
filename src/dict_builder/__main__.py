@@ -16,10 +16,10 @@ def main():
     group.add_argument("-f", "--full", action="store_true", help="Build full version")
     group.add_argument("-a", "--all", action="store_true", help="Build ALL versions sequentially")
 
-    # [NEW] Flag HTML output
+    # [FIXED] Đổi -h thành -H để tránh trùng với --help
     parser.add_argument(
-        "-h", "--html", 
-        dest="html_mode", # Đặt dest rõ ràng
+        "-H", "--html", 
+        dest="html_mode", 
         action="store_true", 
         help="Output HTML columns instead of JSON.\nFiles will be named dpd_html_*.db"
     )
@@ -45,7 +45,6 @@ def main():
         print(f"[bold yellow]{'='*60}[/bold yellow]\n")
         
         try:
-            # [UPDATED] Truyền html_mode vào
             run_builder(mode=mode, html_mode=args.html_mode)
         except Exception as e:
             print(f"[bold red]❌ Critical Error while building {mode}: {e}[/bold red]")
