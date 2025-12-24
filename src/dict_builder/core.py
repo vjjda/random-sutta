@@ -201,7 +201,10 @@ class DictBuilder:
         
         for idx, d in enumerate(deconstructions, start=1):
             html = self.renderer.render_deconstruction(d)
-            split_str = " + ".join(d.deconstructor_unpack_list)
+            
+            # [FIXED] Dùng "; " để nối các phương án thay vì " + "
+            # Ví dụ: "paṭiggahe + asīti; paṭiggahesi + iti"
+            split_str = "; ".join(d.deconstructor_unpack_list)
             
             decon_batch.append((idx, d.lookup_key, split_str, html))
             decon_lookup_batch.append((d.lookup_key, idx, 'deconstruction', 0))
