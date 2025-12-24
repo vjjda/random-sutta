@@ -1,10 +1,10 @@
 # Path: src/dict_builder/logic/batch_worker.py
 import zlib
-from typing import List, Tuple
+from typing import List, Tuple, Set, Optional
 from rich import print
 
 from src.db.db_helpers import get_db_session
-from src.db.models import DpdHeadword, Lookup
+from src.db.models import DpdHeadword
 from ..renderer import DpdRenderer
 from ..config import BuilderConfig
 
@@ -13,18 +13,19 @@ def process_html(html_str: str, compress: bool) -> str | bytes:
     if compress: return zlib.compress(html_str.encode('utf-8'))
     return html_str
 
-# --- Worker cho Entries (Giữ nguyên) ---
-def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, List]:
-    # ... (Giữ nguyên code cũ của hàm này) ...
-    # Copy lại code cũ của process_batch_worker ở đây
-    # Lưu ý: Tôi không paste lại để tiết kiệm không gian, hãy giữ nguyên hàm này
+# [CHANGED] Thêm tham số target_set
+def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Optional[Set[str]]) -> Tuple[List, List]:
     renderer = DpdRenderer(config)
     session = get_db_session(config.DPD_DB_PATH)
+    
     entries_data = []
     lookups_data = []
+    
     try:
         headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
+        
         for i in headwords:
+            # --- Logic Render Entries (Giữ nguyên) ---
             if config.is_tiny_mode:
                 definition_json = renderer.extract_definition_json(i)
                 if config.USE_COMPRESSION:
@@ -43,15 +44,30 @@ def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, L
                     process_html(examples, config.USE_COMPRESSION)
                 ))
             
+            # --- Logic Lookups (Cải tiến) ---
+            
+            # 1. Headword chính (Luôn thêm nếu đã lọt vào danh sách này)
             lookups_data.append((i.lemma_clean, i.id, 1, 0))
+            
+            # 2. Inflections (Lọc chặt chẽ hơn)
             unique_infs = set(i.inflections_list_all)
+            
             for inf in unique_infs:
-                if not inf or inf == i.lemma_clean: continue
+                if not inf or inf == i.lemma_clean:
+                    continue
+                
+                # [NEW] Kiểm tra: Nếu đang ở Mini/Tiny mode (target_set not None)
+                # thì từ biến thể PHẢI có trong target_set mới được thêm vào lookup.
+                if target_set is not None and inf not in target_set:
+                    continue
+                    
                 lookups_data.append((inf, i.id, 1, 1))
+                    
     except Exception as e:
         print(f"[red]Error in entries worker: {e}")
     finally:
         session.close()
+        
     return entries_data, lookups_data
 
 # --- [NEW] Worker cho Deconstructions ---
