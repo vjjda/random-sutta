@@ -71,7 +71,7 @@ class DictBuilder:
             decon_keys = [k for k in decon_keys if k in target_set]
 
         # Chia chunk cho Deconstructions
-        DECON_BATCH_SIZE = 5000
+        DECON_BATCH_SIZE = 4000
         decon_chunks = []
         for i in range(0, len(decon_keys), DECON_BATCH_SIZE):
             chunk_keys = decon_keys[i : i + DECON_BATCH_SIZE]
