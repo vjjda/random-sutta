@@ -10,10 +10,10 @@ CREATE TABLE IF NOT EXISTS entries (
     headword TEXT NOT NULL,
     headword_clean TEXT NOT NULL,
     
-    definition_html TEXT,  -- Vẫn giữ HTML cho định nghĩa chính (vì format phức tạp)
+    definition_html TEXT,
     
-    -- [CHANGED] Lưu trữ dữ liệu ngữ pháp dạng JSON thuần
-    grammar_json TEXT,
+    -- [CHANGED] Quay lại dùng HTML cho bảng grammar
+    grammar_html TEXT,
     
     example_html TEXT,
     search_score INTEGER DEFAULT 0

@@ -37,9 +37,9 @@ class OutputDatabase:
 
     def insert_batch(self, entries: list, lookups: list):
         if entries:
-            # [CHANGED] definition_html, grammar_json, example_html, search_score
+            # [CHANGED] grammar_html
             self.cursor.executemany(
-                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_json, example_html, search_score) VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, search_score) VALUES (?,?,?,?,?,?,?)",
                 entries
             )
         if lookups:

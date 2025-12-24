@@ -18,8 +18,8 @@ def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, L
         headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
         
         for i in headwords:
-            # [CHANGED] Thay render_grammar bằng extract_grammar_data
-            grammar_json = renderer.extract_grammar_data(i)
+            # [CHANGED] Render HTML grammar
+            grammar_html = renderer.render_grammar(i)
             
             examples = renderer.render_examples(i)
             definition = renderer.render_entry(i)
@@ -31,7 +31,7 @@ def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, L
                 i.lemma_1,
                 i.lemma_clean,
                 definition,
-                grammar_json, # JSON string
+                grammar_html, # HTML string
                 examples,
                 score 
             ))
