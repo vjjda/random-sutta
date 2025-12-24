@@ -10,22 +10,19 @@ CREATE TABLE IF NOT EXISTS entries (
     headword TEXT NOT NULL,
     headword_clean TEXT NOT NULL,
     
-    -- HTML Rendered (Chỉ giữ lại cái cần thiết để hiển thị)
-    definition_html TEXT,
-    grammar_html TEXT,
+    definition_html TEXT,  -- Vẫn giữ HTML cho định nghĩa chính (vì format phức tạp)
+    
+    -- [CHANGED] Lưu trữ dữ liệu ngữ pháp dạng JSON thuần
+    grammar_json TEXT,
+    
     example_html TEXT,
-    
-    -- [REMOVED] data_json (Gây tốn dung lượng)
-    
-    -- Search Score: Dùng ebt_count từ DB gốc
     search_score INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS deconstructions (
     id INTEGER PRIMARY KEY,
     lookup_key TEXT NOT NULL,
-    split_string TEXT            -- Chỉ cần lưu chuỗi "a + b"
-    -- [REMOVED] html (Frontend tự render)
+    split_string TEXT
 );
 
 CREATE TABLE IF NOT EXISTS lookups (
@@ -37,5 +34,4 @@ CREATE TABLE IF NOT EXISTS lookups (
 
 CREATE INDEX IF NOT EXISTS idx_entries_headword ON entries(headword_clean);
 CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);
--- Index cho score để sort kết quả tìm kiếm nhanh hơn
 CREATE INDEX IF NOT EXISTS idx_entries_score ON entries(search_score DESC);

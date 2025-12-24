@@ -18,27 +18,24 @@ def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, L
         headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
         
         for i in headwords:
-            # Render HTML
-            grammar = renderer.render_grammar(i)
+            # [CHANGED] Thay render_grammar bằng extract_grammar_data
+            grammar_json = renderer.extract_grammar_data(i)
+            
             examples = renderer.render_examples(i)
             definition = renderer.render_entry(i)
             
-            # [UPDATED] Lấy ebt_count làm search_score
-            # Nếu ebt_count là None thì mặc định là 0
             score = i.ebt_count if i.ebt_count else 0
             
-            # Data cho bảng entries (Bỏ data_json)
             entries_data.append((
                 i.id,
                 i.lemma_1,
                 i.lemma_clean,
                 definition,
-                grammar,
+                grammar_json, # JSON string
                 examples,
                 score 
             ))
             
-            # Data cho bảng lookups
             lookups_data.append((i.lemma_clean, i.id, 'entry', 0))
             for inf in i.inflections_list_all:
                 if inf:

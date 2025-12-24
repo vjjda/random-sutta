@@ -29,7 +29,6 @@ class OutputDatabase:
         with open(schema_path, "r", encoding="utf-8") as f:
             self.cursor.executescript(f.read())
             
-        # Metadata
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
                             ("version", datetime.now().strftime("%Y-%m-%d")))
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
@@ -38,9 +37,9 @@ class OutputDatabase:
 
     def insert_batch(self, entries: list, lookups: list):
         if entries:
-            # [UPDATED] Bỏ data_json, Thêm search_score
+            # [CHANGED] definition_html, grammar_json, example_html, search_score
             self.cursor.executemany(
-                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, search_score) VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_json, example_html, search_score) VALUES (?,?,?,?,?,?,?)",
                 entries
             )
         if lookups:
@@ -52,7 +51,6 @@ class OutputDatabase:
 
     def insert_deconstructions(self, deconstructions: list, lookups: list):
         if deconstructions:
-            # [UPDATED] Bỏ html column
             self.cursor.executemany(
                 "INSERT INTO deconstructions (id, lookup_key, split_string) VALUES (?,?,?)",
                 deconstructions
