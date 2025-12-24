@@ -13,6 +13,8 @@ help:
 	@echo "🛠️  SETUP & SYNC:"
 	@echo "  make setup          - Install Git hooks"
 	@echo "  make sync           - Sync ALL data (Bilara Text + API Meta)"
+	@echo "  make sync-text      - Sync ONLY Bilara Text (-s)"
+	@echo "  make sync-api       - Sync ONLY API Metadata (-a)"
 	@echo ""
 	@echo "⚙️  DATA PROCESSING:"
 	@echo "  make data           - Process JSON -> Optimized Assets"
@@ -44,10 +46,16 @@ setup:
 	$(PYTHON) src/setup_hooks.py
 
 sync:
-	@echo "📥 Syncing Bilara Text..."
-	$(PYTHON) -m src.sutta_fetcher
-	@echo "📥 Fetching API Metadata..."
-	$(PYTHON) -m src.api_fetcher
+	@echo "📥 Syncing ALL Data (Bilara + API)..."
+	$(PYTHON) -m src.data_fetcher -s -a
+
+sync-text:
+	@echo "📥 Syncing Bilara Text only..."
+	$(PYTHON) -m src.data_fetcher -s
+
+sync-api:
+	@echo "📥 Fetching API Metadata only..."
+	$(PYTHON) -m src.data_fetcher -a
 
 # ==============================================================================
 # ⚙️ BUILD & PROCESS
