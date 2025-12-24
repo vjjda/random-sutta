@@ -24,23 +24,19 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
         headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
         
         for i in headwords:
-            # [UPDATED] Logic Rẽ nhánh HTML vs JSON
-            
+            # 1. Rẽ nhánh xử lý nội dung ENTRY (HTML vs JSON)
             if config.html_mode:
                 # --- HTML MODE ---
                 if config.is_tiny_mode:
-                    # Tiny + HTML: Chỉ lấy Definition HTML
                     definition_html = renderer.render_entry(i)
                     entries_data.append((
                         i.id, i.lemma_1, i.lemma_clean,
                         process_data(definition_html, config.USE_COMPRESSION)
                     ))
                 else:
-                    # Mini/Full + HTML: 3 cột HTML
                     grammar_html = renderer.render_grammar(i)
                     examples_html = renderer.render_examples(i)
                     definition_html = renderer.render_entry(i)
-                    
                     entries_data.append((
                         i.id, i.lemma_1, i.lemma_clean,
                         process_data(definition_html, config.USE_COMPRESSION),
@@ -50,18 +46,14 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
             else:
                 # --- JSON MODE ---
                 definition_json = renderer.extract_definition_json(i)
-                
                 if config.is_tiny_mode:
-                    # Tiny + JSON
                     entries_data.append((
                         i.id, i.lemma_1, i.lemma_clean,
                         process_data(definition_json, config.USE_COMPRESSION)
                     ))
                 else:
-                    # Mini/Full + JSON
                     grammar_json = renderer.extract_grammar_json(i)
                     example_json = renderer.extract_example_json(i)
-                    
                     entries_data.append((
                         i.id, i.lemma_1, i.lemma_clean,
                         process_data(definition_json, config.USE_COMPRESSION),
@@ -69,13 +61,23 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
                         process_data(example_json, config.USE_COMPRESSION)
                     ))
             
-            # --- Logic Lookups (Giữ nguyên) ---
+            # 2. Xử lý LOOKUPS (Dùng chung cho cả 2 mode)
+            # Logic này nằm NGOÀI block if/else phía trên -> Chạy giống hệt nhau
+            
+            # Luôn thêm Headword
             lookups_data.append((i.lemma_clean, i.id, 1, 0))
+            
+            # Xử lý Inflections
             unique_infs = set(i.inflections_list_all)
             
             for inf in unique_infs:
                 if not inf or inf == i.lemma_clean: continue
-                if target_set is not None and inf not in target_set: continue
+                
+                # [QUAN TRỌNG] Logic lọc Strict Mode
+                # Nếu target_set tồn tại (Tiny/Mini) thì PHẢI có trong set mới lấy
+                if target_set is not None and inf not in target_set:
+                    continue
+                    
                 lookups_data.append((inf, i.id, 1, 1))
                     
     except Exception as e:
