@@ -61,7 +61,6 @@ class DictBuilder:
         # --- MINI MODE LOGIC ---
         print("[yellow]Calculating EBTS word set from Bilara Data...")
         
-        # [UPDATED] Sử dụng đường dẫn từ Config để nhất quán
         bilara_path = self.config.PROJECT_ROOT / "data/bilara/root/pli/ms"
         
         if not bilara_path.exists():
@@ -94,7 +93,6 @@ class DictBuilder:
         print(f"🚀 Starting Dictionary Builder...")
         self._init_db()
         
-        # [UPDATED] Sử dụng self.config.DPD_DB_PATH thay vì self.pth.dpd_db_path
         session = get_db_session(self.config.DPD_DB_PATH)
         
         headwords = self._get_target_headwords(session)
@@ -157,12 +155,14 @@ class DictBuilder:
         decon_batch = []
         decon_lookup_batch = []
         
-        for d in deconstructions:
+        # [FIXED] Tự sinh ID số nguyên cho Deconstructions vì bảng gốc không có ID
+        for idx, d in enumerate(deconstructions, start=1):
             html = self.renderer.render_deconstruction(d)
             split_str = " + ".join(d.deconstructor_unpack_list)
             
-            decon_batch.append((d.id, d.lookup_key, split_str, html))
-            decon_lookup_batch.append((d.lookup_key, d.id, 'deconstruction', 0))
+            # Sử dụng idx làm ID
+            decon_batch.append((idx, d.lookup_key, split_str, html))
+            decon_lookup_batch.append((d.lookup_key, idx, 'deconstruction', 0))
             
         self.cursor.executemany(
             "INSERT INTO deconstructions (id, lookup_key, split_string, html) VALUES (?,?,?,?)",
