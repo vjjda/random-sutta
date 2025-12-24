@@ -9,7 +9,6 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter
     )
     
-    # Tạo nhóm các lựa chọn (Mutually Exclusive) để tránh chọn vừa tiny vừa full
     group = parser.add_mutually_exclusive_group()
     
     group.add_argument(
@@ -44,7 +43,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Logic xác định danh sách các mode cần chạy
     modes_to_run = []
     
     if args.all:
@@ -56,21 +54,18 @@ def main():
     elif args.mini:
         modes_to_run = ["mini"]
     else:
-        # Mặc định là mini nếu không nhập flag nào
         modes_to_run = ["mini"]
 
-    # Chạy vòng lặp build
     for mode in modes_to_run:
-        print(f"\n[bold yellow]{'='*60}")
-        print(f"🚀 TRIGGERING BUILD MODE: {mode.upper()}")
-        print(f"{'='*60}[/bold yellow]\n")
+        # [FIXED] Rich markup phải đóng mở trong cùng 1 string print
+        print(f"\n[bold yellow]{'='*60}[/bold yellow]")
+        print(f"[bold yellow]🚀 TRIGGERING BUILD MODE: {mode.upper()}[/bold yellow]")
+        print(f"[bold yellow]{'='*60}[/bold yellow]\n")
         
         try:
             run_builder(mode=mode)
         except Exception as e:
             print(f"[bold red]❌ Critical Error while building {mode}: {e}[/bold red]")
-            # Tùy chọn: break nếu muốn dừng ngay khi 1 cái lỗi
-            # break 
 
 if __name__ == "__main__":
     main()
