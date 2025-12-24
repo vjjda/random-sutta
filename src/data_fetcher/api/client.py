@@ -17,8 +17,8 @@ class MetadataClient:
         self.priority_map = {item: i for i, item in enumerate(ApiConfig.PRIORITY_ORDER)}
 
     def discover_books(self) -> List[Tuple[str, str]]:
-        # Sử dụng đường dẫn từ BilaraConfig để scan dữ liệu đã tải về
-        root_dir = BilaraConfig.DATA_ROOT / "root"
+        # [UPDATED] Sử dụng đường dẫn tường minh từ Config
+        root_dir = BilaraConfig.ROOT_TEXT_DIR
         
         if not root_dir.exists():
             logger.error(f"❌ Root data not found at {root_dir}. Please fetch Bilara data first.")
@@ -38,7 +38,7 @@ class MetadataClient:
                     else:
                         found_raw.append((item.name, category))
 
-        logger.info("   🔍 Scanning directories for API targets...")
+        logger.info(f"   🔍 Scanning directories in {root_dir.name} for API targets...")
         scan_dir(root_dir / "sutta", "sutta")
         scan_dir(root_dir / "vinaya", "vinaya")
         scan_dir(root_dir / "abhidhamma", "abhidhamma")

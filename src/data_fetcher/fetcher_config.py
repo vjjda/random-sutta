@@ -15,7 +15,12 @@ class FetcherConfig:
 
 class BilaraConfig:
     # --- Paths ---
+    # Thư mục gốc chứa toàn bộ data Bilara sau khi sync
     DATA_ROOT: Path = FetcherConfig.DATA_DIR / "bilara"
+    
+    # [NEW] Thư mục chứa text gốc (root texts) dùng để API scan danh sách sách
+    # Tương đương: data/bilara/root
+    ROOT_TEXT_DIR: Path = DATA_ROOT / "root"
     
     # --- Git Settings ---
     REPO_URL: str = "https://github.com/suttacentral/sc-data.git"
