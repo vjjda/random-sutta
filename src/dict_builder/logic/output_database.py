@@ -106,6 +106,57 @@ class OutputDatabase:
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
         self.conn.commit()
+    
+    def create_grand_view(self):
+        """Tạo View tổng hợp để dễ dàng debug và tra cứu."""
+        print("[cyan]Creating 'grand_lookups' view...")
+        
+        # 1. Xác định tên cột dựa trên Mode (JSON/HTML)
+        suffix = "html" if self.config.html_mode else "json"
+        
+        # Các cột cơ bản của Entries
+        # Lưu ý: Tiny mode chỉ có definition
+        entry_cols = [
+            "e.headword AS entry_headword",
+            f"e.definition_{suffix} AS entry_definition"
+        ]
+        
+        if not self.config.is_tiny_mode:
+            # Mini/Full có thêm Grammar và Examples
+            entry_cols.append(f"e.grammar_{suffix} AS entry_grammar")
+            entry_cols.append(f"e.example_{suffix} AS entry_example")
+            
+        entry_select_str = ",\n            ".join(entry_cols)
+
+        # 2. Câu SQL tạo View
+        # Logic: Left Join Lookups với Entries (nếu là headword) VÀ Deconstructions (nếu không phải headword)
+        sql = f"""
+        CREATE VIEW IF NOT EXISTS grand_lookups AS
+        SELECT 
+            l.key AS lookup_key,
+            l.is_headword,
+            l.is_inflection,
+            
+            -- Thông tin từ Entries (nếu is_headword = 1)
+            {entry_select_str},
+            
+            -- Thông tin từ Deconstructions (nếu is_headword = 0)
+            d.split_string AS decon_split,
+            d.lookup_key AS decon_key_ref
+            
+        FROM lookups l
+        LEFT JOIN entries e 
+            ON l.target_id = e.id AND l.is_headword = 1
+        LEFT JOIN deconstructions d 
+            ON l.target_id = d.id AND l.is_headword = 0;
+        """
+        
+        try:
+            self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
+            self.cursor.execute(sql)
+            self.conn.commit()
+        except Exception as e:
+            print(f"[red]Failed to create grand view: {e}")
 
     def close(self):
         if self.conn:
