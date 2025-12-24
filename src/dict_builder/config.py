@@ -25,9 +25,11 @@ class BuilderConfig:
     def __init__(self, mode: str = "mini"):
         self.mode = mode
         
-        # [UPDATED] Đặt tên file DB dựa trên mode
+        # [FIXED] Logic đặt tên file chính xác cho từng mode
         if self.mode == "tiny":
             self.DB_NAME = "dpd_tiny.db"
+        elif self.mode == "full":
+            self.DB_NAME = "dpd_full.db"
         else:
             self.DB_NAME = "dpd_mini.db"
             
