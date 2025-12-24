@@ -11,6 +11,7 @@ Thumbs.db
 # IDE settings (Optional)
 .vscode/
 .idea/
+.venv/
 
 /data/*
 
