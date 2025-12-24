@@ -9,9 +9,10 @@ from src.db.models import Lookup
 from .config import BuilderConfig
 from .renderer import DpdRenderer
 
+# Import các module logic đã tách
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
-from .logic.batch_worker import process_batch_worker, process_decon_worker # [IMPORT NEW WORKER]
+from .logic.batch_worker import process_batch_worker, process_decon_worker
 
 class DictBuilder:
     def __init__(self, mode: str = "mini"):
@@ -19,67 +20,80 @@ class DictBuilder:
         
     def run(self):
         start_time = time.time()
-        print(f"🚀 Starting Dictionary Builder (Strict Lookups)...")
+        print(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode})...")
         
+        # 1. Setup Output DB (Tạo bảng, Metadata)
         output_db = OutputDatabase(self.config)
         output_db.setup()
 
+        # 2. Select Targets (Lấy danh sách ID và tập từ vựng chuẩn)
         session = get_db_session(self.config.DPD_DB_PATH)
         selector = WordSelector(self.config)
         
-        # [CHANGED] Nhận về cả target_set
+        # Lấy target_ids và target_set (để lọc lookups)
         target_ids, target_set = selector.get_target_ids(session)
         
         if not target_ids:
+            print("[red]No targets found. Aborting.")
             session.close()
             return
 
-        # --- PHASE 1: HEADWORDS ---
-        BATCH_SIZE = 2000
+        # --- PHASE 1: HEADWORDS (Parallel) ---
+        # Chia batch size lớn hơn chút để tối ưu process overhead
+        BATCH_SIZE = 2500
         chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
         print(f"[green]Processing {len(target_ids)} headwords in {len(chunks)} chunks...")
 
         processed_count = 0
         with ProcessPoolExecutor() as executor:
-            # [CHANGED] Truyền target_set vào worker
+            # Truyền target_set vào worker để lọc lookups rác
             futures = [executor.submit(process_batch_worker, chunk, self.config, target_set) for chunk in chunks]
             
             for future in as_completed(futures):
-                entries, lookups = future.result()
-                output_db.insert_batch(entries, lookups)
-                processed_count += len(entries)
-                print(f"   Saved headwords... ({processed_count}/{len(target_ids)})", end="\r")
+                try:
+                    entries, lookups = future.result()
+                    output_db.insert_batch(entries, lookups)
+                    processed_count += len(entries)
+                    print(f"   Saved headwords... ({processed_count}/{len(target_ids)})", end="\r")
+                except Exception as e:
+                    print(f"[red]Batch processing error: {e}")
         
-        print(f"\n[green]Headwords done in {time.time() - start_time:.2f}s")
+        print(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
-        # --- PHASE 2: DECONSTRUCTIONS ---
-        # ... (Phần này giữ nguyên logic cũ) ...
-        # (Lưu ý: Deconstruction không cần lọc kỹ target_set vì bản thân nó đã được lọc từ đầu rồi)
-        
+        # --- PHASE 2: DECONSTRUCTIONS (Parallel) ---
         print("[green]Processing Deconstructions (Parallel)...")
+        
+        # Lấy tất cả lookup_key của deconstruction
         decon_keys = [r.lookup_key for r in session.query(Lookup.lookup_key).filter(Lookup.deconstructor != "").all()]
         
-        # Có thể áp dụng lọc cho Deconstructions nếu muốn siêu tối ưu:
+        # (Optional) Nếu muốn lọc Deconstruction theo target_set luôn thì uncomment dòng dưới:
         if target_set is not None:
-             decon_keys = [k for k in decon_keys if k in target_set]
+            decon_keys = [k for k in decon_keys if k in target_set]
 
+        # Chia chunk cho Deconstructions
         DECON_BATCH_SIZE = 5000
         decon_chunks = []
         for i in range(0, len(decon_keys), DECON_BATCH_SIZE):
             chunk_keys = decon_keys[i : i + DECON_BATCH_SIZE]
-            start_id = i + 1
+            # Tạo start_id giả lập để làm Primary Key (vì bảng gốc không có ID số)
+            start_id = i + 1 
             decon_chunks.append((chunk_keys, start_id))
             
-        # ... (Phần chạy executor cho decon giữ nguyên) ...
+        print(f"[green]Processing {len(decon_keys)} deconstructions in {len(decon_chunks)} chunks...")
+        
         processed_decon = 0
         with ProcessPoolExecutor() as executor:
+            # Worker xử lý decon
             futures = [executor.submit(process_decon_worker, chunk, start_id, self.config) for chunk, start_id in decon_chunks]
             
             for future in as_completed(futures):
-                decons, lookups = future.result()
-                output_db.insert_deconstructions(decons, lookups)
-                processed_decon += len(decons)
-                print(f"   Saved deconstructions... ({processed_decon}/{len(decon_keys)})", end="\r")
+                try:
+                    decons, lookups = future.result()
+                    output_db.insert_deconstructions(decons, lookups)
+                    processed_decon += len(decons)
+                    print(f"   Saved deconstructions... ({processed_decon}/{len(decon_keys)})", end="\r")
+                except Exception as e:
+                    print(f"[red]Decon batch error: {e}")
 
         # --- PHASE 3: CLEANUP ---
         output_db.close()
@@ -87,3 +101,8 @@ class DictBuilder:
         
         print(f"\n✅ Build Complete: {self.config.output_path}")
         print(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
+
+# [RESTORED] Hàm này cần thiết để fix lỗi ImportError
+def run_builder(mode: str = "mini"):
+    builder = DictBuilder(mode=mode)
+    builder.run()
