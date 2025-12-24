@@ -52,6 +52,9 @@ class DpdHeadword(Base):
     phonetic: Mapped[str] = mapped_column(default="")
     compound_type: Mapped[str] = mapped_column(default="")
     
+    # [FIXED] Thêm cột compound_construction bị thiếu
+    compound_construction: Mapped[str] = mapped_column(default="")
+    
     antonym: Mapped[str] = mapped_column(default="")
     synonym: Mapped[str] = mapped_column(default="")
     variant: Mapped[str] = mapped_column(default="")
@@ -73,7 +76,6 @@ class DpdHeadword(Base):
     inflections: Mapped[str] = mapped_column(default="")
     inflections_api_ca_eva_iti: Mapped[str] = mapped_column(default="")
     
-    # [FIXED] Thêm cột ebt_count để tính search_score
     ebt_count: Mapped[int] = mapped_column(default=0)
 
     # Relationships
