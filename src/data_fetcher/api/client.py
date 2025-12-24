@@ -13,65 +13,85 @@ logger = setup_logging("DataFetcher.API")
 
 class MetadataClient:
     def __init__(self):
-        # Pre-calculate priority map for O(1) lookup
         self.priority_map = {item: i for i, item in enumerate(ApiConfig.PRIORITY_ORDER)}
 
     def discover_books(self) -> List[Tuple[str, str]]:
-        # [UPDATED] Sử dụng đường dẫn tường minh từ Config
+        """
+        Quét thư mục dựa trên DISCOVERY_RULES được định nghĩa trong config.
+        """
         root_dir = BilaraConfig.ROOT_TEXT_DIR
         
         if not root_dir.exists():
-            logger.error(f"❌ Root data not found at {root_dir}. Please fetch Bilara data first.")
+            logger.error(f"❌ Root text data not found at {root_dir}.")
+            logger.error("   👉 Please run 'make sync-text' or 'python -m src.data_fetcher -s' first.")
             return []
 
-        priority_super_raw = [(uid, "super") for uid in ApiConfig.SUPER_TARGET_CATS]
-        found_raw: List[Tuple[str, str]] = []
+        discovered: List[Tuple[str, str]] = []
+        logger.info(f"   🔍 Scanning Book IDs in {root_dir.name}...")
 
-        def scan_dir(path: Path, category: str) -> None:
-            if path.exists():
-                for item in path.iterdir():
-                    if not item.is_dir(): continue
-                    if item.name == 'kn':
-                        for kn_book in item.iterdir():
-                            if kn_book.is_dir():
-                                found_raw.append((kn_book.name, f"{category}/kn"))
-                    else:
-                        found_raw.append((item.name, category))
+        # 1. Rule-based Discovery
+        for rule in ApiConfig.DISCOVERY_RULES:
+            scan_path = root_dir / rule["path"]
+            category = rule["category"]
+            exclude_set = rule["exclude"]
 
-        logger.info(f"   🔍 Scanning directories in {root_dir.name} for API targets...")
-        scan_dir(root_dir / "sutta", "sutta")
-        scan_dir(root_dir / "vinaya", "vinaya")
-        scan_dir(root_dir / "abhidhamma", "abhidhamma")
-
-        for uid, category in ApiConfig.EXTRA_UIDS.items():
-            found_raw.append((uid, category))
-
-        all_discovered: List[Tuple[str, str]] = []
-        seen = set()
-
-        for book, cat in found_raw + priority_super_raw:
-            processed_cat = "super" if book in ApiConfig.SUPER_TARGET_CATS else cat
-            
-            if book in ApiConfig.SYSTEM_IGNORE or (book, processed_cat) in seen:
+            if not scan_path.exists():
+                logger.debug(f"   ⚠️ Path not found (skipped): {rule['path']}")
                 continue
+
+            # Chỉ lấy các folder con trực tiếp (Immediate subdirectories)
+            # Đây là Book ID (ví dụ: dn, mn, sn...)
+            count = 0
+            for item in scan_path.iterdir():
+                if item.is_dir():
+                    book_id = item.name
+                    # Bỏ qua folder hệ thống và folder nằm trong exclude list (ví dụ: kn)
+                    if (book_id in ApiConfig.SYSTEM_IGNORE) or (book_id in exclude_set):
+                        continue
+                    
+                    discovered.append((book_id, category))
+                    count += 1
             
-            seen.add((book, processed_cat))
-            all_discovered.append((book, processed_cat))
+            logger.debug(f"   -> Scanned {rule['path']}: found {count} items.")
 
-        # Sorting Logic
-        top_priority = []
-        remaining = []
+        # 2. Add Super Targets & Extras
+        # Thêm các mục lục lớn (sutta, vinaya...)
+        for uid in ApiConfig.SUPER_TARGET_CATS:
+            discovered.append((uid, "super"))
+            
+        # Thêm các mục bổ sung thủ công
+        for uid, cat in ApiConfig.EXTRA_UIDS.items():
+            discovered.append((uid, cat))
+
+        # 3. Deduplicate & Sort
+        # Loại bỏ trùng lặp và sắp xếp theo độ ưu tiên
+        seen = set()
+        final_list = []
         
-        for info in all_discovered:
+        # Priority items first
+        priority_candidates = []
+        normal_candidates = []
+
+        for info in discovered:
+            book_id, cat = info
+            unique_key = (book_id, cat)
+            
+            if unique_key in seen:
+                continue
+            seen.add(unique_key)
+
             if info in self.priority_map:
-                top_priority.append(info)
+                priority_candidates.append(info)
             else:
-                remaining.append(info)
+                normal_candidates.append(info)
 
-        top_priority.sort(key=lambda x: self.priority_map[x])
-        remaining.sort(key=lambda x: x[0])
+        priority_candidates.sort(key=lambda x: self.priority_map[x])
+        normal_candidates.sort(key=lambda x: x[0]) # Sort chữ cái cho phần còn lại
 
-        return top_priority + remaining
+        final_list = priority_candidates + normal_candidates
+        
+        logger.info(f"   ✅ Discovered {len(final_list)} targets to fetch.")
+        return final_list
 
     def fetch_book_json(self, book_info: Tuple[str, str]) -> str:
         book_id, category_path = book_info
@@ -81,13 +101,12 @@ class MetadataClient:
         category_dir.mkdir(parents=True, exist_ok=True)
         dest_file = category_dir / f"{book_id}.json"
         
+        # Check cache logic could be added here later
+        
         try:
-            # Configurable Timeouts
             timeout = ApiConfig.TIMEOUT_DEFAULT
-            if category_path == "super": 
-                timeout = ApiConfig.TIMEOUT_SUPER
-            elif book_id in ApiConfig.LARGE_BOOKS: 
-                timeout = ApiConfig.TIMEOUT_LARGE
+            if category_path == "super": timeout = ApiConfig.TIMEOUT_SUPER
+            elif book_id in ApiConfig.LARGE_BOOKS: timeout = ApiConfig.TIMEOUT_LARGE
             
             with urllib.request.urlopen(url, timeout=timeout) as response:
                 if response.status != 200:
@@ -111,14 +130,13 @@ class MetadataClient:
         
         target_books = self.discover_books()
         if not target_books:
-            logger.warning("⚠️ No targets found. Ensure Bilara data is synced first.")
             return
 
         if not ApiConfig.DATA_JSON_DIR.exists():
             ApiConfig.DATA_JSON_DIR.mkdir(parents=True)
 
         workers = ApiConfig.get_worker_count()
-        logger.info(f"   Using {workers} threads for {len(target_books)} requests...")
+        logger.info(f"   Using {workers} threads...")
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = {
@@ -127,8 +145,7 @@ class MetadataClient:
             }
             
             for future in as_completed(futures):
-                result = future.result()
-                logger.info(result)
+                logger.info(future.result())
 
         logger.info("✨ Metadata API Fetch completed.")
 
