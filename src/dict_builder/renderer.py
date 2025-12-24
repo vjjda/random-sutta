@@ -12,7 +12,6 @@ class DpdRenderer:
 
     def _load_templates(self):
         self.tpl_entry = Template(filename=str(self.config.TEMPLATES_DIR / "entry.html"))
-        # [REMOVED] tpl_grammar - Không cần template grammar nữa
         self.tpl_example = Template(filename=str(self.config.TEMPLATES_DIR / "example.html"))
         self.tpl_deconstruction = Template(filename=str(self.config.TEMPLATES_DIR / "deconstruction.html"))
 
@@ -41,80 +40,94 @@ class DpdRenderer:
             deconstruction="<br/>".join(i.deconstructor_unpack_list)
         )
 
-    # [NEW] Hàm trích xuất dữ liệu grammar thành JSON
     def extract_grammar_data(self, i: DpdHeadword) -> str:
         """
-        Trích xuất các thông tin ngữ pháp quan trọng thành JSON.
-        Chỉ đưa vào các trường có dữ liệu để tiết kiệm dung lượng.
+        Trích xuất dữ liệu grammar khớp hoàn toàn với ebook_grammar.html cũ.
         """
         if not i.meaning_1:
             return ""
 
         data = {}
 
-        # 1. Grammar Line (Tổng hợp Pos, Verb, Case...)
+        # 1. Grammar Line (Tổng hợp)
         grammar_line = make_grammar_line(i)
         if grammar_line:
             data["grammar"] = grammar_line
 
-        # 2. Root Info
-        if i.root_key:
+        # 2. Root Family 
+        if i.family_root: 
+            data["family_root"] = i.family_root
+
+        # 3. Root Info (Chi tiết từ bảng dpd_roots) 
+        if i.root_key and i.rt:
             root_info = {
-                "key": i.root_key,
-                "clean": i.root_clean,
-                "sign": i.root_sign,
-                "meaning": "", # Sẽ lấy từ relation rt nếu có
-                "group": "",
-                "has_verb": ""
+                "clean": i.root_clean,     # √kaṅkh
+                "has_verb": i.rt.root_has_verb, # <sup>...</sup>
+                "group": i.rt.root_group,  # 1
+                "sign": i.root_sign,       # a
+                "meaning": i.rt.root_meaning # (doubt)
             }
-            # Lấy thông tin từ bảng DpdRoot (relation rt)
-            if i.rt:
-                root_info["meaning"] = i.rt.root_meaning
-                root_info["group"] = i.rt.root_group
-                root_info["has_verb"] = i.rt.root_has_verb
+            # Root in Sandhi (comps) 
+            if i.rt.root_in_comps:
+                root_info["in_comps"] = i.rt.root_in_comps
+            
+            # Sanskrit Root 
+            if i.rt.sanskrit_root and i.rt.sanskrit_root != "-":
+                root_info["sanskrit"] = {
+                    "root": i.rt.sanskrit_root,
+                    "class": i.rt.sanskrit_root_class,
+                    "meaning": i.rt.sanskrit_root_meaning
+                }
             
             data["root"] = root_info
-            
-            if i.root_base:
-                data["root_base"] = i.root_base
 
-        # 3. Family & Relations
-        if i.family_root: data["family_root"] = i.family_root
-        if i.family_word: data["family_word"] = i.family_word
-        if i.family_compound: data["family_compound"] = i.family_compound
-        if i.family_idioms: data["family_idioms"] = i.family_idioms
-        if i.family_set: data["family_set"] = i.family_set
+        # 4. Base 
+        if i.root_base: 
+            data["root_base"] = i.root_base
 
-        # 4. Construction & Morphology
-        if i.construction: data["construction"] = i.construction.replace("\n", "<br>")
-        if i.derivative: data["derivative"] = f"{i.derivative} ({i.suffix})" if i.suffix else i.derivative
-        if i.phonetic: data["phonetic"] = i.phonetic.replace("\n", "<br>")
+        # 5. Construction 
+        if i.construction: 
+            data["construction"] = i.construction.replace("\n", "<br>")
+
+        # 6. Derivative 
+        if i.derivative: 
+            data["derivative"] = f"{i.derivative} ({i.suffix})" if i.suffix else i.derivative
+
+        # 7. Phonetic 
+        if i.phonetic: 
+            data["phonetic"] = i.phonetic.replace("\n", "<br>")
         
-        # 5. Compound Info
+        # 8. Compound 
         if i.compound_type and "?" not in i.compound_type:
             data["compound"] = f"{i.compound_type} ({i.compound_construction})"
 
-        # 6. Related Words
+        # 9. Related Words 
         if i.antonym: data["antonym"] = i.antonym
         if i.synonym: data["synonym"] = i.synonym
         if i.variant: data["variant"] = i.variant
-        if i.cognate: data["cognate"] = i.cognate
-
-        # 7. Commentary & Notes
+        
+        # 10. Commentary & Notes 
         if i.commentary and i.commentary != "-": 
             data["commentary"] = i.commentary.replace("\n", "<br>")
         if i.notes: 
             data["notes"] = i.notes.replace("\n", "<br>")
         
-        # 8. Origin
-        if i.sanskrit: data["sanskrit"] = i.sanskrit
-        if i.origin: data["origin"] = i.origin
+        # 11. Cognate 
+        if i.cognate: data["cognate"] = i.cognate
 
-        # 9. Links
+        # 12. Links 
         if i.link:
-            data["link"] = i.link.replace("\n", "<br>")
+            data["link"] = i.link.split("\n")
 
-        # Nếu không có dữ liệu gì đáng kể thì trả về rỗng để đỡ tốn DB
+        # 13. Non IA 
+        if i.non_ia: data["non_ia"] = i.non_ia
+
+        # 14. Sanskrit 
+        if i.sanskrit: data["sanskrit"] = i.sanskrit
+
+        # Note: Bỏ qua IPA để tránh phụ thuộc thư viện nặng aksharamukha
+        # Nếu cần thiết, có thể thêm vào sau.
+
         if not data:
             return ""
 
