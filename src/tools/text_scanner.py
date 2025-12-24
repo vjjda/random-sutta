@@ -16,16 +16,21 @@ def _process_single_file(file_path: Path) -> Set[str]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Regex để tách từ: chỉ lấy ký tự chữ cái (bao gồm Pali diacritics)
-            # Cách này nhanh hơn replace nhiều lần
-            pattern = re.compile(r'[a-zA-ZāīūṅñṭḍṇḷṃĀĪŪṄÑṬḌṆḶṂ]+')
             
+            # [FIXED] Regex cập nhật đầy đủ các biến thể Pali:
+            # - a-z, A-Z: Chữ cái Latin thường
+            # - āīūṅñṭḍṇḷṃ: Các ký tự Pali chấm dưới/ngang phổ biến
+            # - ṁ: [NEW] Ký tự Niggahita chấm trên (dùng trong MS data)
+            # - Các ký tự viết hoa tương ứng
+            pattern = re.compile(r'[a-zA-ZāīūṅñṭḍṇḷṃṁĀĪŪṄÑṬḌṆḶṂṀ]+')
+            
+            # data.values() giúp bỏ qua key (ví dụ "an1.1:1.1") chỉ lấy text
             for text in data.values():
-                # Tìm tất cả các từ trong chuỗi
+                # lower() trước để đồng nhất, sau đó mới findall
                 words = pattern.findall(text.lower())
                 local_words.update(words)
     except Exception:
-        pass # Bỏ qua lỗi đọc file lẻ tẻ
+        pass 
     return local_words
 
 def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[str]:
@@ -34,8 +39,6 @@ def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[st
     """
     # 1. Kiểm tra Cache
     if CACHE_FILE.exists():
-        # Kiểm tra xem dữ liệu gốc có mới hơn cache không (Optional - ở đây làm đơn giản)
-        # Nếu muốn quét lại, chỉ cần xóa file cache hoặc chạy make clean
         print(f"[cyan]Loading EBTS word set from cache: {CACHE_FILE}")
         try:
             with open(CACHE_FILE, "rb") as f:
@@ -51,11 +54,8 @@ def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[st
 
     # 2. Thu thập danh sách file cần quét
     target_files = []
-    # Chỉ quét các folder liên quan để nhanh hơn (thay vì rglob toàn bộ)
-    # Cấu trúc: root/pli/ms/sutta/dn/dn1...
-    # Tuy nhiên để an toàn và đơn giản, ta vẫn rglob nhưng filter nhanh
     for path in bilara_root_path.rglob("*.json"):
-        # Check filename startswith books_filter
+        # Lọc sơ bộ theo tên sách để tránh quét toàn bộ tạng kinh nếu không cần
         if any(path.name.startswith(b) for b in books_filter):
             target_files.append(path)
 
@@ -64,12 +64,10 @@ def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[st
     # 3. Multiprocessing Scan
     final_word_set = set()
     
-    # Sử dụng tất cả core CPU
+    # ProcessPoolExecutor tự động dùng tối đa số core CPU
     with ProcessPoolExecutor() as executor:
-        # Map xử lý file -> trả về set từ vựng
         results = executor.map(_process_single_file, target_files)
         
-        # Gộp kết quả
         for res in results:
             final_word_set.update(res)
 
