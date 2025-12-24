@@ -5,6 +5,7 @@ import logging
 from src.logging_config import setup_logging
 from .api import run_api_fetch
 from .bilara import run_bilara_sync
+from .dpd import run_dpd_fetch
 
 logger = setup_logging("DataFetcher")
 
@@ -25,21 +26,33 @@ def run_cli() -> None:
         help="Sync Sutta Content (Bilara) from GitHub"
     )
 
+    parser.add_argument(
+        "-d", "--dpd",
+        action="store_true",
+        help="Fetch/Update Digital Pali Dictionary (DPD)"
+    )
+
     args = parser.parse_args()
 
     # Nếu không có flag nào, hiển thị help
-    if not (args.api or args.sutta):
+    if not (args.api or args.sutta or args.dpd):
         parser.print_help()
         sys.exit(0)
 
     try:
-        # 1. Fetch Sutta (Content) trước vì API Discovery cần thư mục root data
+        # 1. Fetch DPD (Dictionary) - Độc lập, chạy đầu tiên hoặc song song
+        if args.dpd:
+            logger.info("🔹 TRIGGERED: DPD Dictionary Update")
+            run_dpd_fetch()
+            print("-" * 50)
+
+        # 2. Fetch Sutta (Content)
         if args.sutta:
             logger.info("🔹 TRIGGERED: Sutta Content Sync (Bilara)")
             run_bilara_sync()
             print("-" * 50)
 
-        # 2. Fetch API (Metadata) sau
+        # 3. Fetch API (Metadata) - Cần content trước để discovery
         if args.api:
             logger.info("🔹 TRIGGERED: Metadata API Fetch")
             run_api_fetch()

@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api dry data build re dev live serve view-pwa view-sl release zip deploy beta publish clean official noedit undo
+.PHONY: help setup sync sync-text sync-api sync-dpd dry data build re dev live serve view-pwa view-sl release zip deploy beta publish clean official noedit undo
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -12,9 +12,10 @@ help:
 	@echo "----------------------------------------------------------------"
 	@echo "🛠️  SETUP & SYNC:"
 	@echo "  make setup          - Install Git hooks"
-	@echo "  make sync           - Sync ALL data (Bilara Text + API Meta)"
+	@echo "  make sync           - Sync ALL data (Bilara + API + DPD)"
 	@echo "  make sync-text      - Sync ONLY Bilara Text (-s)"
 	@echo "  make sync-api       - Sync ONLY API Metadata (-a)"
+	@echo "  make sync-dpd       - Sync ONLY DPD Dictionary (-d)"
 	@echo ""
 	@echo "⚙️  DATA PROCESSING:"
 	@echo "  make data           - Process JSON -> Optimized Assets"
@@ -46,8 +47,8 @@ setup:
 	$(PYTHON) src/setup_hooks.py
 
 sync:
-	@echo "📥 Syncing ALL Data (Bilara + API)..."
-	$(PYTHON) -m src.data_fetcher -s -a
+	@echo "📥 Syncing ALL Data (Bilara + API + DPD)..."
+	$(PYTHON) -m src.data_fetcher -s -a -d
 
 sync-text:
 	@echo "📥 Syncing Bilara Text only..."
@@ -56,6 +57,10 @@ sync-text:
 sync-api:
 	@echo "📥 Fetching API Metadata only..."
 	$(PYTHON) -m src.data_fetcher -a
+
+sync-dpd:
+	@echo "📥 Fetching/Updating DPD Dictionary..."
+	$(PYTHON) -m src.data_fetcher -d
 
 # ==============================================================================
 # ⚙️ BUILD & PROCESS
