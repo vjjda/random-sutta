@@ -38,7 +38,6 @@ class DpdHeadword(Base):
     meaning_2: Mapped[str] = mapped_column(default="")
     
     root_key: Mapped[str] = mapped_column(ForeignKey("dpd_roots.root"), default="")
-    # [FIX] Thêm các cột root/family thiếu
     root_sign: Mapped[str] = mapped_column(default="")
     root_base: Mapped[str] = mapped_column(default="")
     family_root: Mapped[str] = mapped_column(default="")
@@ -58,7 +57,6 @@ class DpdHeadword(Base):
     variant: Mapped[str] = mapped_column(default="")
     sanskrit: Mapped[str] = mapped_column(default="")
     
-    # [FIX] Thêm các cột chú thích/link
     commentary: Mapped[str] = mapped_column(default="")
     notes: Mapped[str] = mapped_column(default="")
     cognate: Mapped[str] = mapped_column(default="")
@@ -74,6 +72,9 @@ class DpdHeadword(Base):
     
     inflections: Mapped[str] = mapped_column(default="")
     inflections_api_ca_eva_iti: Mapped[str] = mapped_column(default="")
+    
+    # [FIXED] Thêm cột ebt_count để tính search_score
+    ebt_count: Mapped[int] = mapped_column(default=0)
 
     # Relationships
     rt: Mapped[DpdRoot] = relationship("DpdRoot", uselist=False)
