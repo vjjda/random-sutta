@@ -1,5 +1,6 @@
 # Path: src/db/models.py
 import re
+import json
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, Mapped, mapped_column
 
@@ -17,7 +18,6 @@ class DpdRoot(Base):
     
     @property
     def root_clean(self) -> str:
-        # Logic gốc: loại bỏ số thứ tự
         return re.sub(r" \d.*$", "", self.root)
 
 class DpdHeadword(Base):
@@ -25,7 +25,7 @@ class DpdHeadword(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lemma_1: Mapped[str] = mapped_column(default="")
-    # [FIXED] lemma_clean không phải là cột, nó là property (xem bên dưới)
+    # lemma_clean is a property, removed from mapped_column
     
     pos: Mapped[str] = mapped_column(default="")
     grammar: Mapped[str] = mapped_column(default="")
@@ -66,17 +66,14 @@ class DpdHeadword(Base):
     # Relationships
     rt: Mapped[DpdRoot] = relationship("DpdRoot", uselist=False)
 
-    # [FIXED] Chuyển thành Property
     @property
     def lemma_clean(self) -> str:
-        """Remove digits from the end (e.g., 'buddha 1' -> 'buddha')"""
         if self.lemma_1:
             return re.sub(r" \d.*$", "", self.lemma_1)
         return ""
         
     @property
     def root_clean(self) -> str:
-        """Helper cho template grammar.html"""
         if self.root_key:
              return re.sub(r" \d.*$", "", self.root_key)
         return ""
@@ -90,7 +87,7 @@ class DpdHeadword(Base):
             infs.extend(self.inflections_api_ca_eva_iti.split(","))
         return infs
 
-    # Helper properties sử dụng functions từ src.tools
+    # Helper properties
     @property
     def meaning_combo_html(self):
         return make_meaning_combo_html(self)
@@ -107,20 +104,19 @@ class DpdHeadword(Base):
 
 class Lookup(Base):
     __tablename__ = "lookup"
-    # id: Mapped[int] = mapped_column(primary_key=True) # [Lưu ý: Bảng lookup gốc dùng lookup_key làm PK]
     
-    # [FIXED] Kiểm tra lại schema gốc, bảng lookup có thể dùng lookup_key làm PK
-    # Tuy nhiên để an toàn với SQLAlchemy ORM, ta map như sau:
+    # lookup_key là Primary Key
     lookup_key: Mapped[str] = mapped_column(primary_key=True)
     
+    # deconstructor chứa chuỗi JSON, deconstructor_unpack không phải là cột
     deconstructor: Mapped[str] = mapped_column(default="")
-    deconstructor_unpack: Mapped[str] = mapped_column(default="")
-
+    
     @property
     def deconstructor_unpack_list(self):
-        if self.deconstructor_unpack:
-            # Format trong DB gốc có thể là list JSON hoặc string.
-            # Dựa vào context cũ: return json.loads(self.deconstructor)
-            # Nhưng ở đây ta xử lý đơn giản:
-            return self.deconstructor_unpack.split("$") 
+        if self.deconstructor:
+            try:
+                # Parse JSON từ cột deconstructor
+                return json.loads(self.deconstructor)
+            except json.JSONDecodeError:
+                return []
         return []

@@ -1,0 +1,17 @@
+<div class="dpd-entry">
+    <div class="dpd-summary">
+        <span class="dpd-lemma">${i.lemma_1}</span>: ${summary}
+    </div>
+    
+    % if grammar_html:
+        <div class="dpd-grammar-section">
+            ${grammar_html}
+        </div>
+    % endif
+    
+    % if example_html:
+        <div class="dpd-example-section">
+            ${example_html}
+        </div>
+    % endif
+</div>
