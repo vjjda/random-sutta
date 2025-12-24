@@ -16,6 +16,12 @@ class DpdRoot(Base):
     root_meaning: Mapped[str] = mapped_column(default="")
     root_has_verb: Mapped[str] = mapped_column(default="")
     
+    # [FIXED] Thêm các cột thiếu cho Root Info
+    root_in_comps: Mapped[str] = mapped_column(default="")
+    sanskrit_root: Mapped[str] = mapped_column(default="")
+    sanskrit_root_meaning: Mapped[str] = mapped_column(default="")
+    sanskrit_root_class: Mapped[str] = mapped_column(default="")
+    
     @property
     def root_clean(self) -> str:
         return re.sub(r" \d.*$", "", self.root)
@@ -37,6 +43,10 @@ class DpdHeadword(Base):
     meaning_lit: Mapped[str] = mapped_column(default="")
     meaning_2: Mapped[str] = mapped_column(default="")
     
+    # [FIXED] Thêm cột non_ia
+    non_ia: Mapped[str] = mapped_column(default="")
+    sanskrit: Mapped[str] = mapped_column(default="")
+    
     root_key: Mapped[str] = mapped_column(ForeignKey("dpd_roots.root"), default="")
     root_sign: Mapped[str] = mapped_column(default="")
     root_base: Mapped[str] = mapped_column(default="")
@@ -51,14 +61,11 @@ class DpdHeadword(Base):
     suffix: Mapped[str] = mapped_column(default="")
     phonetic: Mapped[str] = mapped_column(default="")
     compound_type: Mapped[str] = mapped_column(default="")
-    
-    # [FIXED] Thêm cột compound_construction bị thiếu
     compound_construction: Mapped[str] = mapped_column(default="")
     
     antonym: Mapped[str] = mapped_column(default="")
     synonym: Mapped[str] = mapped_column(default="")
     variant: Mapped[str] = mapped_column(default="")
-    sanskrit: Mapped[str] = mapped_column(default="")
     
     commentary: Mapped[str] = mapped_column(default="")
     notes: Mapped[str] = mapped_column(default="")
