@@ -30,6 +30,4 @@ CREATE TABLE IF NOT EXISTS lookups (
     is_inflection BOOLEAN DEFAULT 0 
 );
 
--- [REMOVED] idx_entries_headword (Dư thừa)
--- [KEPT] idx_lookups_key (Bắt buộc để search nhanh)
 CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);
