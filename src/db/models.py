@@ -25,7 +25,6 @@ class DpdHeadword(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lemma_1: Mapped[str] = mapped_column(default="")
-    # lemma_clean is a property, removed from mapped_column
     
     pos: Mapped[str] = mapped_column(default="")
     grammar: Mapped[str] = mapped_column(default="")
@@ -39,8 +38,14 @@ class DpdHeadword(Base):
     meaning_2: Mapped[str] = mapped_column(default="")
     
     root_key: Mapped[str] = mapped_column(ForeignKey("dpd_roots.root"), default="")
+    # [FIX] Thêm các cột root/family thiếu
+    root_sign: Mapped[str] = mapped_column(default="")
+    root_base: Mapped[str] = mapped_column(default="")
     family_root: Mapped[str] = mapped_column(default="")
     family_word: Mapped[str] = mapped_column(default="")
+    family_compound: Mapped[str] = mapped_column(default="")
+    family_idioms: Mapped[str] = mapped_column(default="")
+    family_set: Mapped[str] = mapped_column(default="")
     
     construction: Mapped[str] = mapped_column(default="")
     derivative: Mapped[str] = mapped_column(default="")
@@ -52,6 +57,13 @@ class DpdHeadword(Base):
     synonym: Mapped[str] = mapped_column(default="")
     variant: Mapped[str] = mapped_column(default="")
     sanskrit: Mapped[str] = mapped_column(default="")
+    
+    # [FIX] Thêm các cột chú thích/link
+    commentary: Mapped[str] = mapped_column(default="")
+    notes: Mapped[str] = mapped_column(default="")
+    cognate: Mapped[str] = mapped_column(default="")
+    link: Mapped[str] = mapped_column(default="")
+    origin: Mapped[str] = mapped_column(default="")
     
     example_1: Mapped[str] = mapped_column(default="")
     source_1: Mapped[str] = mapped_column(default="")
@@ -105,17 +117,13 @@ class DpdHeadword(Base):
 class Lookup(Base):
     __tablename__ = "lookup"
     
-    # lookup_key là Primary Key
     lookup_key: Mapped[str] = mapped_column(primary_key=True)
-    
-    # deconstructor chứa chuỗi JSON, deconstructor_unpack không phải là cột
     deconstructor: Mapped[str] = mapped_column(default="")
     
     @property
     def deconstructor_unpack_list(self):
         if self.deconstructor:
             try:
-                # Parse JSON từ cột deconstructor
                 return json.loads(self.deconstructor)
             except json.JSONDecodeError:
                 return []
