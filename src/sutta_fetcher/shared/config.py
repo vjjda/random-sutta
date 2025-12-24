@@ -14,9 +14,9 @@ BRANCH_NAME = "main"
 
 # Sparse Checkout Mapping (Git Path -> Local Path)
 FETCH_MAPPING = {
-    "sc_bilara_data/root/pli/ms": "root",
-    "sc_bilara_data/html/pli/ms": "html",
-    "sc_bilara_data/html/pli/vri/vinaya": "html/vinaya",
+    "sc_bilara_data/root/pli/ms": "root/pli/ms",
+    "sc_bilara_data/html/pli/ms": "html/pli/ms",
+    "sc_bilara_data/html/pli/vri/vinaya": "html/pli/ms/vinaya",
     "sc_bilara_data/comment/en": "comment/en",
     "sc_bilara_data/translation/en/brahmali": "translation/en/brahmali",
     "sc_bilara_data/translation/en/kelly": "translation/en/kelly",

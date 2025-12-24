@@ -9,7 +9,7 @@ _ASSETS_BASE = _WEB_BASE / "assets"
 
 # --- 1. RAW INPUTS (Source of Truth) ---
 RAW_BILARA_DIR = _DATA_BASE / "bilara"
-RAW_BILARA_TEXT_DIR = RAW_BILARA_DIR / "root"
+RAW_BILARA_TEXT_DIR = RAW_BILARA_DIR / "root/pli/ms"
 RAW_API_JSON_DIR = _DATA_BASE / "json"
 RAW_SUPER_META_DIR = RAW_API_JSON_DIR / "super"
 RAW_SUPER_TREE_FILE = RAW_BILARA_DIR / "tree" / "super-tree.json"
