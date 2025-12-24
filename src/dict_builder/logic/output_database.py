@@ -6,120 +6,56 @@ from rich import print
 from ..config import BuilderConfig
 
 class OutputDatabase:
+    # ... (Các phần __init__, setup, _create_tables, insert... giữ nguyên) ...
     def __init__(self, config: BuilderConfig):
         self.config = config
         self.conn = None
         self.cursor = None
 
     def setup(self):
-        """Khởi tạo kết nối DB và tạo cấu trúc bảng."""
         if not self.config.OUTPUT_DIR.exists():
             self.config.OUTPUT_DIR.mkdir(parents=True)
-            
         if self.config.output_path.exists():
             self.config.output_path.unlink()
-            
         self.conn = sqlite3.connect(self.config.output_path)
         self.cursor = self.conn.cursor()
-        
-        # Tối ưu hóa tốc độ Insert
         self.cursor.execute("PRAGMA synchronous = OFF")
         self.cursor.execute("PRAGMA journal_mode = MEMORY")
-        
         self._create_tables()
-            
-        # Ghi Metadata
-        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
-                            ("version", datetime.now().strftime("%Y-%m-%d")))
-        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
-                            ("mode", self.config.mode))
-        
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("version", datetime.now().strftime("%Y-%m-%d")))
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("mode", self.config.mode))
         fmt = "html" if self.config.html_mode else "json"
-        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
-                            ("format", fmt))
-
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("format", fmt))
         comp_status = "zlib" if self.config.USE_COMPRESSION else "none"
-        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
-                            ("compression", comp_status))
-                            
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("compression", comp_status))
         self.conn.commit()
 
     def _create_tables(self):
-        """Tạo bảng dựa trên cấu hình (Tiny/Mini/Full và HTML/JSON)."""
-        
-        # 1. Metadata
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, lookup_key TEXT NOT NULL, split_string TEXT);")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, is_headword BOOLEAN NOT NULL, is_inflection BOOLEAN DEFAULT 0);")
         
-        # 2. Deconstructions
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS deconstructions (
-                id INTEGER PRIMARY KEY, 
-                lookup_key TEXT NOT NULL, 
-                split_string TEXT
-            );
-        """)
-        
-        # 3. Lookups
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS lookups (
-                key TEXT NOT NULL, 
-                target_id INTEGER NOT NULL, 
-                is_headword BOOLEAN NOT NULL, 
-                is_inflection BOOLEAN DEFAULT 0
-            );
-        """)
-
-        # 4. Entries (Dynamic Schema)
         suffix = "html" if self.config.html_mode else "json"
-        
         if self.config.is_tiny_mode:
-            # Tiny: id, headword, headword_clean, definition_{suffix}
-            self.cursor.execute(f"""
-                CREATE TABLE IF NOT EXISTS entries (
-                    id INTEGER PRIMARY KEY,
-                    headword TEXT NOT NULL,
-                    headword_clean TEXT NOT NULL,
-                    definition_{suffix} TEXT
-                );
-            """)
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT);")
         else:
-            # Mini/Full: id, headword, headword_clean, definition_..., grammar_..., example_...
-            self.cursor.execute(f"""
-                CREATE TABLE IF NOT EXISTS entries (
-                    id INTEGER PRIMARY KEY,
-                    headword TEXT NOT NULL,
-                    headword_clean TEXT NOT NULL,
-                    definition_{suffix} TEXT,
-                    grammar_{suffix} TEXT,
-                    example_{suffix} TEXT
-                );
-            """)
-
-        # Index cho Lookups (Quan trọng để search nhanh)
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT, grammar_{suffix} TEXT, example_{suffix} TEXT);")
+        
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
 
-
     def insert_batch(self, entries: list, lookups: list):
-        """Chèn dữ liệu entries và lookups theo lô."""
         if entries:
             suffix = "html" if self.config.html_mode else "json"
-            
             if self.config.is_tiny_mode:
                 sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}) VALUES (?,?,?,?)"
             else:
                 sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}, grammar_{suffix}, example_{suffix}) VALUES (?,?,?,?,?,?)"
-            
             self.cursor.executemany(sql, entries)
-                
         if lookups:
-            self.cursor.executemany(
-                "INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)",
-                lookups
-            )
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
         self.conn.commit()
-    
+
     def insert_deconstructions(self, deconstructions: list, lookups: list):
-        """Chèn dữ liệu deconstructions và lookups."""
         if deconstructions:
             self.cursor.executemany("INSERT INTO deconstructions (id, lookup_key, split_string) VALUES (?,?,?)", deconstructions)
         if lookups:
@@ -133,20 +69,16 @@ class OutputDatabase:
         suffix = "html" if self.config.html_mode else "json"
         
         # Xây dựng danh sách cột cho bảng Entries
-        # Luôn có headword
         entry_cols = ["e.headword AS entry_headword"]
-        
-        # Definition luôn có
         entry_cols.append(f"e.definition_{suffix} AS entry_definition")
         
-        # Grammar & Example chỉ có nếu KHÔNG PHẢI tiny mode
         if not self.config.is_tiny_mode:
             entry_cols.append(f"e.grammar_{suffix} AS entry_grammar")
             entry_cols.append(f"e.example_{suffix} AS entry_example")
             
         entry_select_str = ",\n            ".join(entry_cols)
 
-        # Câu SQL tạo View
+        # [UPDATED] Sắp xếp lại thứ tự cột và thêm ORDER BY
         sql = f"""
         CREATE VIEW IF NOT EXISTS grand_lookups AS
         SELECT 
@@ -154,37 +86,35 @@ class OutputDatabase:
             l.is_headword,
             l.is_inflection,
             
-            -- Thông tin từ Entries
-            {entry_select_str},
-            
-            -- Thông tin từ Deconstructions
+            -- [CHANGED] Đưa Deconstruction lên trước
             d.split_string AS decon_split,
-            d.lookup_key AS decon_key_ref
+            d.lookup_key AS decon_key_ref,
+            
+            -- [CHANGED] Đưa Entries xuống sau
+            {entry_select_str}
             
         FROM lookups l
         LEFT JOIN entries e 
             ON l.target_id = e.id AND l.is_headword = 1
         LEFT JOIN deconstructions d 
-            ON l.target_id = d.id AND l.is_headword = 0;
+            ON l.target_id = d.id AND l.is_headword = 0
+            
+        -- [CHANGED] Sắp xếp theo lookup_key
+        ORDER BY l.key ASC;
         """
         
         try:
-            # Drop view cũ nếu tồn tại để đảm bảo cập nhật mới nhất
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
             self.cursor.execute(sql)
             self.conn.commit()
             print("[green]View 'grand_lookups' created successfully.")
         except Exception as e:
-            # In lỗi rõ ràng nếu tạo view thất bại
             print(f"[bold red]❌ Failed to create grand view: {e}")
             print(f"[yellow]SQL was:\n{sql}")
 
     def close(self):
-        """Đóng kết nối DB."""
         if self.conn:
-            # [QUAN TRỌNG] Phải gọi tạo view trước khi đóng
             self.create_grand_view()
-            
             print("[green]Indexing & Optimizing (VACUUM)...")
             self.conn.execute("VACUUM")
             self.conn.close()
