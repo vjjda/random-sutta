@@ -1,11 +1,7 @@
 # Path: src/dict_builder/renderer.py
-import json
 from mako.template import Template
-from typing import Any, Dict
-
-# Import đúng từ src.db và src.tools
-from src.db.models import DpdHeadword, Lookup
-from src.tools.meaning_construction import make_grammar_line, make_meaning_combo_html
+from src.db.models import DpdHeadword
+from src.tools.meaning_construction import make_grammar_line
 from .config import BuilderConfig
 
 class DpdRenderer:
@@ -14,44 +10,21 @@ class DpdRenderer:
         self._load_templates()
 
     def _load_templates(self):
-        # Load templates từ thư mục templates/
         self.tpl_entry = Template(filename=str(self.config.TEMPLATES_DIR / "entry.html"))
         self.tpl_grammar = Template(filename=str(self.config.TEMPLATES_DIR / "grammar.html"))
         self.tpl_example = Template(filename=str(self.config.TEMPLATES_DIR / "example.html"))
-        self.tpl_deconstruction = Template(filename=str(self.config.TEMPLATES_DIR / "deconstruction.html"))
+        # [REMOVED] tpl_deconstruction
 
-    def extract_json_data(self, i: DpdHeadword) -> str:
-        """Trích xuất dữ liệu thô quan trọng ra JSON."""
-        data = {
-            "id": i.id,
-            "pos": i.pos,
-            "root_key": i.root_key,
-            "family_root": i.family_root,
-            "family_word": i.family_word,
-            "construction": i.construction,
-            "derivative": i.derivative,
-            "suffix": i.suffix,
-            "phonetic": i.phonetic,
-            "compound_type": i.compound_type,
-            "antonym": i.antonym,
-            "synonym": i.synonym,
-            "variant": i.variant,
-            "sanskrit": i.sanskrit,
-            "audio_url": None 
-        }
-        clean_data = {k: v for k, v in data.items() if v}
-        return json.dumps(clean_data, ensure_ascii=False)
+    # [REMOVED] extract_json_data
 
     def render_grammar(self, i: DpdHeadword) -> str:
-        """Render bảng ngữ pháp."""
         if not i.meaning_1:
             return ""
-        
         grammar_line = make_grammar_line(i)
         return self.tpl_grammar.render(i=i, grammar=grammar_line)
 
     def render_entry(self, i: DpdHeadword) -> str:
-        """Render phần định nghĩa chính (Chỉ Summary + Meaning)."""
+        """Render phần định nghĩa chính."""
         summary = f"{i.pos}. "
         if i.plus_case:
             summary += f"({i.plus_case}) "
@@ -62,20 +35,11 @@ class DpdRenderer:
         
         summary += f" {i.degree_of_completion_html}"
 
-        return self.tpl_entry.render(
-            i=i,
-            summary=summary
-            # Không truyền grammar và example vào đây nữa
-        )
+        return self.tpl_entry.render(i=i, summary=summary)
 
     def render_examples(self, i: DpdHeadword) -> str:
         if i.meaning_1 and i.example_1:
             return self.tpl_example.render(i=i)
         return ""
-
-    def render_deconstruction(self, i: Lookup) -> str:
-        # [FIXED] Sử dụng property list mới từ model
-        return self.tpl_deconstruction.render(
-            construction=i.lookup_key,
-            deconstruction="<br/>".join(i.deconstructor_unpack_list)
-        )
+    
+    # [REMOVED] render_deconstruction

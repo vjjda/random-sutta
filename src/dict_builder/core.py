@@ -9,7 +9,6 @@ from src.db.models import Lookup
 from .config import BuilderConfig
 from .renderer import DpdRenderer
 
-# Imports từ logic modules mới
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
 from .logic.batch_worker import process_batch_worker
@@ -17,17 +16,17 @@ from .logic.batch_worker import process_batch_worker
 class DictBuilder:
     def __init__(self, mode: str = "mini"):
         self.config = BuilderConfig(mode=mode)
-        self.renderer = DpdRenderer(self.config) # Dùng cho deconstructions
+        # Renderer không còn dùng ở đây nữa vì đã bỏ render_deconstruction
         
     def run(self):
         start_time = time.time()
-        print(f"🚀 Starting Dictionary Builder (Refactored)...")
+        print(f"🚀 Starting Dictionary Builder (Lite Version)...")
         
         # 1. Setup Output DB
         output_db = OutputDatabase(self.config)
         output_db.setup()
 
-        # 2. Select Targets (từ Source DB)
+        # 2. Select Targets
         session = get_db_session(self.config.DPD_DB_PATH)
         selector = WordSelector(self.config)
         target_ids = selector.get_target_ids(session)
@@ -54,7 +53,7 @@ class DictBuilder:
         
         print(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
-        # 4. Process Deconstructions (Single Thread is fast enough)
+        # 4. Process Deconstructions
         print("[green]Processing Deconstructions...")
         deconstructions = session.query(Lookup).filter(Lookup.deconstructor != "").all()
         
@@ -62,11 +61,10 @@ class DictBuilder:
         decon_lookup_batch = []
         
         for idx, d in enumerate(deconstructions, start=1):
-            html = self.renderer.render_deconstruction(d)
-            # Dùng separator "; "
+            # [UPDATED] Không render HTML nữa
             split_str = "; ".join(d.deconstructor_unpack_list)
             
-            decon_batch.append((idx, d.lookup_key, split_str, html))
+            decon_batch.append((idx, d.lookup_key, split_str))
             decon_lookup_batch.append((d.lookup_key, idx, 'deconstruction', 0))
             
         output_db.insert_deconstructions(decon_batch, decon_lookup_batch)

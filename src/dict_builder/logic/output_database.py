@@ -12,7 +12,6 @@ class OutputDatabase:
         self.cursor = None
 
     def setup(self):
-        """Khởi tạo DB, tạo bảng và ghi Metadata."""
         if not self.config.OUTPUT_DIR.exists():
             self.config.OUTPUT_DIR.mkdir(parents=True)
             
@@ -22,7 +21,6 @@ class OutputDatabase:
         self.conn = sqlite3.connect(self.config.output_path)
         self.cursor = self.conn.cursor()
         
-        # Tối ưu hóa tốc độ ghi
         self.cursor.execute("PRAGMA synchronous = OFF")
         self.cursor.execute("PRAGMA journal_mode = MEMORY")
         
@@ -31,7 +29,7 @@ class OutputDatabase:
         with open(schema_path, "r", encoding="utf-8") as f:
             self.cursor.executescript(f.read())
             
-        # Ghi Metadata
+        # Metadata
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
                             ("version", datetime.now().strftime("%Y-%m-%d")))
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", 
@@ -39,10 +37,10 @@ class OutputDatabase:
         self.conn.commit()
 
     def insert_batch(self, entries: list, lookups: list):
-        """Chèn một batch dữ liệu vào DB."""
         if entries:
+            # [UPDATED] Bỏ data_json, Thêm search_score
             self.cursor.executemany(
-                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, data_json) VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO entries (id, headword, headword_clean, definition_html, grammar_html, example_html, search_score) VALUES (?,?,?,?,?,?,?)",
                 entries
             )
         if lookups:
@@ -50,14 +48,13 @@ class OutputDatabase:
                 "INSERT INTO lookups (key, target_id, target_type, is_inflection) VALUES (?,?,?,?)",
                 lookups
             )
-        # Commit ngay hoặc để sau tùy chiến lược, ở đây ta commit luôn để an toàn data
         self.conn.commit()
 
     def insert_deconstructions(self, deconstructions: list, lookups: list):
-        """Chèn dữ liệu Deconstruction."""
         if deconstructions:
+            # [UPDATED] Bỏ html column
             self.cursor.executemany(
-                "INSERT INTO deconstructions (id, lookup_key, split_string, html) VALUES (?,?,?,?)",
+                "INSERT INTO deconstructions (id, lookup_key, split_string) VALUES (?,?,?)",
                 deconstructions
             )
         if lookups:
@@ -68,7 +65,6 @@ class OutputDatabase:
         self.conn.commit()
 
     def close(self):
-        """Optimize và đóng kết nối."""
         if self.conn:
             print("[green]Indexing & Optimizing (VACUUM)...")
             self.conn.execute("VACUUM")

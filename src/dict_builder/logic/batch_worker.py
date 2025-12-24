@@ -8,10 +8,6 @@ from ..renderer import DpdRenderer
 from ..config import BuilderConfig
 
 def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, List]:
-    """
-    Worker function chạy trên process riêng biệt.
-    """
-    # Khởi tạo cục bộ cho process
     renderer = DpdRenderer(config)
     session = get_db_session(config.DPD_DB_PATH)
     
@@ -26,9 +22,12 @@ def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, L
             grammar = renderer.render_grammar(i)
             examples = renderer.render_examples(i)
             definition = renderer.render_entry(i)
-            data_json = renderer.extract_json_data(i)
             
-            # Data cho bảng entries
+            # [UPDATED] Lấy ebt_count làm search_score
+            # Nếu ebt_count là None thì mặc định là 0
+            score = i.ebt_count if i.ebt_count else 0
+            
+            # Data cho bảng entries (Bỏ data_json)
             entries_data.append((
                 i.id,
                 i.lemma_1,
@@ -36,7 +35,7 @@ def process_batch_worker(ids: List[int], config: BuilderConfig) -> Tuple[List, L
                 definition,
                 grammar,
                 examples,
-                data_json
+                score 
             ))
             
             # Data cho bảng lookups

@@ -1,45 +1,41 @@
 -- Path: src/dict_builder/schema.sql
 
--- 1. Metadata: Lưu thông tin phiên bản
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT
 );
 
--- 2. Entries: Chứa từ vựng chính
 CREATE TABLE IF NOT EXISTS entries (
     id INTEGER PRIMARY KEY,
-    headword TEXT NOT NULL,       -- Từ hiển thị
-    headword_clean TEXT NOT NULL, -- Từ không dấu (để sort)
+    headword TEXT NOT NULL,
+    headword_clean TEXT NOT NULL,
     
-    -- HTML Rendered (Semantic HTML)
-    definition_html TEXT,         -- Summary + Meaning
-    grammar_html TEXT,            -- Bảng ngữ pháp
-    example_html TEXT,            -- Ví dụ
+    -- HTML Rendered (Chỉ giữ lại cái cần thiết để hiển thị)
+    definition_html TEXT,
+    grammar_html TEXT,
+    example_html TEXT,
     
-    -- Raw Data (JSON)
-    data_json TEXT,               -- Dữ liệu thô để App xử lý logic riêng
+    -- [REMOVED] data_json (Gây tốn dung lượng)
     
+    -- Search Score: Dùng ebt_count từ DB gốc
     search_score INTEGER DEFAULT 0
 );
 
--- 3. Deconstructions: Tách từ ghép (Optional display)
 CREATE TABLE IF NOT EXISTS deconstructions (
     id INTEGER PRIMARY KEY,
     lookup_key TEXT NOT NULL,
-    split_string TEXT,            -- "na + h + ida"
-    html TEXT                     -- Pre-rendered HTML
+    split_string TEXT            -- Chỉ cần lưu chuỗi "a + b"
+    -- [REMOVED] html (Frontend tự render)
 );
 
--- 4. Lookups: Chỉ mục tìm kiếm hợp nhất
 CREATE TABLE IF NOT EXISTS lookups (
-    key TEXT NOT NULL,            -- Lowercase, no diacritics
-    target_id INTEGER NOT NULL,   -- ID của entry hoặc deconstruction
+    key TEXT NOT NULL,
+    target_id INTEGER NOT NULL,
     target_type TEXT CHECK(target_type IN ('entry', 'deconstruction')) NOT NULL,
     is_inflection BOOLEAN DEFAULT 0
 );
 
--- Indexes
 CREATE INDEX IF NOT EXISTS idx_entries_headword ON entries(headword_clean);
 CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);
-CREATE INDEX IF NOT EXISTS idx_deconstructions_key ON deconstructions(lookup_key);
+-- Index cho score để sort kết quả tìm kiếm nhanh hơn
+CREATE INDEX IF NOT EXISTS idx_entries_score ON entries(search_score DESC);
