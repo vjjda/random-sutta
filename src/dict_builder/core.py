@@ -25,6 +25,7 @@ class DictBuilder:
     def run_safe_executor(self, worker_func, chunks, label, total_items, result_handler, *args):
         """
         Generic helper to run tasks in parallel with safe KeyboardInterrupt handling.
+        Ensures strict insertion order by consuming results sequentially.
         """
         if not chunks:
             return
@@ -35,9 +36,11 @@ class DictBuilder:
         try:
             with ProcessPoolExecutor() as executor:
                 self.executor = executor
+                # Submit all tasks
                 futures = [executor.submit(worker_func, chunk, *args) for chunk in chunks]
                 
-                for future in as_completed(futures):
+                # Consume results strictly in order of submission
+                for future in futures:
                     try:
                         result = future.result()
                         processed_count += result_handler(result)
@@ -74,7 +77,7 @@ class DictBuilder:
                 self.output_db.insert_batch(entries, lookups)
                 return len(entries)
 
-            BATCH_SIZE = 2500
+            BATCH_SIZE = self.config.BATCH_SIZE_HEADWORDS
             chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
             
             self.run_safe_executor(
@@ -98,7 +101,7 @@ class DictBuilder:
                 decon_keys = [k for k in decon_keys if k in target_set]
                 logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
 
-            DECON_BATCH_SIZE = 5000
+            DECON_BATCH_SIZE = self.config.BATCH_SIZE_DECON
             decon_chunks = []
             for i in range(0, len(decon_keys), DECON_BATCH_SIZE):
                 chunk_keys = decon_keys[i : i + DECON_BATCH_SIZE]
@@ -128,7 +131,7 @@ class DictBuilder:
                 grammar_keys = [k for k in grammar_keys if k in target_set]
                 logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
 
-            GRAMMAR_BATCH_SIZE = 5000
+            GRAMMAR_BATCH_SIZE = self.config.BATCH_SIZE_GRAMMAR
             grammar_chunks = [grammar_keys[i : i + GRAMMAR_BATCH_SIZE] for i in range(0, len(grammar_keys), GRAMMAR_BATCH_SIZE)]
             
             def grammar_handler(result):
@@ -151,12 +154,7 @@ class DictBuilder:
             logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
             
         except KeyboardInterrupt:
-            logger.warning("\n[bold red]🛑 Process Interrupted by User.[/bold red]")
-        except Exception as e:
-            logger.critical(f"[bold red]❌ Unexpected Error: {e}[/bold red]", exc_info=True)
-        finally:
-            if self.session:
-                self.session.close()
+            logger.warning("\n[bold yellow]⚠️ User interrupted! Shutting down workers...[/bold yellow]")
 
 def run_builder(mode: str = "mini", html_mode: bool = False):
     builder = DictBuilder(mode=mode, html_mode=html_mode)
