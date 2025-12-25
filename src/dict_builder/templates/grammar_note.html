@@ -1,31 +1,19 @@
-<div class='dpd_grammar_note'>
-    <table class='grammar_dict'>
+<div class="grammar-note-container">
+    <table class="gn-table">
         <thead>
             <tr>
-                <th id='col1'>pos ⇅</th>
-                <th id='col2'>⇅</th>
-                <th id='col3'>⇅</th>
-                <th id='col4'>⇅</th>
-                <th id='col5'></th>
-                <th id='col6'>word ⇅</th>
+                <th class="gn-col-pos">POS</th>
+                <th class="gn-col-gram">Grammar</th>
+                <th class="gn-col-word">Word</th>
             </tr>
         </thead>
         <tbody>
             % for row in rows:
-                <tr>
-                    <td><b>${row['pos']}</b></td>
-                    
-                    % if row['is_colspan']:
-                        <td colspan='3'>${row['cells'][0]}</td>
-                    % else:
-                        % for cell in row['cells']:
-                            <td>${cell}</td>
-                        % endfor
-                    % endif
-                    
-                    <td>of</td>
-                    <td>${row['headword']}</td>
-                </tr>
+            <tr>
+                <td class="gn-col-pos">${row['pos']}</td>
+                <td class="gn-col-gram">${row['grammar']}</td>
+                <td class="gn-col-word">${row['headword']}</td>
+            </tr>
             % endfor
         </tbody>
     </table>

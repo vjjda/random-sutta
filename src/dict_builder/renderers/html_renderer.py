@@ -60,34 +60,17 @@ class DpdHtmlRenderer:
         )
 
     def render_grammar_notes(self, grammar_list: list) -> str:
-        """Render Grammar Note Table."""
+        """
+        Render Grammar Note Table.
+        Refactored to match JSON structure: Simple 3 columns (POS, Grammar, Word).
+        """
         rows = []
+        # grammar_list is a list of tuples: (headword, pos, grammar_str)
         for headword, pos, grammar_str in grammar_list:
-            row_data = {
+            rows.append({
                 "pos": pos,
-                "headword": headword,
-                "is_colspan": False,
-                "cells": []
-            }
-            
-            if grammar_str.startswith("reflx"):
-                parts = grammar_str.split()
-                if len(parts) >= 2:
-                    row_data["cells"].append(f"{parts[0]} {parts[1]}")
-                    row_data["cells"].extend(parts[2:])
-                else:
-                    row_data["cells"] = parts
-            elif grammar_str.startswith("in comps"):
-                row_data["is_colspan"] = True
-                row_data["cells"] = [grammar_str]
-            else:
-                row_data["cells"] = grammar_str.split()
-            
-            # Fill empty cells if not colspan
-            if not row_data["is_colspan"]:
-                while len(row_data["cells"]) < 3:
-                    row_data["cells"].append("")
-            
-            rows.append(row_data)
+                "grammar": grammar_str,
+                "headword": headword
+            })
             
         return self.tpl_grammar_note.render(rows=rows)
