@@ -1,18 +1,17 @@
 /* Path: web/assets/css/components/_lookup.css */
 
 /* --- LOOKUP POPUP --- */
-/* Mimic #comment-popup logic */
 #lookup-popup {
   bottom: var(--tts-popup-offset);
   max-height: var(--popup-comment-height);
   height: var(--popup-comment-height);
-  border-left: 5px solid var(--primitive-blue-500, #3b82f6); /* Different color for lookup */
-  z-index: 1030; /* Higher than comment popup */
+  border-left: 5px solid var(--primitive-blue-500, #3b82f6);
+  z-index: 1030;
   transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 #lookup-popup .popup-body {
-    padding-bottom: 20px; /* No nav bar */
+    padding-bottom: 20px;
 }
 
 /* --- DPD RESULT STYLES --- */
@@ -56,22 +55,29 @@
 
 .dpd-grammar-table td, .grammar-note-table td, 
 .dpd-grammar-table th, .grammar-note-table th {
-    padding: 8px 12px;
+    padding: 6px 12px; /* Reduced vertical padding slightly */
     border-bottom: 1px solid var(--border-light);
     text-align: left;
     vertical-align: top;
 }
 
+/* Low-profile Header Styling */
 .dpd-grammar-table th, .grammar-note-table th {
-    background-color: var(--bg-secondary);
-    color: var(--text-muted);
+    background-color: transparent; /* Remove background for cleaner look */
+    color: var(--text-light);      /* Muted color */
     font-weight: 600;
-    width: 30%;
-    white-space: nowrap;
+    font-size: 0.75rem;            /* Small font size */
+    text-transform: uppercase;     /* Clean caps */
+    letter-spacing: 0.5px;
+    width: 35%;                    /* Fixed width */
+    padding-top: 10px;             /* Align visually with text */
+    border-right: 1px solid var(--border-light); /* Vertical separator */
 }
 
 .grammar-note-table th {
     width: auto;
+    border-right: none;
+    background-color: var(--bg-secondary); /* Keep bg for main headers */
 }
 
 /* Examples */
@@ -93,12 +99,13 @@
     padding: 12px;
     border-radius: 8px;
     margin-bottom: 10px;
-    border-left: 3px solid var(--primitive-blue-300, #93c5fd);
+    /* [UPDATED] Removed border-left */
+    border-left: none; 
 }
 
 .example-text {
     font-style: italic;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
 .example-source {
