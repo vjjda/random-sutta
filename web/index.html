@@ -42,11 +42,13 @@
         "services/": "./assets/modules/services/",
         "ui/": "./assets/modules/ui/",
         "tts/": "./assets/modules/tts/",
-        "data/": "./assets/modules/data/"
+        "data/": "./assets/modules/data/",
+        "pali-lookup/": "./assets/modules/pali_lookup/"
       }
     }
     </script>
     <script src="assets/libs/jszip.min.js"></script>
+    <script src="assets/libs/sql-wasm.js"></script>
     <script
       type="module"
       src="assets/modules/core/app.js?v=dev-placeholder"
@@ -458,6 +460,16 @@
             target="_blank"
             title="Open Link"
           ></a>
+        </div>
+
+        <div id="lookup-popup" class="popup-container hidden">
+          <div class="quicklook-header">
+            <span id="lookup-title" class="ql-title">Lookup</span>
+            <button id="close-lookup" class="header-close-btn">×</button>
+          </div>
+          <div class="popup-body">
+            <div id="lookup-content" class="sutta-text-view"></div>
+          </div>
         </div>
     </div>
 
