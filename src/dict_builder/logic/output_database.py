@@ -127,37 +127,56 @@ class OutputDatabase:
         self.conn.commit()
 
     def create_grand_view(self):
-        logger.info("[cyan]Creating 'grand_lookups' view...[/cyan]")
+        logger.info("[cyan]Creating 'grand_lookups' view (Unified Definition)...[/cyan]")
         
         suffix = "html" if self.config.html_mode else "json"
         
+        # 1. Grammar Note Field
         if self.config.html_mode:
-            grammar_field = "gn.grammar_html AS grammar_note_html"
+            grammar_note_field = "gn.grammar_html AS grammar_note"
         else:
-            grammar_field = "gn.grammar_json AS grammar_note_json"
+            grammar_note_field = "gn.grammar_json AS grammar_note"
 
-        entry_cols = []
-        entry_cols.append("e.definition_" + suffix + " AS entry_definition")
+        # 2. Unified Definition Field (Using CASE WHEN)
+        # Type 0 = Deconstruction, 1 = Entry, 2 = Root
+        definition_field = (
+            f"CASE "
+            f"WHEN l.type = 0 THEN d.split_string "
+            f"WHEN l.type = 1 THEN e.definition_{suffix} "
+            f"WHEN l.type = 2 THEN r.definition_{suffix} "
+            f"ELSE NULL END AS definition"
+        )
         
-        if not self.config.is_tiny_mode:
-            entry_cols.append("e.grammar_" + suffix + " AS entry_grammar")
-            entry_cols.append("e.example_" + suffix + " AS entry_example")
-            
-        entry_select_str = ", ".join(entry_cols)
+        # 3. Unified Headword Field
+        headword_field = (
+            "CASE "
+            "WHEN l.type = 1 THEN e.headword "
+            "WHEN l.type = 2 THEN r.root "
+            "ELSE NULL END AS headword"
+        )
 
-        # [UPDATED] View now includes target_id and type for direct joining
-        sql = "CREATE VIEW IF NOT EXISTS grand_lookups AS " \
-              "SELECT l.key AS lookup_key, l.target_id, l.type AS lookup_type, " \
-              "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 2 THEN r.root ELSE NULL END AS headword, " \
-              "d.split_string AS decon_split, " + \
-              grammar_field + ", " + \
-              entry_select_str + ", " \
-              "r.definition_" + suffix + " AS root_definition " \
-              "FROM lookups l " \
-              "LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1 " \
-              "LEFT JOIN deconstructions d ON l.target_id = d.id AND l.type = 0 " \
-              "LEFT JOIN roots r ON l.target_id = r.id AND l.type = 2 " \
-              "LEFT JOIN grammar_notes gn ON l.key = gn.key;"
+        # 4. Extra columns for Entries (Grammar/Example) - Only if not Tiny Mode
+        extra_entry_cols = ""
+        if not self.config.is_tiny_mode:
+            extra_entry_cols = f", e.grammar_{suffix} AS entry_grammar, e.example_{suffix} AS entry_example"
+
+        # [UPDATED] View with UNIFIED 'definition' column
+        sql = f"""
+            CREATE VIEW IF NOT EXISTS grand_lookups AS
+            SELECT 
+                l.key AS lookup_key, 
+                l.target_id, 
+                l.type AS lookup_type,
+                {headword_field},
+                {definition_field},
+                {grammar_note_field}
+                {extra_entry_cols}
+            FROM lookups l
+            LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1
+            LEFT JOIN deconstructions d ON l.target_id = d.id AND l.type = 0
+            LEFT JOIN roots r ON l.target_id = r.id AND l.type = 2
+            LEFT JOIN grammar_notes gn ON l.key = gn.key;
+        """
         
         try:
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
@@ -166,6 +185,7 @@ class OutputDatabase:
             logger.info("[green]View 'grand_lookups' created successfully.[/green]")
         except Exception as e:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
+            logger.debug(f"SQL was: {sql}")
 
     def _sort_lookups_table_python_side(self):
         """
@@ -179,7 +199,6 @@ class OutputDatabase:
             rows = self.cursor.fetchall()
             
             # 2. Sort using Python Pali Key
-            # Do '√' đã được thêm vào đầu pali_alphabet, nó sẽ tự động được xếp đầu tiên.
             rows.sort(key=lambda x: pali_sort_key(x[0]))
             
             # 3. Drop Trigger
