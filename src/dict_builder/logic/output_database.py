@@ -2,6 +2,7 @@
 import sqlite3
 import logging
 from datetime import datetime
+from typing import List, Tuple
 
 from ..builder_config import BuilderConfig
 from src.dict_builder.tools.json_key_map import get_key_map_list
@@ -12,34 +13,51 @@ logger = logging.getLogger("dict_builder")
 class OutputDatabase:
     def __init__(self, config: BuilderConfig):
         self.config = config
-        self.conn = None
-        self.cursor = None
+        self.conn: sqlite3.Connection | None = None
+        self.cursor: sqlite3.Cursor | None = None
 
-    def setup(self):
+    def setup(self) -> None:
         if not self.config.OUTPUT_DIR.exists():
             self.config.OUTPUT_DIR.mkdir(parents=True)
         if self.config.output_path.exists():
             self.config.output_path.unlink()
+        
         self.conn = sqlite3.connect(self.config.output_path)
         self.cursor = self.conn.cursor()
+        
         self.cursor.execute("PRAGMA synchronous = OFF")
         self.cursor.execute("PRAGMA journal_mode = MEMORY")
+        
         self._create_tables()
+        
+        # Metadata
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("version", datetime.now().strftime("%Y-%m-%d")))
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("mode", self.config.mode))
+        
         fmt = "html" if self.config.html_mode else "json"
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("format", fmt))
+        
         comp_status = "zlib" if self.config.USE_COMPRESSION else "none"
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("compression", comp_status))
+        
+        # Populate Static Data
         self.populate_json_keys()
+        self.populate_table_types()
+        
         self.conn.commit()
 
-    def _create_tables(self):
+    def _create_tables(self) -> None:
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
+        
         # [RENAMED] split_string -> components
         self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, word TEXT NOT NULL, components TEXT);")
+        
         self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, type INTEGER NOT NULL);")
+        
         self.cursor.execute("CREATE TABLE IF NOT EXISTS json_keys (abbr_key TEXT PRIMARY KEY, full_key TEXT);")
+        
+        # [NEW] Table Types Mapping
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS table_types (type INTEGER PRIMARY KEY, table_name TEXT);")
 
         suffix = "html" if self.config.html_mode else "json"
         
@@ -66,7 +84,7 @@ class OutputDatabase:
         else:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_json TEXT);")
 
-    def _create_lookup_trigger(self):
+    def _create_lookup_trigger(self) -> None:
         """Helper to create the trigger."""
         self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
         self.cursor.execute("""
@@ -75,12 +93,25 @@ class OutputDatabase:
             END;
         """)
 
-    def populate_json_keys(self):
+    def populate_json_keys(self) -> None:
         key_list = get_key_map_list()
         swapped_list = sorted([(abbr, full) for full, abbr in key_list], key=lambda x: x[0])
         self.cursor.executemany("INSERT INTO json_keys (abbr_key, full_key) VALUES (?, ?)", swapped_list)
 
-    def insert_batch(self, entries: list, lookups: list):
+    def populate_table_types(self) -> None:
+        """Populate table_types with static mapping data."""
+        data = [
+            (0, "deconstructions"),
+            (1, "entries"),
+            (2, "roots")
+        ]
+        try:
+            self.cursor.executemany("INSERT OR IGNORE INTO table_types (type, table_name) VALUES (?, ?)", data)
+            logger.info("[cyan]Populated 'table_types' mapping table.[/cyan]")
+        except Exception as e:
+            logger.error(f"[red]Failed to populate table_types: {e}[/red]")
+
+    def insert_batch(self, entries: List[Tuple], lookups: List[Tuple]) -> None:
         if entries:
             suffix = "html" if self.config.html_mode else "json"
             try:
@@ -102,7 +133,7 @@ class OutputDatabase:
                 raise e
         self.conn.commit()
 
-    def insert_deconstructions(self, deconstructions: list, lookups: list):
+    def insert_deconstructions(self, deconstructions: List[Tuple], lookups: List[Tuple]) -> None:
         if deconstructions:
             # [RENAMED] split_string -> components
             self.cursor.executemany("INSERT INTO deconstructions (id, word, components) VALUES (?, ?, ?)", deconstructions)
@@ -110,7 +141,7 @@ class OutputDatabase:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
         self.conn.commit()
 
-    def insert_roots(self, roots: list, lookups: list):
+    def insert_roots(self, roots: List[Tuple], lookups: List[Tuple]) -> None:
         if roots:
             suffix = "html" if self.config.html_mode else "json"
             sql = "INSERT INTO roots (id, root, definition_" + suffix + ") VALUES (?, ?, ?)"
@@ -120,7 +151,7 @@ class OutputDatabase:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
         self.conn.commit()
 
-    def insert_grammar_notes(self, grammar_batch: list):
+    def insert_grammar_notes(self, grammar_batch: List[Tuple]) -> None:
         if grammar_batch:
             if self.config.html_mode:
                 self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html) VALUES (?, ?)", grammar_batch)
@@ -128,7 +159,7 @@ class OutputDatabase:
                 self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_json) VALUES (?, ?)", grammar_batch)
         self.conn.commit()
 
-    def create_grand_view(self):
+    def create_grand_view(self) -> None:
         logger.info("[cyan]Creating 'grand_lookups' view (Unified Definition)...[/cyan]")
         
         suffix = "html" if self.config.html_mode else "json"
@@ -190,7 +221,7 @@ class OutputDatabase:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
             logger.debug(f"SQL was: {sql}")
 
-    def _sort_lookups_table_python_side(self):
+    def _sort_lookups_table_python_side(self) -> None:
         """
         Sắp xếp bảng Lookups theo Pali Sort Key (Python Side).
         """
@@ -228,7 +259,7 @@ class OutputDatabase:
         except Exception as e:
             logger.error(f"[red]Failed to sort lookups table: {e}")
 
-    def close(self):
+    def close(self) -> None:
         if self.conn:
             self._sort_lookups_table_python_side()
             self.create_grand_view()
