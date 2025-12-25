@@ -94,9 +94,9 @@ class OutputDatabase:
         # [DYNAMIC] Grammar Column
         if self.config.html_mode:
             grammar_col = "gn.grammar_html AS grammar_note_html,"
-            grammar_col += "NULL AS grammar_note_json,"
+            grammar_col += "NULL AS grammar_note_json," 
         else:
-            grammar_col = "NULL AS grammar_note_html,"
+            grammar_col = "NULL AS grammar_note_html," 
             grammar_col += "gn.grammar_json AS grammar_note_json,"
 
         # [UPDATED] Sắp xếp lại thứ tự cột và thêm ORDER BY
