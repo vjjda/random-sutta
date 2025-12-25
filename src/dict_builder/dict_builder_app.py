@@ -1,62 +1,36 @@
 # Path: src/dict_builder/dict_builder_app.py
 import time
 import logging
-import zipfile
-import shutil
-import os
-from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
 
 from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import Lookup, DpdRoot
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 from .builder_config import BuilderConfig
-from .entry_renderer import DpdRenderer
-
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
-from .logic.batch_worker import process_batch_worker, process_decon_worker, process_grammar_notes_worker, process_roots_worker
+from .logic.parallel_processor import ParallelProcessor
+from .logic.builder_exporter import BuilderExporter
+
+# Import workers and wrappers
+from .logic.batch_worker import (
+    process_batch_worker, 
+    process_grammar_notes_worker, 
+    decon_worker_wrapper, 
+    roots_worker_wrapper
+)
 
 logger = logging.getLogger("dict_builder")
 
 class DictBuilder:
+    """
+    Orchestrator Class: Chỉ điều phối luồng xử lý, không chứa logic chi tiết.
+    """
     def __init__(self, mode: str = "mini", html_mode: bool = False, export_web: bool = False):
         self.config = BuilderConfig(mode=mode, html_mode=html_mode, export_web=export_web)
-        self.executor = None
+        self.processor = ParallelProcessor()
         self.output_db = None
         self.session = None
-
-    def run_safe_executor(self, worker_func, chunks, label, total_items, result_handler, *args):
-        """
-        Generic helper to run tasks in parallel with safe KeyboardInterrupt handling.
-        Ensures strict insertion order by consuming results sequentially.
-        """
-        if not chunks:
-            return
-
-        logger.info(f"[green]Processing {total_items} {label} in {len(chunks)} chunks...[/green]")
-        processed_count = 0
-        
-        try:
-            with ProcessPoolExecutor() as executor:
-                self.executor = executor
-                # Submit all tasks
-                futures = [executor.submit(worker_func, chunk, *args) for chunk in chunks]
-                
-                # Consume results strictly in order of submission
-                for future in futures:
-                    try:
-                        result = future.result()
-                        processed_count += result_handler(result)
-                        logger.info(f"   Saved {label}... ({processed_count}/{total_items})")
-                    except Exception as e:
-                        logger.error(f"[red]{label} batch error: {e}")
-        except KeyboardInterrupt:
-            logger.warning("\n[bold yellow]⚠️ User interrupted! Shutting down workers...[/bold yellow]")
-            if self.executor:
-                self.executor.shutdown(wait=False, cancel_futures=True)
-            raise
 
     def run(self):
         start_time = time.time()
@@ -72,7 +46,6 @@ class DictBuilder:
             selector = WordSelector(self.config)
             
             # --- PHASE 0: PREPARE TARGETS ---
-            # WordSelector returns IDs sorted by Pali Alphabet (via lemma_1)
             target_ids, target_set = selector.get_target_ids(self.session)
             
             if not target_ids:
@@ -80,8 +53,6 @@ class DictBuilder:
                 return
 
             # --- PHASE 1: HEADWORDS ---
-            # Input: target_ids (Already Sorted Pali)
-            
             def headword_handler(result):
                 entries, lookups = result
                 self.output_db.insert_batch(entries, lookups)
@@ -90,15 +61,18 @@ class DictBuilder:
             BATCH_SIZE = self.config.BATCH_SIZE_HEADWORDS
             chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
             
-            self.run_safe_executor(
-                process_batch_worker, 
-                chunks, 
-                "headwords", 
-                len(target_ids), 
-                headword_handler, 
-                self.config, 
-                target_set
+            self.processor.run_safe(
+                worker_func=process_batch_worker, 
+                chunks=chunks, 
+                label="headwords", 
+                total_items=len(target_ids), 
+                result_handler=headword_handler, 
+                config=self.config, 
+                target_set=target_set # Pass as kwargs or positional depending on worker signature
             )
+            # Note: ParallelProcessor passes `*args`. process_batch_worker signature: (ids, config, target_set)
+            # chunks (chunk) is arg 1. self.config is arg 2. target_set is arg 3.
+            # Fixed arguments passing in run_safe call above: `self.config, target_set` are *args.
             
             logger.info(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
@@ -111,7 +85,6 @@ class DictBuilder:
                 decon_keys = [k for k in decon_keys if k in target_set]
                 logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
 
-            # [STRICT SORT] Input Sorted by Pali Key
             logger.info("[yellow]Sorting Deconstruction keys (Pali Order)...[/yellow]")
             decon_keys.sort(key=pali_sort_key)
 
@@ -127,13 +100,15 @@ class DictBuilder:
                 self.output_db.insert_deconstructions(decons, lookups)
                 return len(decons)
 
-            self.run_safe_executor(
-                decon_worker_wrapper,
-                decon_chunks, 
-                "deconstructions",
-                len(decon_keys),
-                decon_handler,
-                self.config 
+            # Wrapper expects tuple (keys, start_id) as first arg, config as second
+            self.processor.run_safe(
+                worker_func=decon_worker_wrapper,
+                chunks=decon_chunks, 
+                label="deconstructions",
+                total_items=len(decon_keys),
+                result_handler=decon_handler,
+                # Additional args passed to wrapper
+                config=self.config 
             )
 
             # --- PHASE 3: GRAMMAR NOTES ---
@@ -145,7 +120,6 @@ class DictBuilder:
                 grammar_keys = [k for k in grammar_keys if k in target_set]
                 logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
 
-            # [STRICT SORT] Input Sorted by Pali Key
             logger.info("[yellow]Sorting Grammar Note keys (Pali Order)...[/yellow]")
             grammar_keys.sort(key=pali_sort_key)
 
@@ -157,25 +131,25 @@ class DictBuilder:
                 self.output_db.insert_grammar_notes(grammar_batch)
                 return len(grammar_batch)
                 
-            self.run_safe_executor(
-                process_grammar_notes_worker,
-                grammar_chunks,
-                "grammar notes",
-                len(grammar_keys),
-                grammar_handler,
-                self.config
+            self.processor.run_safe(
+                worker_func=process_grammar_notes_worker,
+                chunks=grammar_chunks,
+                label="grammar notes",
+                total_items=len(grammar_keys),
+                result_handler=grammar_handler,
+                config=self.config
             )
 
             # --- PHASE 4: ROOTS ---
             logger.info("\n[green]Processing Roots (Parallel)...")
             root_keys = [r.root for r in self.session.query(DpdRoot.root).all()]
             
-            # [STRICT SORT] Input Sorted by Pali Key
             logger.info("[yellow]Sorting Root keys (Pali Order)...[/yellow]")
             root_keys.sort(key=pali_sort_key)
             
-            ROOTS_START_ID = 1 
-            ROOTS_BATCH_SIZE = 500
+            # [UPDATED] Use config constants
+            ROOTS_START_ID = self.config.ROOTS_START_ID
+            ROOTS_BATCH_SIZE = self.config.ROOTS_BATCH_SIZE
             
             root_chunks = []
             for i in range(0, len(root_keys), ROOTS_BATCH_SIZE):
@@ -188,45 +162,28 @@ class DictBuilder:
                 self.output_db.insert_roots(roots_data, lookups)
                 return len(roots_data)
                 
-            self.run_safe_executor(
-                roots_worker_wrapper,
-                root_chunks,
-                "roots",
-                len(root_keys),
-                roots_handler,
-                self.config
+            self.processor.run_safe(
+                worker_func=roots_worker_wrapper,
+                chunks=root_chunks,
+                label="roots",
+                total_items=len(root_keys),
+                result_handler=roots_handler,
+                config=self.config
             )
 
-            # --- PHASE 5: CLEANUP & FINAL PHYSICAL SORT ---
-            # Close connection and trigger lookups table re-sort
+            # --- PHASE 5: CLEANUP & FINAL SORT ---
             self.output_db.close() 
             
             logger.info(f"\n✅ Build Complete: {self.config.output_path}")
             logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
             
         except KeyboardInterrupt:
-            logger.warning("\n[bold yellow]⚠️ User interrupted! Shutting down workers...[/bold yellow]")
+            logger.warning("\n[bold yellow]⚠️ User interrupted![/bold yellow]")
         except Exception as e:
             logger.error(f"[bold red]❌ Unexpected Error: {e}[/bold red]", exc_info=True)
         finally:
             if self.session:
                 self.session.close()
-
-def compress_database_to_zip(db_path: Path):
-    """Compress the database file into a .zip file."""
-    zip_path = db_path.with_suffix(".db.zip")
-    logger.info(f"[cyan]📦 Compressing database to {zip_path}...[/cyan]")
-    
-    start_size = db_path.stat().st_size / (1024 * 1024)
-    
-    try:
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-            zf.write(db_path, arcname=db_path.name)
-            
-        end_size = zip_path.stat().st_size / (1024 * 1024)
-        logger.info(f"[green]✅ Compression Complete: {start_size:.2f}MB -> {end_size:.2f}MB ({(end_size/start_size)*100:.1f}%)[/green]")
-    except Exception as e:
-        logger.error(f"[red]❌ Compression failed: {e}[/red]")
 
 def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = False):
     builder = DictBuilder(mode=mode, html_mode=html_mode, export_web=export_web)
@@ -238,28 +195,6 @@ def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_
     logger.info(f"🚀 Starting Unified Build (Mode: {mode.upper()})...")
     builder = run_builder(mode=mode, html_mode=html_mode, export_web=False) 
     
-    local_db_path = builder.config.output_path
-    
-    # 2. Export if needed
+    # 2. Export using the new Exporter module
     if export_flag:
-        web_dir = builder.config.WEB_OUTPUT_DIR
-        web_dir.mkdir(parents=True, exist_ok=True)
-        web_db_path = web_dir / local_db_path.name
-        
-        logger.info(f"\n[bold blue]🌐 PROCESSING WEB EXPORT[/bold blue]")
-        
-        # Copy
-        logger.info(f"[cyan]Copying {local_db_path} -> {web_db_path}...[/cyan]")
-        shutil.copy2(local_db_path, web_db_path)
-        
-        # Compress
-        compress_database_to_zip(web_db_path)
-
-# Wrappers
-def decon_worker_wrapper(args_tuple, config):
-    keys, start_id = args_tuple
-    return process_decon_worker(keys, start_id, config)
-
-def roots_worker_wrapper(args_tuple, config):
-    keys, start_id = args_tuple
-    return process_roots_worker(keys, start_id, config)
+        BuilderExporter.export_to_web(builder.config.output_path, builder.config.WEB_OUTPUT_DIR)

@@ -7,21 +7,25 @@ class BuilderConfig:
     PROJECT_ROOT: Path = Path(__file__).parents[2]
     DPD_DB_PATH: Path = PROJECT_ROOT / "data" / "dpd" / "dpd.db"
     
-    # Thêm đường dẫn cho Web
+    # Output Directories
     LOCAL_OUTPUT_DIR: Path = PROJECT_ROOT / "data" / "dpd"
     WEB_OUTPUT_DIR: Path = PROJECT_ROOT / "web" / "assets" / "db"
     
     TEMPLATES_DIR: Path = Path(__file__).parent / "templates"
 
     # --- Settings ---
-    USE_COMPRESSION: bool = False # Luôn tắt nén nội bộ để tối ưu cho SQL.js-httpvfs & Zip ratio
+    USE_COMPRESSION: bool = False 
 
     # --- Batch Sizes ---
     BATCH_SIZE_HEADWORDS: int = 10000
     BATCH_SIZE_DECON: int = 10000
     BATCH_SIZE_GRAMMAR: int = 10000
+    
+    # [MOVED] Root Specific Configs
+    ROOTS_START_ID: int = 1
+    ROOTS_BATCH_SIZE: int = 500
 
-    # Lấy TOÀN BỘ sách
+    # EBTS Books Filter
     EBTS_BOOKS: List[str] = [""]
 
     def __init__(self, mode: str = "mini", html_mode: bool = False, export_web: bool = False):
