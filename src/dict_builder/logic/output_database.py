@@ -42,13 +42,13 @@ class OutputDatabase:
         suffix = "html" if self.config.html_mode else "json"
         
         if self.config.is_tiny_mode:
-            sql = f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT);"
+            sql = "CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_" + suffix + " TEXT);"
             self.cursor.execute(sql)
         else:
-            sql = f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT, grammar_{{suffix}} TEXT, example_{{suffix}} TEXT);"
+            sql = "CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_" + suffix + " TEXT, grammar_" + suffix + " TEXT, example_" + suffix + " TEXT);"
             self.cursor.execute(sql)
             
-        sql_roots = f"CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, definition_{{suffix}} TEXT);"
+        sql_roots = "CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, definition_" + suffix + " TEXT);"
         self.cursor.execute(sql_roots)
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
@@ -69,12 +69,14 @@ class OutputDatabase:
             suffix = "html" if self.config.html_mode else "json"
             try:
                 if self.config.is_tiny_mode:
-                    sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}) VALUES (?, ?, ?, ?)"
+                    sql = "INSERT INTO entries (id, headword, headword_clean, definition_" + suffix + ") VALUES (?, ?, ?, ?)"
                 else:
-                    sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}, grammar_{{suffix}}, example_{{suffix}}) VALUES (?, ?, ?, ?, ?, ?)"
+                    sql = "INSERT INTO entries (id, headword, headword_clean, definition_" + suffix + ", grammar_" + suffix + ", example_" + suffix + ") VALUES (?, ?, ?, ?, ?, ?)"
                 self.cursor.executemany(sql, entries)
             except Exception as e:
                 logger.error(f"Entries insert failed. SQL: {sql}")
+                if entries:
+                    logger.error(f"First entry sample (len {len(entries[0])}): {entries[0]}")
                 raise e
 
         if lookups:
@@ -97,7 +99,7 @@ class OutputDatabase:
         """Insert roots and their lookups."""
         if roots:
             suffix = "html" if self.config.html_mode else "json"
-            sql = f"INSERT INTO roots (id, root, definition_{{suffix}}) VALUES (?, ?, ?)"
+            sql = "INSERT INTO roots (id, root, definition_" + suffix + ") VALUES (?, ?, ?)"
             self.cursor.executemany(sql, roots)
         
         if lookups:
@@ -124,34 +126,26 @@ class OutputDatabase:
             grammar_field = "gn.grammar_json AS grammar_note_json"
 
         entry_cols = []
-        entry_cols.append(f"e.definition_{{suffix}} AS entry_definition")
+        entry_cols.append("e.definition_" + suffix + " AS entry_definition")
         
         if not self.config.is_tiny_mode:
-            entry_cols.append(f"e.grammar_{{suffix}} AS entry_grammar")
-            entry_cols.append(f"e.example_{{suffix}} AS entry_example")
+            entry_cols.append("e.grammar_" + suffix + " AS entry_grammar")
+            entry_cols.append("e.example_" + suffix + " AS entry_example")
             
         entry_select_str = ", ".join(entry_cols)
 
-        sql = f"""
-        CREATE VIEW IF NOT EXISTS grand_lookups AS
-        SELECT 
-            l.key AS lookup_key,
-            l.type AS lookup_type,
-            CASE 
-                WHEN l.type = 1 THEN e.headword 
-                WHEN l.type = 2 THEN r.root
-                ELSE NULL 
-            END AS headword,
-            d.split_string AS decon_split,
-            {grammar_field},
-            {entry_select_str},
-            r.definition_{{suffix}} AS root_definition
-        FROM lookups l
-        LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1
-        LEFT JOIN deconstructions d ON l.target_id = d.id AND l.type = 0
-        LEFT JOIN roots r ON l.target_id = r.id AND l.type = 2
-        LEFT JOIN grammar_notes gn ON l.key = gn.key;
-        """
+        sql = "CREATE VIEW IF NOT EXISTS grand_lookups AS " \
+              "SELECT l.key AS lookup_key, l.type AS lookup_type, " \
+              "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 2 THEN r.root ELSE NULL END AS headword, " \
+              "d.split_string AS decon_split, " + \
+              grammar_field + ", " + \
+              entry_select_str + ", " \
+              "r.definition_" + suffix + " AS root_definition " \
+              "FROM lookups l " \
+              "LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1 " \
+              "LEFT JOIN deconstructions d ON l.target_id = d.id AND l.type = 0 " \
+              "LEFT JOIN roots r ON l.target_id = r.id AND l.type = 2 " \
+              "LEFT JOIN grammar_notes gn ON l.key = gn.key;"
         
         try:
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
@@ -160,7 +154,7 @@ class OutputDatabase:
             logger.info("[green]View 'grand_lookups' created successfully.")
         except Exception as e:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
-            logger.debug(f"[yellow]SQL was:[/yellow]\n{sql}")
+            logger.debug(f"SQL was: {sql}")
 
     def close(self):
         if self.conn:
