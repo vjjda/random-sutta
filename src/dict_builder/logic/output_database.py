@@ -33,19 +33,17 @@ class OutputDatabase:
 
     def _create_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
-        # [CHANGED] lookup_key -> word
         self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, word TEXT NOT NULL, split_string TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, is_headword BOOLEAN NOT NULL, is_inflection BOOLEAN DEFAULT 0);")
         
         suffix = "html" if self.config.html_mode else "json"
         if self.config.is_tiny_mode:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT);")
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT);")
         else:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT, grammar_{suffix} TEXT, example_{suffix} TEXT);")
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT, grammar_{{suffix}} TEXT, example_{{suffix}} TEXT);")
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
         
-        # [DYNAMIC SCHEMA] Grammar Notes
         if self.config.html_mode:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
         else:
@@ -55,9 +53,9 @@ class OutputDatabase:
         if entries:
             suffix = "html" if self.config.html_mode else "json"
             if self.config.is_tiny_mode:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}) VALUES (?,?,?,?)"
+                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}) VALUES (?,?,?,?)"
             else:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}, grammar_{suffix}, example_{suffix}) VALUES (?,?,?,?,?,?)"
+                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}, grammar_{{suffix}}, example_{{suffix}}) VALUES (?,?,?,?,?,?)"
             self.cursor.executemany(sql, entries)
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
@@ -65,7 +63,6 @@ class OutputDatabase:
 
     def insert_deconstructions(self, deconstructions: list, lookups: list):
         if deconstructions:
-            # [CHANGED] lookup_key -> word
             self.cursor.executemany("INSERT INTO deconstructions (id, word, split_string) VALUES (?,?,?)", deconstructions)
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
@@ -85,39 +82,30 @@ class OutputDatabase:
         
         suffix = "html" if self.config.html_mode else "json"
         
-        # [DYNAMIC] Grammar Column (Single column)
         if self.config.html_mode:
             grammar_field = "gn.grammar_html AS grammar_note_html"
         else:
             grammar_field = "gn.grammar_json AS grammar_note_json"
 
-        # [UPDATED] Entry columns (removed headword as it moved up)
         entry_cols = []
-        entry_cols.append(f"e.definition_{suffix} AS entry_definition")
+        entry_cols.append(f"e.definition_{{suffix}} AS entry_definition")
         
         if not self.config.is_tiny_mode:
-            entry_cols.append(f"e.grammar_{suffix} AS entry_grammar")
-            entry_cols.append(f"e.example_{suffix} AS entry_example")
+            entry_cols.append(f"e.grammar_{{suffix}} AS entry_grammar")
+            entry_cols.append(f"e.example_{{suffix}} AS entry_example")
             
         entry_select_str = ",\n            ".join(entry_cols)
 
-        # [UPDATED] View definition
         sql = f"""
         CREATE VIEW IF NOT EXISTS grand_lookups AS
         SELECT 
             l.key AS lookup_key,
-            e.headword AS headword, # Added here
+            e.headword AS headword,
             l.is_headword,
             l.is_inflection,
-            
             d.split_string AS decon_split,
-            
-            -- Grammar Notes (Single dynamic column)
             {grammar_field},
-
-            -- Entries (Definition, etc.)
             {entry_select_str}
-            
         FROM lookups l
         LEFT JOIN entries e 
             ON l.target_id = e.id AND l.is_headword = 1
