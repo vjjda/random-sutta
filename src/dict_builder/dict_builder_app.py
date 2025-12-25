@@ -153,8 +153,8 @@ class DictBuilder:
             # Select all roots
             root_keys = [r.root for r in self.session.query(DpdRoot.root).all()]
             
-            # Use IDs starting from 200,000 to avoid collision with entries/decons
-            ROOTS_START_ID = 200000 
+            # Since we have a separate table, we can start from 1
+            ROOTS_START_ID = 1 
             ROOTS_BATCH_SIZE = 500
             
             root_chunks = []
