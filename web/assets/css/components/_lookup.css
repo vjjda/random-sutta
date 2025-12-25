@@ -8,10 +8,24 @@
   border-left: 5px solid var(--primitive-blue-500, #3b82f6);
   z-index: 1030;
   transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex;
+  flex-direction: column;
 }
 
 #lookup-popup .popup-body {
-    padding-bottom: 20px;
+    padding-bottom: 60px; /* Space for Nav Bar */
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* --- HEADER --- */
+/* Override specific lookup title styles to be prominent */
+#lookup-title {
+    font-family: var(--font-main);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primitive-blue-600);
+    text-transform: none; /* Allow Pali case */
 }
 
 /* --- DPD RESULT STYLES --- */
@@ -47,38 +61,54 @@
     width: 100%;
     border-collapse: collapse;
     margin: 12px 0;
-    font-size: 0.9em;
-    background-color: var(--bg-body);
-    border-radius: 8px;
-    overflow: hidden;
+    font-size: 0.95em;
+    background-color: transparent; /* Cleaner background */
+    border-radius: 0;
 }
 
 .dpd-grammar-table td, .grammar-note-table td, 
 .dpd-grammar-table th, .grammar-note-table th {
-    padding: 6px 12px; /* Reduced vertical padding slightly */
+    padding: 6px 0; /* Horizontal padding removed, we use width gap */
     border-bottom: 1px solid var(--border-light);
-    text-align: left;
-    vertical-align: top;
+    vertical-align: baseline; /* Align text baselines */
 }
 
-/* Low-profile Header Styling */
-.dpd-grammar-table th, .grammar-note-table th {
-    background-color: transparent; /* Remove background for cleaner look */
+/* CUSTOM COLUMN STYLING (The Request) */
+.dpd-grammar-table th {
+    text-align: right;             /* Right Align */
+    padding-right: 16px;           /* Gap between col 1 and 2 */
+    width: 35%;                    /* Fixed width for labels */
+    
+    /* Low Profile Style */
     color: var(--text-light);      /* Muted color */
-    font-weight: 600;
-    font-size: 0.75rem;            /* Small font size */
-    text-transform: uppercase;     /* Clean caps */
+    font-weight: 500;              /* Lighter weight */
+    font-size: 0.8rem;             /* Smaller font */
+    text-transform: uppercase;     /* Caps for style */
     letter-spacing: 0.5px;
-    width: 35%;                    /* Fixed width */
-    padding-top: 10px;             /* Align visually with text */
-    border-right: 1px solid var(--border-light); /* Vertical separator */
+    
+    border-right: 1px solid transparent; /* No vertical line, just space */
 }
 
-.grammar-note-table th {
-    width: auto;
-    border-right: none;
-    background-color: var(--bg-secondary); /* Keep bg for main headers */
+.dpd-grammar-table td {
+    text-align: left;
+    color: var(--text-main);
+    font-weight: 400;
+    width: 65%;
 }
+
+/* Grammar Note Table specific overrides (if needed) */
+.grammar-note-table th {
+    text-align: left;
+    background-color: var(--bg-secondary);
+    padding: 8px;
+    font-weight: 600;
+    text-transform: none;
+    width: auto;
+}
+.grammar-note-table td {
+    padding: 8px;
+}
+
 
 /* Examples */
 .dpd-examples {
@@ -99,7 +129,6 @@
     padding: 12px;
     border-radius: 8px;
     margin-bottom: 10px;
-    /* [UPDATED] Removed border-left */
     border-left: none; 
 }
 

@@ -8,7 +8,10 @@ export const LookupUI = {
             content: document.getElementById("lookup-content"),
             title: document.getElementById("lookup-title"),
             closeBtn: document.getElementById("close-lookup"),
-            popupBody: document.querySelector("#lookup-popup .popup-body")
+            popupBody: document.querySelector("#lookup-popup .popup-body"),
+            btnPrev: document.getElementById("btn-lookup-prev"),
+            btnNext: document.getElementById("btn-lookup-next"),
+            navInfo: document.getElementById("lookup-nav-info")
         };
 
         if (!this.elements.popup) return;
@@ -19,18 +22,37 @@ export const LookupUI = {
             if (callbacks.onClose) callbacks.onClose();
         });
         
-        // Prevent clicks inside popup from closing it (stop propagation)
+        // Prevent clicks inside popup from closing it
         this.elements.popup.addEventListener("click", (e) => {
              e.stopPropagation();
         });
+
+        // Navigation
+        if (this.elements.btnPrev) {
+            this.elements.btnPrev.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (callbacks.onNavigate) callbacks.onNavigate(-1);
+            });
+        }
+        if (this.elements.btnNext) {
+            this.elements.btnNext.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (callbacks.onNavigate) callbacks.onNavigate(1);
+            });
+        }
     },
 
-    render(htmlContent, title = "Lookup") {
-        if (this.elements.title) this.elements.title.innerHTML = title;
+    render(htmlContent, titleWord = "Lookup") {
+        // [UPDATED] Just show the word itself in the header
+        if (this.elements.title) this.elements.title.textContent = titleWord;
         if (this.elements.content) this.elements.content.innerHTML = htmlContent;
 
         this.elements.popup.classList.remove("hidden");
         if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
+    },
+    
+    updateNavInfo(text) {
+        if (this.elements.navInfo) this.elements.navInfo.textContent = text;
     },
 
     showLoading(title = "Searching...") {
