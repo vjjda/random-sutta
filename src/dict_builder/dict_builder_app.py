@@ -2,6 +2,7 @@
 import time
 import logging
 import zipfile
+import shutil
 import os
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
@@ -213,21 +214,29 @@ def compress_database_to_zip(db_path: Path):
 def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = False):
     builder = DictBuilder(mode=mode, html_mode=html_mode, export_web=export_web)
     builder.run()
-    
-    # Post-build actions for Web Export
-    if export_web:
-        compress_database_to_zip(builder.config.output_path)
+    return builder
 
 def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_flag: bool = False):
-    # 1. Run Local Build
-    run_builder(mode=mode, html_mode=html_mode, export_web=False)
+    # 1. Run Local Build (Single Run)
+    logger.info(f"🚀 Starting Unified Build (Mode: {mode.upper()})...")
+    builder = run_builder(mode=mode, html_mode=html_mode, export_web=False) # Always build LOCAL style (Raw)
     
-    # 2. Run Web Build if requested
+    local_db_path = builder.config.output_path
+    
+    # 2. If export flag is on, copy to Web and Zip
     if export_flag:
-        logger.info(f"\n[bold blue]{'='*60}[/bold blue]")
-        logger.info(f"[bold blue]🌐 OPTIMIZING FOR WEB EXPORT: {mode.upper()}[/bold blue]")
-        logger.info(f"[bold blue]{'='*60}[/bold blue]")
-        run_builder(mode=mode, html_mode=html_mode, export_web=True)
+        web_dir = builder.config.WEB_OUTPUT_DIR
+        web_dir.mkdir(parents=True, exist_ok=True)
+        web_db_path = web_dir / local_db_path.name
+        
+        logger.info(f"\n[bold blue]🌐 PROCESSING WEB EXPORT[/bold blue]")
+        
+        # Copy file
+        logger.info(f"[cyan]Copying {local_db_path} -> {web_db_path}...[/cyan]")
+        shutil.copy2(local_db_path, web_db_path)
+        
+        # Compress
+        compress_database_to_zip(web_db_path)
 
 # Helper for unpacking tuple arguments
 def decon_worker_wrapper(args_tuple, config):
