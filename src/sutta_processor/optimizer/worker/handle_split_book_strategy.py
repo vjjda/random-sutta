@@ -8,13 +8,13 @@ from ..splitter import extract_sub_books
 from ..schema import build_meta_entry, build_book_payload
 from .chunk_index_resolver import resolve_chunk_idx
 
-# Helper duplicated locally for independence (or move to shared util)
 def _inject_neighbors_from_global(
     current_meta_map: Dict[str, Any],
     nav_map: Dict[str, Any],
     global_meta: Optional[Dict[str, Any]]
 ) -> None:
     if not global_meta: return
+    # Copy keys để tránh lỗi runtime khi dictionary size thay đổi
     existing_keys = list(current_meta_map.keys())
     for uid in existing_keys:
         if uid not in nav_map: continue
@@ -41,7 +41,7 @@ def execute_split_book_strategy(
 ) -> None:
     """
     Chiến lược xử lý cho các sách Super Book (AN, SN).
-    [UPDATED] Simplified Boundary Logic.
+    [UPDATED] Fix: Add Sub-book Root to map BEFORE injecting neighbors so boundaries (an1->an2) are covered.
     """
     sub_books = extract_sub_books(book_id, structure, full_meta)
     sub_book_ids = []
@@ -85,18 +85,29 @@ def execute_split_book_strategy(
             result["locator_map"][k] = [sub_id, c_idx]
             sub_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
 
-        # 3. [SIMPLIFIED] Neighbor Injection
-        # Tự động tìm hàng xóm (bao gồm cả hàng xóm của Root Sutta trong sub-book này)
+        # [CRITICAL FIX]
+        # Thêm Root của Sub-book (ví dụ: "an1") vào map TRƯỚC khi quét biên.
+        # Điều này đảm bảo _inject_neighbors_from_global sẽ thấy "an1", 
+        # kiểm tra nav của nó, thấy "an2", và nạp "an2" từ global vào file an1.json.
+        if sub_id in full_meta:
+            sub_meta_map[sub_id] = build_meta_entry(sub_id, full_meta, nav_map, None)
+        elif global_meta and sub_id in global_meta:
+            sub_meta_map[sub_id] = build_meta_entry(sub_id, global_meta, nav_map, None)
+
+        # 3. Neighbor Injection
+        # Giờ đây map đã có "an1", nên nó sẽ tự động tìm thấy "an2" (nếu an1 next an2)
         _inject_neighbors_from_global(sub_meta_map, nav_map, global_meta)
 
-        # Inject Parent Info (cho Sub-book)
+        # Inject Parent Info (Sách Mẹ - ví dụ "an")
         if book_id in full_meta:
             sub_meta_map[book_id] = build_meta_entry(book_id, full_meta, nav_map, None)
         
-        # Collect info cho Mẹ (Super Book)
+        # Collect info cho Mẹ (Super Book Meta)
+        # (Logic này để tạo file an.json chứa danh sách an1, an2...)
         if sub_id in full_meta:
             super_meta_map[sub_id] = build_meta_entry(sub_id, full_meta, nav_map, None)
         else:
+            # Fallback nếu sub_id (như vagga ảo) không có trong meta gốc
             super_meta_map[sub_id] = { "acronym": sub_id.upper(), "type": "branch" }
 
         # Save Sub-Book
@@ -120,7 +131,6 @@ def execute_split_book_strategy(
         collected_pools[sub_id] = sub_leaves_check
 
     # --- Process Super Book Meta ---
-    # Cũng áp dụng logic quét biên cho Super Book (Root ID)
     _inject_neighbors_from_global(super_meta_map, nav_map, global_meta)
 
     # Save Super-Book
