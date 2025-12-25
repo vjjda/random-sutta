@@ -19,6 +19,7 @@ class DpdHtmlRenderer:
         self.tpl_grammar = Template(filename=str(self.config.TEMPLATES_DIR / "grammar.html"))
         self.tpl_example = Template(filename=str(self.config.TEMPLATES_DIR / "example.html"))
         self.tpl_deconstruction = Template(filename=str(self.config.TEMPLATES_DIR / "deconstruction.html"))
+        self.tpl_grammar_note = Template(filename=str(self.config.TEMPLATES_DIR / "grammar_note.html"))
 
     def render_content_entry(self, i: DpdHeadword) -> str:
         """Render nội dung định nghĩa chính (Definition HTML)."""
@@ -57,3 +58,36 @@ class DpdHtmlRenderer:
             construction=lookup_key,
             deconstruction="<br/>".join(unpack_list)
         )
+
+    def render_grammar_notes(self, grammar_list: list) -> str:
+        """Render Grammar Note Table."""
+        rows = []
+        for headword, pos, grammar_str in grammar_list:
+            row_data = {
+                "pos": pos,
+                "headword": headword,
+                "is_colspan": False,
+                "cells": []
+            }
+            
+            if grammar_str.startswith("reflx"):
+                parts = grammar_str.split()
+                if len(parts) >= 2:
+                    row_data["cells"].append(f"{parts[0]} {parts[1]}")
+                    row_data["cells"].extend(parts[2:])
+                else:
+                    row_data["cells"] = parts
+            elif grammar_str.startswith("in comps"):
+                row_data["is_colspan"] = True
+                row_data["cells"] = [grammar_str]
+            else:
+                row_data["cells"] = grammar_str.split()
+            
+            # Fill empty cells if not colspan
+            if not row_data["is_colspan"]:
+                while len(row_data["cells"]) < 3:
+                    row_data["cells"].append("")
+            
+            rows.append(row_data)
+            
+        return self.tpl_grammar_note.render(rows=rows)

@@ -163,13 +163,24 @@ class Lookup(Base):
     
     # Cột này chứa JSON string trong DB gốc
     deconstructor: Mapped[str] = mapped_column(default="")
-    
+    grammar: Mapped[str] = mapped_column(default="")
+
     @property
     def deconstructor_unpack_list(self):
         """Giải nén chuỗi JSON trong cột deconstructor thành list python"""
         if self.deconstructor:
             try:
                 return json.loads(self.deconstructor)
+            except json.JSONDecodeError:
+                return []
+        return []
+
+    @property
+    def grammar_unpack_list(self):
+        """Giải nén chuỗi JSON trong cột grammar thành list tuples"""
+        if self.grammar:
+            try:
+                return json.loads(self.grammar)
             except json.JSONDecodeError:
                 return []
         return []

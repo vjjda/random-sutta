@@ -106,3 +106,32 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
     finally:
         session.close()
     return decon_batch, decon_lookup_batch
+
+def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List[tuple]:
+    renderer = DpdRenderer(config)
+    session = get_db_session(config.DPD_DB_PATH)
+    grammar_batch = []
+    
+    try:
+        items = session.query(Lookup).filter(Lookup.lookup_key.in_(keys)).all()
+        for item in items:
+            grammar_list = item.grammar_unpack_list
+            if not grammar_list:
+                continue
+            
+            # Generate both formats
+            html_val = renderer.render_grammar_notes_html(grammar_list)
+            json_val = renderer.render_grammar_notes_json(grammar_list)
+            
+            grammar_batch.append((
+                item.lookup_key, 
+                process_data(html_val, config.USE_COMPRESSION), 
+                process_data(json_val, config.USE_COMPRESSION)
+            ))
+            
+    except Exception as e:
+        print(f"[red]Error in grammar notes worker: {e}")
+    finally:
+        session.close()
+        
+    return grammar_batch
