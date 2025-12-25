@@ -63,6 +63,14 @@ class DpdRenderer:
             i.deconstructor_unpack_list
         )
 
+    def render_root_entry(self, r) -> str:
+        """Render Root Entry (HTML/JSON). Currently fallback to JSON."""
+        # TODO: Implement HTML template for roots if needed.
+        return self.json_renderer.render_root_definition(r)
+
+    def extract_root_json(self, r) -> str:
+        return self.json_renderer.render_root_definition(r)
+
     def render_grammar_notes_html(self, grammar_list: list) -> str:
         return self.html_renderer.render_grammar_notes(grammar_list)
 

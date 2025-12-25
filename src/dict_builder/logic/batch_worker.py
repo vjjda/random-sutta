@@ -68,8 +68,7 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
                         process_data(example_json, config.USE_COMPRESSION)
                     ))
             
-            # 2. Xử lý LOOKUPS (Dùng chung cho cả 2 mode)
-            # Logic này nằm NGOÀI block if/else phía trên -> Chạy giống hệt nhau
+            # 2. Xử lý LOOKUPS (Type=1 for Entries)
             
             # Luôn thêm Headword
             lookups_data.append((i.lemma_clean, i.id, 1))
@@ -98,7 +97,6 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
         
     return entries_data, lookups_data
 
-# ... (Hàm process_decon_worker giữ nguyên) ...
 def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) -> Tuple[List, List]:
     renderer = DpdRenderer(config)
     session = get_db_session(config.DPD_DB_PATH)
@@ -110,6 +108,8 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
         for d in items:
             split_str = "; ".join(d.deconstructor_unpack_list)
             decon_batch.append((current_id, d.lookup_key, split_str))
+            
+            # Type=0 for Deconstructions
             decon_lookup_batch.append((d.lookup_key, current_id, 0))
             current_id += 1
     except Exception as e:
@@ -162,3 +162,68 @@ def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List
     grammar_batch.sort(key=lambda x: pali_sort_key(x[0])) # x[0] is key
         
     return grammar_batch
+
+def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderConfig) -> Tuple[List, List]:
+    """
+    Worker to process roots.
+    Returns: (roots_data, lookups_data)
+    """
+    renderer = DpdRenderer(config)
+    session = get_db_session(config.DPD_DB_PATH)
+    
+    roots_data = []
+    lookups_data = []
+    current_id = start_id
+    
+    try:
+        # Fetch DpdRoot objects by root name (PK)
+        roots = session.query(DpdRoot).filter(DpdRoot.root.in_(root_keys)).all()
+        
+        for r in roots:
+            # Render content
+            if config.html_mode:
+                # For now, assume render_root_definition generates HTML-friendly JSON or HTML string?
+                # Actually, DpdJsonRenderer has render_root_definition returning JSON string.
+                # If we need HTML root view, we need a template.
+                # For now, let's reuse JSON content or implement HTML renderer for roots.
+                # User asked for self-contained lookup.
+                # Let's stick to whatever render_root_definition returns.
+                # Wait, renderer.render_root_definition is in JSON Renderer.
+                # We need to expose it in DpdRenderer facade.
+                
+                # Use extract_root_json via facade (to be added)
+                # Or assume we want JSON content even in HTML db? 
+                # Grand view selects `r.definition_{suffix}`.
+                # If HTML mode, suffix is 'html'.
+                # We need HTML content.
+                # Currently I only implemented JSON renderer for roots.
+                # Fallback: wrap JSON in basic HTML or just use JSON string (client handles it).
+                # Better: Implement proper HTML renderer.
+                
+                # For this step, I'll assume we use JSON string for now or a placeholder HTML.
+                # Let's assume Facade has `render_root_entry(r)` -> string.
+                content = renderer.render_root_entry(r)
+            else:
+                content = renderer.extract_root_json(r)
+            
+            roots_data.append((
+                current_id,
+                r.root,
+                process_data(content, config.USE_COMPRESSION)
+            ))
+            
+            # Lookup: Key = r.root, Type = 2
+            lookups_data.append((r.root, current_id, 2))
+            
+            # Also add clean version (without number)? e.g. √gam 1 -> √gam
+            if r.root_clean != r.root:
+                 lookups_data.append((r.root_clean, current_id, 2))
+                 
+            current_id += 1
+            
+    except Exception as e:
+        print(f"[red]Error in roots worker: {e}")
+    finally:
+        session.close()
+        
+    return roots_data, lookups_data
