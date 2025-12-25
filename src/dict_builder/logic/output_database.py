@@ -3,7 +3,7 @@ import sqlite3
 import logging
 from datetime import datetime
 
-from ..config import BuilderConfig
+from ..builder_config import BuilderConfig
 from src.dict_builder.tools.json_key_map import get_key_map_list
 
 logger = logging.getLogger("dict_builder")

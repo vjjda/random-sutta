@@ -1,4 +1,4 @@
-# Path: src/dict_builder/core.py
+# Path: src/dict_builder/dict_builder_app.py
 import time
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
@@ -6,8 +6,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
 from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import Lookup
 
-from .config import BuilderConfig
-from .renderer import DpdRenderer
+from .builder_config import BuilderConfig
+from .entry_renderer import DpdRenderer
 
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
@@ -155,6 +155,11 @@ class DictBuilder:
             
         except KeyboardInterrupt:
             logger.warning("\n[bold yellow]⚠️ User interrupted! Shutting down workers...[/bold yellow]")
+        except Exception as e:
+            logger.error(f"[bold red]❌ Unexpected Error: {e}[/bold red]", exc_info=True)
+        finally:
+            if self.session:
+                self.session.close()
 
 def run_builder(mode: str = "mini", html_mode: bool = False):
     builder = DictBuilder(mode=mode, html_mode=html_mode)

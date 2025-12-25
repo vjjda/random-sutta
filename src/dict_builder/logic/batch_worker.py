@@ -5,8 +5,8 @@ from sqlalchemy.orm import joinedload
 
 from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import DpdHeadword, Lookup, DpdRoot
-from ..renderer import DpdRenderer
-from ..config import BuilderConfig
+from ..entry_renderer import DpdRenderer
+from ..builder_config import BuilderConfig
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 def process_data(data_str: str, compress: bool) -> str | bytes:

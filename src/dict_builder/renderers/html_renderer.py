@@ -2,7 +2,7 @@
 from mako.template import Template
 from src.dict_builder.db.models import DpdHeadword
 from src.dict_builder.tools.meaning_construction import make_grammar_line
-from ..config import BuilderConfig
+from ..builder_config import BuilderConfig
 
 class DpdHtmlRenderer:
     """

@@ -12,7 +12,7 @@ from src.dict_builder.db.models import DpdHeadword, Lookup
 from src.dict_builder.logic.ebts_loader import load_cached_ebts_words
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 from src.dict_builder.tools.word_extractor import extract_words_from_string
-from ..config import BuilderConfig
+from ..builder_config import BuilderConfig
 
 class WordSelector:
     def __init__(self, config: BuilderConfig):
