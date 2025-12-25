@@ -120,23 +120,22 @@ def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List
             if not grammar_list:
                 continue
             
-            html_val = None
-            json_val = None
+            content_val = None
             
             # Conditional Processing
             if config.html_mode:
                 # HTML Mode: Render HTML
                 html_str = renderer.render_grammar_notes_html(grammar_list)
-                html_val = process_data(html_str, config.USE_COMPRESSION)
+                content_val = process_data(html_str, config.USE_COMPRESSION)
             else:
                 # JSON Mode: Render JSON
                 json_str = renderer.render_grammar_notes_json(grammar_list)
-                json_val = process_data(json_str, config.USE_COMPRESSION)
+                content_val = process_data(json_str, config.USE_COMPRESSION)
             
+            # Return only key and content (schema agnostic here, caller knows mode)
             grammar_batch.append((
                 item.lookup_key, 
-                html_val, 
-                json_val
+                content_val
             ))
             
     except Exception as e:
