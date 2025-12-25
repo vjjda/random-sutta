@@ -6,7 +6,6 @@ from rich import print
 from ..config import BuilderConfig
 
 class OutputDatabase:
-    # ... (Các phần __init__, setup, _create_tables, insert... giữ nguyên) ...
     def __init__(self, config: BuilderConfig):
         self.config = config
         self.conn = None
@@ -33,16 +32,15 @@ class OutputDatabase:
     def _create_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, lookup_key TEXT NOT NULL, split_string TEXT);")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, is_headword BOOLEAN NOT NULL, is_inflection BOOLEAN DEFAULT 0, pali_sort_key TEXT);")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, is_headword BOOLEAN NOT NULL, is_inflection BOOLEAN DEFAULT 0);")
         
         suffix = "html" if self.config.html_mode else "json"
         if self.config.is_tiny_mode:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT);")
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT);")
         else:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT, grammar_{suffix} TEXT, example_{suffix} TEXT);")
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT, grammar_{{suffix}} TEXT, example_{{suffix}} TEXT);")
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
-        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_sort ON lookups(pali_sort_key);")
         
         # [DYNAMIC SCHEMA] Grammar Notes
         if self.config.html_mode:
@@ -54,19 +52,19 @@ class OutputDatabase:
         if entries:
             suffix = "html" if self.config.html_mode else "json"
             if self.config.is_tiny_mode:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}) VALUES (?,?,?,?)"
+                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}) VALUES (?,?,?)"
             else:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}, grammar_{suffix}, example_{suffix}) VALUES (?,?,?,?,?,?)"
+                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}, grammar_{{suffix}}, example_{{suffix}}) VALUES (?,?,?,?,?,?)"
             self.cursor.executemany(sql, entries)
         if lookups:
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection, pali_sort_key) VALUES (?,?,?,?,?)", lookups)
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
         self.conn.commit()
 
     def insert_deconstructions(self, deconstructions: list, lookups: list):
         if deconstructions:
             self.cursor.executemany("INSERT INTO deconstructions (id, lookup_key, split_string) VALUES (?,?,?)", deconstructions)
         if lookups:
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection, pali_sort_key) VALUES (?,?,?,?,?)", lookups)
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
         self.conn.commit()
 
     def insert_grammar_notes(self, grammar_batch: list):
@@ -85,21 +83,19 @@ class OutputDatabase:
         
         # Xây dựng danh sách cột cho bảng Entries
         entry_cols = ["e.headword AS entry_headword"]
-        entry_cols.append(f"e.definition_{suffix} AS entry_definition")
+        entry_cols.append(f"e.definition_{{suffix}} AS entry_definition")
         
         if not self.config.is_tiny_mode:
-            entry_cols.append(f"e.grammar_{suffix} AS entry_grammar")
-            entry_cols.append(f"e.example_{suffix} AS entry_example")
+            entry_cols.append(f"e.grammar_{{suffix}} AS entry_grammar")
+            entry_cols.append(f"e.example_{{suffix}} AS entry_example")
             
         entry_select_str = ",\n            ".join(entry_cols)
         
         # [DYNAMIC] Grammar Column
         if self.config.html_mode:
             grammar_col = "gn.grammar_html AS grammar_note_html,"
-            # grammar_note_json sẽ là NULL
             grammar_col += "NULL AS grammar_note_json,"
         else:
-            # grammar_note_html sẽ là NULL
             grammar_col = "NULL AS grammar_note_html,"
             grammar_col += "gn.grammar_json AS grammar_note_json,"
 
@@ -110,7 +106,6 @@ class OutputDatabase:
             l.key AS lookup_key,
             l.is_headword,
             l.is_inflection,
-            l.pali_sort_key,
             
             -- [CHANGED] Đưa Deconstruction lên trước
             d.split_string AS decon_split,
@@ -130,8 +125,8 @@ class OutputDatabase:
         LEFT JOIN grammar_notes gn
             ON l.key = gn.key
             
-        -- [CHANGED] Sắp xếp theo pali_sort_key
-        ORDER BY l.pali_sort_key ASC;
+        -- [CHANGED] Sắp xếp theo lookup_key
+        ORDER BY l.key ASC;
         """
         
         try:
@@ -140,8 +135,8 @@ class OutputDatabase:
             self.conn.commit()
             print("[green]View 'grand_lookups' created successfully.")
         except Exception as e:
-            print(f"[bold red]❌ Failed to create grand view: {e}")
-            print(f"[yellow]SQL was:\n{sql}")
+            print(f"[bold red]❌ Failed to create grand view: {{e}}")
+            print(f"[yellow]SQL was:\n{{sql}}")
 
     def close(self):
         if self.conn:
