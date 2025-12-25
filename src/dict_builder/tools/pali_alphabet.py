@@ -1,5 +1,6 @@
 # Path: src/dict_builder/tools/pali_alphabet.py
-# Thêm "√" vào đầu danh sách để khi sort, Root sẽ luôn đứng đầu.
+# Bảng chữ cái Pali chuẩn (Pali Alphabet)
+# '√' được đặt đầu tiên để các mục Roots luôn được xếp trên cùng.
 pali_alphabet = [
     "√", "a", "ā", "i", "ī", "u", "ū", "e", "o",
     "k", "kh", "g", "gh", "ṅ",
