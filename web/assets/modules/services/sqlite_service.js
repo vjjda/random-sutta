@@ -6,18 +6,20 @@ const logger = getLogger("SqliteService");
 export const SqliteService = {
     db: null,
     isInitializing: false,
-    _jsonKeys: null, // Cache for json_keys table
+    _keyMap: {
+        fullToAbbr: null, // e.g. "Part of Speech" -> "pos"
+        abbrToFull: null  // e.g. "pos" -> "Part of Speech"
+    },
 
     async init() {
         if (this.db) return true;
         if (this.isInitializing) {
-            // Simple wait mechanism
             return new Promise(resolve => {
                 const interval = setInterval(() => {
                     if (this.db) {
                         clearInterval(interval);
                         resolve(true);
-                    } else if (this.isInitializing === false) { // Failed
+                    } else if (this.isInitializing === false) { 
                         clearInterval(interval);
                         resolve(false);
                     }
@@ -45,7 +47,6 @@ export const SqliteService = {
             this.db = new SQL.Database(new Uint8Array(buf));
             logger.info("Init", "DB Loaded successfully.");
             
-            // Load JSON Keys mapping
             this._loadJsonKeys();
             
             this.isInitializing = false;
@@ -61,11 +62,14 @@ export const SqliteService = {
         try {
             const res = this.db.exec("SELECT abbr_key, full_key FROM json_keys");
             if (res.length > 0) {
-                this._jsonKeys = {};
+                this._keyMap.fullToAbbr = {};
+                this._keyMap.abbrToFull = {};
+                
                 res[0].values.forEach(row => {
-                    // Map Full Key -> Abbr Key (e.g., 'pos' -> 'p')
-                    // Because JSON in DB uses Abbr Keys, but Renderer uses Full Keys to look up.
-                    this._jsonKeys[row[1]] = row[0];
+                    const abbr = row[0];
+                    const full = row[1];
+                    this._keyMap.fullToAbbr[full] = abbr;
+                    this._keyMap.abbrToFull[abbr] = full;
                 });
             }
         } catch (e) {
@@ -76,30 +80,65 @@ export const SqliteService = {
     search(term) {
         if (!this.db) return null;
         try {
-            // Using grand_lookups view for unified access
-            // Columns: lookup_key, target_id, lookup_type, headword, definition, grammar_note, entry_grammar, entry_example
-            const sql = "SELECT * FROM grand_lookups WHERE lookup_key = ?";
-            const results = this.db.exec(sql, [term]);
+            // OPTIMIZATION: Manual Join logic instead of View
+            // 1. Get Target ID & Type from Lookups (Indexed)
+            const lookupRes = this.db.exec("SELECT target_id, type FROM lookups WHERE key = ?", [term]);
+            if (!lookupRes.length || !lookupRes[0].values.length) return null;
             
-            if (!results.length) return null;
-
-            const columns = results[0].columns;
-            const values = results[0].values[0];
+            const [targetId, type] = lookupRes[0].values[0];
             
-            // Map to object
-            const row = {};
-            columns.forEach((col, index) => {
-                row[col] = values[index];
-            });
-            
-            // Resolve JSON keys in 'definition' and others if they are JSON strings
-            // Note: The DB stores JSON strings. We should parse them here or in renderer.
-            // Let's just return the raw DB row, but maybe parse known JSON fields.
-            
-            return {
-                ...row,
-                jsonKeys: this._jsonKeys
+            // 2. Fetch details based on Type
+            let result = {
+                lookup_key: term,
+                target_id: targetId,
+                lookup_type: type,
+                headword: null,
+                definition: null,
+                entry_grammar: null,
+                entry_example: null,
+                grammar_note: null,
+                keyMap: this._keyMap // Pass both maps
             };
+
+            // Type 0: Deconstruction
+            if (type === 0) {
+                const res = this.db.exec("SELECT components FROM deconstructions WHERE id = ?", [targetId]);
+                if (res.length) result.definition = res[0].values[0][0];
+            } 
+            // Type 1: Entry
+            else if (type === 1) {
+                const res = this.db.exec(
+                    "SELECT headword, definition_json, grammar_json, example_json FROM entries WHERE id = ?", 
+                    [targetId]
+                );
+                if (res.length) {
+                    const row = res[0].values[0];
+                    result.headword = row[0];
+                    result.definition = row[1];
+                    result.entry_grammar = row[2];
+                    result.entry_example = row[3];
+                }
+            }
+            // Type 2: Root
+            else if (type === 2) {
+                const res = this.db.exec(
+                    "SELECT root, definition_json FROM roots WHERE id = ?", 
+                    [targetId]
+                );
+                if (res.length) {
+                    const row = res[0].values[0];
+                    result.headword = row[0];
+                    result.definition = row[1];
+                }
+            }
+
+            // 3. Always check Grammar Notes
+            const gnRes = this.db.exec("SELECT grammar_json FROM grammar_notes WHERE key = ?", [term]);
+            if (gnRes.length) {
+                result.grammar_note = gnRes[0].values[0][0];
+            }
+            
+            return result;
 
         } catch (e) {
             logger.error("Search", `Error searching for ${term}`, e);
