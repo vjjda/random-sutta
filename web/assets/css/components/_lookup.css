@@ -45,15 +45,17 @@
 }
 
 .dpd-summary {
-    /* Summary is now a clickable header */
+    /* Summary is now a clickable header container */
     cursor: pointer;
     list-style: none; 
     position: relative;
-    padding-right: 24px;
-    display: block; /* Ensure block layout for content */
+    padding-right: 28px; /* Space for the +/- icon */
+    display: flex;
+    flex-direction: column;
+    gap: 4px; /* Space between Line 1 and Line 2 */
 }
 
-/* Custom Expand Icon */
+/* Custom Expand Icon Positioned relative to Line 1 */
 .dpd-summary::-webkit-details-marker {
     display: none;
 }
@@ -61,7 +63,7 @@
     content: '+'; 
     position: absolute;
     right: 0;
-    top: 0;
+    top: 2px; /* Align with Line 1 */
     color: var(--primitive-blue-500);
     font-weight: bold;
     font-size: 1.2em;
@@ -70,6 +72,68 @@
 details[open] > .dpd-summary::after {
     content: '−';
     color: var(--text-light);
+}
+
+/* --- LINE 1: LEMMA & POS --- */
+.dpd-summary-line-1 {
+    display: flex;
+    justify-content: space-between; /* Lemma Left, POS Right */
+    align-items: baseline;
+    width: 100%;
+}
+
+.dpd-lemma {
+    font-weight: 700;
+    color: var(--primitive-blue-600, #2563eb);
+    font-size: 1.1em;
+}
+
+.dpd-pos-group {
+    text-align: right;
+    font-size: 0.9em;
+}
+
+.dpd-pos {
+    font-style: italic;
+    color: var(--text-muted);
+}
+
+.dpd-plus-case {
+    color: var(--text-light);
+    font-size: 0.85em;
+    margin-left: 4px;
+}
+
+/* --- LINE 2: CONSTRUCTION --- */
+.dpd-summary-line-2 {
+    font-size: 0.85em;
+    color: var(--text-light); /* Muted gray */
+    font-family: var(--font-mono, monospace);
+    line-height: 1.2;
+    margin-top: -2px; /* Pull closer to Lemma */
+}
+
+/* --- LINE 3: MEANING & DEGREE --- */
+.dpd-summary-line-3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.95em;
+    line-height: 1.4;
+    color: var(--text-main);
+    margin-top: 4px;
+}
+
+.dpd-meaning {
+    font-weight: 500;
+}
+
+/* Hidden/Low-profile Degree checkmark */
+.dpd-degree {
+    opacity: 0.15; /* Extremely faint per request */
+    font-size: 0.75em;
+    margin-left: 8px;
+    white-space: nowrap;
 }
 
 /* Details Content Animation/Spacing */
