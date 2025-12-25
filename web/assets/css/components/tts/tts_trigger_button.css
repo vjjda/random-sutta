@@ -18,7 +18,12 @@
   /* Assuming inline SVG injected by JS */
 }
 
-/* Hide trigger when Popup is open */
+/* Hide trigger when Popup is open (Comment Popup) */
 body.popup-open #magic-tts-trigger {
+  display: none !important;
+}
+
+/* [NEW] Hide trigger when Lookup Popup is open */
+body.lookup-open #magic-tts-trigger {
   display: none !important;
 }
