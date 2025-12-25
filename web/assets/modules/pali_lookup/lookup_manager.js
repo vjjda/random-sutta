@@ -54,8 +54,6 @@ export const LookupManager = {
         if (!parent || !parent.closest('#sutta-container')) return;
         
         // CLEAN TEXT Logic
-        // Remove punctuation including Pali specific ones (” “ ’)
-        // [UPDATED] Also remove em-dash if it somehow got selected (though nav tries to avoid it)
         const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—]/g, '').trim();
         
         if (cleanText.length > 50 || cleanText.length < 1) return; 
@@ -89,7 +87,6 @@ export const LookupManager = {
         const sel = window.getSelection();
         if (!sel.rangeCount) return;
         
-        // We assume we are working within a single Text Node for Pali segments
         const anchorNode = sel.anchorNode;
         if (anchorNode.nodeType !== 3) return; // Must be text node
         
@@ -97,38 +94,29 @@ export const LookupManager = {
         const currentStart = Math.min(sel.anchorOffset, sel.focusOffset);
         const currentEnd = Math.max(sel.anchorOffset, sel.focusOffset);
 
-        // 1. Tokenize by Whitespace AND Em-dash
-        // Regex matches sequences of characters that are NOT whitespace and NOT em-dash
-        const regex = /[^\s—]+/g;
-        let match;
-        const tokens = [];
+        // 1. Tokenize current node
+        const tokens = this._tokenize(fullText);
         
-        while ((match = regex.exec(fullText)) !== null) {
-            tokens.push({
-                text: match[0],
-                start: match.index,
-                end: match.index + match[0].length
-            });
+        if (tokens.length === 0) {
+            // Empty node, try jumping adjacent?
+            this._jumpSegment(anchorNode, direction);
+            return;
         }
-        
-        if (tokens.length === 0) return;
 
         // 2. Find Current Token Index
-        // Determine which token overlaps with the current selection center
         const center = (currentStart + currentEnd) / 2;
         let currentIndex = -1;
         
         for (let i = 0; i < tokens.length; i++) {
             const t = tokens[i];
-            // Check if center is within token bounds
             if (center >= t.start && center <= t.end) {
                 currentIndex = i;
                 break;
             }
         }
         
-        // If not found (e.g. user selected multiple words or spaces), find closest
         if (currentIndex === -1) {
+            // Find closest
             let minDist = Infinity;
             tokens.forEach((t, i) => {
                 const dist = Math.abs(center - (t.start + t.end) / 2);
@@ -142,21 +130,98 @@ export const LookupManager = {
         // 3. Move Index
         let nextIndex = currentIndex + direction;
         
-        // Bounds check
-        if (nextIndex < 0) nextIndex = 0; 
-        if (nextIndex >= tokens.length) nextIndex = tokens.length - 1;
+        // 4. Check Boundary
+        if (nextIndex < 0) {
+            // Reached START of this segment -> Go to Prev Segment
+            this._jumpSegment(anchorNode, -1);
+            return;
+        } else if (nextIndex >= tokens.length) {
+            // Reached END of this segment -> Go to Next Segment
+            this._jumpSegment(anchorNode, 1);
+            return;
+        }
         
-        if (nextIndex === currentIndex && !this._isNavigating) return; // Nowhere to go
+        // 5. Select New Token (Same Segment)
+        this._selectToken(anchorNode, tokens[nextIndex]);
+    },
 
-        // 4. Select New Token
+    _tokenize(text) {
+        // Tokenize by Whitespace AND Em-dash
+        const regex = /[^\s—]+/g;
+        let match;
+        const tokens = [];
+        while ((match = regex.exec(text)) !== null) {
+            tokens.push({
+                text: match[0],
+                start: match.index,
+                end: match.index + match[0].length
+            });
+        }
+        return tokens;
+    },
+
+    _selectToken(node, token) {
         this._isNavigating = true;
-        const targetToken = tokens[nextIndex];
-        
+        const sel = window.getSelection();
         const newRange = document.createRange();
-        newRange.setStart(anchorNode, targetToken.start);
-        newRange.setEnd(anchorNode, targetToken.end);
+        newRange.setStart(node, token.start);
+        newRange.setEnd(node, token.end);
         
         sel.removeAllRanges();
         sel.addRange(newRange);
+        
+        // Scroll into view if needed?
+        // const span = node.parentElement;
+        // if (span) span.scrollIntoView({behavior: "smooth", block: "center"});
+    },
+
+    _jumpSegment(currentNode, direction) {
+        // 1. Find the wrapper .segment
+        let currentWrapper = currentNode.parentElement;
+        // Ensure we are inside a .pli span
+        if (!currentWrapper.classList.contains('pli')) {
+            // Maybe we clicked directly on .segment text? (Unlikely with structure)
+            // Or maybe traversing up
+            const pli = currentWrapper.querySelector('.pli');
+            if (pli) currentWrapper = pli; // If we were at segment level, go down
+            else {
+                // Should be inside .pli
+                currentWrapper = currentWrapper.closest('.pli');
+            }
+        }
+
+        if (!currentWrapper) return;
+        
+        // Get all .pli spans in the container to find index
+        // This is reasonably fast
+        const allSegments = Array.from(document.querySelectorAll('#sutta-container .pli'));
+        const currentIdx = allSegments.indexOf(currentWrapper);
+        
+        if (currentIdx === -1) return;
+        
+        const nextIdx = currentIdx + direction;
+        if (nextIdx < 0 || nextIdx >= allSegments.length) {
+            // End of document
+            return; 
+        }
+        
+        const targetWrapper = allSegments[nextIdx];
+        
+        // Assume text is first child or text content
+        // Usually .pli contains just text
+        const targetNode = targetWrapper.firstChild;
+        if (!targetNode || targetNode.nodeType !== 3) return;
+        
+        const tokens = this._tokenize(targetNode.textContent);
+        if (tokens.length === 0) return; // Empty segment?
+        
+        // If moving Forward (Next) -> Select FIRST token of next segment
+        // If moving Backward (Prev) -> Select LAST token of prev segment
+        const targetToken = (direction === 1) ? tokens[0] : tokens[tokens.length - 1];
+        
+        this._selectToken(targetNode, targetToken);
+        
+        // Scroll to the new segment
+        targetWrapper.scrollIntoView({behavior: "smooth", block: "center"});
     }
 };
