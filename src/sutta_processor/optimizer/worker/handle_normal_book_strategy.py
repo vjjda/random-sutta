@@ -7,6 +7,38 @@ from ..tree_utils import collect_all_keys
 from ..schema import build_meta_entry, build_book_payload
 from .chunk_index_resolver import resolve_chunk_idx
 
+def _inject_neighbors_from_global(
+    current_meta_map: Dict[str, Any],
+    nav_map: Dict[str, Any],
+    global_meta: Optional[Dict[str, Any]]
+) -> None:
+    """
+    [NEW] Quét tất cả item hiện có, nếu nav trỏ đến UID chưa có trong map,
+    thử lấy từ global_meta.
+    """
+    if not global_meta: return
+
+    # Copy keys để tránh lỗi runtime khi dictionary size thay đổi
+    existing_keys = list(current_meta_map.keys())
+    
+    for uid in existing_keys:
+        if uid not in nav_map: continue
+        
+        nav = nav_map[uid]
+        neighbors = []
+        if "prev" in nav: neighbors.append(nav["prev"])
+        if "next" in nav: neighbors.append(nav["next"])
+        
+        for neighbor_uid in neighbors:
+            # Nếu hàng xóm chưa có trong map (tức là nằm ở sách khác)
+            if neighbor_uid not in current_meta_map:
+                if neighbor_uid in global_meta:
+                    # Inject meta tối giản từ Global Context
+                    # (Chunk index là None vì nó nằm ở sách khác)
+                    current_meta_map[neighbor_uid] = build_meta_entry(
+                        neighbor_uid, global_meta, nav_map, None
+                    )
+
 def execute_normal_book_strategy(
     book_id: str, 
     data: Dict, 
@@ -16,11 +48,11 @@ def execute_normal_book_strategy(
     linear_uids: List[str],
     io: IOManager, 
     result: Dict,
-    global_meta: Optional[Dict[str, Any]] = None # [NEW]
+    global_meta: Optional[Dict[str, Any]] = None
 ) -> None:
     """
     Chiến lược xử lý cho các sách thường (MN, DN...).
-    [UPDATED] Inject Meta hàng xóm từ Global Context.
+    [UPDATED] Simplified Boundary Logic.
     """
     # 1. Content Chunking
     normal_chunk_map = {}
@@ -32,12 +64,13 @@ def execute_normal_book_strategy(
             for uid in chunk_data.keys():
                 normal_chunk_map[uid] = idx
 
-    # 2. Meta & Locator
+    # 2. Meta & Locator (Internal)
     slim_meta_map = {}
     all_keys = set()
     collect_all_keys(structure, all_keys)
     all_keys.add(book_id)
     
+    # Add extra keys present in full_meta (aliases, etc)
     for k in full_meta.keys(): 
         all_keys.add(k)
 
@@ -48,23 +81,10 @@ def execute_normal_book_strategy(
         result["locator_map"][k] = [book_id, c_idx]
         slim_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
 
-    # --- [NEW] BOOK-LEVEL BOUNDARY INJECTION WITH GLOBAL LOOKUP ---
-    book_nav = nav_map.get(book_id)
-    if book_nav:
-        neighbors = []
-        if "prev" in book_nav: neighbors.append(book_nav["prev"])
-        if "next" in book_nav: neighbors.append(book_nav["next"])
-        
-        for neighbor_uid in neighbors:
-            if neighbor_uid not in slim_meta_map:
-                if global_meta and neighbor_uid in global_meta:
-                    slim_meta_map[neighbor_uid] = build_meta_entry(
-                        neighbor_uid, global_meta, nav_map, None
-                    )
-                else:
-                    slim_meta_map[neighbor_uid] = build_meta_entry(
-                        neighbor_uid, full_meta, nav_map, None
-                    )
+    # 3. [SIMPLIFIED] Universal Neighbor Injection
+    # Không cần xử lý riêng cho Book Root nữa, vòng lặp này sẽ tự động 
+    # thấy Root trỏ ra ngoài và fetch neighbor.
+    _inject_neighbors_from_global(slim_meta_map, nav_map, global_meta)
 
     # Save Book
     payload = build_book_payload(

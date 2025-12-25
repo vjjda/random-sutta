@@ -8,6 +8,27 @@ from ..splitter import extract_sub_books
 from ..schema import build_meta_entry, build_book_payload
 from .chunk_index_resolver import resolve_chunk_idx
 
+# Helper duplicated locally for independence (or move to shared util)
+def _inject_neighbors_from_global(
+    current_meta_map: Dict[str, Any],
+    nav_map: Dict[str, Any],
+    global_meta: Optional[Dict[str, Any]]
+) -> None:
+    if not global_meta: return
+    existing_keys = list(current_meta_map.keys())
+    for uid in existing_keys:
+        if uid not in nav_map: continue
+        nav = nav_map[uid]
+        neighbors = []
+        if "prev" in nav: neighbors.append(nav["prev"])
+        if "next" in nav: neighbors.append(nav["next"])
+        for neighbor_uid in neighbors:
+            if neighbor_uid not in current_meta_map:
+                if neighbor_uid in global_meta:
+                    current_meta_map[neighbor_uid] = build_meta_entry(
+                        neighbor_uid, global_meta, nav_map, None
+                    )
+
 def execute_split_book_strategy(
     book_id: str, 
     data: Dict, 
@@ -16,11 +37,11 @@ def execute_split_book_strategy(
     nav_map: Dict, 
     io: IOManager, 
     result: Dict,
-    global_meta: Optional[Dict[str, Any]] = None # [NEW]
+    global_meta: Optional[Dict[str, Any]] = None
 ) -> None:
     """
     Chiến lược xử lý cho các sách Super Book (AN, SN).
-    [UPDATED] Sử dụng global_meta để inject thông tin đầy đủ.
+    [UPDATED] Simplified Boundary Logic.
     """
     sub_books = extract_sub_books(book_id, structure, full_meta)
     sub_book_ids = []
@@ -36,7 +57,7 @@ def execute_split_book_strategy(
     collected_pools = {}
 
     for sub_id, all_sub_keys, sub_struct in sub_books:
-        # ... (Content Chunking logic giữ nguyên) ...
+        # 1. Content Chunking
         sub_content = {}
         sub_leaves_check = []
         flatten_tree_uids(sub_struct, full_meta, sub_leaves_check)
@@ -57,40 +78,22 @@ def execute_split_book_strategy(
                 for uid in chunk_data.keys():
                     sub_chunk_map[uid] = idx
 
-        # 2. Build Meta
+        # 2. Build Meta (Internal)
         sub_meta_map = {}
         for k in all_sub_keys:
             c_idx = resolve_chunk_idx(k, sub_chunk_map, full_meta)
             result["locator_map"][k] = [sub_id, c_idx]
             sub_meta_map[k] = build_meta_entry(k, full_meta, nav_map, c_idx)
 
-        # 3. Universal Boundary Injection WITH GLOBAL LOOKUP
-        for internal_uid in all_sub_keys:
-            nav_entry = nav_map.get(internal_uid)
-            if not nav_entry: continue
+        # 3. [SIMPLIFIED] Neighbor Injection
+        # Tự động tìm hàng xóm (bao gồm cả hàng xóm của Root Sutta trong sub-book này)
+        _inject_neighbors_from_global(sub_meta_map, nav_map, global_meta)
 
-            neighbors = []
-            if "prev" in nav_entry: neighbors.append(nav_entry["prev"])
-            if "next" in nav_entry: neighbors.append(nav_entry["next"])
-
-            for neighbor_uid in neighbors:
-                if neighbor_uid not in sub_meta_map:
-                    # [CRITICAL FIX] Ưu tiên lấy từ Global Meta nếu có
-                    if global_meta and neighbor_uid in global_meta:
-                        sub_meta_map[neighbor_uid] = build_meta_entry(
-                            neighbor_uid, global_meta, nav_map, None
-                        )
-                    else:
-                        # Fallback về tạo node rỗng (ít ra còn có cái type branch)
-                        sub_meta_map[neighbor_uid] = build_meta_entry(
-                            neighbor_uid, full_meta, nav_map, None
-                        )
-
-        # Inject Parent Info
+        # Inject Parent Info (cho Sub-book)
         if book_id in full_meta:
             sub_meta_map[book_id] = build_meta_entry(book_id, full_meta, nav_map, None)
         
-        # Collect info cho Mẹ
+        # Collect info cho Mẹ (Super Book)
         if sub_id in full_meta:
             super_meta_map[sub_id] = build_meta_entry(sub_id, full_meta, nav_map, None)
         else:
@@ -116,23 +119,9 @@ def execute_split_book_strategy(
         total_valid_count += count
         collected_pools[sub_id] = sub_leaves_check
 
-    # --- [NEW] SUPER BOOK BOUNDARY INJECTION WITH GLOBAL LOOKUP ---
-    super_nav = nav_map.get(book_id)
-    if super_nav:
-        super_neighbors = []
-        if "prev" in super_nav: super_neighbors.append(super_nav["prev"])
-        if "next" in super_nav: super_neighbors.append(super_nav["next"])
-        
-        for neighbor_uid in super_neighbors:
-            if neighbor_uid not in super_meta_map:
-                if global_meta and neighbor_uid in global_meta:
-                    super_meta_map[neighbor_uid] = build_meta_entry(
-                        neighbor_uid, global_meta, nav_map, None
-                    )
-                else:
-                    super_meta_map[neighbor_uid] = build_meta_entry(
-                        neighbor_uid, full_meta, nav_map, None
-                    )
+    # --- Process Super Book Meta ---
+    # Cũng áp dụng logic quét biên cho Super Book (Root ID)
+    _inject_neighbors_from_global(super_meta_map, nav_map, global_meta)
 
     # Save Super-Book
     result["locator_map"][book_id] = [book_id, None]

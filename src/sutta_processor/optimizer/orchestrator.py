@@ -19,13 +19,13 @@ class DBOrchestrator:
         self.io = IOManager(dry_run)
         self.pool_manager = PoolManager()
         self.global_locator: Dict[str, List[Any]] = {}
-        self.super_nav_map: Dict[str, Dict[str, str]] = {}
+        # [REMOVED] self.super_nav_map = {}
         # [NEW] Lưu trữ Super Meta để truyền xuống worker
         self.global_meta_context: Dict[str, Any] = {}
 
     def run(self) -> None:
         mode_str = "DRY-RUN" if self.dry_run else "PRODUCTION"
-        logger.info(f"🚀 Starting Parallel Optimization (v6.7 - Global Meta): {mode_str}")
+        logger.info(f"🚀 Starting Parallel Optimization (v7.0 - Simplified): {mode_str}")
         self.io.setup_directories()
 
         all_files = sorted(list(STAGE_PROCESSED_DIR.rglob("*.json")))
@@ -44,15 +44,11 @@ class DBOrchestrator:
             futures = {}
             
             for f in book_files:
-                book_id_guess = f.name.replace("_book.json", "")
-                ext_nav = self.super_nav_map.get(book_id_guess)
-                
-                # [UPDATED] Truyền self.global_meta_context vào task
+                # [UPDATED] Không còn truyền ext_nav nữa
                 futures[executor.submit(
                     process_book_task, 
                     f, 
                     self.dry_run, 
-                    ext_nav, 
                     self.global_meta_context
                 )] = f.name
 
@@ -91,7 +87,6 @@ class DBOrchestrator:
         logger.info("✨ Optimization Completed.")
 
     def _extract_sutta_books(self, structure: Any) -> List[str]:
-        # ... (Giữ nguyên)
         sutta_books: Set[str] = set()
         def _find_sutta_root(node):
             if isinstance(node, dict):
@@ -134,9 +129,7 @@ class DBOrchestrator:
             # [NEW] Store Global Meta Context
             self.global_meta_context = meta
 
-            for uid, info in meta.items():
-                if "nav" in info:
-                    self.super_nav_map[uid] = info["nav"]
+            # [REMOVED] super_nav_map extraction logic
             
             for uid in meta.keys():
                 self.global_locator[uid] = ["tpk", None]
