@@ -3,7 +3,7 @@ import sqlite3
 import logging
 from datetime import datetime
 
-from ..config import BuilderConfig
+from ..builder_config import BuilderConfig
 from src.dict_builder.tools.json_key_map import get_key_map_list
 
 logger = logging.getLogger("dict_builder")
@@ -36,24 +36,21 @@ class OutputDatabase:
     def _create_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, word TEXT NOT NULL, split_string TEXT);")
-        
-        # [CHANGED] is_headword -> type (INTEGER): 0=Decon, 1=Entry, 2=Root
         self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, type INTEGER NOT NULL);")
-        
         self.cursor.execute("CREATE TABLE IF NOT EXISTS json_keys (full_key TEXT PRIMARY KEY, abbr_key TEXT);")
 
         suffix = "html" if self.config.html_mode else "json"
         
         # Entries Table
         if self.config.is_tiny_mode:
-            sql = f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT);"
+            sql = "CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_" + suffix + " TEXT);"
             self.cursor.execute(sql)
         else:
-            sql = f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT, grammar_{{suffix}} TEXT, example_{{suffix}} TEXT);"
+            sql = "CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_" + suffix + " TEXT, grammar_" + suffix + " TEXT, example_" + suffix + " TEXT);"
             self.cursor.execute(sql)
             
-        # [NEW] Roots Table
-        sql_roots = f"CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, definition_{{suffix}} TEXT);"
+        # Roots Table
+        sql_roots = "CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, definition_" + suffix + " TEXT);"
         self.cursor.execute(sql_roots)
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
@@ -73,9 +70,9 @@ class OutputDatabase:
             suffix = "html" if self.config.html_mode else "json"
             try:
                 if self.config.is_tiny_mode:
-                    sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}) VALUES (?, ?, ?, ?)"
+                    sql = "INSERT INTO entries (id, headword, headword_clean, definition_" + suffix + ") VALUES (?, ?, ?, ?)"
                 else:
-                    sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}, grammar_{{suffix}}, example_{{suffix}}) VALUES (?, ?, ?, ?, ?, ?)"
+                    sql = "INSERT INTO entries (id, headword, headword_clean, definition_" + suffix + ", grammar_" + suffix + ", example_" + suffix + ") VALUES (?, ?, ?, ?, ?, ?)"
                 self.cursor.executemany(sql, entries)
             except Exception as e:
                 logger.error(f"Entries insert failed. SQL: {sql}")
@@ -83,7 +80,6 @@ class OutputDatabase:
 
         if lookups:
             try:
-                # [CHANGED] type=1
                 sql_lookups = "INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)"
                 self.cursor.executemany(sql_lookups, lookups)
             except Exception as e:
@@ -95,7 +91,6 @@ class OutputDatabase:
         if deconstructions:
             self.cursor.executemany("INSERT INTO deconstructions (id, word, split_string) VALUES (?, ?, ?)", deconstructions)
         if lookups:
-            # [CHANGED] type=0
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
         self.conn.commit()
 
@@ -103,11 +98,10 @@ class OutputDatabase:
         """Insert roots and their lookups."""
         if roots:
             suffix = "html" if self.config.html_mode else "json"
-            sql = f"INSERT INTO roots (id, root, definition_{{suffix}}) VALUES (?, ?, ?)"
+            sql = "INSERT INTO roots (id, root, definition_" + suffix + ") VALUES (?, ?, ?)"
             self.cursor.executemany(sql, roots)
         
         if lookups:
-            # [CHANGED] type=2
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
         self.conn.commit()
 
@@ -131,56 +125,26 @@ class OutputDatabase:
             grammar_field = "gn.grammar_json AS grammar_note_json"
 
         entry_cols = []
-        entry_cols.append(f"e.definition_{{suffix}} AS entry_definition")
+        entry_cols.append("e.definition_" + suffix + " AS entry_definition")
         
         if not self.config.is_tiny_mode:
-            entry_cols.append(f"e.grammar_{{suffix}} AS entry_grammar")
-            entry_cols.append(f"e.example_{{suffix}} AS entry_example")
+            entry_cols.append("e.grammar_" + suffix + " AS entry_grammar")
+            entry_cols.append("e.example_" + suffix + " AS entry_example")
             
         entry_select_str = ", ".join(entry_cols)
 
-        # [UPDATED] View logic for multiple types
-        # type 0: Deconstruction (use d table)
-        # type 1: Entry (use e table)
-        # type 2: Root (use r table)
-        # Headword column: if entry -> e.headword, if root -> r.root, else NULL/d.word
-        
-        # Note: SQLite views with complex logic can be slow. 
-        # But here we just use LEFT JOINs.
-        
-        sql = f"""
-        CREATE VIEW IF NOT EXISTS grand_lookups AS
-        SELECT 
-            l.key AS lookup_key,
-            l.type AS lookup_type,
-            
-            -- Headword / Root Name
-            CASE 
-                WHEN l.type = 1 THEN e.headword 
-                WHEN l.type = 2 THEN r.root
-                ELSE NULL 
-            END AS headword,
-            
-            -- Deconstruction
-            d.split_string AS decon_split,
-            
-            -- Grammar Notes
-            {grammar_field},
-
-            -- Content (Polymorphic: Entry or Root)
-            {entry_select_str},
-            r.definition_{{suffix}} AS root_definition
-            
-        FROM lookups l
-        LEFT JOIN entries e 
-            ON l.target_id = e.id AND l.type = 1
-        LEFT JOIN deconstructions d 
-            ON l.target_id = d.id AND l.type = 0
-        LEFT JOIN roots r
-            ON l.target_id = r.id AND l.type = 2
-        LEFT JOIN grammar_notes gn
-            ON l.key = gn.key;
-        """
+        sql = "CREATE VIEW IF NOT EXISTS grand_lookups AS " \
+              "SELECT l.key AS lookup_key, l.type AS lookup_type, " \
+              "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 2 THEN r.root ELSE NULL END AS headword, " \
+              "d.split_string AS decon_split, " + \
+              grammar_field + ", " + \
+              entry_select_str + ", " \
+              "r.definition_" + suffix + " AS root_definition " \
+              "FROM lookups l " \
+              "LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1 " \
+              "LEFT JOIN deconstructions d ON l.target_id = d.id AND l.type = 0 " \
+              "LEFT JOIN roots r ON l.target_id = r.id AND l.type = 2 " \
+              "LEFT JOIN grammar_notes gn ON l.key = gn.key;"
         
         try:
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
@@ -189,7 +153,7 @@ class OutputDatabase:
             logger.info("[green]View 'grand_lookups' created successfully.")
         except Exception as e:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
-            logger.debug(f"[yellow]SQL was:\n{sql}")
+            logger.debug(f"SQL was: {sql}")
 
     def close(self):
         if self.conn:
