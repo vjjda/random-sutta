@@ -4,14 +4,14 @@ import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
 
 from src.dict_builder.db.db_helpers import get_db_session
-from src.dict_builder.db.models import Lookup
+from src.dict_builder.db.models import Lookup, DpdRoot
 
 from .builder_config import BuilderConfig
 from .entry_renderer import DpdRenderer
 
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
-from .logic.batch_worker import process_batch_worker, process_decon_worker, process_grammar_notes_worker
+from .logic.batch_worker import process_batch_worker, process_decon_worker, process_grammar_notes_worker, process_roots_worker
 
 logger = logging.getLogger("dict_builder")
 
@@ -148,7 +148,37 @@ class DictBuilder:
                 self.config
             )
 
-            # --- PHASE 4: CLEANUP ---
+            # --- PHASE 4: ROOTS ---
+            logger.info("\n[green]Processing Roots (Parallel)...")
+            # Select all roots
+            root_keys = [r.root for r in self.session.query(DpdRoot.root).all()]
+            
+            # Use IDs starting from 200,000 to avoid collision with entries/decons
+            ROOTS_START_ID = 200000 
+            ROOTS_BATCH_SIZE = 500
+            
+            root_chunks = []
+            for i in range(0, len(root_keys), ROOTS_BATCH_SIZE):
+                chunk_keys = root_keys[i : i + ROOTS_BATCH_SIZE]
+                # Each chunk needs a unique start_id range
+                chunk_start_id = ROOTS_START_ID + i 
+                root_chunks.append((chunk_keys, chunk_start_id))
+                
+            def roots_handler(result):
+                roots_data, lookups = result
+                self.output_db.insert_roots(roots_data, lookups)
+                return len(roots_data)
+                
+            self.run_safe_executor(
+                roots_worker_wrapper,
+                root_chunks,
+                "roots",
+                len(root_keys),
+                roots_handler,
+                self.config
+            )
+
+            # --- PHASE 5: CLEANUP ---
             self.output_db.close()
             logger.info(f"\n✅ Build Complete: {self.config.output_path}")
             logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
@@ -169,3 +199,7 @@ def run_builder(mode: str = "mini", html_mode: bool = False):
 def decon_worker_wrapper(args_tuple, config):
     keys, start_id = args_tuple
     return process_decon_worker(keys, start_id, config)
+
+def roots_worker_wrapper(args_tuple, config):
+    keys, start_id = args_tuple
+    return process_roots_worker(keys, start_id, config)
