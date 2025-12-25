@@ -55,7 +55,7 @@ class OutputDatabase:
         if entries:
             suffix = "html" if self.config.html_mode else "json"
             if self.config.is_tiny_mode:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}) VALUES (?,?,?)"
+                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}) VALUES (?,?,?,?)"
             else:
                 sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}, grammar_{suffix}, example_{suffix}) VALUES (?,?,?,?,?,?)"
             self.cursor.executemany(sql, entries)
