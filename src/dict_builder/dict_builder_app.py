@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
 
 from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import Lookup, DpdRoot
-from src.dict_builder.tools.pali_sort_key import pali_sort_key  # [ADDED] Import sort key
+from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 from .builder_config import BuilderConfig
 from .entry_renderer import DpdRenderer
@@ -35,7 +35,7 @@ class DictBuilder:
         if not chunks:
             return
 
-        logger.info(f"[green]Processing {total_items} {label} in {len(chunks)} chunks...")
+        logger.info(f"[green]Processing {total_items} {label} in {len(chunks)} chunks...[/green]")
         processed_count = 0
         
         try:
@@ -44,7 +44,7 @@ class DictBuilder:
                 # Submit all tasks
                 futures = [executor.submit(worker_func, chunk, *args) for chunk in chunks]
                 
-                # Consume results strictly in order of submission to maintain sort order
+                # Consume results strictly in order of submission
                 for future in futures:
                     try:
                         result = future.result()
@@ -71,7 +71,8 @@ class DictBuilder:
             self.session = get_db_session(self.config.DPD_DB_PATH)
             selector = WordSelector(self.config)
             
-            # WordSelector already returns sorted IDs based on Lemma 1
+            # --- PHASE 0: PREPARE TARGETS ---
+            # WordSelector returns IDs sorted by Pali Alphabet (via lemma_1)
             target_ids, target_set = selector.get_target_ids(self.session)
             
             if not target_ids:
@@ -79,7 +80,8 @@ class DictBuilder:
                 return
 
             # --- PHASE 1: HEADWORDS ---
-            # Note: target_ids are already sorted by Pali Alphabet in WordSelector
+            # Input: target_ids (Already Sorted Pali)
+            
             def headword_handler(result):
                 entries, lookups = result
                 self.output_db.insert_batch(entries, lookups)
@@ -109,8 +111,8 @@ class DictBuilder:
                 decon_keys = [k for k in decon_keys if k in target_set]
                 logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
 
-            # [FIX] Sort keys specifically for Pali to ensure 'deconstructions' table is ordered
-            logger.info("[yellow]Sorting Deconstruction keys...[/yellow]")
+            # [STRICT SORT] Input Sorted by Pali Key
+            logger.info("[yellow]Sorting Deconstruction keys (Pali Order)...[/yellow]")
             decon_keys.sort(key=pali_sort_key)
 
             DECON_BATCH_SIZE = self.config.BATCH_SIZE_DECON
@@ -143,8 +145,8 @@ class DictBuilder:
                 grammar_keys = [k for k in grammar_keys if k in target_set]
                 logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
 
-            # [FIX] Sort keys specifically for Pali to ensure 'grammar_notes' table is ordered
-            logger.info("[yellow]Sorting Grammar Note keys...[/yellow]")
+            # [STRICT SORT] Input Sorted by Pali Key
+            logger.info("[yellow]Sorting Grammar Note keys (Pali Order)...[/yellow]")
             grammar_keys.sort(key=pali_sort_key)
 
             GRAMMAR_BATCH_SIZE = self.config.BATCH_SIZE_GRAMMAR
@@ -166,14 +168,12 @@ class DictBuilder:
 
             # --- PHASE 4: ROOTS ---
             logger.info("\n[green]Processing Roots (Parallel)...")
-            # Select all roots
             root_keys = [r.root for r in self.session.query(DpdRoot.root).all()]
             
-            # [FIX] Sort keys specifically for Pali
-            logger.info("[yellow]Sorting Root keys...[/yellow]")
+            # [STRICT SORT] Input Sorted by Pali Key
+            logger.info("[yellow]Sorting Root keys (Pali Order)...[/yellow]")
             root_keys.sort(key=pali_sort_key)
             
-            # Use IDs starting from 1 since it's a separate table
             ROOTS_START_ID = 1 
             ROOTS_BATCH_SIZE = 500
             
@@ -197,8 +197,8 @@ class DictBuilder:
                 self.config
             )
 
-            # --- PHASE 5: CLEANUP & FINAL SORT ---
-            # output_db.close() now includes 'lookups' re-ordering
+            # --- PHASE 5: CLEANUP & FINAL PHYSICAL SORT ---
+            # Close connection and trigger lookups table re-sort
             self.output_db.close() 
             
             logger.info(f"\n✅ Build Complete: {self.config.output_path}")
@@ -234,13 +234,13 @@ def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = 
     return builder
 
 def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_flag: bool = False):
-    # 1. Run Local Build (Single Run)
+    # 1. Run Local Build
     logger.info(f"🚀 Starting Unified Build (Mode: {mode.upper()})...")
-    builder = run_builder(mode=mode, html_mode=html_mode, export_web=False) # Always build LOCAL style (Raw)
+    builder = run_builder(mode=mode, html_mode=html_mode, export_web=False) 
     
     local_db_path = builder.config.output_path
     
-    # 2. If export flag is on, copy to Web and Zip
+    # 2. Export if needed
     if export_flag:
         web_dir = builder.config.WEB_OUTPUT_DIR
         web_dir.mkdir(parents=True, exist_ok=True)
@@ -248,14 +248,14 @@ def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_
         
         logger.info(f"\n[bold blue]🌐 PROCESSING WEB EXPORT[/bold blue]")
         
-        # Copy file
+        # Copy
         logger.info(f"[cyan]Copying {local_db_path} -> {web_db_path}...[/cyan]")
         shutil.copy2(local_db_path, web_db_path)
         
         # Compress
         compress_database_to_zip(web_db_path)
 
-# Helper for unpacking tuple arguments
+# Wrappers
 def decon_worker_wrapper(args_tuple, config):
     keys, start_id = args_tuple
     return process_decon_worker(keys, start_id, config)
