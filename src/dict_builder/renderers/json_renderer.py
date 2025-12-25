@@ -1,6 +1,6 @@
 # Path: src/dict_builder/renderers/json_renderer.py
 import json
-from src.dict_builder.db.models import DpdHeadword
+from src.dict_builder.db.models import DpdHeadword, DpdRoot
 from src.dict_builder.tools.meaning_construction import make_grammar_line
 from src.dict_builder.tools.json_key_map import JSON_KEY_MAP
 
@@ -13,6 +13,20 @@ class DpdJsonRenderer:
     def _k(self, key: str) -> str:
         """Get abbreviated key from map, or return original if not found."""
         return JSON_KEY_MAP.get(key, key)
+
+    def render_root_definition(self, r: DpdRoot) -> str:
+        """Trích xuất Root Definition JSON."""
+        data = {
+            self._k("pos"): "root",
+            self._k("Root"): r.root,
+            self._k("meaning"): r.root_meaning,
+            self._k("Grammar"): f"Group {r.root_group} {r.root_sign} ({r.root_meaning})"
+        }
+        
+        if r.sanskrit_root:
+            data[self._k("Sanskrit Root")] = f"{r.sanskrit_root} {r.sanskrit_root_class} ({r.sanskrit_root_meaning})"
+            
+        return json.dumps(data, ensure_ascii=False)
 
     def render_definition(self, i: DpdHeadword) -> str:
         """Trích xuất Definition JSON."""
