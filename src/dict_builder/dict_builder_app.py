@@ -1,6 +1,9 @@
 # Path: src/dict_builder/dict_builder_app.py
 import time
 import logging
+import zipfile
+import os
+from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
 
 from src.dict_builder.db.db_helpers import get_db_session
@@ -56,7 +59,8 @@ class DictBuilder:
     def run(self):
         start_time = time.time()
         fmt = "HTML" if self.config.html_mode else "JSON"
-        logger.info(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode}, Format: {fmt})...")
+        target_str = "WEB" if self.config.export_web else "LOCAL"
+        logger.info(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode}, Format: {fmt}, Target: {target_str})...")
         
         try:
             self.output_db = OutputDatabase(self.config)
@@ -153,14 +157,13 @@ class DictBuilder:
             # Select all roots
             root_keys = [r.root for r in self.session.query(DpdRoot.root).all()]
             
-            # Since we have a separate table, we can start from 1
+            # Use IDs starting from 1 since it's a separate table
             ROOTS_START_ID = 1 
             ROOTS_BATCH_SIZE = 500
             
             root_chunks = []
             for i in range(0, len(root_keys), ROOTS_BATCH_SIZE):
                 chunk_keys = root_keys[i : i + ROOTS_BATCH_SIZE]
-                # Each chunk needs a unique start_id range
                 chunk_start_id = ROOTS_START_ID + i 
                 root_chunks.append((chunk_keys, chunk_start_id))
                 
@@ -191,20 +194,42 @@ class DictBuilder:
             if self.session:
                 self.session.close()
 
+def compress_database_to_zip(db_path: Path):
+    """Compress the database file into a .zip file."""
+    zip_path = db_path.with_suffix(".db.zip")
+    logger.info(f"[cyan]📦 Compressing database to {zip_path}...[/cyan]")
+    
+    start_size = db_path.stat().st_size / (1024 * 1024)
+    
+    try:
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.write(db_path, arcname=db_path.name)
+            
+        end_size = zip_path.stat().st_size / (1024 * 1024)
+        logger.info(f"[green]✅ Compression Complete: {start_size:.2f}MB -> {end_size:.2f}MB ({(end_size/start_size)*100:.1f}%)[/green]")
+    except Exception as e:
+        logger.error(f"[red]❌ Compression failed: {e}[/red]")
+
 def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = False):
     builder = DictBuilder(mode=mode, html_mode=html_mode, export_web=export_web)
     builder.run()
+    
+    # Post-build actions for Web Export
+    if export_web:
+        compress_database_to_zip(builder.config.output_path)
 
 def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_flag: bool = False):
-    # Luôn chạy bản Local
+    # 1. Run Local Build
     run_builder(mode=mode, html_mode=html_mode, export_web=False)
     
-    # Nếu có cờ export, chạy thêm bản Web (đã tối ưu nén)
+    # 2. Run Web Build if requested
     if export_flag:
-        logger.info(f"\n[bold blue]🌐 OPTIMIZING FOR WEB EXPORT: {mode.upper()}[/bold blue]")
+        logger.info(f"\n[bold blue]{'='*60}[/bold blue]")
+        logger.info(f"[bold blue]🌐 OPTIMIZING FOR WEB EXPORT: {mode.upper()}[/bold blue]")
+        logger.info(f"[bold blue]{'='*60}[/bold blue]")
         run_builder(mode=mode, html_mode=html_mode, export_web=True)
 
-# Helper for unpacking tuple arguments for deconstructions
+# Helper for unpacking tuple arguments
 def decon_worker_wrapper(args_tuple, config):
     keys, start_id = args_tuple
     return process_decon_worker(keys, start_id, config)

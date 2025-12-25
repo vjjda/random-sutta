@@ -14,7 +14,7 @@ class BuilderConfig:
     TEMPLATES_DIR: Path = Path(__file__).parent / "templates"
 
     # --- Settings ---
-    USE_COMPRESSION: bool = False 
+    USE_COMPRESSION: bool = False # Luôn tắt nén nội bộ để tối ưu cho SQL.js-httpvfs & Zip ratio
 
     # --- Batch Sizes ---
     BATCH_SIZE_HEADWORDS: int = 10000
@@ -29,9 +29,8 @@ class BuilderConfig:
         self.html_mode = html_mode
         self.export_web = export_web
         
-        # Nếu là export web, bật nén và đổi output dir
+        # Output directory selection
         if self.export_web:
-            self.USE_COMPRESSION = True
             self.OUTPUT_DIR = self.WEB_OUTPUT_DIR
         else:
             self.OUTPUT_DIR = self.LOCAL_OUTPUT_DIR
