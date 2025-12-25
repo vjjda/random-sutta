@@ -212,12 +212,11 @@ def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderCon
                 process_data(content, config.USE_COMPRESSION)
             ))
             
-            # Lookup: Key = r.root, Type = 2
-            lookups_data.append((r.root, current_id, 2))
-            
-            # Also add clean version (without number)? e.g. √gam 1 -> √gam
-            if r.root_clean != r.root:
-                 lookups_data.append((r.root_clean, current_id, 2))
+            # Lookup: Use CLEAN root (without number) for user search
+            # Example: √yat 1 -> √yat, √yat 2 -> √yat
+            # This allows user to find all variants by typing "√yat"
+            clean_key = r.root_clean
+            lookups_data.append((clean_key, current_id, 2))
                  
             current_id += 1
             
