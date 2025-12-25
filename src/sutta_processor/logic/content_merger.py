@@ -34,6 +34,17 @@ def _get_base_uid(uid: str) -> str:
     base = base.split(':')[0]
     return base.lower()
 
+# [NEW] Hàm chuẩn hóa ký tự Pali
+def _normalize_pali(text: str) -> str:
+    """
+    Chuẩn hóa các ký tự niggahīta cũ sang chuẩn mới.
+    ṁ -> ṃ
+    Ṁ -> Ṃ
+    """
+    if not text:
+        return text
+    return text.replace("ṁ", "ṃ").replace("Ṁ", "Ṃ")
+
 # Type alias cho báo cáo
 MissingItem = Tuple[str, str, str, str, str, str, str]
 
@@ -88,7 +99,6 @@ def _sanitize_links(text: str, current_sutta_id: str, segment_id: str, missing_a
              logger.warning(f"   ⚠️  [{current_sutta_id}] Seg '{segment_id}': Missing '{target_uid}'")
              
              source_link = f"https://suttacentral.net/{current_sutta_id}/en/sujato/{segment_id}"
-
              missing_acc.append((
                  current_sutta_id, 
                  segment_id, 
@@ -137,7 +147,9 @@ def process_worker(args: Tuple[str, Path, Optional[Path], Optional[Path], Option
             has_content = True
             
             entry = {}
-            if pali: entry["pli"] = pali
+            # [UPDATED] Áp dụng chuẩn hóa Pali
+            if pali: entry["pli"] = _normalize_pali(pali)
+            
             if eng: entry["eng"] = eng
             if html: entry["html"] = html
             
