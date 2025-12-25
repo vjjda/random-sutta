@@ -37,10 +37,13 @@ class OutputDatabase:
         self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, is_headword BOOLEAN NOT NULL, is_inflection BOOLEAN DEFAULT 0);")
         
         suffix = "html" if self.config.html_mode else "json"
+        
         if self.config.is_tiny_mode:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT);")
+            sql = "CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_" + suffix + " TEXT);"
+            self.cursor.execute(sql)
         else:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT, grammar_{{suffix}} TEXT, example_{{suffix}} TEXT);")
+            sql = "CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_" + suffix + " TEXT, grammar_" + suffix + " TEXT, example_" + suffix + " TEXT);"
+            self.cursor.execute(sql)
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
         
@@ -53,9 +56,9 @@ class OutputDatabase:
         if entries:
             suffix = "html" if self.config.html_mode else "json"
             if self.config.is_tiny_mode:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}) VALUES (?,?,?,?)"
+                sql = "INSERT INTO entries (id, headword, headword_clean, definition_" + suffix + ") VALUES (?,?,?)"
             else:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}, grammar_{{suffix}}, example_{{suffix}}) VALUES (?,?,?,?,?,?)"
+                sql = "INSERT INTO entries (id, headword, headword_clean, definition_" + suffix + ", grammar_" + suffix + ", example_" + suffix + ") VALUES (?,?,?,?,?,?)"
             self.cursor.executemany(sql, entries)
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
@@ -88,32 +91,21 @@ class OutputDatabase:
             grammar_field = "gn.grammar_json AS grammar_note_json"
 
         entry_cols = []
-        entry_cols.append(f"e.definition_{{suffix}} AS entry_definition")
+        entry_cols.append("e.definition_" + suffix + " AS entry_definition")
         
         if not self.config.is_tiny_mode:
-            entry_cols.append(f"e.grammar_{{suffix}} AS entry_grammar")
-            entry_cols.append(f"e.example_{{suffix}} AS entry_example")
+            entry_cols.append("e.grammar_" + suffix + " AS entry_grammar")
+            entry_cols.append("e.example_" + suffix + " AS entry_example")
             
         entry_select_str = ",\n            ".join(entry_cols)
 
-        sql = f"""
-        CREATE VIEW IF NOT EXISTS grand_lookups AS
-        SELECT 
-            l.key AS lookup_key,
-            e.headword AS headword,
-            l.is_headword,
-            l.is_inflection,
-            d.split_string AS decon_split,
-            {grammar_field},
-            {entry_select_str}
-        FROM lookups l
-        LEFT JOIN entries e 
-            ON l.target_id = e.id AND l.is_headword = 1
-        LEFT JOIN deconstructions d 
-            ON l.target_id = d.id AND l.is_headword = 0
-        LEFT JOIN grammar_notes gn
-            ON l.key = gn.key;
-        """
+        sql = "CREATE VIEW IF NOT EXISTS grand_lookups AS " \
+              "SELECT l.key AS lookup_key, e.headword AS headword, l.is_headword, l.is_inflection, " \
+              "d.split_string AS decon_split, " + grammar_field + ", " + entry_select_str + " " \
+              "FROM lookups l " \
+              "LEFT JOIN entries e ON l.target_id = e.id AND l.is_headword = 1 " \
+              "LEFT JOIN deconstructions d ON l.target_id = d.id AND l.is_headword = 0 " \
+              "LEFT JOIN grammar_notes gn ON l.key = gn.key;"
         
         try:
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
