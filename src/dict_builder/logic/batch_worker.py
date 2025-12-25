@@ -1,10 +1,10 @@
 # Path: src/dict_builder/logic/batch_worker.py
 import zlib
 from typing import List, Tuple, Set, Optional
-from rich import print
+from sqlalchemy.orm import joinedload
 
 from src.dict_builder.db.db_helpers import get_db_session
-from src.dict_builder.db.models import DpdHeadword, Lookup
+from src.dict_builder.db.models import DpdHeadword, Lookup, DpdRoot
 from ..renderer import DpdRenderer
 from ..config import BuilderConfig
 
@@ -21,7 +21,13 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
     lookups_data = []
     
     try:
-        headwords = session.query(DpdHeadword).filter(DpdHeadword.id.in_(ids)).all()
+        # Optimize: Eager load 'rt' (Root) as it's used in grammar rendering
+        headwords = (
+            session.query(DpdHeadword)
+            .options(joinedload(DpdHeadword.rt))
+            .filter(DpdHeadword.id.in_(ids))
+            .all()
+        )
         
         for i in headwords:
             # 1. Rẽ nhánh xử lý nội dung ENTRY (HTML vs JSON)
