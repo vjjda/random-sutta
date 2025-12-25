@@ -36,9 +36,9 @@ class OutputDatabase:
         
         suffix = "html" if self.config.html_mode else "json"
         if self.config.is_tiny_mode:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT);")
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT);")
         else:
-            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{{suffix}} TEXT, grammar_{{suffix}} TEXT, example_{{suffix}} TEXT);")
+            self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT, grammar_{suffix} TEXT, example_{suffix} TEXT);")
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
         
@@ -52,9 +52,9 @@ class OutputDatabase:
         if entries:
             suffix = "html" if self.config.html_mode else "json"
             if self.config.is_tiny_mode:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}) VALUES (?,?,?)"
+                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}) VALUES (?,?,?,?)"
             else:
-                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{{suffix}}, grammar_{{suffix}}, example_{{suffix}}) VALUES (?,?,?,?,?,?)"
+                sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}, grammar_{suffix}, example_{suffix}) VALUES (?,?,?,?,?,?)"
             self.cursor.executemany(sql, entries)
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
@@ -83,21 +83,21 @@ class OutputDatabase:
         
         # Xây dựng danh sách cột cho bảng Entries
         entry_cols = ["e.headword AS entry_headword"]
-        entry_cols.append(f"e.definition_{{suffix}} AS entry_definition")
+        entry_cols.append(f"e.definition_{suffix} AS entry_definition")
         
         if not self.config.is_tiny_mode:
-            entry_cols.append(f"e.grammar_{{suffix}} AS entry_grammar")
-            entry_cols.append(f"e.example_{{suffix}} AS entry_example")
+            entry_cols.append(f"e.grammar_{suffix} AS entry_grammar")
+            entry_cols.append(f"e.example_{suffix} AS entry_example")
             
         entry_select_str = ",\n            ".join(entry_cols)
         
         # [DYNAMIC] Grammar Column
         if self.config.html_mode:
             grammar_col = "gn.grammar_html AS grammar_note_html,"
-            grammar_col += "NULL AS grammar_note_json," 
+            grammar_col += "NULL AS grammar_note_json, " 
         else:
-            grammar_col = "NULL AS grammar_note_html," 
-            grammar_col += "gn.grammar_json AS grammar_note_json,"
+            grammar_col = "NULL AS grammar_note_html, " 
+            grammar_col += "gn.grammar_json AS grammar_note_json, "
 
         # [UPDATED] Sắp xếp lại thứ tự cột và thêm ORDER BY
         sql = f"""
@@ -126,8 +126,7 @@ class OutputDatabase:
             ON l.key = gn.key
             
         -- [CHANGED] Sắp xếp theo lookup_key
-        ORDER BY l.key ASC;
-        """
+        ORDER BY l.key ASC;"""
         
         try:
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
