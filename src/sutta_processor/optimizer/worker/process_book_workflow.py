@@ -22,11 +22,12 @@ logger = logging.getLogger("Optimizer.Worker")
 def process_book_task(
     file_path: Path, 
     dry_run: bool, 
-    external_nav: Optional[Dict[str, str]] = None,
-    global_meta: Optional[Dict[str, Any]] = None # [NEW]
+    # [REMOVED] external_nav parameter is no longer needed
+    global_meta: Optional[Dict[str, Any]] = None 
 ) -> Dict[str, Any]:
     """
     Workflow chính điều phối việc xử lý một cuốn sách.
+    [UPDATED] Tận dụng nav có sẵn trong file input, không nhận external_nav nữa.
     """
     io = IOManager(dry_run)
     result = { 
@@ -52,13 +53,24 @@ def process_book_task(
         # 1. Nav Calculation (Internal)
         nav_sequence = extract_nav_sequence(structure, full_meta)
         linear_uids = generate_random_pool(nav_sequence)
+        
+        # Tính toán Nav nội bộ dựa trên cấu trúc hiện tại
         reading_nav_map = generate_navigation_map(nav_sequence)
         branch_nav_map = generate_depth_navigation(structure, full_meta)
         
         full_nav_map = {**branch_nav_map, **reading_nav_map}
         
-        if external_nav:
-            full_nav_map[book_id] = external_nav
+        # [NEW] Merge Pre-injected Nav from Meta
+        # BuildManager đã inject prev/next book vào root meta. 
+        # Chúng ta cần bảo toàn thông tin này.
+        for uid, meta_item in full_meta.items():
+            if "nav" in meta_item:
+                pre_nav = meta_item["nav"]
+                if uid not in full_nav_map:
+                    full_nav_map[uid] = {}
+                
+                # Merge: Pre-injected thắng (vì nó chứa link ra ngoài book)
+                full_nav_map[uid].update(pre_nav)
 
         # 2. Dispatch Strategy (Truyền global_meta)
         if is_split_book(book_id):
