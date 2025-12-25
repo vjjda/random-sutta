@@ -164,8 +164,48 @@ class OutputDatabase:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
             logger.debug(f"SQL was: {sql}")
 
+    def _sort_lookups_table(self):
+        """
+        [NEW] Sắp xếp lại bảng lookups theo thứ tự key.
+        Điều này quan trọng vì lookups được insert từ nhiều nguồn khác nhau (Headwords, Decons, Roots).
+        """
+        logger.info("[yellow]Re-sorting 'lookups' table by key...[/yellow]")
+        try:
+            # 1. Tạo bảng tạm đã sort
+            self.cursor.execute("CREATE TABLE lookups_sorted AS SELECT * FROM lookups ORDER BY key")
+            
+            # 2. Drop bảng cũ
+            self.cursor.execute("DROP TABLE lookups")
+            
+            # 3. Rename bảng mới
+            self.cursor.execute("ALTER TABLE lookups_sorted RENAME TO lookups")
+            
+            # 4. Re-create Index (vì DROP TABLE làm mất index)
+            self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key)")
+            
+            # Lưu ý: Trigger và FTS không bị ảnh hưởng vì chúng là bảng/đối tượng riêng, 
+            # nhưng trigger cần drop/create lại nếu nó gắn chặt vào bảng. 
+            # Tuy nhiên ở đây ta dùng FTS trigger 'AFTER INSERT', bảng lookups mới chưa có trigger.
+            # Ta cần tạo lại Trigger.
+            
+            self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
+            self.cursor.execute("""
+                CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
+                    INSERT INTO lookups_fts(key, target_id, type) VALUES (new.key, new.target_id, new.type);
+                END;
+            """)
+            
+            self.conn.commit()
+            logger.info("[green]Lookups table sorted successfully.")
+            
+        except Exception as e:
+            logger.error(f"[red]Failed to sort lookups table: {e}")
+
     def close(self):
         if self.conn:
+            # [NEW] Sort lookups before creating view
+            self._sort_lookups_table()
+            
             self.create_grand_view()
             logger.info("[green]Indexing & Optimizing (VACUUM)...")
             self.conn.execute("VACUUM")

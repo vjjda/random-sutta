@@ -9,6 +9,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
 
 from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import Lookup, DpdRoot
+from src.dict_builder.tools.pali_sort_key import pali_sort_key  # [ADDED] Import sort key
 
 from .builder_config import BuilderConfig
 from .entry_renderer import DpdRenderer
@@ -43,7 +44,7 @@ class DictBuilder:
                 # Submit all tasks
                 futures = [executor.submit(worker_func, chunk, *args) for chunk in chunks]
                 
-                # Consume results strictly in order of submission
+                # Consume results strictly in order of submission to maintain sort order
                 for future in futures:
                     try:
                         result = future.result()
@@ -70,6 +71,7 @@ class DictBuilder:
             self.session = get_db_session(self.config.DPD_DB_PATH)
             selector = WordSelector(self.config)
             
+            # WordSelector already returns sorted IDs based on Lemma 1
             target_ids, target_set = selector.get_target_ids(self.session)
             
             if not target_ids:
@@ -77,6 +79,7 @@ class DictBuilder:
                 return
 
             # --- PHASE 1: HEADWORDS ---
+            # Note: target_ids are already sorted by Pali Alphabet in WordSelector
             def headword_handler(result):
                 entries, lookups = result
                 self.output_db.insert_batch(entries, lookups)
@@ -105,6 +108,10 @@ class DictBuilder:
                 original_count = len(decon_keys)
                 decon_keys = [k for k in decon_keys if k in target_set]
                 logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
+
+            # [FIX] Sort keys specifically for Pali to ensure 'deconstructions' table is ordered
+            logger.info("[yellow]Sorting Deconstruction keys...[/yellow]")
+            decon_keys.sort(key=pali_sort_key)
 
             DECON_BATCH_SIZE = self.config.BATCH_SIZE_DECON
             decon_chunks = []
@@ -136,6 +143,10 @@ class DictBuilder:
                 grammar_keys = [k for k in grammar_keys if k in target_set]
                 logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
 
+            # [FIX] Sort keys specifically for Pali to ensure 'grammar_notes' table is ordered
+            logger.info("[yellow]Sorting Grammar Note keys...[/yellow]")
+            grammar_keys.sort(key=pali_sort_key)
+
             GRAMMAR_BATCH_SIZE = self.config.BATCH_SIZE_GRAMMAR
             grammar_chunks = [grammar_keys[i : i + GRAMMAR_BATCH_SIZE] for i in range(0, len(grammar_keys), GRAMMAR_BATCH_SIZE)]
             
@@ -157,6 +168,10 @@ class DictBuilder:
             logger.info("\n[green]Processing Roots (Parallel)...")
             # Select all roots
             root_keys = [r.root for r in self.session.query(DpdRoot.root).all()]
+            
+            # [FIX] Sort keys specifically for Pali
+            logger.info("[yellow]Sorting Root keys...[/yellow]")
+            root_keys.sort(key=pali_sort_key)
             
             # Use IDs starting from 1 since it's a separate table
             ROOTS_START_ID = 1 
@@ -182,8 +197,10 @@ class DictBuilder:
                 self.config
             )
 
-            # --- PHASE 5: CLEANUP ---
-            self.output_db.close()
+            # --- PHASE 5: CLEANUP & FINAL SORT ---
+            # output_db.close() now includes 'lookups' re-ordering
+            self.output_db.close() 
+            
             logger.info(f"\n✅ Build Complete: {self.config.output_path}")
             logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
             
