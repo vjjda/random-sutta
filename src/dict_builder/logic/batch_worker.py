@@ -107,7 +107,7 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
         items = session.query(Lookup).filter(Lookup.lookup_key.in_(keys)).all()
         for d in items:
             split_str = "; ".join(d.deconstructor_unpack_list)
-            decon_batch.append((current_id, d.lookup_key, split_str))
+            decon_batch.append((current_id, d.lookup_key, process_data(split_str, config.USE_COMPRESSION)))
             
             # Type=0 for Deconstructions
             decon_lookup_batch.append((d.lookup_key, current_id, 0))

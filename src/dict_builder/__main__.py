@@ -1,7 +1,7 @@
 # Path: src/dict_builder/__main__.py
 import argparse
 from .logging_setup import setup_dict_builder_logging
-from .dict_builder_app import run_builder
+from .dict_builder_app import run_builder_with_export
 
 logger = setup_dict_builder_logging()
 
@@ -26,6 +26,13 @@ def main():
         help="Output HTML columns instead of JSON.\nFiles will be named dpd_html_*.db"
     )
 
+    parser.add_argument(
+        "-e", "--export",
+        dest="export_flag",
+        action="store_true",
+        help="Export an optimized version for web into web/assets/db"
+    )
+
     args = parser.parse_args()
 
     modes_to_run = []
@@ -47,7 +54,7 @@ def main():
         logger.info(f"[bold yellow]{'='*60}[/bold yellow]\n")
         
         try:
-            run_builder(mode=mode, html_mode=args.html_mode)
+            run_builder_with_export(mode=mode, html_mode=args.html_mode, export_flag=args.export_flag)
         except Exception as e:
             logger.critical(f"[bold red]❌ Critical Error while building {mode}: {e}[/bold red]", exc_info=True)
 

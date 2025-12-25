@@ -56,7 +56,8 @@ class OutputDatabase:
         if self.config.html_mode:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
         else:
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_json TEXT);")
+            # [CHANGED] grammar_json -> grammar_note_json
+            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_note_json TEXT);")
 
     def populate_json_keys(self):
         """Insert JSON key mappings into the database."""
@@ -75,8 +76,6 @@ class OutputDatabase:
                 self.cursor.executemany(sql, entries)
             except Exception as e:
                 logger.error(f"Entries insert failed. SQL: {sql}")
-                if entries:
-                    logger.error(f"First entry sample (len {len(entries[0])}): {entries[0]}")
                 raise e
 
         if lookups:
@@ -111,7 +110,8 @@ class OutputDatabase:
             if self.config.html_mode:
                 self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html) VALUES (?, ?)", grammar_batch)
             else:
-                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_json) VALUES (?, ?)", grammar_batch)
+                # [CHANGED] grammar_json -> grammar_note_json
+                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_note_json) VALUES (?, ?)", grammar_batch)
         self.conn.commit()
 
     def create_grand_view(self):
@@ -123,7 +123,8 @@ class OutputDatabase:
         if self.config.html_mode:
             grammar_field = "gn.grammar_html AS grammar_note_html"
         else:
-            grammar_field = "gn.grammar_json AS grammar_note_json"
+            # [CHANGED] grammar_json -> grammar_note_json
+            grammar_field = "gn.grammar_note_json AS grammar_note_json"
 
         entry_cols = []
         entry_cols.append("e.definition_" + suffix + " AS entry_definition")
