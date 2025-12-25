@@ -1,7 +1,7 @@
 # Path: src/dict_builder/core.py
 import time
+import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from rich import print
 
 from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import Lookup
@@ -13,6 +13,8 @@ from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
 from .logic.batch_worker import process_batch_worker, process_decon_worker, process_grammar_notes_worker
 
+logger = logging.getLogger("dict_builder")
+
 class DictBuilder:
     def __init__(self, mode: str = "mini", html_mode: bool = False):
         self.config = BuilderConfig(mode=mode, html_mode=html_mode)
@@ -20,7 +22,7 @@ class DictBuilder:
     def run(self):
         start_time = time.time()
         fmt = "HTML" if self.config.html_mode else "JSON"
-        print(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode}, Format: {fmt})...")
+        logger.info(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode}, Format: {fmt})...")
         
         output_db = OutputDatabase(self.config)
         output_db.setup()
@@ -31,14 +33,14 @@ class DictBuilder:
         target_ids, target_set = selector.get_target_ids(session)
         
         if not target_ids:
-            print("[red]No targets found. Aborting.")
+            logger.error("[red]No targets found. Aborting.")
             session.close()
             return
 
         # --- PHASE 1: HEADWORDS ---
         BATCH_SIZE = 2500
         chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
-        print(f"[green]Processing {len(target_ids)} headwords in {len(chunks)} chunks...")
+        logger.info(f"[green]Processing {len(target_ids)} headwords in {len(chunks)} chunks...")
 
         processed_count = 0
         with ProcessPoolExecutor() as executor:
@@ -49,14 +51,14 @@ class DictBuilder:
                     entries, lookups = future.result()
                     output_db.insert_batch(entries, lookups)
                     processed_count += len(entries)
-                    print(f"   Saved headwords... ({processed_count}/{len(target_ids)})", end="\r")
+                    logger.info(f"   Saved headwords... ({processed_count}/{len(target_ids)})")
                 except Exception as e:
-                    print(f"[red]Batch processing error: {e}")
+                    logger.error(f"[red]Batch processing error: {e}")
         
-        print(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
+        logger.info(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
         # --- PHASE 2: DECONSTRUCTIONS ---
-        print("[green]Processing Deconstructions (Parallel)...")
+        logger.info("[green]Processing Deconstructions (Parallel)...")
         
         decon_keys = [r.lookup_key for r in session.query(Lookup.lookup_key).filter(Lookup.deconstructor != "").all()]
         
@@ -65,7 +67,7 @@ class DictBuilder:
         if target_set is not None:
             original_count = len(decon_keys)
             decon_keys = [k for k in decon_keys if k in target_set]
-            print(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
+            logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
 
         DECON_BATCH_SIZE = 5000
         decon_chunks = []
@@ -74,7 +76,7 @@ class DictBuilder:
             start_id = i + 1 
             decon_chunks.append((chunk_keys, start_id))
             
-        print(f"[green]Processing {len(decon_keys)} deconstructions in {len(decon_chunks)} chunks...")
+        logger.info(f"[green]Processing {len(decon_keys)} deconstructions in {len(decon_chunks)} chunks...")
         
         processed_decon = 0
         with ProcessPoolExecutor() as executor:
@@ -85,24 +87,24 @@ class DictBuilder:
                     decons, lookups = future.result()
                     output_db.insert_deconstructions(decons, lookups)
                     processed_decon += len(decons)
-                    print(f"   Saved deconstructions... ({processed_decon}/{len(decon_keys)})", end="\r")
+                    logger.info(f"   Saved deconstructions... ({processed_decon}/{len(decon_keys)})")
                 except Exception as e:
-                    print(f"[red]Decon batch error: {e}")
+                    logger.error(f"[red]Decon batch error: {e}")
 
         # --- PHASE 3: GRAMMAR NOTES ---
-        print("\n[green]Processing Grammar Notes (Parallel)...")
+        logger.info("\n[green]Processing Grammar Notes (Parallel)...")
         
         grammar_keys = [r.lookup_key for r in session.query(Lookup.lookup_key).filter(Lookup.grammar != "").all()]
         
         if target_set is not None:
             original_grammar_count = len(grammar_keys)
             grammar_keys = [k for k in grammar_keys if k in target_set]
-            print(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
+            logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
 
         GRAMMAR_BATCH_SIZE = 5000
         grammar_chunks = [grammar_keys[i : i + GRAMMAR_BATCH_SIZE] for i in range(0, len(grammar_keys), GRAMMAR_BATCH_SIZE)]
             
-        print(f"[green]Processing {len(grammar_keys)} grammar notes in {len(grammar_chunks)} chunks...")
+        logger.info(f"[green]Processing {len(grammar_keys)} grammar notes in {len(grammar_chunks)} chunks...")
         
         processed_grammar = 0
         with ProcessPoolExecutor() as executor:
@@ -113,16 +115,16 @@ class DictBuilder:
                     grammar_batch = future.result()
                     output_db.insert_grammar_notes(grammar_batch)
                     processed_grammar += len(grammar_batch)
-                    print(f"   Saved grammar notes... ({processed_grammar}/{len(grammar_keys)})", end="\r")
+                    logger.info(f"   Saved grammar notes... ({processed_grammar}/{len(grammar_keys)})")
                 except Exception as e:
-                    print(f"[red]Grammar batch error: {e}")
+                    logger.error(f"[red]Grammar batch error: {e}")
 
         # --- PHASE 4: CLEANUP ---
         output_db.close()
         session.close()
         
-        print(f"\n✅ Build Complete: {self.config.output_path}")
-        print(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
+        logger.info(f"\n✅ Build Complete: {self.config.output_path}")
+        logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
 
 def run_builder(mode: str = "mini", html_mode: bool = False):
     builder = DictBuilder(mode=mode, html_mode=html_mode)

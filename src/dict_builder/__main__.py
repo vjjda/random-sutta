@@ -1,7 +1,9 @@
 # Path: src/dict_builder/__main__.py
 import argparse
-from rich import print
+from .logging_setup import setup_dict_builder_logging
 from .core import run_builder
+
+logger = setup_dict_builder_logging()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -40,14 +42,14 @@ def main():
 
     for mode in modes_to_run:
         fmt = "HTML" if args.html_mode else "JSON"
-        print(f"\n[bold yellow]{'='*60}[/bold yellow]")
-        print(f"[bold yellow]🚀 TRIGGERING BUILD MODE: {mode.upper()} ({fmt})[/bold yellow]")
-        print(f"[bold yellow]{'='*60}[/bold yellow]\n")
+        logger.info(f"[bold yellow]{'='*60}[/bold yellow]")
+        logger.info(f"[bold yellow]🚀 TRIGGERING BUILD MODE: {mode.upper()} ({fmt})[/bold yellow]")
+        logger.info(f"[bold yellow]{'='*60}[/bold yellow]\n")
         
         try:
             run_builder(mode=mode, html_mode=args.html_mode)
         except Exception as e:
-            print(f"[bold red]❌ Critical Error while building {mode}: {e}[/bold red]")
+            logger.critical(f"[bold red]❌ Critical Error while building {mode}: {e}[/bold red]", exc_info=True)
 
 if __name__ == "__main__":
     main()
