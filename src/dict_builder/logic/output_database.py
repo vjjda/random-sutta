@@ -61,7 +61,7 @@ class OutputDatabase:
     def populate_json_keys(self):
         """Insert JSON key mappings into the database."""
         key_list = get_key_map_list()
-        swapped_list = [(abbr, full) for full, abbr in key_list]
+        swapped_list = sorted([(abbr, full) for full, abbr in key_list], key=lambda x: x[0])
         self.cursor.executemany("INSERT INTO json_keys (abbr_key, full_key) VALUES (?, ?)", swapped_list)
 
     def insert_batch(self, entries: list, lookups: list):
