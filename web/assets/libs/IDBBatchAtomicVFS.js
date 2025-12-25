@@ -166,6 +166,8 @@ export class IDBBatchAtomicVFS extends WebLocksMixin(FacadeVFS) {
       const file = this.mapIdToFile.get(fileId);
       this.mapIdToFile.delete(fileId);
 
+      if (!file) return VFS.SQLITE_OK;
+
       if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
         await this.#idb.q(({ metadata, blocks }) => {
           metadata.delete(file.path);
