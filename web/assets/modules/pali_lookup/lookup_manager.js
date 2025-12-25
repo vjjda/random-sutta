@@ -26,7 +26,7 @@ export const LookupManager = {
         // Integration with Global Popup System
         window.addEventListener('popup:close-all', () => {
             LookupUI.hide();
-            document.body.classList.remove("lookup-open"); // [NEW] Ensure removal
+            document.body.classList.remove("lookup-open");
         });
     },
     
@@ -39,10 +39,6 @@ export const LookupManager = {
     },
     
     async _handleSelection() {
-        // If we are programmatically navigating, skip the debounce check or allow it?
-        // Actually, navigation modifies selection, which triggers this event.
-        // We rely on this event to trigger lookup even during navigation.
-        
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
             return;
@@ -57,31 +53,23 @@ export const LookupManager = {
         
         if (!parent || !parent.closest('#sutta-container')) return;
         
-        // Clean text
-        const cleanText = text.toLowerCase().replace(/[.,;:"'’“”]/g, '').trim();
+        // CLEAN TEXT Logic
+        // Remove punctuation including Pali specific ones (” “ ’)
+        // [UPDATED] Also remove em-dash if it somehow got selected (though nav tries to avoid it)
+        const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—]/g, '').trim();
         
-        if (cleanText.length > 40 || cleanText.length < 2) return; 
+        if (cleanText.length > 50 || cleanText.length < 1) return; 
         
         // Ensure DB is ready
         const isReady = await SqliteService.init();
         if (!isReady) return;
         
         const result = SqliteService.search(cleanText);
+        
         if (result) {
-            // Found!
-            // Close other popups first (e.g. comment popup)
-            // But we don't want to flicker if WE are already open?
-            // Sending 'popup:close-all' closes US too via listener. 
-            // We should modify the listener to check if we are the active one.
-            // For now, let's just close *others* if we can, or rely on them closing themselves on click.
-            // Actually, the requirement is "Close other popups".
-            
-            // To avoid self-closing loop via 'popup:close-all', we can temporarily remove listener or check visibility
-            // But simplified: Just render. The other popups close on document click usually.
-            
             const html = PaliRenderer.render(result);
             LookupUI.render(html, cleanText); // Send cleanText as title
-            document.body.classList.add("lookup-open"); // [NEW] Add class
+            document.body.classList.add("lookup-open");
         } else {
             // Not found
             if (this._isNavigating) {
@@ -94,76 +82,81 @@ export const LookupManager = {
     
     clearSelection() {
         window.getSelection()?.removeAllRanges();
-        document.body.classList.remove("lookup-open"); // [NEW] Remove class
+        document.body.classList.remove("lookup-open");
     },
 
     navigate(direction) {
         const sel = window.getSelection();
         if (!sel.rangeCount) return;
         
-        this._isNavigating = true; // Flag to show errors if nav hits non-word
-
-        // Use Selection.modify() API (supported in Chrome/Safari/Firefox)
-        // 1. Collapse selection to the edge we are moving towards
-        if (direction === 1) {
-            sel.collapseToEnd();
-        } else {
-            sel.collapseToStart();
-        }
-
-        // 2. Move by word
-        // Note: 'word' granularity varies by OS/Locale but generally works for Pali/English
-        const granularity = 'word';
-        const alter = 'move';
+        // We assume we are working within a single Text Node for Pali segments
+        const anchorNode = sel.anchorNode;
+        if (anchorNode.nodeType !== 3) return; // Must be text node
         
-        // Logic loop to skip whitespace/punctuation if modify stops on them
-        let attempts = 0;
-        const maxAttempts = 3;
+        const fullText = anchorNode.textContent;
+        const currentStart = Math.min(sel.anchorOffset, sel.focusOffset);
+        const currentEnd = Math.max(sel.anchorOffset, sel.focusOffset);
+
+        // 1. Tokenize by Whitespace AND Em-dash
+        // Regex matches sequences of characters that are NOT whitespace and NOT em-dash
+        const regex = /[^\s—]+/g;
+        let match;
+        const tokens = [];
         
-        while (attempts < maxAttempts) {
-            const beforeNode = sel.focusNode;
-            const beforeOffset = sel.focusOffset;
-            
-            if (direction === 1) {
-                sel.modify(alter, 'forward', granularity);
-            } else {
-                sel.modify(alter, 'backward', granularity);
-            }
-            
-            // If didn't move, we are at boundary
-            if (sel.focusNode === beforeNode && sel.focusOffset === beforeOffset) break;
-            
-            // Now EXTEND to select the word
-            // We just moved to the *start* (prev) or *end* (next) of the target word.
-            // We need to select the whole word.
-            
-            // Re-anchor and extend
-            if (direction === 1) {
-                // Moved forward to end of next word? Or start? 
-                // 'move forward word' usually puts cursor at END of next word.
-                // So extend backwards to select it.
-                sel.modify('extend', 'backward', granularity);
-            } else {
-                // Moved backward to start of prev word.
-                // Extend forward to select it.
-                sel.modify('extend', 'forward', granularity);
-            }
-            
-            // Check what we selected
-            const text = sel.toString().trim();
-            if (text && /[a-zA-ZāīūṅñṭḍṇḷṃĀĪŪṄÑṬḌṆḶṂ]/.test(text)) {
-                // Found a valid word!
-                // Trigger handleSelection logic (it is debounced, so we might want to force it)
-                // Since we are inside navigate, we can call it directly after a small delay to let UI update?
-                // The 'selectionchange' event will fire automatically.
-                return;
-            }
-            
-            // If whitespace/symbol, collapse and try again
-            if (direction === 1) sel.collapseToEnd();
-            else sel.collapseToStart();
-            
-            attempts++;
+        while ((match = regex.exec(fullText)) !== null) {
+            tokens.push({
+                text: match[0],
+                start: match.index,
+                end: match.index + match[0].length
+            });
         }
+        
+        if (tokens.length === 0) return;
+
+        // 2. Find Current Token Index
+        // Determine which token overlaps with the current selection center
+        const center = (currentStart + currentEnd) / 2;
+        let currentIndex = -1;
+        
+        for (let i = 0; i < tokens.length; i++) {
+            const t = tokens[i];
+            // Check if center is within token bounds
+            if (center >= t.start && center <= t.end) {
+                currentIndex = i;
+                break;
+            }
+        }
+        
+        // If not found (e.g. user selected multiple words or spaces), find closest
+        if (currentIndex === -1) {
+            let minDist = Infinity;
+            tokens.forEach((t, i) => {
+                const dist = Math.abs(center - (t.start + t.end) / 2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    currentIndex = i;
+                }
+            });
+        }
+        
+        // 3. Move Index
+        let nextIndex = currentIndex + direction;
+        
+        // Bounds check
+        if (nextIndex < 0) nextIndex = 0; 
+        if (nextIndex >= tokens.length) nextIndex = tokens.length - 1;
+        
+        if (nextIndex === currentIndex && !this._isNavigating) return; // Nowhere to go
+
+        // 4. Select New Token
+        this._isNavigating = true;
+        const targetToken = tokens[nextIndex];
+        
+        const newRange = document.createRange();
+        newRange.setStart(anchorNode, targetToken.start);
+        newRange.setEnd(anchorNode, targetToken.end);
+        
+        sel.removeAllRanges();
+        sel.addRange(newRange);
     }
 };

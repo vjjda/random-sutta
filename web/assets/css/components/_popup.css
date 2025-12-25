@@ -323,7 +323,7 @@ body.tts-open {
    Ensures content behind popup can be scrolled into view.
    Popup is ~40vh high.
 */
-body.popup-open {
+body.popup-open, body.lookup-open {
   padding-bottom: 45vh !important;
   transition: padding-bottom 0.3s ease;
 }
