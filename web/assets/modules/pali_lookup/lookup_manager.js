@@ -62,10 +62,11 @@ export const LookupManager = {
         const isReady = await SqliteService.init();
         if (!isReady) return;
         
-        const result = await SqliteService.search(cleanText);
+        // Use smartSearch for multiple results
+        const results = await SqliteService.smartSearch(cleanText);
         
-        if (result) {
-            const html = PaliRenderer.render(result);
+        if (results && results.length > 0) {
+            const html = PaliRenderer.renderList(results, cleanText);
             LookupUI.render(html, cleanText); // Send cleanText as title
             document.body.classList.add("lookup-open");
         } else {
