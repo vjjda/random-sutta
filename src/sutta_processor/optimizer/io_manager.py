@@ -3,10 +3,10 @@ import json
 import shutil
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 from .config import (
-    WEB_DB_DIR, WEB_META_DIR, WEB_CONTENT_DIR,
-    MIRROR_DB_DIR, MIRROR_META_DIR, MIRROR_CONTENT_DIR
+    WEB_DB_DIR, WEB_META_DIR, WEB_CONTENT_DIR, WEB_INDEX_DIR,
+    MIRROR_DB_DIR, MIRROR_META_DIR, MIRROR_CONTENT_DIR, MIRROR_INDEX_DIR
 )
 
 logger = logging.getLogger("Optimizer.IO")
@@ -16,23 +16,52 @@ class IOManager:
         self.dry_run = dry_run
 
     def setup_directories(self) -> None:
-        """Reset và tạo mới cấu trúc thư mục."""
-        # 1. Mirror (Always Reset)
+        """
+        Reset và tạo mới cấu trúc thư mục.
+        [UPDATED] Selective Cleanup: Chỉ xóa các artifact do processor tạo ra,
+        giữ nguyên các file khác trong thư mục db/.
+        """
+        # 1. Mirror (Always Reset completely - Safe for Dev)
         if MIRROR_DB_DIR.exists():
             shutil.rmtree(MIRROR_DB_DIR)
         
         MIRROR_DB_DIR.mkdir(parents=True)
         MIRROR_META_DIR.mkdir()
         MIRROR_CONTENT_DIR.mkdir()
+        MIRROR_INDEX_DIR.mkdir()
 
         # 2. Web (Prod Only)
         if not self.dry_run:
-            if WEB_DB_DIR.exists():
-                shutil.rmtree(WEB_DB_DIR)
+            # Đảm bảo thư mục gốc tồn tại
+            if not WEB_DB_DIR.exists():
+                WEB_DB_DIR.mkdir(parents=True, exist_ok=True)
             
-            WEB_DB_DIR.mkdir(parents=True)
-            WEB_META_DIR.mkdir()
-            WEB_CONTENT_DIR.mkdir()
+            # Danh sách các mục tiêu cần xóa (Selective Delete)
+            targets_to_clean: List[Path] = [
+                WEB_META_DIR,
+                WEB_CONTENT_DIR,
+                WEB_INDEX_DIR,
+                WEB_DB_DIR / "uid_index.json",
+                WEB_DB_DIR / "db_bundle.zip"
+            ]
+
+            logger.info("   🧹 Cleaning up old DB artifacts...")
+            
+            for target in targets_to_clean:
+                if target.exists():
+                    try:
+                        if target.is_dir():
+                            shutil.rmtree(target)
+                        else:
+                            target.unlink()
+                    except Exception as e:
+                        logger.warning(f"   ⚠️ Could not delete {target.name}: {e}")
+
+            # Re-create sub-directories
+            WEB_META_DIR.mkdir(exist_ok=True)
+            WEB_CONTENT_DIR.mkdir(exist_ok=True)
+            WEB_INDEX_DIR.mkdir(exist_ok=True)
+            
         else:
             logger.info("   🧪 Dry-run: Skipping Web DB write")
 
@@ -57,7 +86,10 @@ class IOManager:
         elif category == "content":
             mirror_target = MIRROR_CONTENT_DIR / filename
             web_target = WEB_CONTENT_DIR / filename
-        else: # root
+        else: # root (bao gồm cả file index/xxx.json và uid_index.json)
+            # Logic cũ gộp chung root, nhưng giờ có index folder, 
+            # tuy nhiên filename truyền vào đã có prefix "index/" nếu cần (xem orchestrator.py _save_split_indexes)
+            # nên ta chỉ cần nối với DB_DIR gốc là đủ.
             mirror_target = MIRROR_DB_DIR / filename
             web_target = WEB_DB_DIR / filename
 
@@ -78,8 +110,6 @@ class IOManager:
                     web_target.parent.mkdir(parents=True, exist_ok=True)
                     
                 with open(web_target, "w", encoding="utf-8") as f:
-                    # [OPTIMIZED] Luôn dùng separators chặt chẽ cho cả Meta và Content
-                    # separators=(',', ':') loại bỏ khoảng trắng sau dấu phẩy và hai chấm
                     json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
             except Exception as e:
                 logger.error(f"❌ Write Web Error {filename}: {e}")
