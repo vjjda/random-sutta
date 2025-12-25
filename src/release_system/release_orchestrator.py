@@ -80,6 +80,10 @@ def run_release_process(
         web_content_modifier.remove_monolithic_index(BUILD_PWA_DIR)
         if not zip_packager.create_db_bundle(BUILD_PWA_DIR):
              logger.warning("⚠️ Failed to create DB bundle zip.")
+        
+        # [NEW] Create DPD DB Zip for Offline Cache
+        if not zip_packager.create_dpd_db_zip(BUILD_PWA_DIR):
+             logger.warning("⚠️ Failed to create DPD DB zip.")
 
         # Deploy (PWA Build goes to GH Pages)
         if deploy_web:

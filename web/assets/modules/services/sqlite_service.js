@@ -3,12 +3,17 @@ import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("SqliteService");
 
+const DB_ZIP_URL = "assets/db/dpd_mini.db.zip";
+const IDB_NAME = "DPD_CACHE";
+const IDB_STORE = "files";
+const IDB_KEY = "dpd_mini.db";
+
 export const SqliteService = {
     db: null,
     isInitializing: false,
     _keyMap: {
-        fullToAbbr: null, // e.g. "Part of Speech" -> "pos"
-        abbrToFull: null  // e.g. "pos" -> "Part of Speech"
+        fullToAbbr: null, 
+        abbrToFull: null
     },
 
     async init() {
@@ -35,16 +40,30 @@ export const SqliteService = {
                 throw new Error("sql-wasm.js not loaded");
             }
 
+            // Load SQL.js
             const SQL = await window.initSqlJs({
                 locateFile: file => `assets/libs/${file}`
             });
 
-            logger.info("Init", "Fetching dpd_mini.db...");
-            const response = await fetch("assets/db/dpd_mini.db");
-            if (!response.ok) throw new Error(`Failed to fetch DB: ${response.status}`);
-            const buf = await response.arrayBuffer();
+            // 1. Try Load from IDB
+            let dbBinary = await this._loadFromIndexedDB();
+            
+            if (!dbBinary) {
+                // 2. Fetch Zip & Unpack
+                logger.info("Init", "Downloading compressed DB...");
+                dbBinary = await this._downloadAndUnzip();
+                
+                // 3. Cache to IDB
+                if (dbBinary) {
+                    await this._saveToIndexedDB(dbBinary);
+                }
+            } else {
+                logger.info("Init", "Loaded DB from IndexedDB Cache (Offline Ready).");
+            }
 
-            this.db = new SQL.Database(new Uint8Array(buf));
+            if (!dbBinary) throw new Error("Could not acquire DB binary.");
+
+            this.db = new SQL.Database(new Uint8Array(dbBinary));
             logger.info("Init", "DB Loaded successfully.");
             
             this._loadJsonKeys();
@@ -58,6 +77,63 @@ export const SqliteService = {
         }
     },
     
+    async _loadFromIndexedDB() {
+        return new Promise((resolve) => {
+            const req = indexedDB.open(IDB_NAME, 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(IDB_STORE)) {
+                    db.createObjectStore(IDB_STORE);
+                }
+            };
+            req.onsuccess = (e) => {
+                const db = e.target.result;
+                const tx = db.transaction(IDB_STORE, "readonly");
+                const store = tx.objectStore(IDB_STORE);
+                const getReq = store.get(IDB_KEY);
+                
+                getReq.onsuccess = () => {
+                    if (getReq.result) resolve(getReq.result);
+                    else resolve(null);
+                };
+                getReq.onerror = () => resolve(null);
+            };
+            req.onerror = () => resolve(null);
+        });
+    },
+
+    async _saveToIndexedDB(binary) {
+        return new Promise((resolve) => {
+            const req = indexedDB.open(IDB_NAME, 1);
+            req.onsuccess = (e) => {
+                const db = e.target.result;
+                const tx = db.transaction(IDB_STORE, "readwrite");
+                const store = tx.objectStore(IDB_STORE);
+                store.put(binary, IDB_KEY);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => resolve(); // Ignore error
+            };
+            req.onerror = () => resolve();
+        });
+    },
+    
+    async _downloadAndUnzip() {
+        if (!window.JSZip) throw new Error("JSZip not loaded");
+        
+        const response = await fetch(DB_ZIP_URL);
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        
+        const blob = await response.blob();
+        const zip = await JSZip.loadAsync(blob);
+        
+        // Find the .db file inside
+        const dbFile = zip.file("dpd_mini.db");
+        if (!dbFile) throw new Error("dpd_mini.db not found in zip");
+        
+        logger.info("Init", "Unzipping DB...");
+        return await dbFile.async("arraybuffer");
+    },
+
     _loadJsonKeys() {
         try {
             const res = this.db.exec("SELECT abbr_key, full_key FROM json_keys");

@@ -128,3 +128,40 @@ def create_db_bundle(base_dir: Path = None) -> bool:
         import traceback
         traceback.print_exc()
         return False
+
+def create_dpd_db_zip(base_dir: Path = None) -> bool:
+    """
+    Nén file dpd_mini.db thành dpd_mini.db.zip (Deterministic).
+    """
+    if base_dir:
+        db_root = base_dir / "assets" / "db"
+    else:
+        db_root = DIST_DB_DIR
+        
+    source_db = db_root / "dpd_mini.db"
+    target_zip = db_root / "dpd_mini.db.zip"
+    
+    if not source_db.exists():
+        # [OPTIONAL] Warn only, maybe user hasn't generated dictionary yet
+        logger.warning(f"⚠️ dpd_mini.db not found at {source_db}, skipping zip.")
+        return False
+        
+    logger.info(f"📦 Zipping dpd_mini.db...")
+    
+    try:
+        with zipfile.ZipFile(target_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            with open(source_db, "rb") as f:
+                file_data = f.read()
+            
+            # Deterministic ZipInfo
+            zinfo = zipfile.ZipInfo(filename="dpd_mini.db", date_time=FIXED_DATETIME)
+            zinfo.external_attr = 0o644 << 16
+            zinfo.compress_type = zipfile.ZIP_DEFLATED
+            
+            zf.writestr(zinfo, file_data)
+            
+        logger.info(f"   ✅ Created {target_zip.name} ({target_zip.stat().st_size / 1024 / 1024:.2f} MB)")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to zip dpd_mini.db: {e}")
+        return False
