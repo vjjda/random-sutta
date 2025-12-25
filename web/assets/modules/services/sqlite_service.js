@@ -65,12 +65,14 @@ export const SqliteService = {
                 // likely empty
             }
 
-            if (tableCheck.length === 0) {
+            if (tableCheck.length === 0 || tableCheck[0].values.length === 0) {
                 logger.info("Init", "DB empty or missing. Downloading & Populating...");
                 
                 // Close current connection to allow overwriting/restoring
-                await this.sqlite3.close(this.db); 
-                this.db = null;
+                if (this.db) {
+                    await this.sqlite3.close(this.db);
+                    this.db = null;
+                }
 
                 // Download & Unzip
                 const dbBinary = await this._downloadAndUnzip();
@@ -104,62 +106,56 @@ export const SqliteService = {
     
     async _hydrateFromBinary(module, dbBinary) {
         // Define C Functions via cwrap
-        // Note: SQLite flags are 32-bit integers. Pointers are numbers.
-        
-        // sqlite3_deserialize(db, schema, data, sz, sz, flags)
-        const sqlite3_deserialize = module.cwrap('sqlite3_deserialize', 'number', ['number', 'string', 'number', 'number', 'number', 'number'], { async: true });
-        
-        // sqlite3_backup_init(pDest, zDestName, pSource, zSourceName)
-        const sqlite3_backup_init = module.cwrap('sqlite3_backup_init', 'number', ['number', 'string', 'number', 'string'], { async: true });
-        
-        // sqlite3_backup_step(pBackup, nPage)
-        const sqlite3_backup_step = module.cwrap('sqlite3_backup_step', 'number', ['number', 'number'], { async: true });
-        
-        // sqlite3_backup_finish(pBackup)
-        const sqlite3_backup_finish = module.cwrap('sqlite3_backup_finish', 'number', ['number'], { async: true });
-
-        // Constants
-        const SQLITE_OPEN_READWRITE = 0x00000002;
-        const SQLITE_OPEN_CREATE = 0x00000004;
-        const SQLITE_OPEN_MEMORY = 0x00000080;
-        const SQLITE_DESERIALIZE_RESIZEABLE = 2;
-        const SQLITE_DESERIALIZE_FREEONCLOSE = 1;
+        const sqlite3_deserialize = module.cwrap('sqlite3_deserialize', 'number', ['number', 'string', 'number', 'number', 'number', 'number']);
+        const sqlite3_backup_init = module.cwrap('sqlite3_backup_init', 'number', ['number', 'string', 'number', 'string']);
+        const sqlite3_backup_step = module.cwrap('sqlite3_backup_step', 'number', ['number', 'number']);
+        const sqlite3_backup_finish = module.cwrap('sqlite3_backup_finish', 'number', ['number']);
 
         // 1. Alloc memory and copy binary
         const pData = module._sqlite3_malloc(dbBinary.byteLength);
+        if (!pData) throw new Error("Failed to allocate memory for DB");
         module.HEAPU8.set(new Uint8Array(dbBinary), pData);
 
         // 2. Open In-Memory DB
-        // We use the JS API for convenience to open the DB handle
-        const memDb = await this.sqlite3.open_v2('mem', SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_MEMORY);
+        const memDb = await this.sqlite3.open_v2(':memory:', SQLite.SQLITE_OPEN_READWRITE | SQLite.SQLITE_OPEN_CREATE | SQLite.SQLITE_OPEN_MEMORY);
 
         // 3. Deserialize data into memDb
-        const rc = await sqlite3_deserialize(
+        const rc = sqlite3_deserialize(
             memDb, 'main', pData, dbBinary.byteLength, dbBinary.byteLength, 
-            SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE
+            SQLite.SQLITE_DESERIALIZE_FREEONCLOSE | SQLite.SQLITE_DESERIALIZE_RESIZEABLE
         );
         
-        if (rc !== 0) throw new Error(`sqlite3_deserialize failed: ${rc}`);
+        if (rc !== SQLite.SQLITE_OK) {
+            await this.sqlite3.close(memDb);
+            throw new Error(`sqlite3_deserialize failed with code: ${rc}`);
+        }
 
         // 4. Open Destination DB (IDB)
-        const destDb = await this.sqlite3.open_v2(DB_NAME, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, VFS_NAME);
+        const destDb = await this.sqlite3.open_v2(DB_NAME, SQLite.SQLITE_OPEN_READWRITE | SQLite.SQLITE_OPEN_CREATE, VFS_NAME);
 
         // 5. Backup (Copy pages from Mem -> IDB)
         logger.info("Init", "Starting backup from Memory to IndexedDB...");
         const pBackup = await sqlite3_backup_init(destDb, 'main', memDb, 'main');
-        
-        if (!pBackup) throw new Error("sqlite3_backup_init failed");
+        if (!pBackup) {
+            await this.sqlite3.close(memDb);
+            await this.sqlite3.close(destDb);
+            throw new Error("sqlite3_backup_init failed");
+        }
 
         // Copy all pages (-1)
-        // Step might yield in Async build
         const stepRc = await sqlite3_backup_step(pBackup, -1);
-        await sqlite3_backup_finish(pBackup);
+        const finishRc = await sqlite3_backup_finish(pBackup);
+
+        if (stepRc !== SQLite.SQLITE_DONE || finishRc !== SQLite.SQLITE_OK) {
+            logger.error(`Backup failed! Step: ${stepRc}, Finish: ${finishRc}. Error: ${this.sqlite3.errmsg(destDb)}`);
+            await this.sqlite3.close(memDb);
+            await this.sqlite3.close(destDb);
+            throw new Error(`Backup failed! Step: ${stepRc}, Finish: ${finishRc}`);
+        }
         
         // 6. Cleanup
         await this.sqlite3.close(memDb);
         await this.sqlite3.close(destDb);
-        
-        // Note: pData is freed by sqlite3_deserialize because of FREEONCLOSE flag
     },
     
     async _downloadAndUnzip() {
