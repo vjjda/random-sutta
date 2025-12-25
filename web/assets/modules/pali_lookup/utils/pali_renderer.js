@@ -1,7 +1,43 @@
 // Path: web/assets/modules/pali_lookup/utils/pali_renderer.js
 
 export const PaliRenderer = {
-    render(data) {
+    renderList(dataList, searchTerm) {
+        if (!dataList || !Array.isArray(dataList) || dataList.length === 0) return "";
+        
+        let html = '<div class="dpd-result-list">';
+        let matchedGrammarNote = null;
+        let keyMapRef = null;
+
+        dataList.forEach((data) => {
+            // Check for grammar note match (Exact Match Only)
+            // We use the first one found for the term
+            if (searchTerm && data.lookup_key === searchTerm && data.grammar_note && !matchedGrammarNote) {
+                matchedGrammarNote = data.grammar_note;
+                keyMapRef = data.keyMap; // Need keyMap to render grammar note later
+            }
+            
+            // Render entry, collapsed (isOpen=false), skip internal grammar note (skipGrammar=true)
+            html += this.render(data, false, true);
+        });
+        
+        html += '</div>';
+
+        // Render the single Grammar Note at the bottom if found
+        if (matchedGrammarNote) {
+            const getAbbr = (fullKey) => keyMapRef && keyMapRef.fullToAbbr && keyMapRef.fullToAbbr[fullKey] 
+                ? keyMapRef.fullToAbbr[fullKey] 
+                : fullKey;
+            
+            const gnArr = this._parse(matchedGrammarNote);
+            if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
+                 html += this._renderGrammarNotes(gnArr, getAbbr);
+            }
+        }
+
+        return html;
+    },
+
+    render(data, isOpen = false, skipGrammar = false) {
         if (!data) return "";
         const { lookup_type, lookup_key, definition, grammar_note, entry_grammar, entry_example, keyMap } = data;
         
@@ -31,7 +67,7 @@ export const PaliRenderer = {
             const exArr = this._parse(entry_example);
             
             if (defObj) {
-                html += this._renderEntry(defObj, gramObj, exArr, getAbbr, getLabel, data.headword);
+                html += this._renderEntry(defObj, gramObj, exArr, getAbbr, getLabel, data.headword, isOpen);
             }
             
         } else if (lookup_type === 2) {
@@ -42,10 +78,12 @@ export const PaliRenderer = {
             }
         }
         
-        // 2. GRAMMAR NOTES (Common)
-        const gnArr = this._parse(grammar_note);
-        if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
-             html += this._renderGrammarNotes(gnArr, getAbbr);
+        // 2. GRAMMAR NOTES (Common) - Only if NOT skipped
+        if (!skipGrammar) {
+            const gnArr = this._parse(grammar_note);
+            if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
+                 html += this._renderGrammarNotes(gnArr, getAbbr);
+            }
         }
         
         html += '</div>';
@@ -70,10 +108,12 @@ export const PaliRenderer = {
         </div>`;
     },
 
-    _renderEntry(def, gram, examples, getAbbr, getLabel, headword) {
-        let html = `<div class="dpd-entry">`;
+    _renderEntry(def, gram, examples, getAbbr, getLabel, headword, isOpen) {
+        // Use details/summary for the toggle
+        const openAttr = isOpen ? 'open' : '';
+        let html = `<details class="dpd-entry" ${openAttr}>`;
         
-        // Header / Summary
+        // Header / Summary -> <summary>
         const pos = def[getAbbr('pos')] || '';
         const meaning = def[getAbbr('meaning')] || '';
         const plusCase = def[getAbbr('plus_case')] || '';
@@ -86,8 +126,13 @@ export const PaliRenderer = {
         if (construction) summary += ` [${construction}]`;
         if (degree) summary += ` ${degree}`;
         
-        html += `<div class="dpd-summary">${summary}</div>`;
+        // Add a visual indicator or "More" text if needed, though default marker exists.
+        // We can style summary::marker or add a span.
+        html += `<summary class="dpd-summary">${summary}</summary>`;
         
+        // The expanded content
+        html += `<div class="dpd-details-content">`;
+
         // Grammar Table
         if (gram) {
             html += `<table class="dpd-grammar-table">`;
@@ -116,7 +161,8 @@ export const PaliRenderer = {
             html += `</div>`;
         }
         
-        html += `</div>`;
+        html += `</div>`; // End .dpd-details-content
+        html += `</details>`;
         return html;
     },
 

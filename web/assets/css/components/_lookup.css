@@ -33,13 +33,58 @@
     font-family: var(--font-main);
     color: var(--text-color);
     line-height: 1.6;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.dpd-result:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 .dpd-summary {
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-light);
+    /* Summary is now a clickable header */
+    cursor: pointer;
+    list-style: none; 
+    position: relative;
+    padding-right: 24px;
+    display: block; /* Ensure block layout for content */
 }
+
+/* Custom Expand Icon */
+.dpd-summary::-webkit-details-marker {
+    display: none;
+}
+.dpd-summary::after {
+    content: '+'; 
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--primitive-blue-500);
+    font-weight: bold;
+    font-size: 1.2em;
+    line-height: 1;
+}
+details[open] > .dpd-summary::after {
+    content: '−';
+    color: var(--text-light);
+}
+
+/* Details Content Animation/Spacing */
+.dpd-details-content {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border-light);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 
 .dpd-lemma {
     font-weight: 700;

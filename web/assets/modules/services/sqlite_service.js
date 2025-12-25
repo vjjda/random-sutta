@@ -258,13 +258,41 @@ export const SqliteService = {
                 is_exact DESC, 
                 abs(length(key) - length(?)) ASC,
                 rank
-            LIMIT 10
+            LIMIT 20
         `;
 
         try {
             // MATCH query trong FTS thường dùng cú pháp 'term*' để tìm prefix
-            const results = await this.execute(sql, [cleanTerm, `${cleanTerm}*`, cleanTerm]);
+            // Use NEAR logic or simple prefix? Simple prefix for now: term*
+            const searchPattern = `${cleanTerm}*`;
+            const ftsRes = await this._exec(sql, [cleanTerm, searchPattern, cleanTerm]);
+            
+            if (!ftsRes.length || !ftsRes[0].values.length) return [];
+
+            const rows = ftsRes[0].values;
+            const results = [];
+            const seenTargets = new Set();
+            
+            // Fetch details for each result
+            for (const row of rows) {
+                const targetId = row[0];
+                const type = row[1];
+                const key = row[2];
+                
+                // Create a unique composite key for deduplication
+                const uniqueId = `${type}_${targetId}`;
+                
+                if (seenTargets.has(uniqueId)) {
+                    continue;
+                }
+                seenTargets.add(uniqueId);
+                
+                const details = await this._fetchDetails(targetId, type, key);
+                if (details) results.push(details);
+            }
+            
             return results;
+
         } catch (error) {
             console.error("FTS Search Error:", error);
             return [];
@@ -278,59 +306,64 @@ export const SqliteService = {
             if (!lookupRes.length || !lookupRes[0].values.length) return null;
             
             const [targetId, type] = lookupRes[0].values[0];
-            
-            let result = {
-                lookup_key: term,
-                target_id: targetId,
-                lookup_type: type,
-                headword: null,
-                definition: null,
-                entry_grammar: null,
-                entry_example: null,
-                grammar_note: null,
-                keyMap: this._keyMap
-            };
-
-            if (type === 0) {
-                const res = await this._exec("SELECT components FROM deconstructions WHERE id = ?", [targetId]);
-                if (res.length && res[0].values.length > 0) result.definition = res[0].values[0][0];
-            } 
-            else if (type === 1) {
-                const res = await this._exec(
-                    "SELECT headword, definition_json, grammar_json, example_json FROM entries WHERE id = ?", 
-                    [targetId]
-                );
-                if (res.length && res[0].values.length > 0) {
-                    const row = res[0].values[0];
-                    result.headword = row[0];
-                    result.definition = row[1];
-                    result.entry_grammar = row[2];
-                    result.entry_example = row[3];
-                }
-            }
-            else if (type === 2) {
-                const res = await this._exec(
-                    "SELECT root, definition_json FROM roots WHERE id = ?", 
-                    [targetId]
-                );
-                if (res.length && res[0].values.length > 0) {
-                    const row = res[0].values[0];
-                    result.headword = row[0];
-                    result.definition = row[1];
-                }
-            }
-
-            const gnRes = await this._exec("SELECT grammar_json FROM grammar_notes WHERE key = ?", [term]);
-            if (gnRes.length && gnRes[0].values.length > 0) {
-                result.grammar_note = gnRes[0].values[0][0];
-            }
-            
-            return result;
+            return await this._fetchDetails(targetId, type, term);
 
         } catch (e) {
             logger.error("Search", `Error searching for ${term}`, e);
             return null;
         }
+    },
+
+    async _fetchDetails(targetId, type, term) {
+        let result = {
+            lookup_key: term,
+            target_id: targetId,
+            lookup_type: type,
+            headword: null,
+            definition: null,
+            entry_grammar: null,
+            entry_example: null,
+            grammar_note: null,
+            keyMap: this._keyMap
+        };
+
+        if (type === 0) {
+            const res = await this._exec("SELECT components FROM deconstructions WHERE id = ?", [targetId]);
+            if (res.length && res[0].values.length > 0) result.definition = res[0].values[0][0];
+        } 
+        else if (type === 1) {
+            const res = await this._exec(
+                "SELECT headword, definition_json, grammar_json, example_json FROM entries WHERE id = ?", 
+                [targetId]
+            );
+            if (res.length && res[0].values.length > 0) {
+                const row = res[0].values[0];
+                result.headword = row[0];
+                result.definition = row[1];
+                result.entry_grammar = row[2];
+                result.entry_example = row[3];
+            }
+        }
+        else if (type === 2) {
+            const res = await this._exec(
+                "SELECT root, definition_json FROM roots WHERE id = ?", 
+                [targetId]
+            );
+            if (res.length && res[0].values.length > 0) {
+                const row = res[0].values[0];
+                result.headword = row[0];
+                result.definition = row[1];
+            }
+        }
+
+        // Grammar Notes (fetched by Key)
+        // Optimization: Maybe only fetch if needed? But user wants "details"
+        const gnRes = await this._exec("SELECT grammar_json FROM grammar_notes WHERE key = ?", [term]);
+        if (gnRes.length && gnRes[0].values.length > 0) {
+            result.grammar_note = gnRes[0].values[0][0];
+        }
+        
+        return result;
     }
     
 };
