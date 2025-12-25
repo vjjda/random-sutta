@@ -17,7 +17,8 @@ IMPORT_MAP_ALIASES = {
     "services": "assets/modules/services",
     "ui": "assets/modules/ui",
     "tts": "assets/modules/tts",
-    "data": "assets/modules/data"
+    "data": "assets/modules/data",
+    "pali-lookup": "assets/modules/pali_lookup"
 }
 
 def _resolve_path(base_dir: Path, current_file_rel: str, import_path: str) -> str:
