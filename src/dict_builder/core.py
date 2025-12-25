@@ -32,15 +32,9 @@ class DictBuilder:
         logger.info(f"[green]Processing {total_items} {label} in {len(chunks)} chunks...")
         processed_count = 0
         
-        # We reuse self.executor if it exists (or create one per phase if preferred, 
-        # but one global executor is safer for cleanup)
-        # Here we use context manager for each phase or a global one? 
-        # Better to have one executor for the whole run to manage shutdown easier.
-        # But 'with ProcessPoolExecutor' is cleanest. Let's stick to phase-based for now.
-        
         try:
             with ProcessPoolExecutor() as executor:
-                self.executor = executor # Keep ref for shutdown
+                self.executor = executor
                 futures = [executor.submit(worker_func, chunk, *args) for chunk in chunks]
                 
                 for future in as_completed(futures):
@@ -54,7 +48,7 @@ class DictBuilder:
             logger.warning("\n[bold yellow]⚠️ User interrupted! Shutting down workers...[/bold yellow]")
             if self.executor:
                 self.executor.shutdown(wait=False, cancel_futures=True)
-            raise # Re-raise to stop the whole process
+            raise
 
     def run(self):
         start_time = time.time()
@@ -75,10 +69,10 @@ class DictBuilder:
                 return
 
             # --- PHASE 1: HEADWORDS ---
-def headword_handler(result):
-    entries, lookups = result
-    self.output_db.insert_batch(entries, lookups)
-    return len(entries)
+            def headword_handler(result):
+                entries, lookups = result
+                self.output_db.insert_batch(entries, lookups)
+                return len(entries)
 
             BATCH_SIZE = 2500
             chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
@@ -116,14 +110,15 @@ def headword_handler(result):
                 self.output_db.insert_deconstructions(decons, lookups)
                 return len(decons)
 
-                        self.run_safe_executor(
-                            decon_worker_wrapper,
-                            decon_chunks, 
-                            "deconstructions",
-                            len(decon_keys),
-                            decon_handler,
-                            self.config 
-                        )
+            self.run_safe_executor(
+                decon_worker_wrapper,
+                decon_chunks, 
+                "deconstructions",
+                len(decon_keys),
+                decon_handler,
+                self.config 
+            )
+
             # --- PHASE 3: GRAMMAR NOTES ---
             logger.info("\n[green]Processing Grammar Notes (Parallel)...")
             grammar_keys = [r.lookup_key for r in self.session.query(Lookup.lookup_key).filter(Lookup.grammar != "").all()]
