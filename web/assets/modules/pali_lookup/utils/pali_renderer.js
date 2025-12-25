@@ -95,7 +95,7 @@ export const PaliRenderer = {
                 // k is Abbreviation (e.g., 'p')
                 // label is Full Key (e.g., 'Part of Speech')
                 const label = getLabel(k); 
-                html += `<tr><td class="th">${label}</td><td>${v}</td></tr>`;
+                html += `<tr><th>${label}</th><td>${v}</td></tr>`;
             }
             html += `</table>`;
         }
@@ -124,7 +124,7 @@ export const PaliRenderer = {
         let html = `<table class="dpd-grammar-table">`;
         for (const [k, v] of Object.entries(root)) {
             const label = getLabel(k);
-            html += `<tr><td class="th">${label}</td><td>${v}</td></tr>`;
+            html += `<tr><th>${label}</th><td>${v}</td></tr>`;
         }
         html += `</table>`;
         return html;

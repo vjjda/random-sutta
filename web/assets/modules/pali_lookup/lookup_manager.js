@@ -26,6 +26,7 @@ export const LookupManager = {
         // Integration with Global Popup System
         window.addEventListener('popup:close-all', () => {
             LookupUI.hide();
+            document.body.classList.remove("lookup-open"); // [NEW] Ensure removal
         });
     },
     
@@ -80,6 +81,7 @@ export const LookupManager = {
             
             const html = PaliRenderer.render(result);
             LookupUI.render(html, cleanText); // Send cleanText as title
+            document.body.classList.add("lookup-open"); // [NEW] Add class
         } else {
             // Not found
             if (this._isNavigating) {
@@ -92,6 +94,7 @@ export const LookupManager = {
     
     clearSelection() {
         window.getSelection()?.removeAllRanges();
+        document.body.classList.remove("lookup-open"); // [NEW] Remove class
     },
 
     navigate(direction) {
