@@ -8,6 +8,7 @@ const logger = getLogger("SqliteService");
 
 const DB_ZIP_URL = "assets/db/dpd_mini.db.zip";
 const DB_NAME = "dpd_mini.db";
+const VFS_NAME = "idb";
 
 export const SqliteService = {
     sqlite3: null,
@@ -43,159 +44,45 @@ export const SqliteService = {
             this.sqlite3 = SQLite.Factory(module);
             
             // 2. Register IDB VFS
-            // Use 'idb-batch-atomic' which is robust
-            const vfs = new IDBBatchAtomicVFS(DB_NAME);
-            this.sqlite3.vfs_register(vfs, true); // Set as default VFS
+            // [FIX] Pass 'module' to constructor
+            const vfs = new IDBBatchAtomicVFS(VFS_NAME, module, { idbName: "DPD_CACHE" });
+            await vfs.isReady(); // [FIX] Wait for IDB ready
+            this.sqlite3.vfs_register(vfs, true);
 
-            // 3. Check if DB exists in VFS (IndexedDB)
-            // We can try opening it. If size is 0 or error, we populate it.
-            // IDBBatchAtomicVFS stores data in IDB store name matches DB_NAME usually or a fixed one?
-            // IDBBatchAtomicVFS creates an IDB database named 'wa-sqlite' (default) containing blocks.
-            // The constructor arg 'idbName' defaults to 'wa-sqlite'.
-            // Let's assume standard behavior.
-
-            let needsPopulation = false;
-            try {
-                // Try to open to check existence/validity? 
-                // Currently, let's check via VFS API or just try to open
-                // If we open and it's empty, we need to populate.
-            } catch (e) {}
-
-            // Open DB (This creates the file in VFS if not exists)
+            // 3. Open DB (Creates file in VFS if not exists)
             this.db = await this.sqlite3.open_v2(
                 DB_NAME, 
                 SQLite.SQLITE_OPEN_READWRITE | SQLite.SQLITE_OPEN_CREATE, 
-                "idb-batch-atomic"
+                VFS_NAME
             );
 
-            // Check if valid (has tables)
+            // 4. Check if valid (has tables)
             let tableCheck = [];
             try {
                 tableCheck = await this._exec("SELECT name FROM sqlite_master WHERE type='table' AND name='lookups'");
             } catch (e) {
-                // likely empty or corrupt
+                // likely empty
             }
 
             if (tableCheck.length === 0) {
                 logger.info("Init", "DB empty or missing. Downloading & Populating...");
-                await this.sqlite3.close(this.db); // Close to write raw
+                
+                // Close current connection to allow overwriting/restoring
+                await this.sqlite3.close(this.db); 
                 this.db = null;
 
                 // Download & Unzip
                 const dbBinary = await this._downloadAndUnzip();
                 
-                // Write to VFS
-                // We need to write the binary data to the VFS file 'dpd_mini.db'
-                // IDBBatchAtomicVFS doesn't expose a simple "write whole file" easily from outside
-                // without using SQLite API or VFS internal API.
-                // EASIEST WAY: Use SQLite to write? No, too slow for bulk.
+                // Hydrate using deserialize + backup
+                await this._hydrateFromBinary(module, dbBinary);
                 
-                // We can use the VFS instance directly if possible, or simple atomic write logic.
-                // IDBBatchAtomicVFS has close(), open()...
-                // Let's use standard File API if VFS exposes it? No.
-                
-                // Hack: We can just use the VFS object we created.
-                // Or better: Delete the VFS file and let VFS handle it?
-                
-                // Let's use the standard "import" approach for wa-sqlite if available, 
-                // OR simpler: Write page by page?
-                
-                // Actually, for wa-sqlite with IDB, we often just want to 'upload' the file.
-                // Let's use the provided `vfs.close()` and direct IDB manipulation? Too complex.
-                
-                // Alternative: Re-open DB and restore from SQL dump? No, we have binary.
-                
-                // Correct approach for wa-sqlite file upload:
-                // 1. Delete existing file via sqlite3.vfs_unlink (if exists)
-                // 2. Open file via sqlite3.vfs_open
-                // 3. Write via sqlite3.vfs_write
-                // However, accessing VFS methods via `sqlite3` object in JS is tricky in some versions.
-                
-                // Let's look at examples. Usually people just write to IDB directly.
-                // IDBBatchAtomicVFS stores blocks in object store 'blocks'.
-                // This is complicated to replicate manually.
-                
-                // Let's use SQLite API to write? `sqlite3_deserialize`? 
-                // wa-sqlite supports deserialize! (In-memory DB to VFS?)
-                // If we load into memory then backup to VFS?
-                
-                // Wait, if we use `deserialize`, it creates an in-memory DB.
-                // We want to persist to IDB.
-                // We can open an in-memory DB with the binary, then `VACUUM INTO 'file:dpd_mini.db'`?
-                // This is a great trick! 
-                
-                // 1. Open In-Memory DB from Binary
-                const memDB = await this.sqlite3.open_v2(":memory:");
-                
-                // DESERIALIZE (Load binary to memDB)
-                // sqlite3_deserialize(db, schema, data, sz, sz, flags)
-                // We need to pass the pointer.
-                
-                // Easier Path:
-                // Create the file in VFS using standard open/write flags if available.
-                // Or: just iterate and write chunks using `sqlite3.io` methods?
-                
-                // Let's try the `VACUUM INTO` approach. It's robust.
-                // But `VACUUM INTO` might not be enabled in all builds.
-                
-                // Let's try a simpler approach supported by wa-sqlite examples:
-                // Just writing the data to the file using filesystem APIs if exposed.
-                // But wa-sqlite uses a virtual FS.
-                
-                // Let's use the VFS instance `vfs` we created!
-                // It's a JS object. It might not have simple write API.
-                
-                // Plan B: Use a simple IDB-backed VFS that mirrors a file? 
-                // IDBBatchAtomicVFS is block based.
-                
-                // Let's go with "Delete existing -> Open DB -> Restore".
-                // How to restore?
-                
-                // OK, looking at wa-sqlite discussions:
-                // "To import a database file... you can use the File System Access API... or just put it in IndexedDB yourself."
-                
-                // Given I want to keep it simple and I have the binary.
-                // I will use `sqlite3_deserialize` to open it in-memory.
-                // Then I will use the Backup API (if available) or `VACUUM INTO` to save to the IDB file.
-                
-                // Let's check if `sqlite3_deserialize` is available in `wa-sqlite-async`.
-                // It usually is.
-                
-                // 1. Alloc memory for binary
-                const pData = this.sqlite3.malloc(dbBinary.byteLength);
-                const heap = this.sqlite3.HEAPU8;
-                heap.set(new Uint8Array(dbBinary), pData);
-                
-                // 2. Open Memory DB
-                // Actually, `deserialize` works on an open DB connection.
-                const memDb = await this.sqlite3.open_v2('mem', SQLite.SQLITE_OPEN_READWRITE | SQLite.SQLITE_OPEN_CREATE | SQLite.SQLITE_OPEN_MEMORY);
-                
-                // 3. Deserialize
-                const rc = await this.sqlite3.sqlite3_deserialize(
-                    memDb, 'main', pData, dbBinary.byteLength, dbBinary.byteLength, 
-                    SQLite.SQLITE_DESERIALIZE_FREEONCLOSE | SQLite.SQLITE_DESERIALIZE_RESIZEABLE
-                );
-                
-                if (rc !== SQLite.SQLITE_OK) throw new Error(`Deserialize failed: ${rc}`);
-                
-                // 4. Backup to IDB File
-                // Open destination IDB DB
+                // Re-open persistent DB
                 this.db = await this.sqlite3.open_v2(
                     DB_NAME, 
                     SQLite.SQLITE_OPEN_READWRITE | SQLite.SQLITE_OPEN_CREATE, 
-                    "idb-batch-atomic"
+                    VFS_NAME
                 );
-                
-                logger.info("Init", "Restoring to IndexedDB (This may take a moment)...");
-                
-                // Use Backup API: init, step, finish
-                const pBackup = await this.sqlite3.sqlite3_backup_init(this.db, 'main', memDb, 'main');
-                if (!pBackup) throw new Error("Backup init failed");
-                
-                await this.sqlite3.sqlite3_backup_step(pBackup, -1); // -1 = Copy all pages
-                await this.sqlite3.sqlite3_backup_finish(pBackup);
-                
-                await this.sqlite3.close(memDb);
                 
                 logger.info("Init", "Database restored to IndexedDB.");
             } else {
@@ -212,6 +99,66 @@ export const SqliteService = {
             this.isInitializing = false;
             return false;
         }
+    },
+    
+    async _hydrateFromBinary(module, dbBinary) {
+        // Define C Functions via cwrap
+        // Note: SQLite flags are 32-bit integers. Pointers are numbers.
+        
+        // sqlite3_deserialize(db, schema, data, sz, sz, flags)
+        const sqlite3_deserialize = module.cwrap('sqlite3_deserialize', 'number', ['number', 'string', 'number', 'number', 'number', 'number'], { async: true });
+        
+        // sqlite3_backup_init(pDest, zDestName, pSource, zSourceName)
+        const sqlite3_backup_init = module.cwrap('sqlite3_backup_init', 'number', ['number', 'string', 'number', 'string'], { async: true });
+        
+        // sqlite3_backup_step(pBackup, nPage)
+        const sqlite3_backup_step = module.cwrap('sqlite3_backup_step', 'number', ['number', 'number'], { async: true });
+        
+        // sqlite3_backup_finish(pBackup)
+        const sqlite3_backup_finish = module.cwrap('sqlite3_backup_finish', 'number', ['number'], { async: true });
+
+        // Constants
+        const SQLITE_OPEN_READWRITE = 0x00000002;
+        const SQLITE_OPEN_CREATE = 0x00000004;
+        const SQLITE_OPEN_MEMORY = 0x00000080;
+        const SQLITE_DESERIALIZE_RESIZEABLE = 2;
+        const SQLITE_DESERIALIZE_FREEONCLOSE = 1;
+
+        // 1. Alloc memory and copy binary
+        const pData = module._sqlite3_malloc(dbBinary.byteLength);
+        module.HEAPU8.set(new Uint8Array(dbBinary), pData);
+
+        // 2. Open In-Memory DB
+        // We use the JS API for convenience to open the DB handle
+        const memDb = await this.sqlite3.open_v2('mem', SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_MEMORY);
+
+        // 3. Deserialize data into memDb
+        const rc = await sqlite3_deserialize(
+            memDb, 'main', pData, dbBinary.byteLength, dbBinary.byteLength, 
+            SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE
+        );
+        
+        if (rc !== 0) throw new Error(`sqlite3_deserialize failed: ${rc}`);
+
+        // 4. Open Destination DB (IDB)
+        const destDb = await this.sqlite3.open_v2(DB_NAME, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, VFS_NAME);
+
+        // 5. Backup (Copy pages from Mem -> IDB)
+        logger.info("Init", "Starting backup from Memory to IndexedDB...");
+        const pBackup = await sqlite3_backup_init(destDb, 'main', memDb, 'main');
+        
+        if (!pBackup) throw new Error("sqlite3_backup_init failed");
+
+        // Copy all pages (-1)
+        // Step might yield in Async build
+        const stepRc = await sqlite3_backup_step(pBackup, -1);
+        await sqlite3_backup_finish(pBackup);
+        
+        // 6. Cleanup
+        await this.sqlite3.close(memDb);
+        await this.sqlite3.close(destDb);
+        
+        // Note: pData is freed by sqlite3_deserialize because of FREEONCLOSE flag
     },
     
     async _downloadAndUnzip() {
@@ -236,14 +183,6 @@ export const SqliteService = {
                 this._keyMap.fullToAbbr = {};
                 this._keyMap.abbrToFull = {};
                 
-                // exec result in wa-sqlite might be [{columns:[], values:[]}] or just rows?
-                // `exec` via `sqlite3.exec` is not standard. We usually use `sqlite3_exec` via callback or `sqlite3_prepare_v2` loop.
-                // BUT, wa-sqlite provides a helper `sqlite3.statements(db, sql)` which yields iterators.
-                // Let's make a helper `_exec`.
-                
-                // Assuming _exec returns simple row objects or values
-                // My `_exec` implementation below returns: [{columns, values: [[...]]}] like sql.js for compatibility
-                
                 res[0].values.forEach(row => {
                     const abbr = row[0];
                     const full = row[1];
@@ -256,59 +195,44 @@ export const SqliteService = {
         }
     },
     
-    // Helper to run SQL and return format compatible with existing code
-    // Returns: [{ columns: ['col1'], values: [['val1']] }]
     async _exec(sql, params = []) {
         if (!this.db) return [];
         
         const rows = [];
         const columns = [];
         
-        // Use generator API from wa-sqlite
         for await (const stmt of this.sqlite3.statements(this.db, sql)) {
             // Bind params
             if (params.length > 0) {
-                 // wa-sqlite bind logic?
-                 // Or simple:
                  for (let i = 0; i < params.length; i++) {
-                     this.sqlite3.sqlite3_bind_text(stmt, i + 1, params[i]); 
-                     // Assuming text. For numbers use bind_int etc?
-                     // Let's assume generic binding is needed.
-                     // wa-sqlite doesn't have a generic `bind` helper in core.
-                     // But `statements` yields a raw statement pointer.
-                     
-                     // Helper binding:
                      const val = params[i];
-                     if (typeof val === 'number') this.sqlite3.sqlite3_bind_double(stmt, i + 1, val);
-                     else if (val === null) this.sqlite3.sqlite3_bind_null(stmt, i + 1);
-                     else this.sqlite3.sqlite3_bind_text(stmt, i + 1, String(val));
+                     if (typeof val === 'number') this.sqlite3.bind_double(stmt, i + 1, val);
+                     else if (val === null) this.sqlite3.bind_null(stmt, i + 1);
+                     else this.sqlite3.bind_text(stmt, i + 1, String(val));
                  }
             }
             
-            // Get columns (once)
             if (columns.length === 0) {
-                const colCount = this.sqlite3.sqlite3_column_count(stmt);
+                const colCount = this.sqlite3.column_count(stmt);
                 for (let i = 0; i < colCount; i++) {
-                    columns.push(this.sqlite3.sqlite3_column_name(stmt, i));
+                    columns.push(this.sqlite3.column_name(stmt, i));
                 }
             }
             
-            // Step
-            while (await this.sqlite3.sqlite3_step(stmt) === SQLite.SQLITE_ROW) {
+            while (await this.sqlite3.step(stmt) === SQLite.SQLITE_ROW) {
                 const row = [];
                 for (let i = 0; i < columns.length; i++) {
-                     // Get value based on type? Or just text/double
-                     const type = this.sqlite3.sqlite3_column_type(stmt, i);
+                     const type = this.sqlite3.column_type(stmt, i);
                      switch (type) {
                          case SQLite.SQLITE_INTEGER:
                          case SQLite.SQLITE_FLOAT:
-                             row.push(this.sqlite3.sqlite3_column_double(stmt, i));
+                             row.push(this.sqlite3.column_double(stmt, i));
                              break;
                          case SQLite.SQLITE_TEXT:
-                             row.push(this.sqlite3.sqlite3_column_text(stmt, i));
+                             row.push(this.sqlite3.column_text(stmt, i));
                              break;
                          case SQLite.SQLITE_BLOB:
-                             row.push(null); // Not handling blob for now
+                             row.push(null);
                              break;
                          case SQLite.SQLITE_NULL:
                              row.push(null);
