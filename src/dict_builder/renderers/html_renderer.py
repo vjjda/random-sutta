@@ -7,14 +7,13 @@ from ..builder_config import BuilderConfig
 class DpdHtmlRenderer:
     """
     Chuyên trách việc render HTML từ Mako Templates.
-    Dùng cho mode --html hoặc các thành phần bắt buộc phải là HTML (như Deconstruction).
+    Dùng cho mode --html hoặc các thành phần bắt buộc phải là HTML.
     """
     def __init__(self, config: BuilderConfig):
         self.config = config
         self._load_templates()
 
     def _load_templates(self):
-        # Load các template chính
         self.tpl_entry = Template(filename=str(self.config.TEMPLATES_DIR / "entry.html"))
         self.tpl_grammar = Template(filename=str(self.config.TEMPLATES_DIR / "grammar.html"))
         self.tpl_example = Template(filename=str(self.config.TEMPLATES_DIR / "example.html"))
@@ -22,7 +21,6 @@ class DpdHtmlRenderer:
         self.tpl_grammar_note = Template(filename=str(self.config.TEMPLATES_DIR / "grammar_note.html"))
 
     def render_content_entry(self, i: DpdHeadword) -> str:
-        """Render nội dung định nghĩa chính (Definition HTML)."""
         summary = f"{i.pos}. "
         if i.plus_case:
             summary += f"({i.plus_case}) "
@@ -36,7 +34,6 @@ class DpdHtmlRenderer:
         return self.tpl_entry.render(i=i, summary=summary)
 
     def render_grammar_table(self, i: DpdHeadword) -> str:
-        """Render bảng ngữ pháp (Grammar HTML)."""
         if not i.meaning_1:
             return ""
         
@@ -47,13 +44,11 @@ class DpdHtmlRenderer:
         )
 
     def render_example_block(self, i: DpdHeadword) -> str:
-        """Render khối ví dụ (Examples HTML)."""
         if i.meaning_1 and i.example_1:
             return self.tpl_example.render(i=i)
         return ""
 
     def render_deconstruction_card(self, lookup_key: str, unpack_list: list) -> str:
-        """Render thẻ phân tích từ (Deconstruction HTML)."""
         return self.tpl_deconstruction.render(
             construction=lookup_key,
             deconstruction="<br/>".join(unpack_list)
@@ -62,15 +57,34 @@ class DpdHtmlRenderer:
     def render_grammar_notes(self, grammar_list: list) -> str:
         """
         Render Grammar Note Table.
-        Refactored to match JSON structure: Simple 3 columns (POS, Grammar, Word).
+        Structure: Flat list with 5 columns (POS | Gram1 | Gram2 | Gram3 | Word).
+        Sorted by Headword, then POS.
         """
+        # Sort by headword (0) then pos (1)
+        sorted_list = sorted(grammar_list, key=lambda x: (x[0], x[1]))
+        
         rows = []
-        # grammar_list is a list of tuples: (headword, pos, grammar_str)
-        for headword, pos, grammar_str in grammar_list:
+        for word, pos, grammar_str in sorted_list:
+            
+            # Split grammar string into parts
+            parts = grammar_str.split(" ")
+            
+            # Pad with empty strings to ensure exactly 3 parts
+            while len(parts) < 3:
+                parts.append("")
+            
+            # If more than 3, join the remainder into the last part
+            if len(parts) > 3:
+                parts[2] = " ".join(parts[2:])
+                parts = parts[:3]
+            
             rows.append({
                 "pos": pos,
-                "grammar": grammar_str,
-                "headword": headword
+                "g1": parts[0],
+                "g2": parts[1],
+                "g3": parts[2],
+                "word": word
             })
-            
+
+        # Pass 'rows' directly, no 'groups'
         return self.tpl_grammar_note.render(rows=rows)
