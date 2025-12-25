@@ -1,6 +1,5 @@
 # Path: src/dict_builder/logging_setup.py
 import logging
-import logging.config
 from pathlib import Path
 from rich.logging import RichHandler
 
@@ -13,17 +12,31 @@ def setup_dict_builder_logging():
     logs_dir.mkdir(exist_ok=True)
     log_file = logs_dir / "dict_builder.log"
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(message)s",
-        datefmt="[%X]",
-        handlers=[
-            RichHandler(rich_tracebacks=True, show_path=False, markup=True),
-            logging.FileHandler(log_file, mode='w', encoding='utf-8')
-        ]
-    )
+    # Create logger
+    logger = logging.getLogger("dict_builder")
+    logger.setLevel(logging.INFO)
     
-    # Silence third-party loggers if needed
+    # Remove existing handlers to avoid duplicates if called multiple times
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # Console Handler (Rich)
+    console_handler = RichHandler(
+        rich_tracebacks=True, 
+        show_path=False, 
+        markup=True,
+        show_time=True,
+        show_level=True
+    )
+    console_handler.setFormatter(logging.Formatter("%(message)s", datefmt="[%X]"))
+    logger.addHandler(console_handler)
+
+    # File Handler
+    file_handler = logging.FileHandler(log_file, mode='w', encoding='utf-8')
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(file_handler)
+    
+    # Silence third-party loggers
     logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
 
-    return logging.getLogger("dict_builder")
+    return logger
