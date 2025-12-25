@@ -19,10 +19,12 @@ class ParallelProcessor:
                  label: str, 
                  total_items: int, 
                  result_handler: Callable, 
-                 *args) -> None:
+                 *args,
+                 **kwargs) -> None: # [FIXED] Added **kwargs support
         """
         Chạy worker_func song song cho từng chunk.
         Đảm bảo thứ tự nhận kết quả (submission order) để giữ tính nhất quán của dữ liệu.
+        Hỗ trợ truyền cả positional args (*args) và keyword args (**kwargs) cho worker.
         """
         if not chunks:
             return
@@ -33,8 +35,8 @@ class ParallelProcessor:
         try:
             with ProcessPoolExecutor() as executor:
                 self.executor = executor
-                # Submit all tasks
-                futures = [executor.submit(worker_func, chunk, *args) for chunk in chunks]
+                # Submit all tasks with both args and kwargs
+                futures = [executor.submit(worker_func, chunk, *args, **kwargs) for chunk in chunks]
                 
                 # Consume results strictly in order of submission
                 for future in futures:
