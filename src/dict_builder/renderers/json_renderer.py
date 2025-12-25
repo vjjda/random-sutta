@@ -41,8 +41,8 @@ class DpdJsonRenderer:
         if i.plus_case: data[self._k("plus_case")] = i.plus_case
         if i.construction_summary: data[self._k("construction")] = i.construction_summary
         if i.degree_of_completion: data[self._k("degree")] = i.degree_of_completion
-        if i.commentary and i.commentary != "-": 
-            data[self._k("Commentary")] = i.commentary.replace("\n", "<br>")
+        
+        # [MOVED] Commentary removed from here to render_grammar
             
         return json.dumps(data, ensure_ascii=False)
 
@@ -86,6 +86,10 @@ class DpdJsonRenderer:
         if i.variant: data[self._k("Variant")] = i.variant
 
         # 6. Notes & Metadata
+        # [MOVED] Commentary logic moved here
+        if i.commentary and i.commentary != "-": 
+            data[self._k("Commentary")] = i.commentary.replace("\n", "<br>")
+
         if i.notes: data[self._k("Notes")] = i.notes.replace("\n", "<br>")
         if i.cognate: data[self._k("English Cognate")] = i.cognate
         if i.link: data[self._k("Web Link")] = i.link 
