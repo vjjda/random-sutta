@@ -54,23 +54,29 @@ class OutputDatabase:
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
         
-        # FTS5 for Full Text Search
+        # [UPDATED] FTS5 Table creation
+        # tokenize='unicode61 remove_diacritics 2' is crucial for Pali (ignoring accents during search if needed)
         self.cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS lookups_fts USING fts5(key, target_id UNINDEXED, type UNINDEXED, tokenize='unicode61 remove_diacritics 2');")
         
-        # Trigger: Initially populated. Will be recreated after sorting.
-        self.cursor.execute("""
-            CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
-                INSERT INTO lookups_fts(key, target_id, type) VALUES (new.key, new.target_id, new.type);
-            END;
-        """)
+        # Trigger: Initially created to catch inserts during batch processing.
+        # We will drop and recreate this during the sorting phase.
+        self._create_lookup_trigger()
         
         if self.config.html_mode:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
         else:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_json TEXT);")
 
+    def _create_lookup_trigger(self):
+        """Helper to create the trigger."""
+        self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
+        self.cursor.execute("""
+            CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
+                INSERT INTO lookups_fts(key, target_id, type) VALUES (new.key, new.target_id, new.type);
+            END;
+        """)
+
     def populate_json_keys(self):
-        """Insert JSON key mappings into the database."""
         key_list = get_key_map_list()
         swapped_list = sorted([(abbr, full) for full, abbr in key_list], key=lambda x: x[0])
         self.cursor.executemany("INSERT INTO json_keys (abbr_key, full_key) VALUES (?, ?)", swapped_list)
@@ -105,7 +111,6 @@ class OutputDatabase:
         self.conn.commit()
 
     def insert_roots(self, roots: list, lookups: list):
-        """Insert roots and their lookups."""
         if roots:
             suffix = "html" if self.config.html_mode else "json"
             sql = "INSERT INTO roots (id, root, definition_" + suffix + ") VALUES (?, ?, ?)"
@@ -124,7 +129,6 @@ class OutputDatabase:
         self.conn.commit()
 
     def create_grand_view(self):
-        """Tạo View tổng hợp 'grand_lookups'."""
         logger.info("[cyan]Creating 'grand_lookups' view...[/cyan]")
         
         suffix = "html" if self.config.html_mode else "json"
@@ -143,6 +147,9 @@ class OutputDatabase:
             
         entry_select_str = ", ".join(entry_cols)
 
+        # NOTE: We keep using the standard 'lookups' table here for the View.
+        # This ensures efficient sorting and exact matching. 
+        # The 'lookups_fts' table is available for search queries separately.
         sql = "CREATE VIEW IF NOT EXISTS grand_lookups AS " \
               "SELECT l.key AS lookup_key, l.type AS lookup_type, " \
               "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 2 THEN r.root ELSE NULL END AS headword, " \
@@ -167,7 +174,7 @@ class OutputDatabase:
     def _sort_lookups_table_python_side(self):
         """
         Sắp xếp bảng Lookups theo Pali Sort Key (Python Side).
-        SQLite không hỗ trợ Pali Collation, nên ta phải fetch all -> sort python -> rewrite.
+        Đồng thời tái tạo lại bảng FTS (lookups_fts) để đảm bảo dữ liệu khớp và đầy đủ.
         """
         logger.info("[yellow]Re-sorting 'lookups' table (Python Pali Sort)...[/yellow]")
         
@@ -177,39 +184,36 @@ class OutputDatabase:
             rows = self.cursor.fetchall()
             
             # 2. Sort using Python Pali Key
-            # x[0] is the key
             rows.sort(key=lambda x: pali_sort_key(x[0]))
             
-            # 3. Truncate table (Faster than DROP/CREATE usually, but SQLite uses DELETE)
-            self.cursor.execute("DELETE FROM lookups")
+            # 3. Drop Trigger to prevent slowdown/errors during bulk ops
+            self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
             
-            # 4. Re-insert in sorted order
+            # 4. Truncate tables
+            self.cursor.execute("DELETE FROM lookups")
+            self.cursor.execute("DELETE FROM lookups_fts")
+            
+            # 5. Re-insert sorted data into Lookups (Standard)
+            logger.info(f"   Inserting {len(rows)} sorted rows into 'lookups'...")
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", rows)
             
-            # 5. Handle FTS Trigger (Need to ensure FTS is in sync or rebuild it)
-            # Since we deleted rows, the DELETE trigger (if any) or just consistency might be an issue.
-            # But we only had INSERT trigger.
-            # Easiest way to ensure FTS is correct and sorted/optimized is to rebuild it too.
-            self.cursor.execute("DELETE FROM lookups_fts")
-            self.cursor.execute("INSERT INTO lookups_fts(lookups_fts) VALUES('rebuild')") # Full Rebuild
+            # 6. Explicitly Populate FTS from the new sorted Lookups
+            # This is safer and faster than relying on row-by-row triggers for bulk data
+            logger.info("   Populating 'lookups_fts'...")
+            self.cursor.execute("INSERT INTO lookups_fts (key, target_id, type) SELECT key, target_id, type FROM lookups")
             
-            # Re-ensure trigger exists
-            self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
-            self.cursor.execute("""
-                CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
-                    INSERT INTO lookups_fts(key, target_id, type) VALUES (new.key, new.target_id, new.type);
-                END;
-            """)
+            # 7. Re-create Trigger (for future consistency if app extends)
+            self._create_lookup_trigger()
             
             self.conn.commit()
-            logger.info(f"[green]Lookups table sorted successfully ({len(rows)} rows).[/green]")
+            logger.info(f"[green]Lookups & FTS tables sorted and rebuilt successfully.[/green]")
             
         except Exception as e:
             logger.error(f"[red]Failed to sort lookups table: {e}")
 
     def close(self):
         if self.conn:
-            # [STRICT SORT] Re-order lookups using Python Pali Key
+            # Re-order lookups and rebuild FTS
             self._sort_lookups_table_python_side()
             
             self.create_grand_view()
