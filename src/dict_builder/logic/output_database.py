@@ -43,7 +43,12 @@ class OutputDatabase:
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_sort ON lookups(pali_sort_key);")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT, grammar_json TEXT);")
+        
+        # [DYNAMIC SCHEMA] Grammar Notes
+        if self.config.html_mode:
+            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
+        else:
+            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_json TEXT);")
 
     def insert_batch(self, entries: list, lookups: list):
         if entries:
@@ -66,7 +71,10 @@ class OutputDatabase:
 
     def insert_grammar_notes(self, grammar_batch: list):
         if grammar_batch:
-            self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html, grammar_json) VALUES (?,?,?)", grammar_batch)
+            if self.config.html_mode:
+                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html) VALUES (?,?)", grammar_batch)
+            else:
+                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_json) VALUES (?,?)", grammar_batch)
         self.conn.commit()
 
     def create_grand_view(self):
@@ -84,6 +92,16 @@ class OutputDatabase:
             entry_cols.append(f"e.example_{suffix} AS entry_example")
             
         entry_select_str = ",\n            ".join(entry_cols)
+        
+        # [DYNAMIC] Grammar Column
+        if self.config.html_mode:
+            grammar_col = "gn.grammar_html AS grammar_note_html,"
+            # grammar_note_json sẽ là NULL
+            grammar_col += "NULL AS grammar_note_json,"
+        else:
+            # grammar_note_html sẽ là NULL
+            grammar_col = "NULL AS grammar_note_html,"
+            grammar_col += "gn.grammar_json AS grammar_note_json,"
 
         # [UPDATED] Sắp xếp lại thứ tự cột và thêm ORDER BY
         sql = f"""
@@ -98,9 +116,8 @@ class OutputDatabase:
             d.split_string AS decon_split,
             d.lookup_key AS decon_key_ref,
             
-            -- Grammar Notes
-            gn.grammar_html AS grammar_note_html,
-            gn.grammar_json AS grammar_note_json,
+            -- Grammar Notes (Dynamic)
+            {grammar_col}
 
             -- [CHANGED] Đưa Entries xuống sau
             {entry_select_str}
