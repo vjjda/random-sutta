@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from src.dict_builder.db.models import DpdHeadword
 from src.dict_builder.tools.deconstructed_words import make_words_in_deconstructions
 from src.dict_builder.logic.ebts_loader import load_cached_ebts_words
+from src.dict_builder.tools.pali_sort_key import pali_sort_key
 from ..config import BuilderConfig
 
 class WordSelector:
@@ -17,6 +18,7 @@ class WordSelector:
     def get_target_ids(self, session: Session) -> Tuple[List[int], Optional[Set[str]]]:
         """
         Lấy danh sách ID cần xử lý và tập từ vựng đích (nếu có).
+        IDs được sắp xếp theo Pali Alphabet của lemma_1.
         """
         print(f"[green]Scanning DPD DB (Mode: {self.config.mode})...")
         
@@ -27,11 +29,15 @@ class WordSelector:
             DpdHeadword.inflections_api_ca_eva_iti
         )
         
-        # FULL MODE: Không lọc gì cả -> target_set = None
+        # FULL MODE: Không lọc, nhưng cần sắp xếp
         if self.config.is_full_mode:
-            print("[green]Full Mode: Selecting all IDs.")
-            all_ids = session.execute(select(DpdHeadword.id)).scalars().all()
-            return all_ids, None
+            print("[green]Full Mode: Selecting and Sorting all IDs...")
+            # Query all id and lemma for sorting
+            all_rows = session.execute(select(DpdHeadword.id, DpdHeadword.lemma_1)).all()
+            # Sort by pali_sort_key of lemma_1
+            all_rows.sort(key=lambda x: pali_sort_key(x[1]))
+            sorted_ids = [row[0] for row in all_rows]
+            return sorted_ids, None
 
         # MINI / TINY MODE
         bilara_path = self.config.PROJECT_ROOT / "data/bilara/root/pli/ms"
@@ -52,26 +58,35 @@ class WordSelector:
         print(f"[green]Target words pool: {len(target_set)}")
         
         rows = session.execute(stmt).all()
-        target_ids = []
+        # rows: [(id, lemma_1, inf1, inf2), ...]
         
-        for r_id, lemma_1, inf1, inf2 in rows:
+        filtered_rows = []
+        
+        for r in rows:
+            r_id, lemma_1, inf1, inf2 = r
             lemma_clean = lemma_1.split(" ", 1)[0]
             
             # Check Lemma
             if lemma_clean in target_set:
-                target_ids.append(r_id)
+                filtered_rows.append(r)
                 continue
             
             # Check Inflections (Lazy)
             if inf1 and any(word in target_set for word in inf1.split(",")):
-                target_ids.append(r_id)
+                filtered_rows.append(r)
                 continue
             
             if inf2 and any(word in target_set for word in inf2.split(",")):
-                target_ids.append(r_id)
+                filtered_rows.append(r)
                 continue
                 
-        print(f"[green]Filtered down to {len(target_ids)} / {len(rows)} entries.")
+        print(f"[green]Filtered down to {len(filtered_rows)} / {len(rows)} entries.")
+        
+        # Sort filtered rows by pali_sort_key of lemma_1
+        print("[yellow]Sorting by Pali Alphabet...")
+        filtered_rows.sort(key=lambda x: pali_sort_key(x[1]))
+        
+        target_ids = [r[0] for r in filtered_rows]
         
         # Trả về cả target_set để worker dùng lọc lookups
         return target_ids, target_set

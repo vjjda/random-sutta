@@ -127,10 +127,7 @@ class OutputDatabase:
         LEFT JOIN deconstructions d 
             ON l.target_id = d.id AND l.is_headword = 0
         LEFT JOIN grammar_notes gn
-            ON l.key = gn.key
-            
-        -- [CHANGED] Sắp xếp theo lookup_key
-        ORDER BY l.key ASC;
+            ON l.key = gn.key;
         """
         
         try:
