@@ -56,18 +56,26 @@ class WordSelector:
         # 1. Build Maps (Word -> Components) to avoid repeated DB queries
         print("[yellow]Building Component Maps for Expansion...")
         
-        # Map 1: Headword -> Construction Components
-        # Only fetch entries that HAVE construction
-        hw_query = select(DpdHeadword.lemma_1, DpdHeadword.construction).filter(DpdHeadword.construction != "")
+        # Map 1: Headword -> Construction & Commentary Components
+        # Only fetch entries that HAVE construction OR commentary
+        hw_query = select(DpdHeadword.lemma_1, DpdHeadword.construction, DpdHeadword.commentary).filter(
+            (DpdHeadword.construction != "") | (DpdHeadword.commentary != "")
+        )
         hw_rows = session.execute(hw_query).all()
         
         construction_map = {}
-        for lemma, constr in hw_rows:
-            # Dùng lemma_clean để match chính xác hơn
+        for lemma, constr, comm in hw_rows:
             lemma_clean = lemma.split(" ", 1)[0]
             if lemma_clean not in construction_map:
                 construction_map[lemma_clean] = set()
-            construction_map[lemma_clean].update(extract_words_from_string(constr))
+            
+            # Extract from Construction
+            if constr:
+                construction_map[lemma_clean].update(extract_words_from_string(constr))
+            
+            # Extract from Commentary
+            if comm:
+                construction_map[lemma_clean].update(extract_words_from_string(comm))
 
         # Map 2: Deconstruction Key -> Deconstruction Components
         decon_query = select(Lookup.lookup_key, Lookup.deconstructor).filter(Lookup.deconstructor != "")
