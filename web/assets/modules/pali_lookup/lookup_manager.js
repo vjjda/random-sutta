@@ -54,7 +54,7 @@ export const LookupManager = {
         if (!parent || !parent.closest('#sutta-container')) return;
         
         // CLEAN TEXT Logic
-        const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—]/g, '').trim();
+        const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—?!()]/g, '').trim();
         
         if (cleanText.length > 50 || cleanText.length < 1) return; 
         
