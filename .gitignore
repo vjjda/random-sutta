@@ -33,6 +33,8 @@ Thumbs.db
 
 /tmp
 
+.pcode.toml
+
 # Generated Data Assets
 /web/assets/books/*
 /web/assets/sutta/
