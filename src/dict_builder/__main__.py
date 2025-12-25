@@ -1,7 +1,7 @@
 # Path: src/dict_builder/__main__.py
 import argparse
 from .logging_setup import setup_dict_builder_logging
-from .core import run_builder
+from .dict_builder_app import run_builder
 
 logger = setup_dict_builder_logging()
 
