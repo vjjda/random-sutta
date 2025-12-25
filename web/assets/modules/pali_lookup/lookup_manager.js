@@ -21,7 +21,7 @@ export const LookupManager = {
         });
         
         // Debounce selection change
-        document.addEventListener("selectionchange", this._debounce(this._handleSelection.bind(this), 600));
+        document.addEventListener("selectionchange", this._debounce(this._handleSelection.bind(this), 100));
         
         // Integration with Global Popup System
         window.addEventListener('popup:close-all', () => {

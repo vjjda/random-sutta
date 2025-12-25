@@ -77,15 +77,14 @@
 .dpd-grammar-table th {
     text-align: right;             /* Right Align */
     padding-right: 16px;           /* Gap between col 1 and 2 */
-    width: 35%;                    /* Fixed width for labels */
+    width: 33%;                    /* Fixed width for labels */
     
     /* Low Profile Style */
     color: var(--text-light);      /* Muted color */
     font-weight: 500;              /* Lighter weight */
-    font-size: 0.8rem;             /* Smaller font */
-    text-transform: uppercase;     /* Caps for style */
+    font-size: 0.84rem;             /* Smaller font */
+    text-transform: lowercase;     /* Caps for style */
     letter-spacing: 0.5px;
-    
     border-right: 1px solid transparent; /* No vertical line, just space */
 }
 
