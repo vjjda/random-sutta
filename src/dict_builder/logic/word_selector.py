@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.dict_builder.db.models import DpdHeadword
-from src.dict_builder.tools.text_scanner import get_ebts_word_set
 from src.dict_builder.tools.deconstructed_words import make_words_in_deconstructions
+from src.dict_builder.logic.ebts_loader import load_cached_ebts_words
 from ..config import BuilderConfig
 
 class WordSelector:
@@ -34,14 +34,18 @@ class WordSelector:
             return all_ids, None
 
         # MINI / TINY MODE
-        print("[yellow]Calculating EBTS word set...")
         bilara_path = self.config.PROJECT_ROOT / "data/bilara/root/pli/ms"
         
         if not bilara_path.exists():
             print(f"[red]Bilara data missing at {bilara_path}")
             return [], set()
 
-        target_set = get_ebts_word_set(bilara_path, self.config.EBTS_BOOKS)
+        # Cache dir in .gemini/tmp or just data/.cache
+        cache_dir = self.config.PROJECT_ROOT / "data/.cache/dict_builder"
+        
+        target_set = load_cached_ebts_words(bilara_path, self.config.EBTS_BOOKS, cache_dir)
+        
+        print("[yellow]Calculating Deconstruction word set...")
         decon_set = make_words_in_deconstructions(session)
         target_set = target_set | decon_set
         
