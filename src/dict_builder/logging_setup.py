@@ -15,6 +15,7 @@ def setup_dict_builder_logging():
     # Create logger
     logger = logging.getLogger("dict_builder")
     logger.setLevel(logging.INFO)
+    logger.propagate = False
     
     # Remove existing handlers to avoid duplicates if called multiple times
     if logger.hasHandlers():

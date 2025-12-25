@@ -7,6 +7,7 @@ from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import DpdHeadword, Lookup, DpdRoot
 from ..renderer import DpdRenderer
 from ..config import BuilderConfig
+from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 def process_data(data_str: str, compress: bool) -> str | bytes:
     if not data_str: return None
@@ -90,6 +91,10 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
         print(f"[red]Error in entries worker: {e}")
     finally:
         session.close()
+    
+    # Sort results to maintain Pali order within batch
+    entries_data.sort(key=lambda x: pali_sort_key(x[1])) # x[1] is headword
+    lookups_data.sort(key=lambda x: pali_sort_key(x[0])) # x[0] is key
         
     return entries_data, lookups_data
 
@@ -111,6 +116,11 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
         print(f"[red]Error in decon worker: {e}")
     finally:
         session.close()
+    
+    # Sort decon results
+    decon_batch.sort(key=lambda x: pali_sort_key(x[1])) # x[1] is word (lookup_key)
+    decon_lookup_batch.sort(key=lambda x: pali_sort_key(x[0])) # x[0] is key
+    
     return decon_batch, decon_lookup_batch
 
 def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List[tuple]:
@@ -147,5 +157,8 @@ def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List
         print(f"[red]Error in grammar notes worker: {e}")
     finally:
         session.close()
+    
+    # Sort grammar results
+    grammar_batch.sort(key=lambda x: pali_sort_key(x[0])) # x[0] is key
         
     return grammar_batch
