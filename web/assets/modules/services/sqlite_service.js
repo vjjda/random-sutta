@@ -44,10 +44,8 @@ export const SqliteService = {
             this.sqlite3 = SQLite.Factory(module);
             
             // 2. Register IDB VFS
-            // [FIX] Pass 'module' to constructor
-            // Use a new DB name to avoid conflict with previous sql.js cache
             const vfs = new IDBBatchAtomicVFS(VFS_NAME, module, { idbName: "DPD_CACHE_V2" });
-            await vfs.isReady(); // [FIX] Wait for IDB ready
+            await vfs.isReady();
             this.sqlite3.vfs_register(vfs, true);
 
             // 3. Open DB (Creates file in VFS if not exists)
@@ -68,7 +66,6 @@ export const SqliteService = {
             if (tableCheck.length === 0 || tableCheck[0].values.length === 0) {
                 logger.info("Init", "DB empty or missing. Downloading & Populating...");
                 
-                // Close current connection to allow overwriting/restoring
                 if (this.db) {
                     await this.sqlite3.close(this.db);
                     this.db = null;
@@ -105,21 +102,17 @@ export const SqliteService = {
     },
     
     async _hydrateFromBinary(module, dbBinary) {
-        // Define C Functions via cwrap
         const sqlite3_deserialize = module.cwrap('sqlite3_deserialize', 'number', ['number', 'string', 'number', 'number', 'number', 'number']);
         const sqlite3_backup_init = module.cwrap('sqlite3_backup_init', 'number', ['number', 'string', 'number', 'string']);
         const sqlite3_backup_step = module.cwrap('sqlite3_backup_step', 'number', ['number', 'number']);
         const sqlite3_backup_finish = module.cwrap('sqlite3_backup_finish', 'number', ['number']);
 
-        // 1. Alloc memory and copy binary
         const pData = module._sqlite3_malloc(dbBinary.byteLength);
         if (!pData) throw new Error("Failed to allocate memory for DB");
         module.HEAPU8.set(new Uint8Array(dbBinary), pData);
 
-        // 2. Open In-Memory DB
         const memDb = await this.sqlite3.open_v2(':memory:', SQLite.SQLITE_OPEN_READWRITE | SQLite.SQLITE_OPEN_CREATE | SQLite.SQLITE_OPEN_MEMORY);
 
-        // 3. Deserialize data into memDb
         const rc = sqlite3_deserialize(
             memDb, 'main', pData, dbBinary.byteLength, dbBinary.byteLength, 
             SQLite.SQLITE_DESERIALIZE_FREEONCLOSE | SQLite.SQLITE_DESERIALIZE_RESIZEABLE
@@ -130,10 +123,8 @@ export const SqliteService = {
             throw new Error(`sqlite3_deserialize failed with code: ${rc}`);
         }
 
-        // 4. Open Destination DB (IDB)
         const destDb = await this.sqlite3.open_v2(DB_NAME, SQLite.SQLITE_OPEN_READWRITE | SQLite.SQLITE_OPEN_CREATE, VFS_NAME);
 
-        // 5. Backup (Copy pages from Mem -> IDB)
         logger.info("Init", "Starting backup from Memory to IndexedDB...");
         const pBackup = await sqlite3_backup_init(destDb, 'main', memDb, 'main');
         if (!pBackup) {
@@ -142,7 +133,6 @@ export const SqliteService = {
             throw new Error("sqlite3_backup_init failed");
         }
 
-        // Copy all pages (-1)
         const stepRc = await sqlite3_backup_step(pBackup, -1);
         const finishRc = await sqlite3_backup_finish(pBackup);
 
@@ -153,7 +143,6 @@ export const SqliteService = {
             throw new Error(`Backup failed! Step: ${stepRc}, Finish: ${finishRc}`);
         }
         
-        // 6. Cleanup
         await this.sqlite3.close(memDb);
         await this.sqlite3.close(destDb);
     },
@@ -176,7 +165,7 @@ export const SqliteService = {
     async _loadJsonKeys() {
         try {
             const res = await this._exec("SELECT abbr_key, full_key FROM json_keys");
-            if (res.length > 0) {
+            if (res.length > 0 && res[0].values.length > 0) {
                 this._keyMap.fullToAbbr = {};
                 this._keyMap.abbrToFull = {};
                 
@@ -199,7 +188,6 @@ export const SqliteService = {
         const columns = [];
         
         for await (const stmt of this.sqlite3.statements(this.db, sql)) {
-            // Bind params
             if (params.length > 0) {
                  for (let i = 0; i < params.length; i++) {
                      const val = params[i];
@@ -240,20 +228,18 @@ export const SqliteService = {
             }
         }
         
-        if (columns.length === 0) return [];
+        if (columns.length === 0 && rows.length === 0) return [];
         return [{ columns, values: rows }];
     },
 
     async search(term) {
         if (!this.db) return null;
         try {
-            // 1. Get Target ID & Type
             const lookupRes = await this._exec("SELECT target_id, type FROM lookups WHERE key = ?", [term]);
             if (!lookupRes.length || !lookupRes[0].values.length) return null;
             
             const [targetId, type] = lookupRes[0].values[0];
             
-            // 2. Fetch details
             let result = {
                 lookup_key: term,
                 target_id: targetId,
@@ -268,14 +254,14 @@ export const SqliteService = {
 
             if (type === 0) {
                 const res = await this._exec("SELECT components FROM deconstructions WHERE id = ?", [targetId]);
-                if (res.length) result.definition = res[0].values[0][0];
+                if (res.length && res[0].values.length > 0) result.definition = res[0].values[0][0];
             } 
             else if (type === 1) {
                 const res = await this._exec(
                     "SELECT headword, definition_json, grammar_json, example_json FROM entries WHERE id = ?", 
                     [targetId]
                 );
-                if (res.length) {
+                if (res.length && res[0].values.length > 0) {
                     const row = res[0].values[0];
                     result.headword = row[0];
                     result.definition = row[1];
@@ -288,7 +274,7 @@ export const SqliteService = {
                     "SELECT root, definition_json FROM roots WHERE id = ?", 
                     [targetId]
                 );
-                if (res.length) {
+                if (res.length && res[0].values.length > 0) {
                     const row = res[0].values[0];
                     result.headword = row[0];
                     result.definition = row[1];
@@ -296,7 +282,7 @@ export const SqliteService = {
             }
 
             const gnRes = await this._exec("SELECT grammar_json FROM grammar_notes WHERE key = ?", [term]);
-            if (gnRes.length) {
+            if (gnRes.length && gnRes[0].values.length > 0) {
                 result.grammar_note = gnRes[0].values[0][0];
             }
             
