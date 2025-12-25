@@ -1,7 +1,7 @@
 // Path: web/assets/modules/services/sqlite_service.js
 import { getLogger } from 'utils/logger.js';
 import SQLiteAsyncESMFactory from 'wa-sqlite/wa-sqlite-async.mjs';
-import * as SQLite from 'wa-sqlite/wa-sqlite-async.mjs'; // For types/constants if needed
+import * as SQLite from 'wa-sqlite/wa-sqlite.mjs';
 import { IDBBatchAtomicVFS } from 'wa-sqlite/IDBBatchAtomicVFS.js';
 
 const logger = getLogger("SqliteService");
