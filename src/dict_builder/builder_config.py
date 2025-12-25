@@ -13,7 +13,7 @@ class BuilderConfig:
     USE_COMPRESSION: bool = False 
 
     # --- Batch Sizes ---
-    BATCH_SIZE_HEADWORDS: int = 8192
+    BATCH_SIZE_HEADWORDS: int = 10000
     BATCH_SIZE_DECON: int = 10000
     BATCH_SIZE_GRAMMAR: int = 10000
 
