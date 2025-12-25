@@ -5,6 +5,7 @@ from datetime import datetime
 
 from ..builder_config import BuilderConfig
 from src.dict_builder.tools.json_key_map import get_key_map_list
+from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 logger = logging.getLogger("dict_builder")
 
@@ -53,10 +54,10 @@ class OutputDatabase:
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
         
-        # [NEW] FTS5 for Full Text Search
+        # FTS5 for Full Text Search
         self.cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS lookups_fts USING fts5(key, target_id UNINDEXED, type UNINDEXED, tokenize='unicode61 remove_diacritics 2');")
         
-        # [NEW] Trigger to populate FTS
+        # Trigger: Initially populated. Will be recreated after sorting.
         self.cursor.execute("""
             CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
                 INSERT INTO lookups_fts(key, target_id, type) VALUES (new.key, new.target_id, new.type);
@@ -124,7 +125,7 @@ class OutputDatabase:
 
     def create_grand_view(self):
         """Tạo View tổng hợp 'grand_lookups'."""
-        logger.info("[cyan]Creating 'grand_lookups' view...")
+        logger.info("[cyan]Creating 'grand_lookups' view...[/cyan]")
         
         suffix = "html" if self.config.html_mode else "json"
         
@@ -159,35 +160,40 @@ class OutputDatabase:
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
             self.cursor.execute(sql)
             self.conn.commit()
-            logger.info("[green]View 'grand_lookups' created successfully.")
+            logger.info("[green]View 'grand_lookups' created successfully.[/green]")
         except Exception as e:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
-            logger.debug(f"SQL was: {sql}")
 
-    def _sort_lookups_table(self):
+    def _sort_lookups_table_python_side(self):
         """
-        [NEW] Sắp xếp lại bảng lookups theo thứ tự key.
-        Điều này quan trọng vì lookups được insert từ nhiều nguồn khác nhau (Headwords, Decons, Roots).
+        Sắp xếp bảng Lookups theo Pali Sort Key (Python Side).
+        SQLite không hỗ trợ Pali Collation, nên ta phải fetch all -> sort python -> rewrite.
         """
-        logger.info("[yellow]Re-sorting 'lookups' table by key...[/yellow]")
+        logger.info("[yellow]Re-sorting 'lookups' table (Python Pali Sort)...[/yellow]")
+        
         try:
-            # 1. Tạo bảng tạm đã sort
-            self.cursor.execute("CREATE TABLE lookups_sorted AS SELECT * FROM lookups ORDER BY key")
+            # 1. Fetch ALL lookups
+            self.cursor.execute("SELECT key, target_id, type FROM lookups")
+            rows = self.cursor.fetchall()
             
-            # 2. Drop bảng cũ
-            self.cursor.execute("DROP TABLE lookups")
+            # 2. Sort using Python Pali Key
+            # x[0] is the key
+            rows.sort(key=lambda x: pali_sort_key(x[0]))
             
-            # 3. Rename bảng mới
-            self.cursor.execute("ALTER TABLE lookups_sorted RENAME TO lookups")
+            # 3. Truncate table (Faster than DROP/CREATE usually, but SQLite uses DELETE)
+            self.cursor.execute("DELETE FROM lookups")
             
-            # 4. Re-create Index (vì DROP TABLE làm mất index)
-            self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key)")
+            # 4. Re-insert in sorted order
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", rows)
             
-            # Lưu ý: Trigger và FTS không bị ảnh hưởng vì chúng là bảng/đối tượng riêng, 
-            # nhưng trigger cần drop/create lại nếu nó gắn chặt vào bảng. 
-            # Tuy nhiên ở đây ta dùng FTS trigger 'AFTER INSERT', bảng lookups mới chưa có trigger.
-            # Ta cần tạo lại Trigger.
+            # 5. Handle FTS Trigger (Need to ensure FTS is in sync or rebuild it)
+            # Since we deleted rows, the DELETE trigger (if any) or just consistency might be an issue.
+            # But we only had INSERT trigger.
+            # Easiest way to ensure FTS is correct and sorted/optimized is to rebuild it too.
+            self.cursor.execute("DELETE FROM lookups_fts")
+            self.cursor.execute("INSERT INTO lookups_fts(lookups_fts) VALUES('rebuild')") # Full Rebuild
             
+            # Re-ensure trigger exists
             self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
             self.cursor.execute("""
                 CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
@@ -196,17 +202,17 @@ class OutputDatabase:
             """)
             
             self.conn.commit()
-            logger.info("[green]Lookups table sorted successfully.")
+            logger.info(f"[green]Lookups table sorted successfully ({len(rows)} rows).[/green]")
             
         except Exception as e:
             logger.error(f"[red]Failed to sort lookups table: {e}")
 
     def close(self):
         if self.conn:
-            # [NEW] Sort lookups before creating view
-            self._sort_lookups_table()
+            # [STRICT SORT] Re-order lookups using Python Pali Key
+            self._sort_lookups_table_python_side()
             
             self.create_grand_view()
-            logger.info("[green]Indexing & Optimizing (VACUUM)...")
+            logger.info("[green]Indexing & Optimizing (VACUUM)...[/green]")
             self.conn.execute("VACUUM")
             self.conn.close()
