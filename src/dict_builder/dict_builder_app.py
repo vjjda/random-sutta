@@ -16,8 +16,8 @@ from .logic.batch_worker import process_batch_worker, process_decon_worker, proc
 logger = logging.getLogger("dict_builder")
 
 class DictBuilder:
-    def __init__(self, mode: str = "mini", html_mode: bool = False):
-        self.config = BuilderConfig(mode=mode, html_mode=html_mode)
+    def __init__(self, mode: str = "mini", html_mode: bool = False, export_web: bool = False):
+        self.config = BuilderConfig(mode=mode, html_mode=html_mode, export_web=export_web)
         self.executor = None
         self.output_db = None
         self.session = None
@@ -191,9 +191,18 @@ class DictBuilder:
             if self.session:
                 self.session.close()
 
-def run_builder(mode: str = "mini", html_mode: bool = False):
-    builder = DictBuilder(mode=mode, html_mode=html_mode)
+def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = False):
+    builder = DictBuilder(mode=mode, html_mode=html_mode, export_web=export_web)
     builder.run()
+
+def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_flag: bool = False):
+    # Luôn chạy bản Local
+    run_builder(mode=mode, html_mode=html_mode, export_web=False)
+    
+    # Nếu có cờ export, chạy thêm bản Web (đã tối ưu nén)
+    if export_flag:
+        logger.info(f"\n[bold blue]🌐 OPTIMIZING FOR WEB EXPORT: {mode.upper()}[/bold blue]")
+        run_builder(mode=mode, html_mode=html_mode, export_web=True)
 
 # Helper for unpacking tuple arguments for deconstructions
 def decon_worker_wrapper(args_tuple, config):
