@@ -104,3 +104,16 @@ class DpdJsonRenderer:
             data.append(ex2)
             
         return json.dumps(data, ensure_ascii=False)
+
+    def render_grammar_notes(self, grammar_list: list) -> str:
+        """Trích xuất Grammar Note JSON."""
+        data = []
+        for headword, pos, grammar_str in grammar_list:
+            item = {
+                "headword": headword,
+                "pos": pos,
+                "grammar": grammar_str
+            }
+            data.append(item)
+            
+        return json.dumps(data, ensure_ascii=False)

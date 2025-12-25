@@ -62,3 +62,9 @@ class DpdRenderer:
             i.lookup_key, 
             i.deconstructor_unpack_list
         )
+
+    def render_grammar_notes_html(self, grammar_list: list) -> str:
+        return self.html_renderer.render_grammar_notes(grammar_list)
+
+    def render_grammar_notes_json(self, grammar_list: list) -> str:
+        return self.json_renderer.render_grammar_notes(grammar_list)

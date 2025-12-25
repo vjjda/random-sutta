@@ -42,6 +42,7 @@ class OutputDatabase:
             self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT, grammar_{suffix} TEXT, example_{suffix} TEXT);")
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT, grammar_json TEXT);")
 
     def insert_batch(self, entries: list, lookups: list):
         if entries:
@@ -60,6 +61,11 @@ class OutputDatabase:
             self.cursor.executemany("INSERT INTO deconstructions (id, lookup_key, split_string) VALUES (?,?,?)", deconstructions)
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
+        self.conn.commit()
+
+    def insert_grammar_notes(self, grammar_batch: list):
+        if grammar_batch:
+            self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html, grammar_json) VALUES (?,?,?)", grammar_batch)
         self.conn.commit()
 
     def create_grand_view(self):
@@ -90,6 +96,10 @@ class OutputDatabase:
             d.split_string AS decon_split,
             d.lookup_key AS decon_key_ref,
             
+            -- Grammar Notes
+            gn.grammar_html AS grammar_note_html,
+            gn.grammar_json AS grammar_note_json,
+
             -- [CHANGED] Đưa Entries xuống sau
             {entry_select_str}
             
@@ -98,6 +108,8 @@ class OutputDatabase:
             ON l.target_id = e.id AND l.is_headword = 1
         LEFT JOIN deconstructions d 
             ON l.target_id = d.id AND l.is_headword = 0
+        LEFT JOIN grammar_notes gn
+            ON l.key = gn.key
             
         -- [CHANGED] Sắp xếp theo lookup_key
         ORDER BY l.key ASC;

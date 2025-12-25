@@ -31,3 +31,9 @@ CREATE TABLE IF NOT EXISTS lookups (
 );
 
 CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);
+
+CREATE TABLE IF NOT EXISTS grammar_notes (
+    key TEXT PRIMARY KEY,
+    grammar_html TEXT,
+    grammar_json TEXT
+);

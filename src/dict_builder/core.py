@@ -11,7 +11,7 @@ from .renderer import DpdRenderer
 
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
-from .logic.batch_worker import process_batch_worker, process_decon_worker
+from .logic.batch_worker import process_batch_worker, process_decon_worker, process_grammar_notes_worker
 
 class DictBuilder:
     def __init__(self, mode: str = "mini", html_mode: bool = False):
@@ -89,7 +89,35 @@ class DictBuilder:
                 except Exception as e:
                     print(f"[red]Decon batch error: {e}")
 
-        # --- PHASE 3: CLEANUP ---
+        # --- PHASE 3: GRAMMAR NOTES ---
+        print("\n[green]Processing Grammar Notes (Parallel)...")
+        
+        grammar_keys = [r.lookup_key for r in session.query(Lookup.lookup_key).filter(Lookup.grammar != "").all()]
+        
+        if target_set is not None:
+            original_grammar_count = len(grammar_keys)
+            grammar_keys = [k for k in grammar_keys if k in target_set]
+            print(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
+
+        GRAMMAR_BATCH_SIZE = 5000
+        grammar_chunks = [grammar_keys[i : i + GRAMMAR_BATCH_SIZE] for i in range(0, len(grammar_keys), GRAMMAR_BATCH_SIZE)]
+            
+        print(f"[green]Processing {len(grammar_keys)} grammar notes in {len(grammar_chunks)} chunks...")
+        
+        processed_grammar = 0
+        with ProcessPoolExecutor() as executor:
+            futures = [executor.submit(process_grammar_notes_worker, chunk, self.config) for chunk in grammar_chunks]
+            
+            for future in as_completed(futures):
+                try:
+                    grammar_batch = future.result()
+                    output_db.insert_grammar_notes(grammar_batch)
+                    processed_grammar += len(grammar_batch)
+                    print(f"   Saved grammar notes... ({processed_grammar}/{len(grammar_keys)})", end="\r")
+                except Exception as e:
+                    print(f"[red]Grammar batch error: {e}")
+
+        # --- PHASE 4: CLEANUP ---
         output_db.close()
         session.close()
         
