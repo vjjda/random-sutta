@@ -18,7 +18,8 @@ IMPORT_MAP_ALIASES = {
     "ui": "assets/modules/ui",
     "tts": "assets/modules/tts",
     "data": "assets/modules/data",
-    "pali-lookup": "assets/modules/pali_lookup"
+    "pali-lookup": "assets/modules/pali_lookup",
+    "wa-sqlite": "assets/libs"
 }
 
 def _resolve_path(base_dir: Path, current_file_rel: str, import_path: str) -> str:

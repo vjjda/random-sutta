@@ -62,7 +62,7 @@ export const LookupManager = {
         const isReady = await SqliteService.init();
         if (!isReady) return;
         
-        const result = SqliteService.search(cleanText);
+        const result = await SqliteService.search(cleanText);
         
         if (result) {
             const html = PaliRenderer.render(result);
