@@ -1,7 +1,7 @@
 # Path: src/dict_builder/core.py
 import time
 import logging
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed, CancelledError
 
 from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import Lookup
@@ -18,114 +18,156 @@ logger = logging.getLogger("dict_builder")
 class DictBuilder:
     def __init__(self, mode: str = "mini", html_mode: bool = False):
         self.config = BuilderConfig(mode=mode, html_mode=html_mode)
+        self.executor = None
+        self.output_db = None
+        self.session = None
+
+    def run_safe_executor(self, worker_func, chunks, label, total_items, result_handler, *args):
+        """
+        Generic helper to run tasks in parallel with safe KeyboardInterrupt handling.
+        """
+        if not chunks:
+            return
+
+        logger.info(f"[green]Processing {total_items} {label} in {len(chunks)} chunks...")
+        processed_count = 0
         
+        # We reuse self.executor if it exists (or create one per phase if preferred, 
+        # but one global executor is safer for cleanup)
+        # Here we use context manager for each phase or a global one? 
+        # Better to have one executor for the whole run to manage shutdown easier.
+        # But 'with ProcessPoolExecutor' is cleanest. Let's stick to phase-based for now.
+        
+        try:
+            with ProcessPoolExecutor() as executor:
+                self.executor = executor # Keep ref for shutdown
+                futures = [executor.submit(worker_func, chunk, *args) for chunk in chunks]
+                
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                        processed_count += result_handler(result)
+                        logger.info(f"   Saved {label}... ({processed_count}/{total_items})")
+                    except Exception as e:
+                        logger.error(f"[red]{label} batch error: {e}")
+        except KeyboardInterrupt:
+            logger.warning("\n[bold yellow]⚠️ User interrupted! Shutting down workers...[/bold yellow]")
+            if self.executor:
+                self.executor.shutdown(wait=False, cancel_futures=True)
+            raise # Re-raise to stop the whole process
+
     def run(self):
         start_time = time.time()
         fmt = "HTML" if self.config.html_mode else "JSON"
         logger.info(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode}, Format: {fmt})...")
         
-        output_db = OutputDatabase(self.config)
-        output_db.setup()
+        try:
+            self.output_db = OutputDatabase(self.config)
+            self.output_db.setup()
 
-        session = get_db_session(self.config.DPD_DB_PATH)
-        selector = WordSelector(self.config)
-        
-        target_ids, target_set = selector.get_target_ids(session)
-        
-        if not target_ids:
-            logger.error("[red]No targets found. Aborting.")
-            session.close()
-            return
-
-        # --- PHASE 1: HEADWORDS ---
-        BATCH_SIZE = 2500
-        chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
-        logger.info(f"[green]Processing {len(target_ids)} headwords in {len(chunks)} chunks...")
-
-        processed_count = 0
-        with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(process_batch_worker, chunk, self.config, target_set) for chunk in chunks]
+            self.session = get_db_session(self.config.DPD_DB_PATH)
+            selector = WordSelector(self.config)
             
-            for future in as_completed(futures):
-                try:
-                    entries, lookups = future.result()
-                    output_db.insert_batch(entries, lookups)
-                    processed_count += len(entries)
-                    logger.info(f"   Saved headwords... ({processed_count}/{len(target_ids)})")
-                except Exception as e:
-                    logger.error(f"[red]Batch processing error: {e}")
-        
-        logger.info(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
-
-        # --- PHASE 2: DECONSTRUCTIONS ---
-        logger.info("[green]Processing Deconstructions (Parallel)...")
-        
-        decon_keys = [r.lookup_key for r in session.query(Lookup.lookup_key).filter(Lookup.deconstructor != "").all()]
-        
-        # [UPDATED] Bật tính năng lọc Deconstruction theo target_set
-        # Giúp loại bỏ các từ phân tích rác không có trong văn bản
-        if target_set is not None:
-            original_count = len(decon_keys)
-            decon_keys = [k for k in decon_keys if k in target_set]
-            logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
-
-        DECON_BATCH_SIZE = 5000
-        decon_chunks = []
-        for i in range(0, len(decon_keys), DECON_BATCH_SIZE):
-            chunk_keys = decon_keys[i : i + DECON_BATCH_SIZE]
-            start_id = i + 1 
-            decon_chunks.append((chunk_keys, start_id))
+            target_ids, target_set = selector.get_target_ids(self.session)
             
-        logger.info(f"[green]Processing {len(decon_keys)} deconstructions in {len(decon_chunks)} chunks...")
-        
-        processed_decon = 0
-        with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(process_decon_worker, chunk, start_id, self.config) for chunk, start_id in decon_chunks]
-            
-            for future in as_completed(futures):
-                try:
-                    decons, lookups = future.result()
-                    output_db.insert_deconstructions(decons, lookups)
-                    processed_decon += len(decons)
-                    logger.info(f"   Saved deconstructions... ({processed_decon}/{len(decon_keys)})")
-                except Exception as e:
-                    logger.error(f"[red]Decon batch error: {e}")
+            if not target_ids:
+                logger.error("[red]No targets found. Aborting.")
+                return
 
-        # --- PHASE 3: GRAMMAR NOTES ---
-        logger.info("\n[green]Processing Grammar Notes (Parallel)...")
-        
-        grammar_keys = [r.lookup_key for r in session.query(Lookup.lookup_key).filter(Lookup.grammar != "").all()]
-        
-        if target_set is not None:
-            original_grammar_count = len(grammar_keys)
-            grammar_keys = [k for k in grammar_keys if k in target_set]
-            logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
+            # --- PHASE 1: HEADWORDS ---
+def headword_handler(result):
+    entries, lookups = result
+    self.output_db.insert_batch(entries, lookups)
+    return len(entries)
 
-        GRAMMAR_BATCH_SIZE = 5000
-        grammar_chunks = [grammar_keys[i : i + GRAMMAR_BATCH_SIZE] for i in range(0, len(grammar_keys), GRAMMAR_BATCH_SIZE)]
+            BATCH_SIZE = 2500
+            chunks = [target_ids[i:i + BATCH_SIZE] for i in range(0, len(target_ids), BATCH_SIZE)]
             
-        logger.info(f"[green]Processing {len(grammar_keys)} grammar notes in {len(grammar_chunks)} chunks...")
-        
-        processed_grammar = 0
-        with ProcessPoolExecutor() as executor:
-            futures = [executor.submit(process_grammar_notes_worker, chunk, self.config) for chunk in grammar_chunks]
+            self.run_safe_executor(
+                process_batch_worker, 
+                chunks, 
+                "headwords", 
+                len(target_ids), 
+                headword_handler, 
+                self.config, 
+                target_set
+            )
             
-            for future in as_completed(futures):
-                try:
-                    grammar_batch = future.result()
-                    output_db.insert_grammar_notes(grammar_batch)
-                    processed_grammar += len(grammar_batch)
-                    logger.info(f"   Saved grammar notes... ({processed_grammar}/{len(grammar_keys)})")
-                except Exception as e:
-                    logger.error(f"[red]Grammar batch error: {e}")
+            logger.info(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
-        # --- PHASE 4: CLEANUP ---
-        output_db.close()
-        session.close()
-        
-        logger.info(f"\n✅ Build Complete: {self.config.output_path}")
-        logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
+            # --- PHASE 2: DECONSTRUCTIONS ---
+            logger.info("[green]Processing Deconstructions (Parallel)...")
+            decon_keys = [r.lookup_key for r in self.session.query(Lookup.lookup_key).filter(Lookup.deconstructor != "").all()]
+            
+            if target_set is not None:
+                original_count = len(decon_keys)
+                decon_keys = [k for k in decon_keys if k in target_set]
+                logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
+
+            DECON_BATCH_SIZE = 5000
+            decon_chunks = []
+            for i in range(0, len(decon_keys), DECON_BATCH_SIZE):
+                chunk_keys = decon_keys[i : i + DECON_BATCH_SIZE]
+                start_id = i + 1 
+                decon_chunks.append((chunk_keys, start_id))
+            
+            def decon_handler(result):
+                decons, lookups = result
+                self.output_db.insert_deconstructions(decons, lookups)
+                return len(decons)
+
+                        self.run_safe_executor(
+                            decon_worker_wrapper,
+                            decon_chunks, 
+                            "deconstructions",
+                            len(decon_keys),
+                            decon_handler,
+                            self.config 
+                        )
+            # --- PHASE 3: GRAMMAR NOTES ---
+            logger.info("\n[green]Processing Grammar Notes (Parallel)...")
+            grammar_keys = [r.lookup_key for r in self.session.query(Lookup.lookup_key).filter(Lookup.grammar != "").all()]
+            
+            if target_set is not None:
+                original_grammar_count = len(grammar_keys)
+                grammar_keys = [k for k in grammar_keys if k in target_set]
+                logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
+
+            GRAMMAR_BATCH_SIZE = 5000
+            grammar_chunks = [grammar_keys[i : i + GRAMMAR_BATCH_SIZE] for i in range(0, len(grammar_keys), GRAMMAR_BATCH_SIZE)]
+            
+            def grammar_handler(result):
+                grammar_batch = result
+                self.output_db.insert_grammar_notes(grammar_batch)
+                return len(grammar_batch)
+                
+            self.run_safe_executor(
+                process_grammar_notes_worker,
+                grammar_chunks,
+                "grammar notes",
+                len(grammar_keys),
+                grammar_handler,
+                self.config
+            )
+
+            # --- PHASE 4: CLEANUP ---
+            self.output_db.close()
+            logger.info(f"\n✅ Build Complete: {self.config.output_path}")
+            logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
+            
+        except KeyboardInterrupt:
+            logger.warning("\n[bold red]🛑 Process Interrupted by User.[/bold red]")
+        except Exception as e:
+            logger.critical(f"[bold red]❌ Unexpected Error: {e}[/bold red]", exc_info=True)
+        finally:
+            if self.session:
+                self.session.close()
 
 def run_builder(mode: str = "mini", html_mode: bool = False):
     builder = DictBuilder(mode=mode, html_mode=html_mode)
     builder.run()
+
+# Helper for unpacking tuple arguments for deconstructions
+def decon_worker_wrapper(args_tuple, config):
+    keys, start_id = args_tuple
+    return process_decon_worker(keys, start_id, config)
