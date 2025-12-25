@@ -22,7 +22,7 @@ def build_book_data(
 ) -> Dict[str, Any]:
     """
     Xây dựng dữ liệu sách (Staging Phase).
-    [UPDATED] Hỗ trợ inject navigation từ bên ngoài cho root book ID.
+    [UPDATED] Hỗ trợ inject navigation từ Super Tree.
     """
     
     # 1. Load Tree
@@ -47,7 +47,7 @@ def build_book_data(
         if uid in meta_dict and author:
             meta_dict[uid]["author_uid"] = author
 
-    # 4. Rich Staging: Calculate Navigation & Pool (Internal)
+    # 4. Rich Staging: Calculate Navigation & Pool
     nav_sequence = extract_nav_sequence(final_structure, meta_dict)
     reading_nav_map = generate_navigation_map(nav_sequence)
     random_pool = generate_random_pool(nav_sequence)
@@ -64,21 +64,28 @@ def build_book_data(
     book_id = group_name.split("/")[-1]
     book_meta = names_map.get(book_id, {})
     
-    # [NEW] Inject External Nav (Prev/Next Book) if available
+    # [NEW] Inject External Nav (Prev/Next Book)
+    # Logic: Nếu book_id có trong map pre-calc, ta tiêm vào meta
     if external_root_nav and book_id in external_root_nav:
-        ext_nav = external_root_nav[book_id]
+        ext_nav_entry = external_root_nav[book_id]
         
-        # Đảm bảo root meta tồn tại
+        # Đảm bảo root meta tồn tại (thường thì dòng 106-107 trong code cũ chưa tạo meta cho root nếu nó là root của tree)
         if book_id not in meta_dict:
-            # Tạo meta cho root book nếu chưa có (thường là type branch)
+            # Tạo meta cho root book
             ensure_meta_entry(book_id, "branch", names_map, meta_dict)
-        
-        # Merge Nav
+            # Nếu ensure_meta_entry lấy từ names_map mà thiếu type, force type branch
+            if "type" not in meta_dict[book_id]:
+                meta_dict[book_id]["type"] = "branch"
+
+        # Khởi tạo nav dict nếu chưa có
         if "nav" not in meta_dict[book_id]:
             meta_dict[book_id]["nav"] = {}
-        
-        # Chỉ cập nhật prev/next, giữ nguyên các nav nội bộ (nếu có - dù root thường ko có nav nội bộ)
-        meta_dict[book_id]["nav"].update(ext_nav)
+            
+        # Merge Nav: Chỉ lấy prev/next từ super tree
+        if "prev" in ext_nav_entry:
+            meta_dict[book_id]["nav"]["prev"] = ext_nav_entry["prev"]
+        if "next" in ext_nav_entry:
+            meta_dict[book_id]["nav"]["next"] = ext_nav_entry["next"]
 
     return {
         "id": book_id,

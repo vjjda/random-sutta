@@ -80,6 +80,45 @@ def _load_super_metadata(valid_keys: Set[str]) -> Dict[str, Any]:
                 }
     return merged_meta
 
+def precalculate_super_navigation(available_book_ids: List[str]) -> Dict[str, Dict[str, str]]:
+    """
+    [NEW] Tính toán trước Navigation Map của Super Book dựa trên danh sách sách có sẵn.
+    Hàm này được gọi ĐẦU TIÊN bởi BuildManager để lấy nav cho các root book.
+    """
+    if not RAW_SUPER_TREE_FILE.exists():
+        logger.warning(f"⚠️ Super tree missing at {RAW_SUPER_TREE_FILE}. Cannot pre-calc nav.")
+        return {}
+
+    logger.info("🔮 Pre-calculating Super Navigation...")
+    
+    raw_tree = _load_json(RAW_SUPER_TREE_FILE)
+    if not raw_tree: return {}
+
+    # 1. Prune tree giả lập dựa trên danh sách sách dự kiến
+    allowed_set = set(available_book_ids)
+    final_structure = _prune_tree(raw_tree, allowed_set)
+    
+    if not final_structure:
+        return {}
+
+    # 2. Load Meta tối thiểu để hàm generate_depth_navigation hoạt động
+    valid_keys: Set[str] = set()
+    _flatten_keys(final_structure, valid_keys)
+    
+    # Chúng ta cần type của các node để generate_depth_navigation bỏ qua leaf/alias
+    # Ở cấp Super Book, hầu hết các node là 'group' hoặc 'branch' (được coi là branch trong logic nav)
+    # Ta giả định tạm thời mọi node trong super tree là branch/group để tính nav
+    temp_meta = {uid: {"type": "branch"} for uid in valid_keys}
+
+    # 3. Tính Nav
+    # Cấu trúc Super Tree: {"sutta": [...], "vinaya": [...]}
+    # Chúng ta wrap vào root giả để tính toán
+    wrapped_structure = {"tpk": final_structure}
+    nav_map = generate_depth_navigation(wrapped_structure, temp_meta)
+    
+    logger.info(f"   ✅ Pre-calculated nav for {len(nav_map)} nodes.")
+    return nav_map
+
 def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str, Any]]:
     if not RAW_SUPER_TREE_FILE.exists():
         logger.error(f"❌ Super tree not found at {RAW_SUPER_TREE_FILE}")
@@ -131,8 +170,7 @@ def generate_super_book_data(processed_book_ids: List[str]) -> Optional[Dict[str
         "tpk": final_structure
     }
     
-    # [NEW] 4. Calculate Navigation (Staging Phase)
-    # Tính toán Nav cho toàn bộ cây Super Tree ngay tại đây
+    # 4. Calculate Navigation (Staging Phase)
     logger.info("   🧭 Calculating Super Navigation...")
     tpk_nav_map = generate_depth_navigation(new_structure, final_meta)
     
