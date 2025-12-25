@@ -53,11 +53,20 @@ class OutputDatabase:
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
         
+        # [NEW] FTS5 for Full Text Search
+        self.cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS lookups_fts USING fts5(key, target_id UNINDEXED, type UNINDEXED, tokenize='unicode61 remove_diacritics 2');")
+        
+        # [NEW] Trigger to populate FTS
+        self.cursor.execute("""
+            CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
+                INSERT INTO lookups_fts(key, target_id, type) VALUES (new.key, new.target_id, new.type);
+            END;
+        """)
+        
         if self.config.html_mode:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
         else:
-            # [CHANGED] grammar_json -> grammar_note_json
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_note_json TEXT);")
+            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_json TEXT);")
 
     def populate_json_keys(self):
         """Insert JSON key mappings into the database."""
@@ -110,8 +119,7 @@ class OutputDatabase:
             if self.config.html_mode:
                 self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html) VALUES (?, ?)", grammar_batch)
             else:
-                # [CHANGED] grammar_json -> grammar_note_json
-                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_note_json) VALUES (?, ?)", grammar_batch)
+                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_json) VALUES (?, ?)", grammar_batch)
         self.conn.commit()
 
     def create_grand_view(self):
@@ -123,8 +131,7 @@ class OutputDatabase:
         if self.config.html_mode:
             grammar_field = "gn.grammar_html AS grammar_note_html"
         else:
-            # [CHANGED] grammar_json -> grammar_note_json
-            grammar_field = "gn.grammar_note_json AS grammar_note_json"
+            grammar_field = "gn.grammar_json AS grammar_note_json"
 
         entry_cols = []
         entry_cols.append("e.definition_" + suffix + " AS entry_definition")
