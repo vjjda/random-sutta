@@ -113,22 +113,42 @@ export const PaliRenderer = {
         const openAttr = isOpen ? 'open' : '';
         let html = `<details class="dpd-entry" ${openAttr}>`;
         
-        // Header / Summary -> <summary>
+        // --- Header / Summary Construction ---
         const pos = def[getAbbr('pos')] || '';
         const meaning = def[getAbbr('meaning')] || '';
         const plusCase = def[getAbbr('plus_case')] || '';
         const construction = def[getAbbr('construction')] || '';
         const degree = def[getAbbr('degree')] || '';
         
-        let summary = `<span class="dpd-lemma">${headword}</span>: <span class="dpd-pos">${pos}</span>. `;
-        if (plusCase) summary += `(${plusCase}) `;
-        summary += `<span class="dpd-meaning">${meaning}</span>`;
-        if (construction) summary += ` [${construction}]`;
-        if (degree) summary += ` ${degree}`;
+        // Line 1: Lemma (Left) --- POS + Case (Right)
+        let line1 = `
+            <div class="dpd-summary-line-1">
+                <span class="dpd-lemma">${headword}</span>
+                <span class="dpd-pos-group">
+                    <span class="dpd-pos">${pos}</span>
+                    ${plusCase ? `<span class="dpd-plus-case">(${plusCase})</span>` : ''}
+                </span>
+            </div>`;
+
+        // Line 2: Construction (Standalone, Low Profile)
+        let line2 = '';
+        if (construction) {
+            line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">[${construction}]</span></div>`;
+        }
+
+        // Line 3: Meaning (Left) --- Degree (Right, Very Low Profile)
+        let line3 = `
+            <div class="dpd-summary-line-3">
+                <span class="dpd-meaning">${meaning}</span>
+                ${degree ? `<span class="dpd-degree">${degree}</span>` : ''}
+            </div>`;
         
         // Add a visual indicator or "More" text if needed, though default marker exists.
-        // We can style summary::marker or add a span.
-        html += `<summary class="dpd-summary">${summary}</summary>`;
+        html += `<summary class="dpd-summary">
+                    ${line1}
+                    ${line2}
+                    ${line3}
+                 </summary>`;
         
         // The expanded content
         html += `<div class="dpd-details-content">`;

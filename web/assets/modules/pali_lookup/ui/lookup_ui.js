@@ -27,6 +27,15 @@ export const LookupUI = {
              e.stopPropagation();
         });
 
+        // Prevent focus loss when clicking summaries (expand buttons)
+        this.elements.popup.addEventListener("mousedown", (e) => {
+            // If clicking a summary (the expand button), prevent default focus behavior
+            // so text selection in the main window remains active for navigation.
+            if (e.target.closest("summary")) {
+                e.preventDefault();
+            }
+        });
+
         // Navigation
         if (this.elements.btnPrev) {
             this.elements.btnPrev.addEventListener("click", (e) => {
