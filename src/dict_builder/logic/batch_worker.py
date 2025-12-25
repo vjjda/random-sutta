@@ -7,7 +7,6 @@ from src.dict_builder.db.db_helpers import get_db_session
 from src.dict_builder.db.models import DpdHeadword, Lookup
 from ..renderer import DpdRenderer
 from ..config import BuilderConfig
-from ..tools.pali_sort_key import pali_sort_key
 
 def process_data(data_str: str, compress: bool) -> str | bytes:
     if not data_str: return None
@@ -66,7 +65,7 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
             # Logic này nằm NGOÀI block if/else phía trên -> Chạy giống hệt nhau
             
             # Luôn thêm Headword
-            lookups_data.append((i.lemma_clean, i.id, 1, 0, pali_sort_key(i.lemma_clean)))
+            lookups_data.append((i.lemma_clean, i.id, 1, 0))
             
             # Xử lý Inflections
             unique_infs = set(i.inflections_list_all)
@@ -79,7 +78,7 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
                 if target_set is not None and inf not in target_set:
                     continue
                     
-                lookups_data.append((inf, i.id, 1, 1, pali_sort_key(inf)))
+                lookups_data.append((inf, i.id, 1, 1))
                     
     except Exception as e:
         print(f"[red]Error in entries worker: {e}")
@@ -100,7 +99,7 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
         for d in items:
             split_str = "; ".join(d.deconstructor_unpack_list)
             decon_batch.append((current_id, d.lookup_key, split_str))
-            decon_lookup_batch.append((d.lookup_key, current_id, 0, 0, pali_sort_key(d.lookup_key)))
+            decon_lookup_batch.append((d.lookup_key, current_id, 0, 0))
             current_id += 1
     except Exception as e:
         print(f"[red]Error in decon worker: {e}")
