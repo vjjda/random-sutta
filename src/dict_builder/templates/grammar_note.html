@@ -1,18 +1,20 @@
 <div class="grammar-note-container">
-    <table class="gn-table">
+    <table class="grammar-note-table">
         <thead>
             <tr>
-                <th class="gn-col-pos">POS</th>
-                <th class="gn-col-gram">Grammar</th>
-                <th class="gn-col-word">Word</th>
+                <th>pos</th>
+                <th colspan="3">grammar</th>
+                <th>word</th>
             </tr>
         </thead>
         <tbody>
             % for row in rows:
             <tr>
-                <td class="gn-col-pos">${row['pos']}</td>
-                <td class="gn-col-gram">${row['grammar']}</td>
-                <td class="gn-col-word">${row['headword']}</td>
+                <td class="col-pos">${row['pos']}</td>
+                <td class="col-g1">${row['g1']}</td>
+                <td class="col-g2">${row['g2']}</td>
+                <td class="col-g3">${row['g3']}</td>
+                <td class="col-word">${row['word']}</td>
             </tr>
             % endfor
         </tbody>
