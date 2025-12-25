@@ -232,6 +232,45 @@ export const SqliteService = {
         return [{ columns, values: rows }];
     },
 
+    /**
+     * Tìm kiếm thông minh sử dụng FTS5
+     * @param {string} term - Từ khóa tra cứu
+     * @returns {Promise<Array>} Danh sách kết quả đã sắp xếp
+     */
+    async smartSearch(term) {
+        if (!this.db || !term) return [];
+
+        const cleanTerm = term.toLowerCase().trim();
+        
+        // Query sử dụng FTS5 với logic trọng số:
+        // 1. Ưu tiên khớp chính xác (Exact Match)
+        // 2. Ưu tiên từ có độ dài gần nhất với term
+        // 3. Sử dụng BM25 Rank của FTS
+        const sql = `
+            SELECT 
+                target_id, 
+                type, 
+                key,
+                (key = ?) as is_exact
+            FROM lookups_fts 
+            WHERE key MATCH ? 
+            ORDER BY 
+                is_exact DESC, 
+                abs(length(key) - length(?)) ASC,
+                rank
+            LIMIT 10
+        `;
+
+        try {
+            // MATCH query trong FTS thường dùng cú pháp 'term*' để tìm prefix
+            const results = await this.execute(sql, [cleanTerm, `${cleanTerm}*`, cleanTerm]);
+            return results;
+        } catch (error) {
+            console.error("FTS Search Error:", error);
+            return [];
+        }
+    },
+
     async search(term) {
         if (!this.db) return null;
         try {
@@ -293,4 +332,5 @@ export const SqliteService = {
             return null;
         }
     }
+    
 };
