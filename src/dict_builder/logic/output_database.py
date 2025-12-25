@@ -33,7 +33,7 @@ class OutputDatabase:
     def _create_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, lookup_key TEXT NOT NULL, split_string TEXT);")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, is_headword BOOLEAN NOT NULL, is_inflection BOOLEAN DEFAULT 0);")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, is_headword BOOLEAN NOT NULL, is_inflection BOOLEAN DEFAULT 0, pali_sort_key TEXT);")
         
         suffix = "html" if self.config.html_mode else "json"
         if self.config.is_tiny_mode:
@@ -42,6 +42,7 @@ class OutputDatabase:
             self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT, grammar_{suffix} TEXT, example_{suffix} TEXT);")
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
+        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_sort ON lookups(pali_sort_key);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT, grammar_json TEXT);")
 
     def insert_batch(self, entries: list, lookups: list):
@@ -53,14 +54,14 @@ class OutputDatabase:
                 sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{suffix}, grammar_{suffix}, example_{suffix}) VALUES (?,?,?,?,?,?)"
             self.cursor.executemany(sql, entries)
         if lookups:
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection, pali_sort_key) VALUES (?,?,?,?,?)", lookups)
         self.conn.commit()
 
     def insert_deconstructions(self, deconstructions: list, lookups: list):
         if deconstructions:
             self.cursor.executemany("INSERT INTO deconstructions (id, lookup_key, split_string) VALUES (?,?,?)", deconstructions)
         if lookups:
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection) VALUES (?,?,?,?)", lookups)
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, is_headword, is_inflection, pali_sort_key) VALUES (?,?,?,?,?)", lookups)
         self.conn.commit()
 
     def insert_grammar_notes(self, grammar_batch: list):
@@ -91,6 +92,7 @@ class OutputDatabase:
             l.key AS lookup_key,
             l.is_headword,
             l.is_inflection,
+            l.pali_sort_key,
             
             -- [CHANGED] Đưa Deconstruction lên trước
             d.split_string AS decon_split,
@@ -111,8 +113,8 @@ class OutputDatabase:
         LEFT JOIN grammar_notes gn
             ON l.key = gn.key
             
-        -- [CHANGED] Sắp xếp theo lookup_key
-        ORDER BY l.key ASC;
+        -- [CHANGED] Sắp xếp theo pali_sort_key
+        ORDER BY l.pali_sort_key ASC;
         """
         
         try:
