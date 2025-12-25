@@ -45,7 +45,8 @@ export const SqliteService = {
             
             // 2. Register IDB VFS
             // [FIX] Pass 'module' to constructor
-            const vfs = new IDBBatchAtomicVFS(VFS_NAME, module, { idbName: "DPD_CACHE" });
+            // Use a new DB name to avoid conflict with previous sql.js cache
+            const vfs = new IDBBatchAtomicVFS(VFS_NAME, module, { idbName: "DPD_CACHE_V2" });
             await vfs.isReady(); // [FIX] Wait for IDB ready
             this.sqlite3.vfs_register(vfs, true);
 
