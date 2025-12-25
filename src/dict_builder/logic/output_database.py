@@ -36,7 +36,8 @@ class OutputDatabase:
 
     def _create_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, word TEXT NOT NULL, split_string TEXT);")
+        # [RENAMED] split_string -> components
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, word TEXT NOT NULL, components TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, type INTEGER NOT NULL);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS json_keys (abbr_key TEXT PRIMARY KEY, full_key TEXT);")
 
@@ -103,7 +104,8 @@ class OutputDatabase:
 
     def insert_deconstructions(self, deconstructions: list, lookups: list):
         if deconstructions:
-            self.cursor.executemany("INSERT INTO deconstructions (id, word, split_string) VALUES (?, ?, ?)", deconstructions)
+            # [RENAMED] split_string -> components
+            self.cursor.executemany("INSERT INTO deconstructions (id, word, components) VALUES (?, ?, ?)", deconstructions)
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
         self.conn.commit()
@@ -139,9 +141,10 @@ class OutputDatabase:
 
         # 2. Unified Definition Field (Using CASE WHEN)
         # Type 0 = Deconstruction, 1 = Entry, 2 = Root
+        # [RENAMED] d.split_string -> d.components
         definition_field = (
             f"CASE "
-            f"WHEN l.type = 0 THEN d.split_string "
+            f"WHEN l.type = 0 THEN d.components "
             f"WHEN l.type = 1 THEN e.definition_{suffix} "
             f"WHEN l.type = 2 THEN r.definition_{suffix} "
             f"ELSE NULL END AS definition"
@@ -160,7 +163,7 @@ class OutputDatabase:
         if not self.config.is_tiny_mode:
             extra_entry_cols = f", e.grammar_{suffix} AS entry_grammar, e.example_{suffix} AS entry_example"
 
-        # [UPDATED] View with UNIFIED 'definition' column
+        # View with UNIFIED 'definition' column
         sql = f"""
             CREATE VIEW IF NOT EXISTS grand_lookups AS
             SELECT 
