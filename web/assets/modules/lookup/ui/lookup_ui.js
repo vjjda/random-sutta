@@ -68,34 +68,59 @@ export const LookupUI = {
     _setupSwipe(callbacks) {
         let touchStartX = 0;
         let touchStartY = 0;
-        const minSwipeDistance = 70; // Increased threshold
+        let isHorizontalSwipe = false;
+        let isVerticalScroll = false;
+        const minSwipeDistance = 60; // Slightly reduced as we now have lock
 
         this.elements.popup.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, { passive: true });
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isHorizontalSwipe = false;
+            isVerticalScroll = false;
+        }, { passive: false }); // Allow preventDefault
 
-        this.elements.popup.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            
-            const diffX = touchEndX - touchStartX;
-            const diffY = touchEndY - touchStartY;
+        this.elements.popup.addEventListener('touchmove', (e) => {
+            // Once we decided it's a scroll, stop checking
+            if (isVerticalScroll) return;
 
-            // Strict Horizontal Check: X movement must be > 2x Y movement
-            // This prevents accidental swipes when trying to scroll vertically
-            if (Math.abs(diffX) > (Math.abs(diffY) * 2)) {
-                if (Math.abs(diffX) > minSwipeDistance) {
-                    if (diffX > 0) {
-                        // Swipe Right -> Prev
-                        if (callbacks.onNavigate) callbacks.onNavigate(-1);
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = currentX - touchStartX;
+            const diffY = currentY - touchStartY;
+
+            // Lock logic: Decide direction early (after 10px move)
+            if (!isHorizontalSwipe && !isVerticalScroll) {
+                if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+                    if (Math.abs(diffX) > Math.abs(diffY)) {
+                        isHorizontalSwipe = true;
                     } else {
-                        // Swipe Left -> Next
-                        if (callbacks.onNavigate) callbacks.onNavigate(1);
+                        isVerticalScroll = true;
                     }
                 }
             }
-        }, { passive: true });
+
+            // If locked to Horizontal -> Prevent Default (No scrolling)
+            if (isHorizontalSwipe) {
+                if (e.cancelable) e.preventDefault();
+            }
+        }, { passive: false });
+
+        this.elements.popup.addEventListener('touchend', (e) => {
+            if (!isHorizontalSwipe) return;
+
+            const touchEndX = e.changedTouches[0].clientX;
+            const diffX = touchEndX - touchStartX;
+            
+            if (Math.abs(diffX) > minSwipeDistance) {
+                if (diffX > 0) {
+                    // Swipe Right -> Prev
+                    if (callbacks.onNavigate) callbacks.onNavigate(-1);
+                } else {
+                    // Swipe Left -> Next
+                    if (callbacks.onNavigate) callbacks.onNavigate(1);
+                }
+            }
+        });
     },
     
     _switchTab(tabName) {

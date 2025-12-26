@@ -42,6 +42,8 @@ body.tts-open {
   padding: var(--popup-padding-mobile);
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* [UX] Cho phép cuộn dọc mượt mà, nhưng nhường quyền xử lý vuốt ngang cho JS */
+  touch-action: pan-y;
   flex: 1;
   min-height: 0;
 }
@@ -251,14 +253,25 @@ body.tts-open {
   background-color: var(--bg-card);
   border: 1px none var(--border-light);
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 40px; /* Increased from 36px */
+  height: 40px; /* Increased from 36px */
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
   cursor: pointer;
+  position: relative; /* Anchor for pseudo-element */
 }
+
+/* [UX] Hit Area Expansion: Invisible larger touch target */
+.popup-nav-btn::after {
+  content: '';
+  position: absolute;
+  top: -10px; bottom: -10px; 
+  left: -10px; right: -10px;
+  background: transparent;
+}
+
 .popup-nav-btn:hover:not(:disabled) { background-color: var(--bg-hover); color: var(--primary-color); border-color: var(--primary-color);
 }
 .popup-nav-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
