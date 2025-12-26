@@ -54,3 +54,27 @@ def remove_monolithic_index(build_dir: Path) -> bool:
             logger.error(f"❌ Failed to remove uid_index.json: {e}")
             return False
     return True
+
+def remove_raw_dictionary_files(build_dir: Path) -> bool:
+    """
+    [NEW] Xóa file .db thô (ví dụ: dpd_mini.db) khỏi thư mục build.
+    Chỉ giữ lại file .zip để deploy (bypass GitHub 100MB limit).
+    """
+    dict_dir = build_dir / "assets" / "db" / "dictionaries"
+    if not dict_dir.exists():
+        return True
+
+    # Danh sách các file cần xóa (Raw DB)
+    targets = ["dpd_mini.db"]
+    
+    success = True
+    for target in targets:
+        file_path = dict_dir / target
+        if file_path.exists():
+            try:
+                file_path.unlink()
+                logger.info(f"   🧹 Removed raw dictionary file: {target}")
+            except Exception as e:
+                logger.error(f"❌ Failed to remove {target}: {e}")
+                success = False
+    return success

@@ -103,11 +103,35 @@ export const PaliRenderer = {
     },
 
     _renderDeconstruction(word, components) {
-        return `
+        if (!components) {
+             return `
+            <div class="dpd-deconstruction">
+                <p class="decon-key"><b>${word}</b></p>
+            </div>`;
+        }
+
+        const rows = components.split(';').map(r => r.trim()).filter(r => r);
+        let html = `
         <div class="dpd-deconstruction">
             <p class="decon-key"><b>${word}</b></p>
-            <p class="decon-val">${components ? components.replace(/\+/g, ' + ') : ''}</p>
-        </div>`;
+            <table class="dpd-deconstruction-table">`;
+        
+        rows.forEach(row => {
+            const parts = row.split('+').map(p => p.trim());
+            html += `<tr>`;
+            parts.forEach((part, index) => {
+                // Add value cell
+                html += `<td class="decon-cell">${part}</td>`;
+                // Add plus cell if not last
+                if (index < parts.length - 1) {
+                    html += `<td class="decon-plus">+</td>`;
+                }
+            });
+            html += `</tr>`;
+        });
+
+        html += `</table></div>`;
+        return html;
     },
 
     _renderEntry(def, gram, examples, getAbbr, getLabel, headword, isOpen) {
