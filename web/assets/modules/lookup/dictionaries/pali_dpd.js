@@ -6,8 +6,7 @@ const logger = getLogger("PaliDPD");
 
 // Configuration
 const DB_NAME = "dpd_mini.db";
-// TODO: Update path when files are moved to assets/db/dictionaries/
-const DB_ZIP_URL = "assets/db/dpd_mini.db.zip"; 
+const DB_ZIP_URL = "assets/db/dictionaries/dpd_mini.db.zip"; 
 
 export const PaliDPD = {
     connection: new SqliteConnection(DB_NAME, DB_ZIP_URL),
