@@ -5,10 +5,19 @@ export const LookupUI = {
     init(callbacks = {}) {
         this.elements = {
             popup: document.getElementById("lookup-popup"),
-            content: document.getElementById("lookup-content"),
-            title: document.getElementById("lookup-title"),
+            
+            // Tabs
+            tabDpd: document.getElementById("tab-dpd"),
+            tabGnote: document.getElementById("tab-gnote"),
+            title: document.getElementById("lookup-title"), // Inside tab-dpd
             closeBtn: document.getElementById("close-lookup"),
+            
+            // Content
             popupBody: document.querySelector("#lookup-popup .popup-body"),
+            contentDpd: document.getElementById("lookup-content-dpd"),
+            contentGnote: document.getElementById("lookup-content-gnote"),
+
+            // Nav
             btnPrev: document.getElementById("btn-lookup-prev"),
             btnNext: document.getElementById("btn-lookup-next"),
             navInfo: document.getElementById("lookup-nav-info")
@@ -27,14 +36,16 @@ export const LookupUI = {
              e.stopPropagation();
         });
 
-        // Prevent focus loss when clicking summaries (expand buttons)
+        // Prevent focus loss when clicking summaries OR TABS
         this.elements.popup.addEventListener("mousedown", (e) => {
-            // If clicking a summary (the expand button), prevent default focus behavior
-            // so text selection in the main window remains active for navigation.
-            if (e.target.closest("summary")) {
+            if (e.target.closest("summary") || e.target.closest(".lookup-tab")) {
                 e.preventDefault();
             }
         });
+        
+        // Tab Switching
+        this.elements.tabDpd.addEventListener("click", () => this._switchTab('dpd'));
+        this.elements.tabGnote.addEventListener("click", () => this._switchTab('gnote'));
 
         // Navigation
         if (this.elements.btnPrev) {
@@ -50,11 +61,57 @@ export const LookupUI = {
             });
         }
     },
+    
+    _switchTab(tabName) {
+        // Deactivate all
+        this.elements.tabDpd.classList.remove("active");
+        this.elements.tabGnote.classList.remove("active");
+        this.elements.contentDpd.classList.add("hidden");
+        this.elements.contentDpd.classList.remove("active");
+        this.elements.contentGnote.classList.add("hidden");
+        this.elements.contentGnote.classList.remove("active");
+        
+        // Activate selected
+        if (tabName === 'dpd') {
+            this.elements.tabDpd.classList.add("active");
+            this.elements.contentDpd.classList.remove("hidden");
+            this.elements.contentDpd.classList.add("active");
+        } else if (tabName === 'gnote') {
+            this.elements.tabGnote.classList.add("active");
+            this.elements.contentGnote.classList.remove("hidden");
+            this.elements.contentGnote.classList.add("active");
+        }
+    },
 
-    render(htmlContent, titleWord = "Lookup") {
-        // [UPDATED] Just show the word itself in the header
+    render(data, titleWord = "Lookup") {
+        let dictHtml = "";
+        let noteHtml = "";
+
+        // Handle both simple string (loading/error) and object (results)
+        if (typeof data === 'string') {
+            dictHtml = data;
+        } else {
+            dictHtml = data.dictHtml || "";
+            noteHtml = data.noteHtml || "";
+        }
+
+        // 1. Set Title (Tab Name)
         if (this.elements.title) this.elements.title.textContent = titleWord;
-        if (this.elements.content) this.elements.content.innerHTML = htmlContent;
+
+        // 2. Render DPD Content
+        if (this.elements.contentDpd) this.elements.contentDpd.innerHTML = dictHtml;
+
+        // 3. Render G.Note Content & Toggle Tab
+        if (this.elements.contentGnote) this.elements.contentGnote.innerHTML = noteHtml;
+        
+        if (noteHtml) {
+            this.elements.tabGnote.classList.remove("hidden");
+        } else {
+            this.elements.tabGnote.classList.add("hidden");
+        }
+
+        // 4. Default to DPD tab
+        this._switchTab('dpd');
 
         this.elements.popup.classList.remove("hidden");
         if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
@@ -66,6 +123,8 @@ export const LookupUI = {
 
     showLoading(title = "Searching...") {
         this.render('<div style="text-align:center; padding: 20px;">Searching...</div>', title);
+        // Hide G.Note tab while searching
+        if (this.elements.tabGnote) this.elements.tabGnote.classList.add("hidden");
     },
 
     showError(msg) {
@@ -74,7 +133,8 @@ export const LookupUI = {
 
     hide() {
         this.elements.popup?.classList.add("hidden");
-        if (this.elements.content) this.elements.content.innerHTML = "";
+        if (this.elements.contentDpd) this.elements.contentDpd.innerHTML = "";
+        if (this.elements.contentGnote) this.elements.contentGnote.innerHTML = "";
     },
     
     isVisible() {

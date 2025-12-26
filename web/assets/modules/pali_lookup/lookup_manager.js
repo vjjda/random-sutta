@@ -66,8 +66,8 @@ export const LookupManager = {
         const results = await SqliteService.smartSearch(cleanText);
         
         if (results && results.length > 0) {
-            const html = PaliRenderer.renderList(results, cleanText);
-            LookupUI.render(html, cleanText); // Send cleanText as title
+            const renderData = PaliRenderer.renderList(results, cleanText);
+            LookupUI.render(renderData, cleanText); // Send data object + title
             document.body.classList.add("lookup-open");
         } else {
             // Not found

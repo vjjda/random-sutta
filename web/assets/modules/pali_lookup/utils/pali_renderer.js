@@ -2,27 +2,29 @@
 
 export const PaliRenderer = {
     renderList(dataList, searchTerm) {
-        if (!dataList || !Array.isArray(dataList) || dataList.length === 0) return "";
+        if (!dataList || !Array.isArray(dataList) || dataList.length === 0) {
+            return { dictHtml: "", noteHtml: "" };
+        }
         
-        let html = '<div class="dpd-result-list">';
+        let dictHtml = '<div class="dpd-result-list">';
         let matchedGrammarNote = null;
         let keyMapRef = null;
 
         dataList.forEach((data) => {
             // Check for grammar note match (Exact Match Only)
-            // We use the first one found for the term
             if (searchTerm && data.lookup_key === searchTerm && data.grammar_note && !matchedGrammarNote) {
                 matchedGrammarNote = data.grammar_note;
-                keyMapRef = data.keyMap; // Need keyMap to render grammar note later
+                keyMapRef = data.keyMap; 
             }
             
-            // Render entry, collapsed (isOpen=false), skip internal grammar note (skipGrammar=true)
-            html += this.render(data, false, true);
+            // Render entry
+            dictHtml += this.render(data, false, true);
         });
         
-        html += '</div>';
+        dictHtml += '</div>';
 
-        // Render the single Grammar Note at the bottom if found
+        // Prepare Grammar Note HTML separately
+        let noteHtml = "";
         if (matchedGrammarNote) {
             const getAbbr = (fullKey) => keyMapRef && keyMapRef.fullToAbbr && keyMapRef.fullToAbbr[fullKey] 
                 ? keyMapRef.fullToAbbr[fullKey] 
@@ -30,11 +32,11 @@ export const PaliRenderer = {
             
             const gnArr = this._parse(matchedGrammarNote);
             if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
-                 html += this._renderGrammarNotes(gnArr, getAbbr);
+                 noteHtml = this._renderGrammarNotes(gnArr, getAbbr);
             }
         }
 
-        return html;
+        return { dictHtml, noteHtml };
     },
 
     render(data, isOpen = false, skipGrammar = false) {
@@ -109,16 +111,22 @@ export const PaliRenderer = {
     },
 
     _renderEntry(def, gram, examples, getAbbr, getLabel, headword, isOpen) {
-        // Use details/summary for the toggle
-        const openAttr = isOpen ? 'open' : '';
-        let html = `<details class="dpd-entry" ${openAttr}>`;
-        
-        // --- Header / Summary Construction ---
         const pos = def[getAbbr('pos')] || '';
         const meaning = def[getAbbr('meaning')] || '';
         const plusCase = def[getAbbr('plus_case')] || '';
         const construction = def[getAbbr('construction')] || '';
         const degree = def[getAbbr('degree')] || '';
+        
+        // Check if there is content to expand
+        const hasDetails = (gram && Object.keys(gram).length > 0) || (examples && Array.isArray(examples) && examples.length > 0);
+        
+        // Determine tags and classes
+        const tag = hasDetails ? 'details' : 'div';
+        const summaryTag = hasDetails ? 'summary' : 'div';
+        const classes = `dpd-entry ${hasDetails ? 'has-details' : 'no-details'}`;
+        const openAttr = (hasDetails && isOpen) ? 'open' : '';
+
+        let html = `<${tag} class="${classes}" ${openAttr}>`;
         
         // Line 1: Lemma (Left) --- POS + Case (Right)
         let line1 = `
@@ -143,46 +151,49 @@ export const PaliRenderer = {
                 ${degree ? `<span class="dpd-degree">${degree}</span>` : ''}
             </div>`;
         
-        // Add a visual indicator or "More" text if needed, though default marker exists.
-        html += `<summary class="dpd-summary">
-                    ${line1}
-                    ${line2}
-                    ${line3}
-                 </summary>`;
+        // Summary Header
+        html += `<${summaryTag} class="dpd-summary">
+                    <div class="dpd-summary-content">
+                        ${line1}
+                        ${line2}
+                        ${line3}
+                    </div>
+                 </${summaryTag}>`;
         
-        // The expanded content
-        html += `<div class="dpd-details-content">`;
+        // The expanded content (Only if details exist)
+        if (hasDetails) {
+            html += `<div class="dpd-details-content">`;
 
-        // Grammar Table
-        if (gram) {
-            html += `<table class="dpd-grammar-table">`;
-            for (const [k, v] of Object.entries(gram)) {
-                // k is Abbreviation (e.g., 'p')
-                // label is Full Key (e.g., 'Part of Speech')
-                const label = getLabel(k); 
-                html += `<tr><th>${label}</th><td>${v}</td></tr>`;
+            // Grammar Table
+            if (gram) {
+                html += `<table class="dpd-grammar-table">`;
+                for (const [k, v] of Object.entries(gram)) {
+                    const label = getLabel(k); 
+                    html += `<tr><th>${label}</th><td>${v}</td></tr>`;
+                }
+                html += `</table>`;
             }
-            html += `</table>`;
+            
+            // Examples
+            if (examples && Array.isArray(examples)) {
+                html += `<div class="dpd-examples"><p class="example-heading">Examples</p>`;
+                examples.forEach(ex => {
+                    const source = ex[getAbbr('source')] || '';
+                    const sutta = ex[getAbbr('sutta')] || '';
+                    const text = ex[getAbbr('text')] || '';
+                    html += `
+                    <div class="example-box">
+                        <p class="example-text">${text}</p>
+                        <p class="example-source">${source} ${sutta}</p>
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+            
+            html += `</div>`; // End content
         }
         
-        // Examples
-        if (examples && Array.isArray(examples)) {
-            html += `<div class="dpd-examples"><p class="example-heading">Examples</p>`;
-            examples.forEach(ex => {
-                const source = ex[getAbbr('source')] || '';
-                const sutta = ex[getAbbr('sutta')] || '';
-                const text = ex[getAbbr('text')] || '';
-                html += `
-                <div class="example-box">
-                    <p class="example-text">${text}</p>
-                    <p class="example-source">${source} ${sutta}</p>
-                </div>`;
-            });
-            html += `</div>`;
-        }
-        
-        html += `</div>`; // End .dpd-details-content
-        html += `</details>`;
+        html += `</${tag}>`;
         return html;
     },
 
