@@ -1,19 +1,31 @@
 // Path: web/assets/modules/lookup/dict_provider.js
 import { PaliDPD } from './dictionaries/pali_dpd.js';
+import { AppConfig } from 'core/app_config.js';
 
-// Registry of available dictionaries
+// Registry of available dictionary adapters
 const REGISTRY = {
     'pali_dpd': PaliDPD
 };
 
-// Currently active dictionaries (in order)
-// TODO: Load this from user settings in the future
-let activeDicts = ['pali_dpd'];
+// Store active dictionary IDs after init
+let activeDicts = [];
 
 export const DictProvider = {
     async init() {
-        // Initialize all active dictionaries
-        const promises = activeDicts.map(id => REGISTRY[id].init());
+        const dictConfig = AppConfig.LOOKUP.DICTIONARIES || {};
+        const promises = [];
+        activeDicts = []; // Reset
+
+        for (const [id, config] of Object.entries(dictConfig)) {
+            // Check if adapter exists and is enabled
+            if (REGISTRY[id] && config.enabled) {
+                activeDicts.push(id);
+                promises.push(REGISTRY[id].init(config));
+            }
+        }
+
+        if (promises.length === 0) return false;
+
         const results = await Promise.all(promises);
         return results.every(r => r === true);
     },

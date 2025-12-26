@@ -4,15 +4,25 @@ import { getLogger } from 'utils/logger.js';
 
 const logger = getLogger("PaliDPD");
 
-// Configuration
-const DB_NAME = "dpd_mini.db";
-const DB_ZIP_URL = "assets/db/dictionaries/dpd_mini.db.zip"; 
-
 export const PaliDPD = {
-    connection: new SqliteConnection(DB_NAME, DB_ZIP_URL),
+    connection: null,
     _keyMap: { fullToAbbr: null, abbrToFull: null },
 
-    async init() {
+    /**
+     * Init dictionary with dynamic config
+     * @param {Object} config - { name: "db_name.db", path: "path/to/db.zip" }
+     */
+    async init(config) {
+        if (!config || !config.path) {
+            logger.error("Init", "Missing configuration");
+            return false;
+        }
+
+        // Lazy initialization of connection
+        if (!this.connection) {
+            this.connection = new SqliteConnection(config.name, config.path);
+        }
+
         const success = await this.connection.init();
         if (success) {
             await this._loadJsonKeys();
@@ -21,6 +31,7 @@ export const PaliDPD = {
     },
 
     async search(term) {
+        if (!this.connection) return [];
         if (!term) return [];
         const cleanTerm = term.toLowerCase().trim();
         

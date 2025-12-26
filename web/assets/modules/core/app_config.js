@@ -40,7 +40,17 @@ export const AppConfig = {
     },
 
     LOOKUP: {
-        SCROLL_OFFSET_RATIO: 0.25 // Position lookup selection at 1/4 screen height
+        SCROLL_OFFSET_RATIO: 0.25, // Position lookup selection at 1/4 screen height
+        
+        // Dictionary Sources Configuration
+        DICTIONARIES: {
+            "pali_dpd": {
+                enabled: true,
+                name: "dpd_mini.db",
+                path: "assets/db/dictionaries/dpd_mini.db.zip"
+            }
+            // Future: "en_vi": { ... }
+        }
     },
 
     POPUP_LAYOUT: {
