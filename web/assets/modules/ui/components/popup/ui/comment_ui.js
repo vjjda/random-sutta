@@ -1,5 +1,6 @@
 // Path: web/assets/modules/ui/components/popup/ui/comment_ui.js
 import { SwipeHandler } from 'ui/common/swipe_handler.js';
+import { ZIndexManager } from 'ui/common/z_index_manager.js';
 
 export const CommentUI = {
     elements: {},
@@ -17,6 +18,9 @@ export const CommentUI = {
         };
 
         if (!this.elements.popup) return;
+
+        // [Z-INDEX] Manage stacking order
+        ZIndexManager.register(this.elements.popup);
 
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -64,6 +68,9 @@ export const CommentUI = {
             this.elements.headerContext.textContent = contextText ? `"${contextText}"` : "";
             this.elements.headerContext.scrollLeft = 0;
         }
+
+        // [Z-INDEX] Bring to front
+        ZIndexManager.bringToFront(this.elements.popup);
 
         this.elements.popup.classList.remove("hidden");
         document.body.classList.add("popup-open"); // [NEW] Add class to body
