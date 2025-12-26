@@ -123,8 +123,10 @@
     cursor: pointer;
     list-style: none; 
     position: relative;
-    padding-right: 28px; /* Space for the icon */
     min-height: 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
 }
 
 /* Hide default marker */
@@ -132,66 +134,55 @@
     display: none;
 }
 
-/* Wrapper for text content to avoid overlap with absolute icon */
+/* Wrapper for text content to take available space */
 .dpd-summary-content {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1; /* Take remaining space */
 }
 
-/* --- CHEVRON ICONS (CSS Borders) --- */
-/* Common Arrow Style */
-.dpd-summary::before,
-.dpd-summary::after {
+/* --- CHEVRON ICONS (Custom Span) --- */
+.dpd-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 12px; /* Fixed spacing from text */
+    flex-shrink: 0;    /* Don't shrink */
+    margin-top: 4px;   /* Align with first line visually */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* The arrow shape */
+.dpd-chevron::after {
     content: '';
-    position: absolute;
-    right: 0;
-    top: 50%;
-    width: 8px;
-    height: 8px;
-    border-style: solid;
-    border-color: var(--primitive-blue-500);
-    border-width: 0 2px 2px 0;
-    pointer-events: none; /* Let clicks pass through */
-    transition: opacity 0.2s ease; /* Simple fade transition */
+    width: 6px;       /* Small size */
+    height: 6px;
+    border-right: 1.5px solid var(--text-light); /* Low profile color/width */
+    border-bottom: 1.5px solid var(--text-light);
+    transform: rotate(45deg); /* Point Down (Default for standard accordion is usually right, but let's check) */
+    /* Actually, standard is collapsed=right(0deg or -45), expanded=down(45) */
+    /* Let's make Default = Pointing DOWN (Expanded) or Pointing LEFT? */
+    /* Usually: Closed > (0deg), Open v (90deg) */
+    
+    transform: rotate(-45deg); /* Point Right initially */
+    transition: border-color 0.2s;
 }
 
-/* State 1: Collapsed (Right Arrow) */
-.dpd-summary::before {
-    transform: translateY(-50%) rotate(-45deg);
-    opacity: 1; /* Visible by default */
-    right: 8px; /* Align center-right */
+.dpd-summary:hover .dpd-chevron::after {
+    border-color: var(--text-muted); /* Slightly darker on hover */
 }
 
-/* State 2: Expanded (Down Arrow) */
-.dpd-summary::after {
-    transform: translateY(-75%) rotate(45deg);
-    opacity: 0; /* Hidden by default */
-    right: 8px;
+/* Toggle Logic */
+details[open] .dpd-chevron {
+    transform: rotate(90deg); /* Rotate 90deg to point Down */
 }
-
-/* Toggle Logic based on [open] */
-details[open] > .dpd-summary::before {
-    opacity: 0; /* Fade out Right */
-}
-
-details[open] > .dpd-summary::after {
-    opacity: 1; /* Fade in Down */
-}
-
 
 /* --- DISABLED STATE (No Details) --- */
 .no-details .dpd-summary {
-    cursor: default; /* Not clickable */
-}
-
-.no-details .dpd-summary::before {
-    opacity: 0.3; /* Faint right arrow */
-    border-color: var(--text-light);
-}
-
-.no-details .dpd-summary::after {
-    display: none; /* No down arrow possibility */
+    cursor: default; 
 }
 
 
@@ -270,21 +261,6 @@ details[open] > .dpd-summary::after {
     to { opacity: 1; transform: translateY(0); }
 }
 
-
-.dpd-lemma {
-    font-weight: 700;
-    color: var(--primitive-blue-600, #2563eb);
-    font-size: 1.1em;
-}
-
-.dpd-pos {
-    font-style: italic;
-    color: var(--text-muted);
-}
-
-.dpd-meaning {
-    font-weight: 500;
-}
 
 /* Tables */
 .dpd-grammar-table, .grammar-note-table {
