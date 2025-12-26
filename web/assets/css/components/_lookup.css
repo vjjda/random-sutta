@@ -139,42 +139,50 @@
     gap: 4px;
 }
 
-/* --- CHEVRON ICONS (Custom Span) --- */
-.dpd-chevron {
+/* --- DETAIL ICON (3 Dots) --- */
+.dpd-detail-icon {
+    position: absolute;
+    bottom: 6px;
+    right: 0;
+    width: 24px;
+    height: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin-left: 12px; /* Fixed spacing from text */
-    flex-shrink: 0;    /* Don't shrink */
-    /* margin-top removed, handled by line-3 flex alignment */
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0.5;
+    transition: opacity 0.2s;
 }
 
-/* The arrow shape */
-.dpd-chevron::after {
+/* The 3 dots shape using box-shadow */
+.dpd-detail-icon::after {
     content: '';
-    width: 6px;       /* Small size */
-    height: 6px;
-    border-right: 1.5px solid var(--text-light); /* Low profile color/width */
-    border-bottom: 1.5px solid var(--text-light);
-    transform: rotate(45deg); /* Point Down (Default for standard accordion is usually right, but let's check) */
-    /* Actually, standard is collapsed=right(0deg or -45), expanded=down(45) */
-    /* Let's make Default = Pointing DOWN (Expanded) or Pointing LEFT? */
-    /* Usually: Closed > (0deg), Open v (90deg) */
-    
-    transform: rotate(-45deg); /* Point Right initially */
-    transition: border-color 0.2s;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background-color: var(--text-light);
+    /* Create 2 clones to the left */
+    box-shadow: -5px 0 0 var(--text-light), -10px 0 0 var(--text-light);
+    margin-left: 10px; /* Offset to align right */
 }
 
-.dpd-summary:hover .dpd-chevron::after {
-    border-color: var(--text-muted); /* Slightly darker on hover */
+/* Hover State */
+.dpd-summary:hover .dpd-detail-icon {
+    opacity: 1;
 }
 
-/* Toggle Logic */
-details[open] .dpd-chevron {
-    transform: rotate(90deg); /* Rotate 90deg to point Down */
+.dpd-summary:hover .dpd-detail-icon::after {
+    background-color: var(--text-muted);
+    box-shadow: -5px 0 0 var(--text-muted), -10px 0 0 var(--text-muted);
+}
+
+/* Open State */
+details[open] .dpd-detail-icon {
+    opacity: 1;
+}
+
+details[open] .dpd-detail-icon::after {
+    background-color: var(--primary-color);
+    box-shadow: -5px 0 0 var(--primary-color), -10px 0 0 var(--primary-color);
 }
 
 /* --- DISABLED STATE (No Details) --- */
