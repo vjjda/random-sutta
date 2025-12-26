@@ -51,7 +51,7 @@ export const PaliDPD = {
                     CASE 
                         WHEN lf.type = 1 THEN e.headword_clean
                         WHEN lf.type = 0 THEN d.word
-                        WHEN lf.type = 2 THEN r.root
+                        WHEN lf.type = 2 THEN r.root_clean
                         ELSE lf.key
                     END AS keyword,
                     -- Extract Data

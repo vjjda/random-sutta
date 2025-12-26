@@ -68,7 +68,7 @@ class OutputDatabase:
             sql = "CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_" + suffix + " TEXT, grammar_" + suffix + " TEXT, example_" + suffix + " TEXT);"
             self.cursor.execute(sql)
             
-        sql_roots = "CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, definition_" + suffix + " TEXT);"
+        sql_roots = "CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, root_clean TEXT NOT NULL, definition_" + suffix + " TEXT);"
         self.cursor.execute(sql_roots)
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
@@ -144,7 +144,7 @@ class OutputDatabase:
     def insert_roots(self, roots: List[Tuple], lookups: List[Tuple]) -> None:
         if roots:
             suffix = "html" if self.config.html_mode else "json"
-            sql = "INSERT INTO roots (id, root, definition_" + suffix + ") VALUES (?, ?, ?)"
+            sql = "INSERT INTO roots (id, root, root_clean, definition_" + suffix + ") VALUES (?, ?, ?, ?)"
             self.cursor.executemany(sql, roots)
         
         if lookups:

@@ -121,7 +121,7 @@ def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderCon
                 content = renderer.render_root_entry(r)
             else:
                 content = renderer.extract_root_json(r)
-            roots_data.append((current_id, r.root, process_data(content, config.USE_COMPRESSION)))
+            roots_data.append((current_id, r.root, r.root_clean, process_data(content, config.USE_COMPRESSION)))
             clean_key = r.root_clean
             lookups_data.append((clean_key, current_id, 2))
             current_id += 1
