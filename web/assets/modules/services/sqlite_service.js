@@ -111,7 +111,9 @@ export const SqliteService = {
         if (!dbFile) throw new Error(`${DB_NAME} not found in zip`);
         
         logger.info("Init", "Unzipping DB...");
-        return await dbFile.async("arraybuffer");
+        const buffer = await dbFile.async("arraybuffer");
+        logger.info("Init", `Unzipped DB size: ${buffer.byteLength} bytes`);
+        return buffer;
     },
 
     async _loadJsonKeys() {

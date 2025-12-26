@@ -923,6 +923,8 @@ async function* pagify(stream2) {
     const pageSize = rawPageSize === 1 ? 65536 : rawPageSize;
     const pageCount = view.getUint32(28);
     
+    console.log(`[wa-sqlite] pagify: pageSize=${pageSize}, pageCount=${pageCount}, expectedSize=${pageSize * pageCount}`);
+
     // Fix: Reconstruct the first page using the consumed header and the rest of the page
     const firstPageRest = await readExactBytes(reader, pageSize - 32);
     const firstPage = new Uint8Array(pageSize);
