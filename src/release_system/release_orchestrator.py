@@ -85,6 +85,9 @@ def run_release_process(
         if not zip_packager.create_dpd_db_zip(BUILD_PWA_DIR):
              logger.warning("⚠️ Failed to create DPD DB zip.")
 
+        # [NEW] Remove raw dictionary files to reduce deployment size (bypass GitHub 100MB limit)
+        web_content_modifier.remove_raw_dictionary_files(BUILD_PWA_DIR)
+
         # Deploy (PWA Build goes to GH Pages)
         if deploy_web:
             if not web_deployer.deploy_web_to_ghpages(BUILD_PWA_DIR, version_tag):
