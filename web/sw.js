@@ -139,11 +139,28 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // [CHIẾN LƯỢC 2] Cache First cho Assets (JS, CSS, Images...)
+  // [CHIẾN LƯỢC 2] Hybrid Strategy for Assets
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       
+      // A. Network First for Manifests/DB Configs (JSON in assets/db)
+      // Ensures we always get the latest hash check
+      if (request.url.includes('assets/db/') && request.url.includes('.json')) {
+          try {
+              const networkResponse = await fetch(request);
+              if (networkResponse && networkResponse.status === 200) {
+                  cache.put(request, networkResponse.clone());
+                  return networkResponse;
+              }
+          } catch (e) {
+              console.log("[SW] Network First failed for manifest, falling back to cache.");
+          }
+          // Fallback to cache
+          return await cache.match(request) || new Response("Offline", { status: 408 });
+      }
+
+      // B. Cache First for everything else (JS, CSS, Images, WOFF2)
       // 1. Tìm trong cache trước (bỏ qua search param để match version tag ?v=...)
       const cachedResponse = await cache.match(request, { ignoreSearch: true });
       if (cachedResponse) return cachedResponse;
