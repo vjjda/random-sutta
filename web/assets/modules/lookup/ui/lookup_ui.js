@@ -60,6 +60,41 @@ export const LookupUI = {
                 if (callbacks.onNavigate) callbacks.onNavigate(1);
             });
         }
+
+        // Swipe Gestures
+        this._setupSwipe(callbacks);
+    },
+
+    _setupSwipe(callbacks) {
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const minSwipeDistance = 50; // px
+
+        this.elements.popup.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
+        this.elements.popup.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+
+            // Check if horizontal movement is dominant (to avoid interfering with vertical scroll)
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (Math.abs(diffX) > minSwipeDistance) {
+                    if (diffX > 0) {
+                        // Swipe Right -> Prev
+                        if (callbacks.onNavigate) callbacks.onNavigate(-1);
+                    } else {
+                        // Swipe Left -> Next
+                        if (callbacks.onNavigate) callbacks.onNavigate(1);
+                    }
+                }
+            }
+        }, { passive: true });
     },
     
     _switchTab(tabName) {
