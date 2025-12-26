@@ -24,12 +24,17 @@ export const PaliDPD = {
         if (!term) return [];
         const cleanTerm = term.toLowerCase().trim();
         
-        // FTS Query with Subquery for Exact Match Logic
+        // Optimized FTS Query: Fetch EVERYTHING in one go
         const sql = `
             SELECT 
                 sub.key, 
                 sub.target_id, 
                 sub.type,
+                sub.headword,
+                sub.definition,
+                sub.grammar,
+                sub.example,
+                sub.gn_grammar,
                 ((sub.key = :term) AND (sub.key = sub.keyword)) AS is_exact
             FROM (
                 SELECT 
@@ -37,16 +42,32 @@ export const PaliDPD = {
                     lf.target_id, 
                     lf.type, 
                     lf.rank,
+                    -- Determine Keyword (for sorting) & Headword (for display)
+                    CASE 
+                        WHEN lf.type = 1 THEN e.headword
+                        WHEN lf.type = 2 THEN r.root
+                        ELSE lf.key
+                    END AS headword,
                     CASE 
                         WHEN lf.type = 1 THEN e.headword_clean
                         WHEN lf.type = 0 THEN d.word
                         WHEN lf.type = 2 THEN r.root
                         ELSE lf.key
-                    END AS keyword
+                    END AS keyword,
+                    -- Extract Data
+                    CASE 
+                        WHEN lf.type = 1 THEN e.definition_json
+                        WHEN lf.type = 2 THEN r.definition_json
+                        WHEN lf.type = 0 THEN d.components
+                    END AS definition,
+                    e.grammar_json AS grammar,
+                    e.example_json AS example,
+                    gn.grammar_json AS gn_grammar
                 FROM lookups_fts lf
                 LEFT JOIN entries e ON lf.target_id = e.id AND lf.type = 1
                 LEFT JOIN deconstructions d ON lf.target_id = d.id AND lf.type = 0
                 LEFT JOIN roots r ON lf.target_id = r.id AND lf.type = 2
+                LEFT JOIN grammar_notes gn ON lf.key = gn.key
                 WHERE lf.key MATCH :pattern
             ) sub
             ORDER BY is_exact DESC, length(sub.key) ASC, sub.rank
@@ -69,8 +90,18 @@ export const PaliDPD = {
                 if (seenTargets.has(uniqueId)) continue;
                 seenTargets.add(uniqueId);
                 
-                const details = await this._fetchDetails(row.target_id, row.type, row.key);
-                if (details) results.push(details);
+                // Map DB row directly to result object
+                results.push({
+                    lookup_key: row.key,
+                    target_id: row.target_id,
+                    lookup_type: row.type,
+                    headword: row.headword,
+                    definition: row.definition,
+                    entry_grammar: row.grammar,
+                    entry_example: row.example,
+                    grammar_note: row.gn_grammar,
+                    keyMap: this._keyMap
+                });
             }
             return results;
         } catch (error) {
@@ -93,59 +124,5 @@ export const PaliDPD = {
         } catch (e) {
             logger.warn("Keys Load Error", e);
         }
-    },
-
-    async _fetchDetails(targetId, type, term) {
-        let result = {
-            lookup_key: term,
-            target_id: targetId,
-            lookup_type: type,
-            headword: null,
-            definition: null,
-            entry_grammar: null,
-            entry_example: null,
-            grammar_note: null,
-            keyMap: this._keyMap
-        };
-
-        try {
-            if (type === 0) { // Deconstruction
-                const res = await this.connection.run("SELECT components FROM deconstructions WHERE id = :id", { ':id': targetId });
-                if (res.length > 0) result.definition = res[0].components;
-            } 
-            else if (type === 1) { // Entry
-                const res = await this.connection.run(
-                    "SELECT headword, definition_json, grammar_json, example_json FROM entries WHERE id = :id", 
-                    { ':id': targetId }
-                );
-                if (res.length > 0) {
-                    const row = res[0];
-                    result.headword = row.headword;
-                    result.definition = row.definition_json;
-                    result.entry_grammar = row.grammar_json;
-                    result.entry_example = row.example_json;
-                }
-            }
-            else if (type === 2) { // Root
-                const res = await this.connection.run(
-                    "SELECT root, definition_json FROM roots WHERE id = :id", 
-                    { ':id': targetId }
-                );
-                if (res.length > 0) {
-                    const row = res[0];
-                    result.headword = row.root;
-                    result.definition = row.definition_json;
-                }
-            }
-
-            const gnRes = await this.connection.run("SELECT grammar_json FROM grammar_notes WHERE key = :key", { ':key': term });
-            if (gnRes.length > 0) {
-                result.grammar_note = gnRes[0].grammar_json;
-            }
-        } catch (e) {
-            logger.error("FetchDetails Error", e);
-            return null;
-        }
-        return result;
     }
 };
