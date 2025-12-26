@@ -21,14 +21,71 @@ export const LookupManager = {
              if (success) logger.info("Init", "Dictionaries ready.");
         });
         
-        // Debounce selection change
-        document.addEventListener("selectionchange", this._debounce(this._handleSelection.bind(this), 100));
+        // [UPDATED] Trigger on Click instead of Selection
+        document.addEventListener("click", (e) => this._handleClick(e));
         
         // Integration with Global Popup System
         window.addEventListener('popup:close-all', () => {
             LookupUI.hide();
             document.body.classList.remove("lookup-open");
         });
+    },
+
+    async _handleClick(e) {
+        // Delegate to #sutta-container
+        const container = document.getElementById("sutta-container");
+        if (!container || !container.contains(e.target)) return;
+        
+        // Ignore clicks on existing interactive elements (links, buttons)
+        if (e.target.closest("a, button, .lookup-highlight")) return;
+
+        // 1. Get Caret Position
+        let range;
+        if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(e.clientX, e.clientY);
+        } else if (document.caretPositionFromPoint) {
+            const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+            range = document.createRange();
+            range.setStart(pos.offsetNode, pos.offset);
+            range.setEnd(pos.offsetNode, pos.offset);
+        }
+
+        if (!range || range.startContainer.nodeType !== 3) return; // Must be text node
+
+        const textNode = range.startContainer;
+        const offset = range.startOffset;
+        const textContent = textNode.textContent;
+
+        // 2. Expand to Word Boundaries
+        const delimiters = /[.,;:"'’“”—?!()…\s]/;
+        let start = offset;
+        let end = offset;
+
+        // Scan Left
+        while (start > 0 && !delimiters.test(textContent[start - 1])) {
+            start--;
+        }
+        // Scan Right
+        while (end < textContent.length && !delimiters.test(textContent[end])) {
+            end++;
+        }
+
+        if (start === end) return; // Clicked on delimiter
+
+        const word = textContent.substring(start, end).trim();
+        if (!word) return;
+
+        // 3. Highlight (Select) the Word
+        const wordRange = document.createRange();
+        wordRange.setStart(textNode, start);
+        wordRange.setEnd(textNode, end);
+
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(wordRange);
+
+        // 4. Perform Lookup
+        this._performLookup(word, textNode.parentElement);
     },
     
     _debounce(func, wait) {
@@ -39,20 +96,8 @@ export const LookupManager = {
         };
     },
     
-    async _handleSelection() {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-            return;
-        }
-
-        const text = selection.toString().trim();
+    async _performLookup(text, contextNode) {
         if (!text) return;
-        
-        // Check context: Must be inside #sutta-container
-        const anchor = selection.anchorNode;
-        const parent = anchor.nodeType === 3 ? anchor.parentElement : anchor;
-        
-        if (!parent || !parent.closest('#sutta-container')) return;
         
         // CLEAN TEXT Logic
         const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—?!()…]/g, '').trim();
@@ -64,17 +109,15 @@ export const LookupManager = {
         if (!isReady) return;
         
         // Use DictProvider for search (Pass context parent)
-        const results = await DictProvider.search(cleanText, parent);
+        const results = await DictProvider.search(cleanText, contextNode);
         
         if (results && results.length > 0) {
             const renderData = PaliRenderer.renderList(results, cleanText);
             LookupUI.render(renderData, cleanText); // Send data object + title
             document.body.classList.add("lookup-open");
             
-            // [UPDATED] Scroll to position (1/4 from top)
-            // We use 'parent' because 'anchor' might be a text node
             if (!this._isNavigating) {
-                this._scrollToElement(parent);
+                this._scrollToElement(contextNode);
             }
         } else {
             // Not found
@@ -85,6 +128,8 @@ export const LookupManager = {
         
         this._isNavigating = false;
     },
+    
+    // Legacy _handleSelection removed as we switched to Click
     
     clearSelection() {
         window.getSelection()?.removeAllRanges();
