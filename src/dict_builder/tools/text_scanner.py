@@ -8,8 +8,10 @@ from concurrent.futures import ProcessPoolExecutor
 from typing import Set, List
 from rich import print
 
-# [UPDATED] Nâng version cache lên v5 để force reload dữ liệu đã chuẩn hóa logic tách từ
-CACHE_FILE = Path(".cache/ebts_words_v5.marshal.gz")
+# [UPDATED] Cache file located in src/dict_builder/.cache
+# Path(__file__).parent is 'tools', parent.parent is 'dict_builder'
+BASE_DIR = Path(__file__).resolve().parent.parent
+CACHE_FILE = BASE_DIR / ".cache" / "ebts_words_v5.marshal.gz"
 
 def _process_single_file(file_path: Path) -> Set[str]:
     local_words = set()
