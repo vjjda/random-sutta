@@ -1,4 +1,6 @@
 // Path: web/assets/modules/ui/components/popup/ui/comment_ui.js
+import { SwipeHandler } from 'ui/common/swipe_handler.js';
+
 export const CommentUI = {
     elements: {},
     
@@ -27,6 +29,12 @@ export const CommentUI = {
         if (this.elements.btnNext) {
             this.elements.btnNext.addEventListener("click", () => callbacks.onNavigate(1));
         }
+
+        // Swipe Gestures (Shared Handler)
+        SwipeHandler.attach(this.elements.popup, {
+            onSwipeLeft: () => callbacks.onNavigate(1),
+            onSwipeRight: () => callbacks.onNavigate(-1)
+        });
 
         if (this.elements.headerContext) {
             this.elements.headerContext.addEventListener("wheel", (e) => {
