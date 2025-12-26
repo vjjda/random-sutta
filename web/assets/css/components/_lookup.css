@@ -139,50 +139,50 @@
     gap: 4px;
 }
 
-/* --- DETAIL ICON (3 Dots) --- */
+/* --- DETAIL ICON (Small 'i') --- */
 .dpd-detail-icon {
     position: absolute;
     bottom: 6px;
     right: 0;
-    width: 24px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.5;
-    transition: opacity 0.2s;
+    opacity: 0.4; /* Faint */
+    transition: opacity 0.2s, background-color 0.2s, color 0.2s, border-color 0.2s;
+    
+    border: 1px solid var(--text-light);
+    border-radius: 50%;
+    color: var(--text-light);
+    font-size: 10px;
+    font-family: var(--font-mono, monospace); /* Monospace for centered 'i' */
+    font-weight: 700;
+    line-height: 1;
+    /* Prevent shrinking/growing */
+    flex-shrink: 0; 
 }
 
-/* The 3 dots shape using box-shadow */
+/* The 'i' character */
 .dpd-detail-icon::after {
-    content: '';
-    width: 3px;
-    height: 3px;
-    border-radius: 50%;
-    background-color: var(--text-light);
-    /* Create 2 clones to the left */
-    box-shadow: -5px 0 0 var(--text-light), -10px 0 0 var(--text-light);
-    margin-left: 10px; /* Offset to align right */
+    content: 'i';
+    display: block;
+    margin-top: -1px; /* Optical center adjustment */
 }
 
 /* Hover State */
 .dpd-summary:hover .dpd-detail-icon {
     opacity: 1;
+    border-color: var(--text-muted);
+    color: var(--text-muted);
 }
 
-.dpd-summary:hover .dpd-detail-icon::after {
-    background-color: var(--text-muted);
-    box-shadow: -5px 0 0 var(--text-muted), -10px 0 0 var(--text-muted);
-}
-
-/* Open State */
+/* Open State (Filled Circle) */
 details[open] .dpd-detail-icon {
     opacity: 1;
-}
-
-details[open] .dpd-detail-icon::after {
     background-color: var(--primary-color);
-    box-shadow: -5px 0 0 var(--primary-color), -10px 0 0 var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff; /* White text on primary bg */
 }
 
 /* --- DISABLED STATE (No Details) --- */
