@@ -9,6 +9,7 @@ const logger = getLogger("LookupManager");
 
 export const LookupManager = {
     _isNavigating: false,
+    _state: { currentNode: null, currentStart: 0, currentEnd: 0 },
 
     init() {
         LookupUI.init({
@@ -84,6 +85,13 @@ export const LookupManager = {
         sel.removeAllRanges();
         sel.addRange(wordRange);
 
+        // [STATE] Store selection state
+        this._state = {
+            currentNode: textNode,
+            currentStart: start,
+            currentEnd: end
+        };
+
         // 4. Perform Lookup
         this._performLookup(word, textNode.parentElement);
     },
@@ -134,18 +142,28 @@ export const LookupManager = {
     clearSelection() {
         window.getSelection()?.removeAllRanges();
         document.body.classList.remove("lookup-open");
+        this._state = { currentNode: null, currentStart: 0, currentEnd: 0 };
     },
 
     navigate(direction) {
-        const sel = window.getSelection();
-        if (!sel.rangeCount) return;
-        
-        const anchorNode = sel.anchorNode;
-        if (anchorNode.nodeType !== 3) return; // Must be text node
-        
+        let anchorNode, currentStart, currentEnd;
+
+        // Use stored state if available
+        if (this._state.currentNode && this._state.currentNode.isConnected) {
+            anchorNode = this._state.currentNode;
+            currentStart = this._state.currentStart;
+            currentEnd = this._state.currentEnd;
+        } else {
+            // Fallback to Selection API
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            anchorNode = sel.anchorNode;
+            if (anchorNode.nodeType !== 3) return; 
+            currentStart = Math.min(sel.anchorOffset, sel.focusOffset);
+            currentEnd = Math.max(sel.anchorOffset, sel.focusOffset);
+        }
+
         const fullText = anchorNode.textContent;
-        const currentStart = Math.min(sel.anchorOffset, sel.focusOffset);
-        const currentEnd = Math.max(sel.anchorOffset, sel.focusOffset);
 
         // 1. Tokenize current node
         const tokens = this._tokenize(fullText);
@@ -222,10 +240,20 @@ export const LookupManager = {
         
         sel.removeAllRanges();
         sel.addRange(newRange);
+
+        // [STATE] Update state
+        this._state = {
+            currentNode: node,
+            currentStart: token.start,
+            currentEnd: token.end
+        };
         
         // [UPDATED] Scroll into view using custom offset
         const span = node.parentElement;
         if (span) this._scrollToElement(span);
+
+        // [FIX] Explicitly trigger lookup for the new token
+        this._performLookup(token.text, node.parentElement);
     },
 
     _jumpSegment(currentNode, direction) {
