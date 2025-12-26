@@ -18,7 +18,7 @@ IMPORT_MAP_ALIASES = {
     "ui": "assets/modules/ui",
     "tts": "assets/modules/tts",
     "data": "assets/modules/data",
-    "pali-lookup": "assets/modules/pali_lookup",
+    "lookup": "assets/modules/lookup",
     "wa-sqlite": "assets/libs"
 }
 

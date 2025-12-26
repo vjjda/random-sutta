@@ -1,0 +1,102 @@
+// Path: web/assets/modules/services/sqlite_connection.js
+import { getLogger } from 'utils/logger.js';
+import { initSQLite, withExistDB } from '../../libs/wa-sqlite-index.js';
+import { useIdbStorage } from '../../libs/wa-sqlite-idb.js';
+
+const logger = getLogger("SqliteConnection");
+
+export class SqliteConnection {
+    constructor(dbName, zipUrl) {
+        this.dbName = dbName;
+        this.zipUrl = zipUrl;
+        this.db = null;
+        this.isInitializing = false;
+    }
+
+    async init(retries = 1) {
+        if (this.db) return true;
+        if (this.isInitializing) {
+            return new Promise(resolve => {
+                const interval = setInterval(() => {
+                    if (this.db) {
+                        clearInterval(interval);
+                        resolve(true);
+                    } else if (this.isInitializing === false) {
+                        clearInterval(interval);
+                        resolve(false);
+                    }
+                }, 100);
+            });
+        }
+
+        this.isInitializing = true;
+        try {
+            logger.info("Init", `Initializing ${this.dbName}...`);
+            
+            // Try to open the DB
+            let dbHandle = await initSQLite(useIdbStorage(this.dbName));
+            
+            // Check if table population is needed
+            const tables = await dbHandle.run("SELECT name FROM sqlite_master WHERE type='table'");
+            
+            // If DB is empty and we have a zipUrl, assume we need to load it.
+            if (tables.length === 0 && this.zipUrl) {
+                logger.info("Init", "DB empty. Downloading & Hydrating...");
+                await dbHandle.close();
+                
+                const dbBinary = await this._downloadAndUnzip();
+                const dbFile = new File([dbBinary], this.dbName, { type: 'application/x-sqlite3' });
+                
+                dbHandle = await initSQLite(useIdbStorage(this.dbName, withExistDB(dbFile)));
+                logger.info("Init", "Database restored to IndexedDB.");
+            } else {
+                logger.info("Init", "Loaded existing DB.");
+            }
+
+            this.db = dbHandle;
+            this.isInitializing = false;
+            return true;
+
+        } catch (e) {
+            logger.error("Init", `Failed to init ${this.dbName}`, e);
+            if (retries > 0) {
+                logger.warn("Init", "Attempting recovery: Deleting DB and retrying...");
+                await this._deleteDB();
+                this.isInitializing = false;
+                return await this.init(retries - 1);
+            }
+            this.isInitializing = false;
+            return false;
+        }
+    }
+
+    async _deleteDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.deleteDatabase(this.dbName);
+            req.onsuccess = () => {
+                logger.info("Init", "Deleted corrupted DB.");
+                resolve();
+            };
+            req.onerror = () => reject(req.error);
+            req.onblocked = () => {
+                logger.warn("Init", "Delete blocked by other tabs.");
+            };
+        });
+    }
+
+    async _downloadAndUnzip() {
+        if (!window.JSZip) throw new Error("JSZip not loaded");
+        const response = await fetch(this.zipUrl);
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+        const blob = await response.blob();
+        const zip = await JSZip.loadAsync(blob);
+        const dbFile = zip.file(this.dbName); 
+        if (!dbFile) throw new Error(`${this.dbName} not found in zip`);
+        return await dbFile.async("arraybuffer");
+    }
+
+    async run(sql, params) {
+        if (!this.db) await this.init();
+        return await this.db.run(sql, params);
+    }
+}

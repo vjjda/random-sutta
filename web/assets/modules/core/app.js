@@ -13,7 +13,7 @@ import {
   FontSizeManager,
 } from "ui/managers/index.js";
 import { TTSBootstrap } from "tts/tts_bootstrap.js";
-import { initPaliLookup } from "pali-lookup/index.js";
+import { initLookup } from "lookup/index.js";
 
 const APP_VERSION = "dev-placeholder";
 const logger = getLogger("App");
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   FilterComponent.init();
   initPopupSystem();
-  initPaliLookup();
+  initLookup();
 
   TTSBootstrap.init({
     onAutoNext: async () => {
