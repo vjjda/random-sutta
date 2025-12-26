@@ -31,7 +31,8 @@ class OutputDatabase:
         self._create_tables()
         
         # Metadata
-        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("version", datetime.now().strftime("%Y-%m-%d")))
+        # [DETERMINISTIC] Use static version to prevent hash changes on rebuilds without data changes
+        self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("version", "1.0"))
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("mode", self.config.mode))
         
         fmt = "html" if self.config.html_mode else "json"
