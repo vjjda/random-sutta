@@ -1,6 +1,7 @@
 # Path: src/live_server.py
 import logging
 import sys
+import socket
 from livereload import Server # type: ignore
 from src.logging_config import setup_logging
 
@@ -12,6 +13,27 @@ WATCH_PATTERNS = [
     "web/assets/modules/**/*.js",
     "web/assets/db/**/*.json"
 ]
+
+def get_network_info():
+    """Lấy thông tin IP LAN và Hostname."""
+    try:
+        # Lấy IP LAN bằng cách kết nối giả (không gửi gói tin thật)
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip_address = s.getsockname()[0]
+        s.close()
+    except Exception:
+        ip_address = "127.0.0.1"
+
+    try:
+        # Lấy Hostname của máy tính (macOS thường hỗ trợ .local)
+        hostname = socket.gethostname()
+        if not hostname.endswith(".local"):
+            hostname = f"{hostname}.local"
+    except Exception:
+        hostname = "localhost"
+        
+    return ip_address, hostname
 
 def run_live_server() -> None:
     """
@@ -28,14 +50,38 @@ def run_live_server() -> None:
         for pattern in WATCH_PATTERNS:
             server.watch(pattern)
             
+        # Lấy thông tin mạng
+        ip, hostname = get_network_info()
+        port = 8000
+        
+        url_local = f"http://localhost:{port}"
+        url_ip = f"http://{ip}:{port}"
+        url_host = f"http://{hostname}:{port}"
+
         # Khởi động server
-        logger.info("🚀 Starting Live Server at http://localhost:8000")
+        logger.info("🚀 Starting Live Server")
+        logger.info(f"   👉 Local:           {url_local}")
+        logger.info(f"   👉 Network (IP):    {url_ip}")
+        logger.info(f"   👉 Network (Host):  {url_host}")
+        
+        # Tạo QR Code
+        try:
+            import qrcode # type: ignore
+            qr = qrcode.QRCode()
+            qr.add_data(url_host)
+            qr.make(fit=True)
+            print("\nScan this QR Code to access via Hostname (Stable):")
+            qr.print_ascii()
+            print("\n")
+        except ImportError:
+            logger.info("   💡 Tip: Run 'pip install qrcode' to see a QR code here.")
+
         logger.info("   (Press Ctrl+C to stop)")
         
         server.serve(
             root=WEB_DIR, 
-            port=8000, 
-            host="localhost",
+            port=port, 
+            host="0.0.0.0",
             restart_delay=0.5
         )
         

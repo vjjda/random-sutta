@@ -47,16 +47,24 @@ SERVERS_CONFIG: List[Dict[str, Any]] = [
 
 logger = setup_logging("MultiServer")
 
-def get_lan_ip() -> str:
-    """Lấy địa chỉ IP mạng Lan để hiển thị cho tiện."""
+def get_network_info() -> tuple[str, str]:
+    """Lấy thông tin IP LAN và Hostname."""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
     except Exception:
-        return "127.0.0.1"
+        ip = "127.0.0.1"
+
+    try:
+        hostname = socket.gethostname()
+        if not hostname.endswith(".local"):
+            hostname = f"{hostname}.local"
+    except Exception:
+        hostname = "localhost"
+        
+    return ip, hostname
 
 # [NEW] Hàm tắt log rác
 def silence_tornado_logs() -> None:
@@ -87,7 +95,7 @@ def start_server_instance(config: Dict[str, Any]) -> None:
             watch_path = str(PROJECT_ROOT / pattern) if "*" not in pattern else pattern
             server.watch(watch_path)
 
-        logger.info(f"🚀 [{name}] Serving at http://0.0.0.0:{port}")
+        # logger.info(f"🚀 [{name}] Serving at http://0.0.0.0:{port}") # Moved to Orchestrator summary
         
         server.serve(
             root=str(root_path),
@@ -106,10 +114,34 @@ def run_orchestrator() -> None:
     # [NEW] Apply global silence (cho chắc chắn)
     silence_tornado_logs()
 
-    lan_ip = get_lan_ip()
-    logger.info("🔥 Starting Omni-Channel Server (LAN Access Enabled)...")
-    logger.info(f"👉 Local:   http://localhost:[port]")
-    logger.info(f"👉 Network: http://{lan_ip}:[port]")
+    ip, hostname = get_network_info()
+    
+    logger.info("🔥 Starting Omni-Channel Server System...")
+    print("\n" + "="*60)
+    print(f"{'SERVICE':<20} | {'PORT':<6} | {'URL (Stable Hostname)':<30}")
+    print("-" * 60)
+    
+    for config in SERVERS_CONFIG:
+        url = f"http://{hostname}:{config['port']}"
+        print(f"{config['name']:<20} | {config['port']:<6} | {url}")
+        
+    print("="*60 + "\n")
+
+    logger.info(f"👉 LAN IP Access: http://{ip}:[port]")
+
+    # QR Code Generation (For Main Source Web - Port 8000)
+    try:
+        import qrcode # type: ignore
+        main_url = f"http://{hostname}:8000"
+        qr = qrcode.QRCode()
+        qr.add_data(main_url)
+        qr.make(fit=True)
+        print(f"\n📱 Scan for SOURCE WEB ({main_url}):")
+        qr.print_ascii()
+        print("\n")
+    except ImportError:
+         logger.info("💡 Tip: Run 'pip install qrcode' to see QR codes.")
+
     logger.info("   (Press Ctrl+C to stop all servers)")
 
     # 1. Khởi tạo các luồng
@@ -117,7 +149,7 @@ def run_orchestrator() -> None:
         t = threading.Thread(target=start_server_instance, args=(config,), daemon=True)
         threads.append(t)
         t.start()
-        time.sleep(0.5) 
+        time.sleep(0.2) 
 
     # 2. Giữ main thread sống để hứng Ctrl+C
     try:
