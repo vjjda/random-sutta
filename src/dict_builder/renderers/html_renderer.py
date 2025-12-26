@@ -69,11 +69,10 @@ class DpdHtmlRenderer:
                 "word": word,
                 "g1": "",
                 "g2": "",
-                "g3": "",
-                "full_col_text": None  # If set, spans all 3 columns (e.g. "in comps")
+                "g3": ""
             }
 
-            # Logic from original author
+            # Logic from original author (simplified)
             if grammar_str.startswith("reflx"):
                 parts = grammar_str.split()
                 # "reflx pron" + rest
@@ -86,9 +85,6 @@ class DpdHtmlRenderer:
                     # Fallback if weird string
                     row_data["g1"] = grammar_str
 
-            elif grammar_str.startswith("in comps"):
-                row_data["full_col_text"] = grammar_str
-            
             else:
                 parts = grammar_str.split()
                 while len(parts) < 3:

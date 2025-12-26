@@ -13,13 +13,9 @@
                 <td class="col-word"><b>${row['word']}</b></td>
                 <td class="col-pos">${row['pos']}</td>
                 
-                % if row['full_col_text']:
-                    <td class="col-full" colspan="3">${row['full_col_text']}</td>
-                % else:
-                    <td class="col-g1">${row['g1']}</td>
-                    <td class="col-g2">${row['g2']}</td>
-                    <td class="col-g3">${row['g3']}</td>
-                % endif
+                <td class="col-g1">${row['g1']}</td>
+                <td class="col-g2">${row['g2']}</td>
+                <td class="col-g3">${row['g3']}</td>
             </tr>
             % endfor
         </tbody>
