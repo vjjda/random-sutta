@@ -3,6 +3,7 @@ import { DictProvider } from './dict_provider.js';
 import { LookupUI } from './ui/lookup_ui.js';
 import { PaliRenderer } from './utils/pali_renderer.js';
 import { getLogger } from 'utils/logger.js';
+import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("LookupManager");
 
@@ -69,6 +70,12 @@ export const LookupManager = {
             const renderData = PaliRenderer.renderList(results, cleanText);
             LookupUI.render(renderData, cleanText); // Send data object + title
             document.body.classList.add("lookup-open");
+            
+            // [UPDATED] Scroll to position (1/4 from top)
+            // We use 'parent' because 'anchor' might be a text node
+            if (!this._isNavigating) {
+                this._scrollToElement(parent);
+            }
         } else {
             // Not found
             if (this._isNavigating) {
@@ -171,9 +178,9 @@ export const LookupManager = {
         sel.removeAllRanges();
         sel.addRange(newRange);
         
-        // Scroll into view if needed?
-        // const span = node.parentElement;
-        // if (span) span.scrollIntoView({behavior: "smooth", block: "center"});
+        // [UPDATED] Scroll into view using custom offset
+        const span = node.parentElement;
+        if (span) this._scrollToElement(span);
     },
 
     _jumpSegment(currentNode, direction) {
@@ -222,7 +229,23 @@ export const LookupManager = {
         
         this._selectToken(targetNode, targetToken);
         
-        // Scroll to the new segment
-        targetWrapper.scrollIntoView({behavior: "smooth", block: "center"});
+        // [UPDATED] Scroll to the new segment
+        // this._scrollToElement(targetWrapper); // Handled by _selectToken now
+    },
+    
+    _scrollToElement(element) {
+        if (!element) return;
+        const rect = element.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Calculate target Y position: Element Top + Current Scroll - (Viewport Height * Ratio)
+        // Ratio = 0.25 means 1/4th from top
+        const ratio = AppConfig.LOOKUP?.SCROLL_OFFSET_RATIO || 0.25;
+        const targetY = rect.top + scrollTop - (window.innerHeight * ratio);
+        
+        window.scrollTo({
+            top: targetY,
+            behavior: 'smooth'
+        });
     }
 };
