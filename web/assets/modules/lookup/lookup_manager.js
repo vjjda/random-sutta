@@ -54,7 +54,7 @@ export const LookupManager = {
         if (!parent || !parent.closest('#sutta-container')) return;
         
         // CLEAN TEXT Logic
-        const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—?!()]/g, '').trim();
+        const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—?!()…]/g, '').trim();
         
         if (cleanText.length > 50 || cleanText.length < 1) return; 
         
@@ -147,8 +147,8 @@ export const LookupManager = {
     },
 
     _tokenize(text) {
-        // Tokenize by Whitespace AND Em-dash
-        const regex = /[^\s—]+/g;
+        // Tokenize by Whitespace, Em-dash, and Ellipsis
+        const regex = /[^\s—…]+/g;
         let match;
         const tokens = [];
         while ((match = regex.exec(text)) !== null) {
