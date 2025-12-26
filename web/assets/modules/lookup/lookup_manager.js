@@ -53,9 +53,6 @@ export const LookupManager = {
         const parent = anchor.nodeType === 3 ? anchor.parentElement : anchor;
         
         if (!parent || !parent.closest('#sutta-container')) return;
-
-        // [UPDATED] Restrict lookup to Pali text only (.pli class)
-        if (!parent.closest('.pli')) return;
         
         // CLEAN TEXT Logic
         const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—?!()…]/g, '').trim();
@@ -66,8 +63,8 @@ export const LookupManager = {
         const isReady = await DictProvider.init();
         if (!isReady) return;
         
-        // Use DictProvider for search
-        const results = await DictProvider.search(cleanText);
+        // Use DictProvider for search (Pass context parent)
+        const results = await DictProvider.search(cleanText, parent);
         
         if (results && results.length > 0) {
             const renderData = PaliRenderer.renderList(results, cleanText);
