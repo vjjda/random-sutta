@@ -356,7 +356,6 @@ export const LookupManager = {
         if (!currentWrapper) return;
         
         // Get all .pli spans in the container to find index
-        // This is reasonably fast
         const allSegments = Array.from(document.querySelectorAll('#sutta-container .pli'));
         const currentIdx = allSegments.indexOf(currentWrapper);
         
@@ -370,22 +369,18 @@ export const LookupManager = {
         
         const targetWrapper = allSegments[nextIdx];
         
-        // Assume text is first child or text content
-        // Usually .pli contains just text
-        const targetNode = targetWrapper.firstChild;
-        if (!targetNode || targetNode.nodeType !== 3) return;
+        // [FIX] Use full text content of the wrapper, robust against child nodes
+        const fullText = targetWrapper.textContent;
+        const tokens = this._tokenize(fullText);
         
-        const tokens = this._tokenize(targetNode.textContent);
         if (tokens.length === 0) return; // Empty segment?
         
         // If moving Forward (Next) -> Select FIRST token of next segment
         // If moving Backward (Prev) -> Select LAST token of prev segment
         const targetToken = (direction === 1) ? tokens[0] : tokens[tokens.length - 1];
         
-        this._selectToken(targetNode, targetToken);
-        
-        // [UPDATED] Scroll to the new segment
-        // this._scrollToElement(targetWrapper); // Handled by _selectToken now
+        // Use the robust selection method
+        this._selectTokenInParent(targetWrapper, targetToken);
     },
     
     _scrollToElement(element) {
