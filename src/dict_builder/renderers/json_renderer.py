@@ -130,14 +130,45 @@ class DpdJsonRenderer:
         return json.dumps(data, ensure_ascii=False)
 
     def render_grammar_notes(self, grammar_list: list) -> str:
-        """Trích xuất Grammar Note JSON."""
+        """Trích xuất Grammar Note JSON với cấu trúc cột chi tiết."""
         data = []
+        # Sort để đảm bảo thứ tự nhất quán
+        grammar_list.sort(key=lambda x: (x[0], x[1]))
+        
         for headword, pos, grammar_str in grammar_list:
             item = {
                 self._k("headword"): headword,
                 self._k("pos"): pos,
-                self._k("grammar"): grammar_str
+                self._k("grammar"): grammar_str,
+                # Fields cho hiển thị dạng bảng 3 cột
+                self._k("c1"): "",
+                self._k("c2"): "",
+                self._k("c3"): "",
+                self._k("full"): None
             }
+            
+            if grammar_str.startswith("reflx"):
+                parts = grammar_str.split()
+                if len(parts) >= 2:
+                    item[self._k("c1")] = f"{parts[0]} {parts[1]}"
+                    remaining = parts[2:]
+                    if len(remaining) > 0: item[self._k("c2")] = remaining[0]
+                    if len(remaining) > 1: item[self._k("c3")] = " ".join(remaining[1:])
+                else:
+                     item[self._k("c1")] = grammar_str
+
+            elif grammar_str.startswith("in comps"):
+                 item[self._k("full")] = grammar_str
+            
+            else:
+                parts = grammar_str.split()
+                while len(parts) < 3:
+                    parts.append("")
+                
+                item[self._k("c1")] = parts[0]
+                item[self._k("c2")] = parts[1]
+                item[self._k("c3")] = " ".join(parts[2:])
+            
             data.append(item)
             
         return json.dumps(data, ensure_ascii=False)

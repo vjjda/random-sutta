@@ -56,35 +56,51 @@ class DpdHtmlRenderer:
 
     def render_grammar_notes(self, grammar_list: list) -> str:
         """
-        Render Grammar Note Table.
-        Structure: Flat list with 5 columns (POS | Gram1 | Gram2 | Gram3 | Word).
-        Sorted by Headword, then POS.
+        Render Grammar Note Table matching original DPD logic.
+        Structure: Word | POS | G1 | G2 | G3
         """
         # Sort by headword (0) then pos (1)
         sorted_list = sorted(grammar_list, key=lambda x: (x[0], x[1]))
         
         rows = []
         for word, pos, grammar_str in sorted_list:
-            
-            # Split grammar string into parts
-            parts = grammar_str.split(" ")
-            
-            # Pad with empty strings to ensure exactly 3 parts
-            while len(parts) < 3:
-                parts.append("")
-            
-            # If more than 3, join the remainder into the last part
-            if len(parts) > 3:
-                parts[2] = " ".join(parts[2:])
-                parts = parts[:3]
-            
-            rows.append({
+            row_data = {
                 "pos": pos,
-                "g1": parts[0],
-                "g2": parts[1],
-                "g3": parts[2],
-                "word": word
-            })
+                "word": word,
+                "g1": "",
+                "g2": "",
+                "g3": "",
+                "full_col_text": None  # If set, spans all 3 columns (e.g. "in comps")
+            }
 
-        # Pass 'rows' directly, no 'groups'
+            # Logic from original author
+            if grammar_str.startswith("reflx"):
+                parts = grammar_str.split()
+                # "reflx pron" + rest
+                if len(parts) >= 2:
+                    row_data["g1"] = f"{parts[0]} {parts[1]}"
+                    remaining = parts[2:]
+                    if len(remaining) > 0: row_data["g2"] = remaining[0]
+                    if len(remaining) > 1: row_data["g3"] = " ".join(remaining[1:])
+                else:
+                    # Fallback if weird string
+                    row_data["g1"] = grammar_str
+
+            elif grammar_str.startswith("in comps"):
+                row_data["full_col_text"] = grammar_str
+            
+            else:
+                parts = grammar_str.split()
+                while len(parts) < 3:
+                    parts.append("")
+                
+                # If more than 3, join remainder into last part (or ignore? original code ignored logic but just appended)
+                # Original logic: just loop and add <td>. We map to 3 slots.
+                row_data["g1"] = parts[0]
+                row_data["g2"] = parts[1]
+                # Join any remaining parts into g3 just in case
+                row_data["g3"] = " ".join(parts[2:])
+            
+            rows.append(row_data)
+
         return self.tpl_grammar_note.render(rows=rows)

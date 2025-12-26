@@ -2,19 +2,24 @@
     <table class="grammar-note-table">
         <thead>
             <tr>
+                <th>word</th>
                 <th>pos</th>
                 <th colspan="3">grammar</th>
-                <th>word</th>
             </tr>
         </thead>
         <tbody>
             % for row in rows:
             <tr>
+                <td class="col-word"><b>${row['word']}</b></td>
                 <td class="col-pos">${row['pos']}</td>
-                <td class="col-g1">${row['g1']}</td>
-                <td class="col-g2">${row['g2']}</td>
-                <td class="col-g3">${row['g3']}</td>
-                <td class="col-word">${row['word']}</td>
+                
+                % if row['full_col_text']:
+                    <td class="col-full" colspan="3">${row['full_col_text']}</td>
+                % else:
+                    <td class="col-g1">${row['g1']}</td>
+                    <td class="col-g2">${row['g2']}</td>
+                    <td class="col-g3">${row['g3']}</td>
+                % endif
             </tr>
             % endfor
         </tbody>
