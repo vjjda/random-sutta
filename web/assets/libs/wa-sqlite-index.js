@@ -903,14 +903,39 @@ async function parseHeaderAndVerify(reader) {
 async function readExactBytes(reader, size) {
   const result = new Uint8Array(size);
   let offset = 0;
+
+  // 1. Consume leftover from previous reads attached to reader
+  if (reader.leftover) {
+    const toCopy = Math.min(size, reader.leftover.length);
+    result.set(reader.leftover.subarray(0, toCopy), 0);
+    offset += toCopy;
+    
+    if (toCopy < reader.leftover.length) {
+      reader.leftover = reader.leftover.subarray(toCopy);
+    } else {
+      reader.leftover = null;
+    }
+  }
+
   while (offset < size) {
     const { done, value } = await reader.read();
     if (done) {
-      throw new Error("Unexpected EOF");
+       // If we already filled the buffer (offset == size), break loop.
+       // But if we still need bytes (offset < size), then it is an error.
+       if (offset < size) {
+           throw new Error(`Unexpected EOF: Expected ${size}, got ${offset}`);
+       }
+       break;
     }
+
     const bytesToCopy = Math.min(size - offset, value.length);
     result.set(value.subarray(0, bytesToCopy), offset);
     offset += bytesToCopy;
+    
+    // Save excess bytes to reader.leftover
+    if (bytesToCopy < value.length) {
+       reader.leftover = value.subarray(bytesToCopy);
+    }
   }
   return result;
 }
@@ -923,8 +948,6 @@ async function* pagify(stream2) {
     const pageSize = rawPageSize === 1 ? 65536 : rawPageSize;
     const pageCount = view.getUint32(28);
     
-    console.log(`[wa-sqlite] pagify: pageSize=${pageSize}, pageCount=${pageCount}, expectedSize=${pageSize * pageCount}`);
-
     // Fix: Reconstruct the first page using the consumed header and the rest of the page
     const firstPageRest = await readExactBytes(reader, pageSize - 32);
     const firstPage = new Uint8Array(pageSize);
