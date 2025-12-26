@@ -40,7 +40,7 @@ export const SqliteService = {
             // where a query to sqlite_master will be empty.
             let dbHandle = await initSQLite(useIdbStorage(DB_NAME));
             
-            const tables = await dbHandle.query('SELECT name FROM sqlite_master WHERE type="table" AND name="lookups"');
+            const tables = await dbHandle.run('SELECT name FROM sqlite_master WHERE type="table" AND name="lookups"');
             
             if (tables.length === 0) {
                 logger.info("Init", "DB empty or missing. Downloading & Populating...");
@@ -90,7 +90,7 @@ export const SqliteService = {
 
     async _loadJsonKeys() {
         try {
-            const res = await this.db.query("SELECT abbr_key, full_key FROM json_keys");
+            const res = await this.db.run("SELECT abbr_key, full_key FROM json_keys");
             if (res.length > 0) {
                 this._keyMap.fullToAbbr = {};
                 this._keyMap.abbrToFull = {};
@@ -128,7 +128,7 @@ export const SqliteService = {
         `;
 
         try {
-            const ftsRes = await this.db.query(sql, {
+            const ftsRes = await this.db.run(sql, {
                 ':term': cleanTerm,
                 ':pattern': `${cleanTerm}*`
             });
@@ -172,11 +172,11 @@ export const SqliteService = {
 
         try {
             if (type === 0) { // Deconstruction
-                const res = await this.db.query("SELECT components FROM deconstructions WHERE id = :id", { ':id': targetId });
+                const res = await this.db.run("SELECT components FROM deconstructions WHERE id = :id", { ':id': targetId });
                 if (res.length > 0) result.definition = res[0].components;
             } 
             else if (type === 1) { // Entry
-                const res = await this.db.query(
+                const res = await this.db.run(
                     "SELECT headword, definition_json, grammar_json, example_json FROM entries WHERE id = :id", 
                     { ':id': targetId }
                 );
@@ -189,7 +189,7 @@ export const SqliteService = {
                 }
             }
             else if (type === 2) { // Root
-                const res = await this.db.query(
+                const res = await this.db.run(
                     "SELECT root, definition_json FROM roots WHERE id = :id", 
                     { ':id': targetId }
                 );
@@ -200,7 +200,7 @@ export const SqliteService = {
                 }
             }
 
-            const gnRes = await this.db.query("SELECT grammar_json FROM grammar_notes WHERE key = :key", { ':key': term });
+            const gnRes = await this.db.run("SELECT grammar_json FROM grammar_notes WHERE key = :key", { ':key': term });
             if (gnRes.length > 0) {
                 result.grammar_note = gnRes[0].grammar_json;
             }
