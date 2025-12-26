@@ -9,7 +9,7 @@ const logger = getLogger("LookupManager");
 
 export const LookupManager = {
     _isNavigating: false,
-    _state: { currentNode: null, currentStart: 0, currentEnd: 0 },
+    _state: { highlightNode: null, currentStart: 0, currentEnd: 0 },
 
     init() {
         LookupUI.init({
@@ -39,6 +39,11 @@ export const LookupManager = {
         
         // Ignore clicks on existing interactive elements (links, buttons)
         if (e.target.closest("a, button, .lookup-highlight")) return;
+
+        // [FIX] Clear previous highlight FIRST to normalize DOM
+        // This prevents 'HierarchyRequestError' caused by operating on text nodes
+        // that get detached/merged during _clearHighlight's normalization.
+        this._clearHighlight();
 
         // 1. Get Caret Position
         let range;
@@ -76,24 +81,45 @@ export const LookupManager = {
         const word = textContent.substring(start, end).trim();
         if (!word) return;
 
-        // 3. Highlight (Select) the Word
+        // 3. Highlight (DOM Wrap) the Word
+        
         const wordRange = document.createRange();
         wordRange.setStart(textNode, start);
         wordRange.setEnd(textNode, end);
 
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(wordRange);
+        const span = document.createElement("span");
+        span.className = "lookup-highlight";
+        try {
+            wordRange.surroundContents(span);
+        } catch (e) {
+            logger.warn("Highlight", "Failed to wrap word", e);
+            // Fallback: just continue lookup without highlight
+        }
 
         // [STATE] Store selection state
         this._state = {
-            currentNode: textNode,
-            currentStart: start,
-            currentEnd: end
+            highlightNode: span,
+            currentStart: 0, // Reset relative start since node changed
+            currentEnd: 0
         };
 
         // 4. Perform Lookup
-        this._performLookup(word, textNode.parentElement);
+        // Note: textNode is now split, but span.parentElement is the context
+        this._performLookup(word, span.parentElement);
+    },
+    
+    _clearHighlight() {
+        const highlights = document.querySelectorAll('.lookup-highlight');
+        highlights.forEach(span => {
+            const parent = span.parentNode;
+            while (span.firstChild) {
+                parent.insertBefore(span.firstChild, span);
+            }
+            parent.removeChild(span);
+            // Normalize to merge split text nodes back together
+            parent.normalize();
+        });
+        this._state = { highlightNode: null, currentStart: 0, currentEnd: 0 };
     },
     
     _debounce(func, wait) {
@@ -140,84 +166,107 @@ export const LookupManager = {
     // Legacy _handleSelection removed as we switched to Click
     
     clearSelection() {
-        window.getSelection()?.removeAllRanges();
+        this._clearHighlight();
         document.body.classList.remove("lookup-open");
-        this._state = { currentNode: null, currentStart: 0, currentEnd: 0 };
     },
 
     navigate(direction) {
-        let anchorNode, currentStart, currentEnd;
-
-        // Use stored state if available
-        if (this._state.currentNode && this._state.currentNode.isConnected) {
-            anchorNode = this._state.currentNode;
-            currentStart = this._state.currentStart;
-            currentEnd = this._state.currentEnd;
-        } else {
-            // Fallback to Selection API
-            const sel = window.getSelection();
-            if (!sel.rangeCount) return;
-            anchorNode = sel.anchorNode;
-            if (anchorNode.nodeType !== 3) return; 
-            currentStart = Math.min(sel.anchorOffset, sel.focusOffset);
-            currentEnd = Math.max(sel.anchorOffset, sel.focusOffset);
+        // If we have a highlight node, use it as anchor
+        // Note: The highlight node contains the text of the *current* word.
+        // We need to look at its siblings to find the next word.
+        
+        let anchorNode = this._state.highlightNode;
+        if (!anchorNode || !anchorNode.isConnected) {
+            // Fallback or lost state? 
+            // Try finding any highlight
+            anchorNode = document.querySelector('.lookup-highlight');
+            if (!anchorNode) return;
         }
 
-        const fullText = anchorNode.textContent;
+        // We need the full text context of the parent paragraph/segment
+        // But simply getting parentElement.textContent merges everything.
+        // Better strategy: Unwrap temporarily to get clean text stream? 
+        // OR: Look at PreviousSibling / NextSibling text nodes.
+        
+        // SIMPLIFIED STRATEGY:
+        // 1. Get parent (the segment container)
+        const parent = anchorNode.parentElement;
+        
+        // 2. Re-construct the full text relative to the parent
+        // (This is tricky because of the split text nodes)
+        // Instead, let's tokenize the parent's full text content
+        const fullText = parent.textContent; 
+        
+        // 3. Find WHERE our current word is in that full text.
+        // Since we have multiple identical words, we need to be careful.
+        // We can use the childNodes to calculate offset.
+        
+        let currentOffset = 0;
+        let found = false;
+        
+        for (const node of parent.childNodes) {
+            if (node === anchorNode) {
+                found = true;
+                break;
+            }
+            currentOffset += node.textContent.length;
+        }
+        
+        if (!found) return; // Should not happen
+        
+        const currentWordLength = anchorNode.textContent.length;
+        const currentCenter = currentOffset + (currentWordLength / 2);
 
-        // 1. Tokenize current node
+        // 4. Tokenize
         const tokens = this._tokenize(fullText);
         
-        if (tokens.length === 0) {
-            // Empty node, try jumping adjacent?
-            this._jumpSegment(anchorNode, direction);
-            return;
-        }
-
-        // 2. Find Current Token Index
-        const center = (currentStart + currentEnd) / 2;
+        // 5. Find token matching our current position
         let currentIndex = -1;
-        
         for (let i = 0; i < tokens.length; i++) {
             const t = tokens[i];
-            if (center >= t.start && center <= t.end) {
+            const tokenCenter = (t.start + t.end) / 2;
+            // Fuzzy match center
+            if (Math.abs(tokenCenter - currentCenter) < 2) { // 2px margin for errors
                 currentIndex = i;
                 break;
             }
         }
         
         if (currentIndex === -1) {
-            // Find closest
-            let minDist = Infinity;
-            tokens.forEach((t, i) => {
-                const dist = Math.abs(center - (t.start + t.end) / 2);
-                if (dist < minDist) {
-                    minDist = dist;
-                    currentIndex = i;
-                }
-            });
+             // Fallback: search by text overlap?
+             // Just find closest
+             let minDist = Infinity;
+             tokens.forEach((t, i) => {
+                 const tokenCenter = (t.start + t.end) / 2;
+                 const dist = Math.abs(tokenCenter - currentCenter);
+                 if (dist < minDist) {
+                     minDist = dist;
+                     currentIndex = i;
+                 }
+             });
         }
-        
-        // 3. Move Index
+
+        // 6. Move Index
         let nextIndex = currentIndex + direction;
         
-        // 4. Check Boundary
+        // 7. Check Boundary (Jump Segment)
         if (nextIndex < 0) {
-            // Reached START of this segment -> Go to Prev Segment
             this._jumpSegment(anchorNode, -1);
             return;
         } else if (nextIndex >= tokens.length) {
-            // Reached END of this segment -> Go to Next Segment
             this._jumpSegment(anchorNode, 1);
             return;
         }
         
-        // 5. Select New Token (Same Segment)
-        this._selectToken(anchorNode, tokens[nextIndex]);
+        // 8. Select New Token (Same Segment)
+        // We need to map token (start, end) back to DOM nodes.
+        // Because of our highlighting, the DOM is fragmented (Text, Span, Text).
+        // The easiest way: Clear highlight (Merge nodes) -> Find Range -> Re-highlight.
+        
+        this._selectTokenInParent(parent, tokens[nextIndex]);
     },
 
     _tokenize(text) {
-        // Tokenize by Whitespace, Em-dash, and Ellipsis
         const regex = /[^\s—…]+/g;
         let match;
         const tokens = [];
@@ -231,29 +280,62 @@ export const LookupManager = {
         return tokens;
     },
 
-    _selectToken(node, token) {
+    _selectTokenInParent(parent, token) {
         this._isNavigating = true;
-        const sel = window.getSelection();
-        const newRange = document.createRange();
-        newRange.setStart(node, token.start);
-        newRange.setEnd(node, token.end);
         
-        sel.removeAllRanges();
-        sel.addRange(newRange);
-
-        // [STATE] Update state
-        this._state = {
-            currentNode: node,
-            currentStart: token.start,
-            currentEnd: token.end
-        };
+        // 1. Clear existing highlights (Merges text nodes)
+        this._clearHighlight();
         
-        // [UPDATED] Scroll into view using custom offset
-        const span = node.parentElement;
-        if (span) this._scrollToElement(span);
-
-        // [FIX] Explicitly trigger lookup for the new token
-        this._performLookup(token.text, node.parentElement);
+        // 2. Find text node covering [token.start, token.end]
+        // Since we normalized, parent should have fewer text nodes (ideally 1 if simple).
+        // But there might be other spans (like .eng).
+        
+        let currentPos = 0;
+        let targetNode = null;
+        let targetStart = 0;
+        let targetEnd = 0;
+        
+        for (const node of parent.childNodes) {
+            const len = node.textContent.length;
+            if (currentPos + len > token.start) {
+                // Found the node containing the start
+                if (node.nodeType === 3) {
+                    targetNode = node;
+                    targetStart = token.start - currentPos;
+                    targetEnd = token.end - currentPos;
+                    break;
+                } else {
+                    // Token is inside another element? Skip complex logic for now
+                }
+            }
+            currentPos += len;
+        }
+        
+        if (targetNode) {
+            const range = document.createRange();
+            range.setStart(targetNode, targetStart);
+            range.setEnd(targetNode, targetEnd);
+            
+            const span = document.createElement("span");
+            span.className = "lookup-highlight";
+            try {
+                range.surroundContents(span);
+                this._state.highlightNode = span;
+                
+                // Scroll
+                this._scrollToElement(span);
+                
+                // Trigger Lookup
+                this._performLookup(token.text, parent);
+            } catch (e) {
+                logger.warn("Nav Highlight failed", e);
+            }
+        }
+    },
+    
+    // Alias for compatibility
+    _selectToken(node, token) {
+        // Not used directly anymore, replaced by _selectTokenInParent logic
     },
 
     _jumpSegment(currentNode, direction) {

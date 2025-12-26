@@ -408,3 +408,11 @@ details[open] .dpd-detail-icon {
 .dpd-deconstruction-table tr td:last-child {
     text-align: left;
 }
+
+/* Word Highlight (Simulated Selection) */
+.lookup-highlight {
+    background-color: var(--highlight-color-segment, rgba(255, 215, 0, 0.3));
+    border-radius: 2px;
+    /* Optional: Slight spread to look like selection */
+    box-shadow: 0 0 0 1px var(--highlight-color-segment, rgba(255, 215, 0, 0.3));
+}
