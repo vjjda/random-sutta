@@ -31,6 +31,9 @@ export class SqliteConnection {
 
         this.isInitializing = true;
         try {
+            // [NEW] Auto-Update Check
+            await this._checkAndApplyUpdate();
+
             logger.info("Init", `Initializing ${this.dbName}...`);
             
             // Try to open the DB
@@ -67,6 +70,28 @@ export class SqliteConnection {
             }
             this.isInitializing = false;
             return false;
+        }
+    }
+
+    async _checkAndApplyUpdate() {
+        if (!this.zipUrl) return;
+        
+        try {
+            const manifestUrl = this.zipUrl.replace(".db.zip", ".json");
+            const res = await fetch(manifestUrl, { cache: "no-store" });
+            if (!res.ok) return; // Silent fail if no manifest
+            
+            const remoteData = await res.json();
+            const remoteHash = remoteData.hash;
+            const localHash = localStorage.getItem(`${this.dbName}_hash`);
+            
+            if (remoteHash && remoteHash !== localHash) {
+                logger.info("Init", `Update found! Remote: ${remoteHash.substr(0,8)} != Local: ${localHash ? localHash.substr(0,8) : 'null'}`);
+                await this._deleteDB();
+                localStorage.setItem(`${this.dbName}_hash`, remoteHash);
+            }
+        } catch (e) {
+            logger.warn("Init", "Update check failed", e);
         }
     }
 

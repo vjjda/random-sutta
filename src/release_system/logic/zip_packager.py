@@ -165,8 +165,21 @@ def create_dpd_db_zip(base_dir: Path = None) -> bool:
             zinfo.compress_type = zipfile.ZIP_DEFLATED
             
             zf.writestr(zinfo, file_data)
-            
+        
+        # [NEW] Generate Deterministic Version Manifest
+        file_hash = _calculate_file_hash(target_zip)
+        manifest_path = dict_dir / "dpd_mini.json"
+        
+        manifest_data = {
+            "hash": file_hash,
+            "size": target_zip.stat().st_size
+        }
+        
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest_data, f, indent=2)
+
         logger.info(f"   ✅ Created {target_zip.name} ({target_zip.stat().st_size / 1024 / 1024:.2f} MB)")
+        logger.info(f"   ✅ Manifest generated: {file_hash[:12]}...")
         return True
     except Exception as e:
         logger.error(f"❌ Failed to zip dpd_mini.db: {e}")
