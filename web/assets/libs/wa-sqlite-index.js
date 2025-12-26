@@ -1119,7 +1119,7 @@ function lastInsertRowId(core) {
 async function stream(core, onData, sql, parameters) {
   const { sqlite, pointer } = core;
   for await (const stmt of sqlite.statements(pointer, sql)) {
-    if (parameters?.length) {
+    if (parameters) {
       sqlite.bind_collection(stmt, parameters);
     }
     const cols = sqlite.column_names(stmt);
