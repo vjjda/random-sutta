@@ -63,7 +63,10 @@ export const PopupOrchestrator = {
                             this.closeAll();
                         }
                     } else if (CommentUI.isVisible() && !CommentUI.elements.popup.contains(e.target)) {
-                        this.closeAll();
+                        // [FIX] Don't close if clicking inside Lookup Popup
+                        if (!document.getElementById("lookup-popup")?.contains(e.target)) {
+                            this.closeAll();
+                        }
                     }
                 }
             });
