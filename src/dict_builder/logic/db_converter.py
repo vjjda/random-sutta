@@ -44,6 +44,9 @@ class DbConverter:
             
             logger.info("   Dropping grammar and example columns...")
             
+            # [FIX] Drop View first to avoid dependency errors
+            cursor.execute("DROP VIEW IF EXISTS grand_lookups")
+            
             # SQLite does not support dropping multiple columns in one statement in older versions,
             # but modern SQLite does. To be safe, we use separate statements.
             # Also, standard SQLite DROP COLUMN might require VACUUM to reclaim space.
