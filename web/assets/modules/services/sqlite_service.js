@@ -40,7 +40,7 @@ export const SqliteService = {
             // where a query to sqlite_master will be empty.
             let dbHandle = await initSQLite(useIdbStorage(DB_NAME));
             
-            const tables = await dbHandle.run('SELECT name FROM sqlite_master WHERE type="table" AND name="lookups"');
+            const tables = await dbHandle.run("SELECT name FROM sqlite_master WHERE type='table' AND name='lookups'");
             
             if (tables.length === 0) {
                 logger.info("Init", "DB empty or missing. Downloading & Populating...");
