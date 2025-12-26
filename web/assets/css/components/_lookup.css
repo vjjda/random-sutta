@@ -13,7 +13,7 @@
 }
 
 #lookup-popup .popup-body {
-    padding-bottom: 60px; /* Space for Nav Bar */
+    padding-bottom: 30vh; /* [UX] Generous overscroll space */
     flex: 1;
     overflow-y: auto;
     position: relative; /* Context for tab content */
