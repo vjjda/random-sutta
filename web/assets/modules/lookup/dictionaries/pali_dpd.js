@@ -24,53 +24,50 @@ export const PaliDPD = {
         if (!term) return [];
         const cleanTerm = term.toLowerCase().trim();
         
-        // Optimized FTS Query: Fetch EVERYTHING in one go
+        // Optimized Query: Deferred Join Pattern
+        // 1. Inner query: Quickly find top 50 candidates using only FTS index (no joins).
+        //    Sort by length first to prioritize exact matches (e.g. 'va' < 'vacca').
+        // 2. Outer query: Join details only for those candidates and calc exact score.
         const sql = `
             SELECT 
-                sub.key, 
-                sub.target_id, 
-                sub.type,
-                sub.headword,
-                sub.definition,
-                sub.grammar,
-                sub.example,
-                sub.gn_grammar,
-                ((sub.key = :term) AND (sub.key = sub.keyword)) AS is_exact
+                matches.key, 
+                matches.target_id, 
+                matches.type,
+                -- Fetch Details
+                CASE 
+                    WHEN matches.type = 1 THEN e.headword
+                    WHEN matches.type = 2 THEN r.root
+                    ELSE matches.key
+                END AS headword,
+                CASE 
+                    WHEN matches.type = 1 THEN e.definition_json
+                    WHEN matches.type = 2 THEN r.definition_json
+                    WHEN matches.type = 0 THEN d.components
+                END AS definition,
+                e.grammar_json AS grammar,
+                e.example_json AS example,
+                gn.grammar_json AS gn_grammar,
+                -- Calc Exact Match Score
+                (matches.key = :term AND matches.key = (
+                    CASE 
+                        WHEN matches.type = 1 THEN e.headword_clean
+                        WHEN matches.type = 0 THEN d.word
+                        WHEN matches.type = 2 THEN r.root_clean
+                        ELSE matches.key
+                    END
+                )) AS is_exact
             FROM (
-                SELECT 
-                    lf.key, 
-                    lf.target_id, 
-                    lf.type, 
-                    lf.rank,
-                    -- Determine Keyword (for sorting) & Headword (for display)
-                    CASE 
-                        WHEN lf.type = 1 THEN e.headword
-                        WHEN lf.type = 2 THEN r.root
-                        ELSE lf.key
-                    END AS headword,
-                    CASE 
-                        WHEN lf.type = 1 THEN e.headword_clean
-                        WHEN lf.type = 0 THEN d.word
-                        WHEN lf.type = 2 THEN r.root_clean
-                        ELSE lf.key
-                    END AS keyword,
-                    -- Extract Data
-                    CASE 
-                        WHEN lf.type = 1 THEN e.definition_json
-                        WHEN lf.type = 2 THEN r.definition_json
-                        WHEN lf.type = 0 THEN d.components
-                    END AS definition,
-                    e.grammar_json AS grammar,
-                    e.example_json AS example,
-                    gn.grammar_json AS gn_grammar
-                FROM lookups_fts lf
-                LEFT JOIN entries e ON lf.target_id = e.id AND lf.type = 1
-                LEFT JOIN deconstructions d ON lf.target_id = d.id AND lf.type = 0
-                LEFT JOIN roots r ON lf.target_id = r.id AND lf.type = 2
-                LEFT JOIN grammar_notes gn ON lf.key = gn.key
-                WHERE lf.key MATCH :pattern
-            ) sub
-            ORDER BY is_exact DESC, length(sub.key) ASC, sub.rank
+                SELECT key, target_id, type, rank
+                FROM lookups_fts 
+                WHERE key MATCH :pattern
+                ORDER BY length(key) ASC, rank
+                LIMIT 50
+            ) matches
+            LEFT JOIN entries e ON matches.target_id = e.id AND matches.type = 1
+            LEFT JOIN deconstructions d ON matches.target_id = d.id AND matches.type = 0
+            LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 2
+            LEFT JOIN grammar_notes gn ON matches.key = gn.key
+            ORDER BY is_exact DESC, length(matches.key) ASC, matches.rank
             LIMIT 20
         `;
 
