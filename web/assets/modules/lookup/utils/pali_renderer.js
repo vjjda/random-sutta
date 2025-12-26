@@ -248,9 +248,9 @@ export const PaliRenderer = {
                         </span>
                     </div>
                     
-                    <div class="dpd-summary-line-2">
-                        ${grammar ? `<span class="root-grammar">${grammar}</span>` : ''}
+                    <div class="dpd-summary-line-2" style="display: flex;">
                         ${sanskrit ? `<span class="root-sanskrit">[${sanskrit}]</span>` : ''}
+                        ${grammar ? `<span class="root-grammar" style="margin-left: auto;">${grammar}</span>` : ''}
                     </div>
 
                     <div class="dpd-summary-line-3">
