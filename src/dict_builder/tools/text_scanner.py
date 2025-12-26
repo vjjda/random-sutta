@@ -8,23 +8,33 @@ from concurrent.futures import ProcessPoolExecutor
 from typing import Set, List
 from rich import print
 
-# [UPDATED] Nâng version cache lên v4 để force reload dữ liệu đã chuẩn hóa
-CACHE_FILE = Path(".cache/ebts_words_v4.marshal.gz")
+# [UPDATED] Nâng version cache lên v5 để force reload dữ liệu đã chuẩn hóa logic tách từ
+CACHE_FILE = Path(".cache/ebts_words_v5.marshal.gz")
 
 def _process_single_file(file_path: Path) -> Set[str]:
     local_words = set()
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Regex vẫn giữ nguyên để đảm bảo bắt được mọi ký tự
+            # Regex bắt ký tự Pali
             pattern = re.compile(r'[a-zA-ZāīūṅñṭḍṇḷṃṁĀĪŪṄÑṬḌṆḶṂṀ]+')
             
+            # Ký tự cần xóa bỏ để nối từ (Smart quotes thường dùng trong sandhi ...'ti)
+            quotes_remove = str.maketrans("", "", "‘’“”")
+            # Ký tự cần thay bằng dấu cách để ngắt từ
+            punc_space = str.maketrans("—–-.,;?!:…", "          ")
+
             for text in data.values():
-                # [NEW] Chuẩn hóa Niggahita: Replace ṁ (dot above) -> ṃ (dot below)
-                # DPD dùng ṃ, Text gốc dùng ṁ. Nếu không replace sẽ bị lệch pha.
+                # 1. Chuẩn hóa Niggahita
                 text = text.replace("ṁ", "ṃ").replace("Ṁ", "Ṃ")
                 
-                # Sau khi replace, regex sẽ bắt được từ dạng "saṃ" chuẩn
+                # 2. Xử lý dấu câu thông minh
+                # - Xóa quotes để nối sandhi (vd: sāsanan”ti -> sāsananti)
+                text = text.translate(quotes_remove)
+                # - Thay dấu câu khác bằng space (vd: - -> space)
+                text = text.translate(punc_space)
+
+                # 3. Tách từ
                 words = pattern.findall(text.lower())
                 local_words.update(words)
     except Exception:
