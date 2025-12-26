@@ -24,12 +24,32 @@ export const PaliDPD = {
         if (!term) return [];
         const cleanTerm = term.toLowerCase().trim();
         
-        // FTS Query
+        // FTS Query with Subquery for Exact Match Logic
         const sql = `
-            SELECT target_id, type, key, (key = :term) as is_exact
-            FROM lookups_fts 
-            WHERE key MATCH :pattern
-            ORDER BY is_exact DESC, abs(length(key) - length(:term)) ASC, rank
+            SELECT 
+                sub.key, 
+                sub.target_id, 
+                sub.type,
+                ((sub.key = :term) AND (sub.key = sub.keyword)) AS is_exact
+            FROM (
+                SELECT 
+                    lf.key, 
+                    lf.target_id, 
+                    lf.type, 
+                    lf.rank,
+                    CASE 
+                        WHEN lf.type = 1 THEN e.headword_clean
+                        WHEN lf.type = 0 THEN d.word
+                        WHEN lf.type = 2 THEN r.root
+                        ELSE lf.key
+                    END AS keyword
+                FROM lookups_fts lf
+                LEFT JOIN entries e ON lf.target_id = e.id AND lf.type = 1
+                LEFT JOIN deconstructions d ON lf.target_id = d.id AND lf.type = 0
+                LEFT JOIN roots r ON lf.target_id = r.id AND lf.type = 2
+                WHERE lf.key MATCH :pattern
+            ) sub
+            ORDER BY is_exact DESC, sub.rank
             LIMIT 20
         `;
 
