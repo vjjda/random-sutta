@@ -264,35 +264,16 @@ export const PaliRenderer = {
     _renderGrammarNotes(notes, getAbbr) {
         let html = `<div class="grammar-note-container">`;
         html += `<table class="grammar-note-table">`;
-        
-        // Define Column Widths using colgroup
-        html += `
-        <colgroup>
-            <col style="width: 30%;">
-            <col style="width: 15%;">
-            <col style="width: 18.3%;">
-            <col style="width: 18.3%;">
-            <col style="width: 18.3%;">
-        </colgroup>
-        <thead>
-            <tr>
-                <th>word</th>
-                <th>pos</th>
-                <th colspan="3">grammar</th>
-            </tr>
-        </thead>`; 
-        
         html += `<tbody>`;
         
         notes.forEach(item => {
             const pos = item[getAbbr('pos')] || '';
             const word = item[getAbbr('headword')] || '';
             
-            // New fields for split columns
-            const full = item[getAbbr('full')];
-            const c1 = item[getAbbr('c1')] || '';
-            const c2 = item[getAbbr('c2')] || '';
-            const c3 = item[getAbbr('c3')] || '';
+            // New fields for split columns (g1, g2, g3)
+            const g1 = item[getAbbr('g1')] || '';
+            const g2 = item[getAbbr('g2')] || '';
+            const g3 = item[getAbbr('g3')] || '';
             
             // Fallback
             const oldGrammar = item[getAbbr('grammar')] || '';
@@ -301,12 +282,10 @@ export const PaliRenderer = {
                 <td class="col-word"><b>${word}</b></td>
                 <td class="col-pos">${pos}</td>`;
             
-            if (full) {
-                html += `<td class="col-full" colspan="3">${full}</td>`;
-            } else if (c1 || c2 || c3) {
-                html += `<td class="col-g1">${c1}</td>
-                         <td class="col-g2">${c2}</td>
-                         <td class="col-g3">${c3}</td>`;
+            if (g1 || g2 || g3) {
+                html += `<td class="col-g1">${g1}</td>
+                         <td class="col-g2">${g2}</td>
+                         <td class="col-g3">${g3}</td>`;
             } else {
                 html += `<td class="col-grammar" colspan="3">${oldGrammar}</td>`;
             }
