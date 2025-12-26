@@ -16,7 +16,7 @@ export const SqliteService = {
         abbrToFull: null
     },
 
-    async init() {
+    async init(retries = 1) {
         if (this.db) return true;
         if (this.isInitializing) {
             return new Promise(resolve => {
@@ -68,9 +68,35 @@ export const SqliteService = {
 
         } catch (e) {
             logger.error("Init", "Failed to init wa-sqlite", e);
+            
+            if (retries > 0) {
+                logger.warn("Init", "Attempting recovery: Deleting DB and retrying...");
+                try {
+                    await this._deleteDB();
+                } catch (delErr) {
+                    logger.error("Init", "Failed to delete DB", delErr);
+                }
+                this.isInitializing = false;
+                return await this.init(retries - 1);
+            }
+
             this.isInitializing = false;
             return false;
         }
+    },
+
+    async _deleteDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.deleteDatabase(DB_NAME);
+            req.onsuccess = () => {
+                logger.info("Init", "Deleted corrupted DB.");
+                resolve();
+            };
+            req.onerror = () => reject(req.error);
+            req.onblocked = () => {
+                logger.warn("Init", "Delete blocked. Please close other tabs.");
+            };
+        });
     },
     
     async _downloadAndUnzip() {
