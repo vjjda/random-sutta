@@ -49,7 +49,7 @@ export const PaliDPD = {
                 LEFT JOIN roots r ON lf.target_id = r.id AND lf.type = 2
                 WHERE lf.key MATCH :pattern
             ) sub
-            ORDER BY is_exact DESC, sub.rank
+            ORDER BY is_exact DESC, length(sub.key) ASC, sub.rank
             LIMIT 20
         `;
 
