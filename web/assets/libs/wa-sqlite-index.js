@@ -922,7 +922,16 @@ async function* pagify(stream2) {
     const rawPageSize = view.getUint16(16);
     const pageSize = rawPageSize === 1 ? 65536 : rawPageSize;
     const pageCount = view.getUint32(28);
-    for (let i = 0; i < pageCount; i++) {
+    
+    // Fix: Reconstruct the first page using the consumed header and the rest of the page
+    const firstPageRest = await readExactBytes(reader, pageSize - 32);
+    const firstPage = new Uint8Array(pageSize);
+    firstPage.set(headerData);
+    firstPage.set(firstPageRest, 32);
+    yield firstPage;
+
+    // Iterate for the remaining pages (starting from 1)
+    for (let i = 1; i < pageCount; i++) {
       yield await readExactBytes(reader, pageSize);
     }
     const { done } = await reader.read();
