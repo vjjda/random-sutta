@@ -226,13 +226,38 @@ export const PaliRenderer = {
     },
 
     _renderRoot(root, getLabel) {
-        let html = `<table class="dpd-grammar-table">`;
+        // Find keys dynamically (handling abbreviation if necessary)
+        // Note: The root object keys might be abbreviated or full depending on the source.
+        // We scan for keys that resolve to specific Labels via getLabel or direct match.
+        
+        let rootVal = "", meaning = "", grammar = "", sanskrit = "";
+        
         for (const [k, v] of Object.entries(root)) {
-            const label = getLabel(k);
-            html += `<tr><th>${label}</th><td>${v}</td></tr>`;
+            const label = getLabel(k).toLowerCase();
+            if (label === "root") rootVal = v;
+            else if (label === "meaning") meaning = v;
+            else if (label === "grammar") grammar = v;
+            else if (label === "sanskrit root") sanskrit = v;
         }
-        html += `</table>`;
-        return html;
+
+        return `
+        <div class="dpd-entry no-details">
+            <div class="dpd-summary">
+                <div class="dpd-summary-content">
+                    <div class="dpd-summary-line-1">
+                        <span class="dpd-lemma">${rootVal}</span>
+                        <span class="dpd-pos-group">
+                            <span class="dpd-pos">root</span>
+                            ${grammar ? `<span class="dpd-degree">${grammar}</span>` : ''}
+                        </span>
+                    </div>
+                    ${sanskrit ? `<div class="dpd-summary-line-2"><span class="dpd-construction">[${sanskrit}]</span></div>` : ''}
+                    <div class="dpd-summary-line-3">
+                        <span class="dpd-meaning">${meaning}</span>
+                    </div>
+                </div>
+            </div>
+        </div>`;
     },
 
     _renderGrammarNotes(notes, getAbbr) {
