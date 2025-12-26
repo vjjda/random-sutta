@@ -126,10 +126,16 @@ export const OfflineService = {
             const regs = await navigator.serviceWorker.getRegistrations();
             for (const reg of regs) await reg.unregister();
         }
+        
+        // [FIX] Don't wipe caches blindly here. It deletes the Dictionary (dpd_mini.db.zip)
+        // which causes a full redownload even if only scripts changed.
+        // The new Service Worker (after unregister + reload) will handle cache cleanup/versioning.
+        /* 
         if ('caches' in window) {
             const keys = await caches.keys();
             for (const key of keys) await caches.delete(key);
-        }
+        } 
+        */
 
         // 3. Handle Data
         if (dataChanged) {
