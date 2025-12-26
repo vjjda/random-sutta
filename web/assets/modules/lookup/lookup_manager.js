@@ -53,6 +53,9 @@ export const LookupManager = {
         const parent = anchor.nodeType === 3 ? anchor.parentElement : anchor;
         
         if (!parent || !parent.closest('#sutta-container')) return;
+
+        // [UPDATED] Restrict lookup to Pali text only (.pli class)
+        if (!parent.closest('.pli')) return;
         
         // CLEAN TEXT Logic
         const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—?!()…]/g, '').trim();
