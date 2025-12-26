@@ -264,8 +264,24 @@ export const PaliRenderer = {
     _renderGrammarNotes(notes, getAbbr) {
         let html = `<div class="grammar-note-container">`;
         html += `<table class="grammar-note-table">`;
-        // Updated Header: Word | POS | Grammar (3 cols)
-        html += `<thead><tr><th>word</th><th>pos</th><th colspan="3">grammar</th></tr></thead>`; 
+        
+        // Define Column Widths using colgroup
+        html += `
+        <colgroup>
+            <col style="width: 30%;">
+            <col style="width: 15%;">
+            <col style="width: 18.3%;">
+            <col style="width: 18.3%;">
+            <col style="width: 18.3%;">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>word</th>
+                <th>pos</th>
+                <th colspan="3">grammar</th>
+            </tr>
+        </thead>`; 
+        
         html += `<tbody>`;
         
         notes.forEach(item => {
