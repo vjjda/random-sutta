@@ -1,5 +1,6 @@
 // Path: web/assets/modules/pali_lookup/ui/lookup_ui.js
 import { SwipeHandler } from 'ui/common/swipe_handler.js';
+import { ZIndexManager } from 'ui/common/z_index_manager.js';
 
 export const LookupUI = {
     elements: {},
@@ -26,6 +27,9 @@ export const LookupUI = {
         };
 
         if (!this.elements.popup) return;
+
+        // [Z-INDEX] Manage stacking order
+        ZIndexManager.register(this.elements.popup);
 
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -70,7 +74,8 @@ export const LookupUI = {
         });
     },
 
-    _switchTab(tabName) {        // Deactivate all
+    _switchTab(tabName) {
+        // Deactivate all
         this.elements.tabDpd.classList.remove("active");
         this.elements.tabGnote.classList.remove("active");
         this.elements.contentDpd.classList.add("hidden");
@@ -119,6 +124,9 @@ export const LookupUI = {
 
         // 4. Default to DPD tab
         this._switchTab('dpd');
+
+        // [Z-INDEX] Bring to front
+        ZIndexManager.bringToFront(this.elements.popup);
 
         this.elements.popup.classList.remove("hidden");
         if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
