@@ -128,13 +128,14 @@ export const PaliRenderer = {
 
         let html = `<${tag} class="${classes}" ${openAttr}>`;
         
-        // Line 1: Lemma (Left) --- POS + Case (Right)
+        // Line 1: Lemma (Left) --- POS + Case + Degree (Right)
         let line1 = `
             <div class="dpd-summary-line-1">
                 <span class="dpd-lemma">${headword}</span>
                 <span class="dpd-pos-group">
                     <span class="dpd-pos">${pos}</span>
                     ${plusCase ? `<span class="dpd-plus-case">(${plusCase})</span>` : ''}
+                    ${degree ? `<span class="dpd-degree">${degree}</span>` : ''}
                 </span>
             </div>`;
 
@@ -144,11 +145,11 @@ export const PaliRenderer = {
             line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">[${construction}]</span></div>`;
         }
 
-        // Line 3: Meaning (Left) --- Degree (Right, Very Low Profile)
+        // Line 3: Meaning (Left) --- Chevron (Right)
         let line3 = `
             <div class="dpd-summary-line-3">
                 <span class="dpd-meaning">${meaning}</span>
-                ${degree ? `<span class="dpd-degree">${degree}</span>` : ''}
+                ${hasDetails ? '<span class="dpd-chevron"></span>' : ''}
             </div>`;
         
         // Summary Header
@@ -158,7 +159,6 @@ export const PaliRenderer = {
                         ${line2}
                         ${line3}
                     </div>
-                    ${hasDetails ? '<span class="dpd-chevron"></span>' : ''}
                  </${summaryTag}>`;
         
         // The expanded content (Only if details exist)

@@ -124,9 +124,7 @@
     list-style: none; 
     position: relative;
     min-height: 24px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
+    display: block; /* Content wrapper handles layout */
 }
 
 /* Hide default marker */
@@ -134,12 +132,11 @@
     display: none;
 }
 
-/* Wrapper for text content to take available space */
+/* Wrapper for text content */
 .dpd-summary-content {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    flex: 1; /* Take remaining space */
 }
 
 /* --- CHEVRON ICONS (Custom Span) --- */
@@ -151,7 +148,7 @@
     height: 20px;
     margin-left: 12px; /* Fixed spacing from text */
     flex-shrink: 0;    /* Don't shrink */
-    margin-top: 4px;   /* Align with first line visually */
+    /* margin-top removed, handled by line-3 flex alignment */
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
