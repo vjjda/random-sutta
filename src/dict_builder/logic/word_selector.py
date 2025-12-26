@@ -47,7 +47,7 @@ class WordSelector:
             print(f"[red]Bilara data missing at {bilara_path}")
             return [], set()
 
-        cache_dir = self.config.PROJECT_ROOT / "data/.cache/dict_builder"
+        cache_dir = self.config.PROJECT_ROOT / "src/dict_builder/.cache"
         target_set = load_cached_ebts_words(bilara_path, self.config.EBTS_BOOKS, cache_dir)
         
         print(f"[green]Initial EBTS pool: {len(target_set)}")
