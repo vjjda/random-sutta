@@ -47,9 +47,10 @@ export const AppConfig = {
             "pali_dpd": {
                 enabled: true,
                 name: "dpd_mini.db",
-                path: "assets/db/dictionaries/dpd_mini.db.zip"
+                path: "assets/db/dictionaries/dpd_mini.db.zip",
+                triggerSelectors: [".pli"] // Only active within these elements
             }
-            // Future: "en_vi": { ... }
+            // Future: "en_vi": { ..., triggerSelectors: [".eng", ".en"] }
         }
     },
 

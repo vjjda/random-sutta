@@ -7,19 +7,22 @@ const REGISTRY = {
     'pali_dpd': PaliDPD
 };
 
-// Store active dictionary IDs after init
+// Store active dictionary IDs and their configs
 let activeDicts = [];
+let dictConfigs = {}; // ID -> Config
 
 export const DictProvider = {
     async init() {
         const dictConfig = AppConfig.LOOKUP.DICTIONARIES || {};
         const promises = [];
-        activeDicts = []; // Reset
+        activeDicts = []; 
+        dictConfigs = {}; // Reset
 
         for (const [id, config] of Object.entries(dictConfig)) {
             // Check if adapter exists and is enabled
             if (REGISTRY[id] && config.enabled) {
                 activeDicts.push(id);
+                dictConfigs[id] = config; // Store config for runtime checks
                 promises.push(REGISTRY[id].init(config));
             }
         }
@@ -30,10 +33,21 @@ export const DictProvider = {
         return results.every(r => r === true);
     },
 
-    async search(term) {
-        // Search all active dicts and merge results
+    async search(term, contextElement = null) {
+        // Search active dicts that match the context
         const results = [];
+        
         for (const id of activeDicts) {
+            // Context Check logic
+            const config = dictConfigs[id];
+            if (config && config.triggerSelectors && config.triggerSelectors.length > 0) {
+                if (!contextElement) continue; // No context provided, but dict requires it
+                
+                // Check if element matches any selector (closest ancestor)
+                const isMatch = config.triggerSelectors.some(sel => contextElement.closest(sel));
+                if (!isMatch) continue; // Skip this dict
+            }
+
             const dict = REGISTRY[id];
             const res = await dict.search(term);
             if (res && res.length > 0) {
