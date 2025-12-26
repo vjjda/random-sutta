@@ -39,6 +39,10 @@ export const AppConfig = {
         PARAGRAPH_SPLIT_THRESHOLD: 300
     },
 
+    LOOKUP: {
+        SCROLL_OFFSET_RATIO: 0.25 // Position lookup selection at 1/4 screen height
+    },
+
     POPUP_LAYOUT: {
         COMMENT_HEIGHT_VH: 40, 
         QUICKLOOK_TOP_OFFSET_PX: 0 
