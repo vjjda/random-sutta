@@ -137,7 +137,7 @@ export const SqliteService = {
         const finishRc = await sqlite3_backup_finish(pBackup);
 
         if (stepRc !== SQLite.SQLITE_DONE || finishRc !== SQLite.SQLITE_OK) {
-            logger.error(`Backup failed! Step: ${stepRc}, Finish: ${finishRc}. Error: ${this.sqlite3.errmsg(destDb)}`);
+            logger.error(`Backup failed! Step: ${stepRc}, Finish: ${finishRc}.`);
             await this.sqlite3.close(memDb);
             await this.sqlite3.close(destDb);
             throw new Error(`Backup failed! Step: ${stepRc}, Finish: ${finishRc}`);
