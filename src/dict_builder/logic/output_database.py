@@ -234,7 +234,9 @@ class OutputDatabase:
             rows = self.cursor.fetchall()
             
             # 2. Sort using Python Pali Key
-            rows.sort(key=lambda x: pali_sort_key(x[0]))
+            # [OPTIMIZED] Sort by LENGTH first, then Alphabet.
+            # This ensures short words (exact matches) have lower rowids and are found first by FTS.
+            rows.sort(key=lambda x: (len(x[0]), pali_sort_key(x[0])))
             
             # 3. Drop Trigger
             self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
