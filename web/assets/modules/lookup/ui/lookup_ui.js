@@ -68,7 +68,7 @@ export const LookupUI = {
     _setupSwipe(callbacks) {
         let touchStartX = 0;
         let touchStartY = 0;
-        const minSwipeDistance = 50; // px
+        const minSwipeDistance = 70; // Increased threshold
 
         this.elements.popup.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
@@ -82,8 +82,9 @@ export const LookupUI = {
             const diffX = touchEndX - touchStartX;
             const diffY = touchEndY - touchStartY;
 
-            // Check if horizontal movement is dominant (to avoid interfering with vertical scroll)
-            if (Math.abs(diffX) > Math.abs(diffY)) {
+            // Strict Horizontal Check: X movement must be > 2x Y movement
+            // This prevents accidental swipes when trying to scroll vertically
+            if (Math.abs(diffX) > (Math.abs(diffY) * 2)) {
                 if (Math.abs(diffX) > minSwipeDistance) {
                     if (diffX > 0) {
                         // Swipe Right -> Prev
