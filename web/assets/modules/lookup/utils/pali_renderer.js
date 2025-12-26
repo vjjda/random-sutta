@@ -226,10 +226,7 @@ export const PaliRenderer = {
     },
 
     _renderRoot(root, getLabel) {
-        // Find keys dynamically (handling abbreviation if necessary)
-        // Note: The root object keys might be abbreviated or full depending on the source.
-        // We scan for keys that resolve to specific Labels via getLabel or direct match.
-        
+        // Find keys dynamically
         let rootVal = "", meaning = "", grammar = "", sanskrit = "";
         
         for (const [k, v] of Object.entries(root)) {
@@ -241,19 +238,23 @@ export const PaliRenderer = {
         }
 
         return `
-        <div class="dpd-entry no-details">
+        <div class="dpd-entry dpd-root-entry no-details">
             <div class="dpd-summary">
                 <div class="dpd-summary-content">
                     <div class="dpd-summary-line-1">
-                        <span class="dpd-lemma">${rootVal}</span>
+                        <span class="dpd-lemma root-lemma">${rootVal}</span>
                         <span class="dpd-pos-group">
-                            <span class="dpd-pos">root</span>
-                            ${grammar ? `<span class="dpd-degree">${grammar}</span>` : ''}
+                            <span class="dpd-pos root-pos">root</span>
                         </span>
                     </div>
-                    ${sanskrit ? `<div class="dpd-summary-line-2"><span class="dpd-construction">[${sanskrit}]</span></div>` : ''}
+                    
+                    <div class="dpd-summary-line-2">
+                        ${grammar ? `<span class="root-grammar">${grammar}</span>` : ''}
+                        ${sanskrit ? `<span class="root-sanskrit">[${sanskrit}]</span>` : ''}
+                    </div>
+
                     <div class="dpd-summary-line-3">
-                        <span class="dpd-meaning">${meaning}</span>
+                        <span class="dpd-meaning root-meaning">${meaning}</span>
                     </div>
                 </div>
             </div>
