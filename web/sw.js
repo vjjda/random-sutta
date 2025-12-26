@@ -2,6 +2,9 @@
 
 // [IMPORTANT] Giữ nguyên placeholder này để Release System tự động replace bằng version tag thật
 const CACHE_NAME = "sutta-cache-dev-placeholder";
+// [NEW] Cache riêng cho Data (DB Zips) để không bị xóa khi App Version đổi
+const DATA_CACHE_NAME = "sutta-data-cache";
+
 console.log(`[SW] Startup (${CACHE_NAME})`);
 
 // Danh sách file bắt buộc phải có để App chạy offline
@@ -55,7 +58,8 @@ self.addEventListener("activate", (event) => {
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cache) => {
-            if (cache !== CACHE_NAME) {
+            // [FIX] Chỉ xóa App Cache cũ, KHÔNG xóa Data Cache
+            if (cache !== CACHE_NAME && cache !== DATA_CACHE_NAME) {
               console.log("[SW] Deleting old cache:", cache);
               return caches.delete(cache);
             }
@@ -142,7 +146,13 @@ self.addEventListener("fetch", (event) => {
   // [CHIẾN LƯỢC 2] Hybrid Strategy for Assets
   event.respondWith(
     (async () => {
-      const cache = await caches.open(CACHE_NAME);
+      // [FIX] Chọn cache bucket phù hợp
+      let targetCacheName = CACHE_NAME;
+      if (request.url.endsWith('.zip')) {
+          targetCacheName = DATA_CACHE_NAME;
+      }
+      
+      const cache = await caches.open(targetCacheName);
       
       // A. Network First for Manifests/DB Configs (JSON in assets/db)
       // Ensures we always get the latest hash check
@@ -160,7 +170,7 @@ self.addEventListener("fetch", (event) => {
           return await cache.match(request) || new Response("Offline", { status: 408 });
       }
 
-      // B. Cache First for everything else (JS, CSS, Images, WOFF2)
+      // B. Cache First for everything else (JS, CSS, Images, WOFF2, ZIPs)
       // 1. Tìm trong cache trước (bỏ qua search param để match version tag ?v=...)
       const cachedResponse = await cache.match(request, { ignoreSearch: true });
       if (cachedResponse) return cachedResponse;
