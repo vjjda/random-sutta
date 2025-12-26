@@ -158,6 +158,7 @@ export const PaliRenderer = {
                         ${line2}
                         ${line3}
                     </div>
+                    ${hasDetails ? '<span class="dpd-chevron"></span>' : ''}
                  </${summaryTag}>`;
         
         // The expanded content (Only if details exist)
