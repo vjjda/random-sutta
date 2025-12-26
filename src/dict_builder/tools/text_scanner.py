@@ -43,9 +43,9 @@ def _process_single_file(file_path: Path) -> Set[str]:
     return local_words
 
 def get_ebts_word_set(bilara_root_path: Path, books_filter: List[str]) -> Set[str]:
-    # 1. Kiểm tra Cache (v4)
+    # 1. Kiểm tra Cache
     if CACHE_FILE.exists():
-        print(f"[cyan]Loading EBTS word set from cache (v4)...")
+        print(f"[cyan]Loading EBTS word set from cache ({CACHE_FILE.name})...")
         try:
             with gzip.open(CACHE_FILE, "rb") as f:
                 return set(marshal.load(f))
