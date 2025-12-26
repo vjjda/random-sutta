@@ -113,7 +113,10 @@ export const PaliRenderer = {
         const rows = components.split(';').map(r => r.trim()).filter(r => r);
         let html = `
         <div class="dpd-deconstruction">
-            <p class="decon-key"><b>${word}</b></p>
+            <div class="dpd-summary-line-1">
+                <span class="decon-key">${word}</span>
+                <span class="dpd-pos">deconstruction</span>
+            </div>
             <table class="dpd-deconstruction-table">`;
         
         rows.forEach(row => {
