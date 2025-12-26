@@ -40,7 +40,11 @@ JSON_KEY_MAP = {
 
     # --- Grammar Notes ---
     "headword": "h",
-    "grammar": "gr" 
+    "grammar": "gr",
+    "c1": "g1",
+    "c2": "g2",
+    "c3": "g3",
+    "full": "gf"
     # "pos" is reused from Definition (p)
 }
 
