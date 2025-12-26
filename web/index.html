@@ -463,13 +463,24 @@
         </div>
 
         <div id="lookup-popup" class="popup-container hidden">
-          <div class="quicklook-header">
-            <span id="lookup-title" class="ql-title">Lookup</span>
+          <div class="lookup-header-tabs">
+            <div id="tab-dpd" class="lookup-tab active" title="Dictionary Results">
+                <span id="lookup-title">Lookup</span>
+            </div>
+            <div id="tab-gnote" class="lookup-tab" title="Grammar Notes">
+                <span>Grammar</span>
+            </div>
             <button id="close-lookup" class="header-close-btn">×</button>
           </div>
+          
           <div class="popup-body">
-            <div id="lookup-content" class="sutta-text-view"></div>
+            <!-- Tab Content 1: DPD Results -->
+            <div id="lookup-content-dpd" class="lookup-tab-content active"></div>
+            
+            <!-- Tab Content 2: Grammar Notes -->
+            <div id="lookup-content-gnote" class="lookup-tab-content hidden"></div>
           </div>
+
           <div class="popup-nav-bar">
             <button
               id="btn-lookup-prev"

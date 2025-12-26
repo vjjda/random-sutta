@@ -16,15 +16,89 @@
     padding-bottom: 60px; /* Space for Nav Bar */
     flex: 1;
     overflow-y: auto;
+    position: relative; /* Context for tab content */
 }
 
-/* --- HEADER --- */
+/* --- TABS HEADER (Chrome-like) --- */
+.lookup-header-tabs {
+    display: flex;
+    align-items: flex-end; /* Tabs sit on bottom line */
+    background-color: var(--bg-body); /* Darker/Contrast header bg */
+    padding: 8px 8px 0 8px; /* Top/Side padding, no bottom padding */
+    height: 44px; /* Fixed header height */
+    position: relative;
+    /* Optional: shadow to separate header from body if both are light */
+    /* box-shadow: 0 1px 0 var(--border-light); */
+}
+
+.lookup-tab {
+    padding: 8px 16px;
+    margin-right: 2px;
+    background-color: transparent;
+    border-radius: 8px 8px 0 0; /* Rounded top corners */
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    transition: background-color 0.2s, color 0.2s;
+    user-select: none;
+    position: relative;
+    font-family: var(--font-main);
+    font-weight: 500;
+    
+    /* Borderless look */
+    border: none;
+}
+
+.lookup-tab:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.lookup-tab.active {
+    background-color: var(--bg-card); /* Matches Popup Body */
+    color: var(--primary-color);
+    font-weight: 600;
+    
+    /* Visual connection to content */
+    box-shadow: 0 -4px 6px -4px rgba(0,0,0,0.1); 
+    z-index: 10;
+}
+
+/* Close Button in Tab Bar */
+.lookup-header-tabs .header-close-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    align-self: center;
+    margin-bottom: 4px;
+}
+
+.lookup-header-tabs .header-close-btn:hover {
+    color: var(--text-color);
+}
+
+
+/* --- TAB CONTENT --- */
+.lookup-tab-content {
+    display: none;
+    padding-top: 16px; /* Inner padding */
+}
+
+.lookup-tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+
+/* --- HEADER (Legacy override) --- */
 /* Override specific lookup title styles to be prominent */
 #lookup-title {
-    font-family: var(--font-main);
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--primitive-blue-600);
+    /* Title is now inside the tab */
     text-transform: none; /* Allow Pali case */
 }
 
@@ -49,30 +123,77 @@
     cursor: pointer;
     list-style: none; 
     position: relative;
-    padding-right: 28px; /* Space for the +/- icon */
-    display: flex;
-    flex-direction: column;
-    gap: 4px; /* Space between Line 1 and Line 2 */
+    padding-right: 28px; /* Space for the icon */
+    min-height: 24px;
 }
 
-/* Custom Expand Icon Positioned relative to Line 1 */
+/* Hide default marker */
 .dpd-summary::-webkit-details-marker {
     display: none;
 }
+
+/* Wrapper for text content to avoid overlap with absolute icon */
+.dpd-summary-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* --- CHEVRON ICONS (CSS Borders) --- */
+/* Common Arrow Style */
+.dpd-summary::before,
 .dpd-summary::after {
-    content: '+'; 
+    content: '';
     position: absolute;
     right: 0;
-    top: 2px; /* Align with Line 1 */
-    color: var(--primitive-blue-500);
-    font-weight: bold;
-    font-size: 1.2em;
-    line-height: 1;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-style: solid;
+    border-color: var(--primitive-blue-500);
+    border-width: 0 2px 2px 0;
+    pointer-events: none; /* Let clicks pass through */
+    transition: opacity 0.2s ease; /* Simple fade transition */
 }
+
+/* State 1: Collapsed (Right Arrow) */
+.dpd-summary::before {
+    transform: translateY(-50%) rotate(-45deg);
+    opacity: 1; /* Visible by default */
+    right: 8px; /* Align center-right */
+}
+
+/* State 2: Expanded (Down Arrow) */
+.dpd-summary::after {
+    transform: translateY(-75%) rotate(45deg);
+    opacity: 0; /* Hidden by default */
+    right: 8px;
+}
+
+/* Toggle Logic based on [open] */
+details[open] > .dpd-summary::before {
+    opacity: 0; /* Fade out Right */
+}
+
 details[open] > .dpd-summary::after {
-    content: '−';
-    color: var(--text-light);
+    opacity: 1; /* Fade in Down */
 }
+
+
+/* --- DISABLED STATE (No Details) --- */
+.no-details .dpd-summary {
+    cursor: default; /* Not clickable */
+}
+
+.no-details .dpd-summary::before {
+    opacity: 0.3; /* Faint right arrow */
+    border-color: var(--text-light);
+}
+
+.no-details .dpd-summary::after {
+    display: none; /* No down arrow possibility */
+}
+
 
 /* --- LINE 1: LEMMA & POS --- */
 .dpd-summary-line-1 {
@@ -84,7 +205,7 @@ details[open] > .dpd-summary::after {
 
 .dpd-lemma {
     font-weight: 700;
-    color: var(--primitive-blue-600, #2563eb);
+    color: var(--primary-color); /* Updated to match Theme */
     font-size: 1.1em;
 }
 
