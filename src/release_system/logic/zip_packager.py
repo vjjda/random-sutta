@@ -138,8 +138,14 @@ def create_dpd_db_zip(base_dir: Path = None) -> bool:
     else:
         db_root = DIST_DB_DIR
         
-    source_db = db_root / "dpd_mini.db"
-    target_zip = db_root / "dpd_mini.db.zip"
+    # [UPDATED] Use dictionaries subdirectory
+    dict_dir = db_root / "dictionaries"
+    # Ensure directory exists if we are in build mode? 
+    # If base_dir is provided (build/pwa), we expect files to be there.
+    # But files are copied from source.
+    
+    source_db = dict_dir / "dpd_mini.db"
+    target_zip = dict_dir / "dpd_mini.db.zip"
     
     if not source_db.exists():
         # [OPTIONAL] Warn only, maybe user hasn't generated dictionary yet
