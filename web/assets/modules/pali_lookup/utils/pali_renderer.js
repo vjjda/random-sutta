@@ -145,11 +145,10 @@ export const PaliRenderer = {
             line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">[${construction}]</span></div>`;
         }
 
-        // Line 3: Meaning (Left) --- Chevron (Right)
+        // Line 3: Meaning (Left)
         let line3 = `
             <div class="dpd-summary-line-3">
                 <span class="dpd-meaning">${meaning}</span>
-                ${hasDetails ? '<span class="dpd-chevron"></span>' : ''}
             </div>`;
         
         // Summary Header
@@ -159,6 +158,7 @@ export const PaliRenderer = {
                         ${line2}
                         ${line3}
                     </div>
+                    ${hasDetails ? '<span class="dpd-detail-icon"></span>' : ''}
                  </${summaryTag}>`;
         
         // The expanded content (Only if details exist)
