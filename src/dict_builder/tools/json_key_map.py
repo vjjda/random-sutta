@@ -38,13 +38,7 @@ JSON_KEY_MAP = {
     "sutta": "st",
     "text": "txt",
 
-    # --- Grammar Notes ---
-    "headword": "h",
-    "grammar": "gr",
-    "c1": "g1",
-    "c2": "g2",
-    "c3": "g3",
-    "full": "gf"
+    # --- Grammar Notes (Obsolete keys removed) ---
     # "pos" is reused from Definition (p)
 }
 
