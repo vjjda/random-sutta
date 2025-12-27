@@ -33,11 +33,8 @@ class BuilderConfig:
         self.html_mode = html_mode
         self.export_web = export_web
         
-        # Output directory selection
-        if self.export_web:
-            self.OUTPUT_DIR = self.WEB_OUTPUT_DIR
-        else:
-            self.OUTPUT_DIR = self.LOCAL_OUTPUT_DIR
+        # [UPDATED] Always build raw DB locally first
+        self.OUTPUT_DIR = self.LOCAL_OUTPUT_DIR
             
         prefix = "dpd_html_" if self.html_mode else "dpd_"
         
