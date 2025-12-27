@@ -10,6 +10,39 @@ from ..entry_renderer import DpdRenderer
 from ..builder_config import BuilderConfig
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
+# [CONFIG] Grammar Sorting Weights (Lower = Appear First)
+GRAMMAR_WEIGHTS = {
+    # Gender
+    "masc": 1, "nt": 2, "fem": 3,
+    
+    # Case (Standard Pali Order)
+    "nom": 10, "acc": 11, "instr": 12, "dat": 13, "abl": 14, "gen": 15, "loc": 16, "voc": 17,
+    
+    # Number
+    "sg": 20, "pl": 21,
+    
+    # Person
+    "3rd": 30, "2nd": 31, "1st": 32,
+    
+    # Verb Tenses/Modes (Frequency based)
+    "pres": 40, "aor": 41, "fut": 42, "imp": 43, "opt": 44, "cond": 45,
+    "part": 50, "inf": 51, "ger": 52, "abs": 53,
+    
+    # Voice
+    "act": 60, "reflx": 61,
+    
+    # Degrees
+    "pos": 70, "comp": 71, "super": 72,
+}
+
+def _grammar_line_sort_key(line: List[str]) -> Tuple:
+    """
+    Generates a sort key for a grammar line (list of tokens).
+    Format: (weight_token_1, weight_token_2, ..., original_string_for_tiebreak)
+    """
+    weights = [GRAMMAR_WEIGHTS.get(token, 999) for token in line]
+    return tuple(weights) + (tuple(line),)
+
 # ... [Giữ nguyên các hàm process_data, process_batch_worker, process_decon_worker cũ] ...
 
 def process_data(data_str: str, compress: bool) -> str | bytes:
@@ -18,9 +51,7 @@ def process_data(data_str: str, compress: bool) -> str | bytes:
     return data_str
 
 def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Optional[Set[str]]) -> Tuple[List, List]:
-    # ... [Code cũ giữ nguyên] ...
-    # (Để tiết kiệm không gian hiển thị, tôi không paste lại toàn bộ logic cũ ở đây,
-    #  chỉ paste lại nếu bạn cần. Giả định logic cũ vẫn nằm ở đây)
+    # ... [Keep existing implementation] ...
     renderer = DpdRenderer(config)
     session = get_db_session(config.DPD_DB_PATH)
     entries_data = []
@@ -114,19 +145,21 @@ def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List
                 for h, p, gr_str in grammar_list:
                     # Parse grammar string into components array
                     # Example: "masc nom sg" -> ["masc", "nom", "sg"]
-                    # Handle "reflx" special case or just simple split
                     components = gr_str.split()
                     
                     if h == current_h and p == current_p:
-                        # Append to current group's grammar list (index 2)
                         current_group[2].append(components)
                     else:
-                        # Start new group: [headword, pos, [ [components] ]]
                         current_h = h
                         current_p = p
                         current_group = [h, p, [components]]
                         packed_data.append(current_group)
                 
+                # [NEW] Sort the lines within each group for nice display
+                for group in packed_data:
+                    # group[2] is the list of grammar lines
+                    group[2].sort(key=_grammar_line_sort_key)
+
                 json_str = json.dumps(packed_data, ensure_ascii=False, separators=(',', ':'))
                 content_val = process_data(json_str, config.USE_COMPRESSION)
                 
