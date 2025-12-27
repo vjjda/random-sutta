@@ -10,17 +10,18 @@
   
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px; /* Tăng khoảng cách nút một chút */
   padding: 4px;
   
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 24px; /* Pill shape */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  /* [UX] Invisible Container */
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   
   /* Low Profile Mode */
-  opacity: 0.3;
-  transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  opacity: 0.2;
+  transition: opacity 0.2s ease;
   z-index: 100;
   
   /* Prevent selecting text behind it */
@@ -30,8 +31,6 @@
 .popup-nav-bar:hover,
 .popup-nav-bar:focus-within {
   opacity: 1;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
 /* Hide the info text "1/10" or "Navigate" to save space */
@@ -40,8 +39,8 @@
 }
 
 .popup-nav-btn {
-  background-color: transparent;
-  border: none;
+  background-color: var(--bg-card); /* Nền nhẹ cho nút để dễ nhìn trên text */
+  border: 1px solid var(--border-light);
   border-radius: 50%;
   width: 36px;
   height: 36px;
@@ -50,8 +49,11 @@
   justify-content: center;
   color: var(--text-muted);
   cursor: pointer;
-  position: relative; /* Anchor for pseudo-element */
-  transition: background-color 0.2s, color 0.2s;
+  position: relative; 
+  transition: background-color 0.2s, color 0.2s, transform 0.2s;
+  
+  /* Shadow nhẹ cho nút để tách biệt khỏi nền */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 /* [UX] Hit Area Expansion: Invisible larger touch target */
@@ -65,24 +67,20 @@
 
 .popup-nav-btn:hover:not(:disabled) { 
   background-color: var(--bg-hover); 
-  color: var(--primary-color); 
+  color: var(--primary-color);
+  transform: scale(1.1); 
+  border-color: var(--primary-color);
 }
 
 .popup-nav-btn:disabled { 
   opacity: 0.3; 
   cursor: default; 
+  box-shadow: none;
 }
 
-/* On Mobile, ensure it's easy to hit but doesn't block too much */
+/* Mobile: Hide completely (Use Swipe) */
 @media (max-width: 600px) {
   .popup-nav-bar {
-    bottom: 16px;
-    right: 16px;
-    /* Slightly more visible on mobile since no hover */
-    opacity: 0.5;
-  }
-  
-  .popup-nav-bar:active {
-    opacity: 1;
+    display: none !important;
   }
 }
