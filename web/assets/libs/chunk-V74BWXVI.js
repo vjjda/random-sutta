@@ -1,3 +1,4 @@
+// Path: web/assets/libs/chunk-V74BWXVI.js
 import { SQLITE_CANTOPEN, SQLITE_OK, SQLITE_IOERR, SQLITE_IOERR_SHORT_READ, SQLITE_IOERR_WRITE, SQLITE_NOTFOUND, SQLITE_OPEN_URI } from './chunk-5HQBLAUX.js';
 
 // node_modules/.pnpm/wa-sqlite@https+++codeload.github.com+rhashimoto+wa-sqlite+tar.gz+a3b1324ed5a57928141b02eb3204421e1164ed53/node_modules/wa-sqlite/src/VFS.js

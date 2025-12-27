@@ -1,4 +1,4 @@
-// Path: web/assets/modules/pali_lookup/ui/lookup_ui.js
+// Path: web/assets/modules/lookup/ui/lookup_ui.js
 import { SwipeHandler } from 'ui/common/swipe_handler.js';
 import { ZIndexManager } from 'ui/common/z_index_manager.js';
 

@@ -1,3 +1,4 @@
+// Path: web/assets/libs/wa-sqlite-idb.js
 import { WebLocksMixin } from './chunk-F5DR6WUZ.js';
 import { wa_sqlite_async_default } from './chunk-LGUUZUN7.js';
 import { FacadeVFS } from './chunk-V74BWXVI.js';
