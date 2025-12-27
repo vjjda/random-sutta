@@ -157,18 +157,18 @@ details[open] .dpd-detail-icon {
 
 
 /* Tables */
-.dpd-grammar-table, .grammar-note-table {
+.dpd-grammar-table {
     width: 100%;
     border-collapse: collapse;
     margin: 12px 0;
-    font-size: 0.84em;
+    font-size: 0.95em;
     background-color: transparent;
     border-radius: 0;
 }
 
-.dpd-grammar-table td, .grammar-note-table td, 
-.dpd-grammar-table th, .grammar-note-table th {
-    padding: 4px 0;
+.dpd-grammar-table td, 
+.dpd-grammar-table th {
+    padding: 6px 0;
     border-bottom: 1px solid var(--border-light);
     vertical-align: middle;
 }
@@ -195,15 +195,34 @@ details[open] .dpd-detail-icon {
 .grammar-note-table th {
     text-align: left;
     background-color: var(--bg-secondary);
-    padding: 8px;
+    padding: 4px 12px;
     font-weight: 600;
     text-transform: none;
     width: auto;
+    font-size: clamp(0.8rem, 2.5vw, 0.95em);
+    white-space: nowrap; /* Keep headers on one line if possible */
 }
 .grammar-note-table td {
+    padding: 4px 12px;
+    font-size: clamp(0.8rem, 2.5vw, 0.95em);
 }
 
-/* Examples */
+/* Compact Container */
+.grammar-note-container {
+    text-align: center; /* Centers the inline-table */
+}
+
+/* Compact Table Layout */
+.grammar-note-table {
+    width: auto; /* Shrink to fit */
+    max-width: 100%;
+    margin: 12px auto; /* Center horizontally */
+    border-collapse: collapse;
+    background-color: transparent;
+    border-radius: 8px; /* Rounded corners if supported by collapse */
+    border: 1px solid var(--border-light); /* Frame it */
+    overflow: hidden; /* For rounded corners */
+}
 .dpd-examples {
     margin-top: 16px;
 }
