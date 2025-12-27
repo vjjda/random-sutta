@@ -2,23 +2,18 @@
 import logging
 from sqlite3 import Cursor
 from ...builder_config import BuilderConfig
-from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 logger = logging.getLogger("dict_builder.views")
 
 class ViewManager:
-    def __init__(self, cursor: Cursor, config: BuilderConfig, schema_manager):
+    # [CLEANUP] Không cần schema_manager nữa
+    def __init__(self, cursor: Cursor, config: BuilderConfig):
         self.cursor = cursor
         self.config = config
-        self.schema_manager = schema_manager 
 
-    # [UPDATED] Thêm tham số sort, mặc định là True
-    def create_all_views(self, sort: bool = True):
-        if sort:
-            self._sort_lookups_table()
-        else:
-            logger.info("⏩ Skipping Sort (View Injection Mode)")
-
+    # [CLEANUP] Không còn tham số sort=True/False
+    def create_all_views(self):
+        """Chỉ tập trung vào nhiệm vụ tạo View."""
         self._create_grand_view()
         self._create_search_procedures()
 
@@ -171,24 +166,3 @@ class ViewManager:
             
         except Exception as e:
             logger.error(f"Failed to inject search procedures: {e}")
-
-    def _sort_lookups_table(self) -> None:
-        logger.info("[yellow]Re-sorting 'lookups' table (Python Pali Sort)...[/yellow]")
-        try:
-            self.cursor.execute("SELECT key, target_id, type FROM lookups")
-            rows = self.cursor.fetchall()
-            rows.sort(key=lambda x: (len(x[0]), pali_sort_key(x[0])))
-            
-            self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
-            self.cursor.execute("DELETE FROM lookups")
-            self.cursor.execute("DELETE FROM lookups_fts")
-            
-            logger.info(f"   Inserting {len(rows)} sorted rows...")
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", rows)
-            
-            self.cursor.execute("INSERT INTO lookups_fts (key, target_id, type) SELECT key, target_id, type FROM lookups")
-            
-            self.schema_manager.create_lookup_trigger()
-            
-        except Exception as e:
-            logger.error(f"Failed to sort lookups: {e}")
