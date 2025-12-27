@@ -11,7 +11,8 @@ class DataInserter:
         self.conn = conn
         self.cursor = cursor
         self.config = config
-        self.suffix = "html" if config.html_mode else "json"
+        # [CLEANUP] Always use json suffix
+        self.suffix = "json"
 
     def insert_entries_batch(self, entries: List[Tuple], lookups: List[Tuple]) -> None:
         if entries:
@@ -46,10 +47,8 @@ class DataInserter:
 
     def insert_grammar_notes(self, grammar_batch: List[Tuple]) -> None:
         if grammar_batch:
-            if self.config.html_mode:
-                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html) VALUES (?, ?)", grammar_batch)
-            else:
-                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_pack) VALUES (?, ?)", grammar_batch)
+            # [CLEANUP] Always insert into grammar_pack
+            self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_pack) VALUES (?, ?)", grammar_batch)
         self.conn.commit()
 
     def _insert_lookups(self, lookups: List[Tuple]):

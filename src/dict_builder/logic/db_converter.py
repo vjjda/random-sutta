@@ -41,8 +41,7 @@ class DbConverter:
             conn = sqlite3.connect(dest_path)
             cursor = conn.cursor()
             
-            # Determine suffix
-            suffix = "html" if mini_config.html_mode else "json"
+            suffix = "json"
             
             logger.info("   Dropping unused views and columns...")
             
