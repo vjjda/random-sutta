@@ -60,8 +60,12 @@ export const PaliMainRenderer = {
         
         let html = '<div class="dpd-result">';
         
-        // 1. MAIN CONTENT based on TYPE
-        if (lookup_type === 0) {
+        // 1. MAIN CONTENT based on TYPE (UPDATED SCHEMA)
+        // Type -1: Deconstruction (Frontend Special)
+        // Type 0 : Root (DB Schema v2)
+        // Type 1 : Entry (DB Schema v2)
+        
+        if (lookup_type === -1 || (data.is_deconstruction === true)) {
             // Deconstruction
             html += PaliDeconRenderer.render(lookup_key, definition);
             
@@ -75,7 +79,7 @@ export const PaliMainRenderer = {
                 html += PaliEntryRenderer.render(defObj, gramObj, exArr, getAbbr, getLabel, data.headword, isOpen);
             }
             
-        } else if (lookup_type === 2) {
+        } else if (lookup_type === 0) {
             // Root
             const rootObj = this._parse(definition);
             if (rootObj) {
