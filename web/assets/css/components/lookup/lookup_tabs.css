@@ -1,0 +1,79 @@
+/* Path: web/assets/css/components/lookup/lookup_tabs.css */
+
+/* --- TABS HEADER (Chrome-like) --- */
+.lookup-header-tabs {
+    display: flex;
+    align-items: flex-end; /* Tabs sit on bottom line */
+    background-color: var(--bg-body); /* Darker/Contrast header bg */
+    padding: 8px 8px 0 8px; /* Top/Side padding, no bottom padding */
+    height: 44px; /* Fixed header height */
+    position: relative;
+}
+
+.lookup-tab {
+    padding: 8px 16px;
+    margin-right: 2px;
+    background-color: transparent;
+    border-radius: 8px 8px 0 0; /* Rounded top corners */
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    transition: background-color 0.2s, color 0.2s;
+    user-select: none;
+    position: relative;
+    font-family: var(--font-main);
+    font-weight: 500;
+    
+    /* Borderless look */
+    border: none;
+}
+
+.lookup-tab:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.lookup-tab.active {
+    background-color: var(--bg-card); /* Matches Popup Body */
+    color: var(--primary-color);
+    font-weight: 600;
+    
+    /* Visual connection to content */
+    box-shadow: 0 -4px 6px -4px rgba(0,0,0,0.1); 
+    z-index: 10;
+}
+
+/* Close Button in Tab Bar */
+.lookup-header-tabs .header-close-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    align-self: center;
+    margin-bottom: 4px;
+}
+
+.lookup-header-tabs .header-close-btn:hover {
+    color: var(--text-color);
+}
+
+/* --- TAB CONTENT --- */
+.lookup-tab-content {
+    display: none;
+    padding-top: 16px; /* Inner padding */
+}
+
+.lookup-tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+/* Override specific lookup title styles to be prominent */
+#lookup-title {
+    /* Title is now inside the tab */
+    text-transform: none; /* Allow Pali case */
+}
