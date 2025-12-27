@@ -25,9 +25,7 @@ class DictBuilder:
     """
     Orchestrator Class: Chỉ điều phối luồng xử lý, không chứa logic chi tiết.
     """
-    # [FIXED] Removed html_mode argument from __init__
     def __init__(self, mode: str = "mini", export_web: bool = False):
-        # [FIXED] Removed html_mode argument passed to BuilderConfig
         self.config = BuilderConfig(mode=mode, export_web=export_web)
         self.processor = ParallelProcessor()
         self.output_db = None
@@ -58,7 +56,7 @@ class DictBuilder:
 
     def run(self):
         start_time = time.time()
-        # [FIXED] Always JSON
+        # Always JSON
         fmt = "JSON"
         target_str = "WEB" if self.config.export_web else "LOCAL"
         logger.info(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode}, Format: {fmt}, Target: {target_str})...")
@@ -98,14 +96,39 @@ class DictBuilder:
             
             logger.info(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
+            # ==================================================================
+            # 🆕 LOGIC MỚI: LẤY DANH SÁCH HEADWORD ĐỂ LỌC TRÙNG
+            # ==================================================================
+            logger.info("[yellow]Fetching existing headwords to filter redundant deconstructions...[/yellow]")
+            
+            existing_headwords = set()
+            try:
+                # Truy vấn trực tiếp từ Output DB vừa insert xong
+                self.output_db.cursor.execute("SELECT headword_clean FROM entries")
+                rows = self.output_db.cursor.fetchall()
+                # row[0] vì fetchall trả về list of tuples
+                existing_headwords = {r[0] for r in rows if r[0]}
+                logger.info(f"[cyan]Found {len(existing_headwords)} existing headwords in 'entries'.[/cyan]")
+            except Exception as e:
+                logger.error(f"[red]Failed to fetch existing headwords: {e}")
+            # ==================================================================
+
             # --- PHASE 2: DECONSTRUCTIONS ---
             logger.info("[green]Processing Deconstructions (Parallel)...")
             decon_keys = [r.lookup_key for r in self.session.query(Lookup.lookup_key).filter(Lookup.deconstructor != "").all()]
             
+            # Lọc theo target_set (Logic cũ)
             if target_set is not None:
                 original_count = len(decon_keys)
                 decon_keys = [k for k in decon_keys if k in target_set]
-                logger.info(f"[cyan]Filtered deconstructions: {original_count} -> {len(decon_keys)}")
+                logger.info(f"[cyan]Filtered deconstructions (Target Set): {original_count} -> {len(decon_keys)}")
+
+            # 🆕 Lọc trùng với Headword (Logic mới)
+            # Nếu key của deconstruction đã tồn tại trong entries -> Bỏ qua
+            count_before_dedupe = len(decon_keys)
+            decon_keys = [k for k in decon_keys if k not in existing_headwords]
+            if count_before_dedupe != len(decon_keys):
+                logger.info(f"[cyan]Filtered deconstructions (Deduplicate): {count_before_dedupe} -> {len(decon_keys)}")
 
             logger.info("[yellow]Sorting Deconstruction keys (Pali Order)...[/yellow]")
             decon_keys.sort(key=pali_sort_key)
@@ -212,7 +235,7 @@ class DictBuilder:
             if self.session:
                 self.session.close()
 
-# [FIXED] Updated helper functions
+# Helper Functions
 def run_builder(mode: str = "mini", export_web: bool = False):
     builder = DictBuilder(mode=mode, export_web=export_web)
     builder.run()
