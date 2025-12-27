@@ -60,25 +60,17 @@ class DbConverter:
             conn.commit()
             conn.close()
 
-            # 3. Re-generate Views using OutputDatabase logic
+            # 3. Re-generate Views
             logger.info("   Regenerating optimized views for Tiny Mode...")
             
-            # Khởi tạo OutputDatabase nhưng trỏ vào file đã có
+            # Khởi tạo OutputDatabase thủ công
             tiny_db = OutputDatabase(tiny_config)
-            
-            # [NOTE] OutputDatabase mới cần setup connection thủ công nếu không gọi setup()
-            # Vì ta đang attach vào DB có sẵn, ta cần init các managers
             tiny_db.conn = sqlite3.connect(tiny_config.output_path)
             tiny_db.cursor = tiny_db.conn.cursor()
             
-            # Init thủ công các managers cần thiết (vì không gọi setup())
             from .database.view_manager import ViewManager
-            from .database.schema_manager import SchemaManager
-            
-            schema = SchemaManager(tiny_db.cursor, tiny_config)
-            views = ViewManager(tiny_db.cursor, tiny_config, schema)
-            
-            # Gọi hàm tạo view thông qua ViewManager
+            # [FIXED] Không truyền schema_manager nữa
+            views = ViewManager(tiny_db.cursor, tiny_config)
             views.create_all_views()
             
             # 4. Optimize
