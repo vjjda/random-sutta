@@ -1,3 +1,4 @@
+// Path: web/assets/libs/wa-sqlite-index.js
 import { wa_sqlite_default } from './chunk-XTDXRGBP.js';
 import { FacadeVFS } from './chunk-V74BWXVI.js';
 import './chunk-EOQABE3P.js';

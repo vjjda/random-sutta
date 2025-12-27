@@ -1,3 +1,4 @@
+// Path: web/assets/libs/chunk-F5DR6WUZ.js
 import { SQLITE_OK, SQLITE_IOERR_LOCK, SQLITE_IOERR_UNLOCK, SQLITE_IOERR_CHECKRESERVEDLOCK, SQLITE_NOTFOUND, SQLITE_LOCK_NONE, SQLITE_BUSY, SQLITE_LOCK_RESERVED, SQLITE_LOCK_EXCLUSIVE, SQLITE_LOCK_SHARED } from './chunk-5HQBLAUX.js';
 
 // node_modules/.pnpm/wa-sqlite@https+++codeload.github.com+rhashimoto+wa-sqlite+tar.gz+a3b1324ed5a57928141b02eb3204421e1164ed53/node_modules/wa-sqlite/src/WebLocksMixin.js

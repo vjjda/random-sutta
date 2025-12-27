@@ -1,4 +1,4 @@
-# Path: src/dict_builder/renderer.py
+# Path: src/dict_builder/entry_renderer.py
 from src.dict_builder.db.models import DpdHeadword
 from .builder_config import BuilderConfig
 from .renderers.html_renderer import DpdHtmlRenderer

@@ -1,4 +1,4 @@
-// Path: web/assets/modules/pali_lookup/lookup_manager.js
+// Path: web/assets/modules/lookup/lookup_manager.js
 import { DictProvider } from './dict_provider.js';
 import { LookupUI } from './ui/lookup_ui.js';
 import { PaliMainRenderer as PaliRenderer } from './renderers/pali/pali_main_renderer.js';
