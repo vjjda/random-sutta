@@ -27,10 +27,11 @@ class BuilderConfig:
     # EBTS Books Filter
     EBTS_BOOKS: List[str] = [""]
 
-    def __init__(self, mode: str = "mini", export_web: bool = False):
+    def __init__(self, mode: str = "mini", export_web: bool = False, zip_only: bool = False):
         self.mode = mode
         # [REMOVED] html_mode
         self.export_web = export_web
+        self.zip_only = zip_only
         
         self.OUTPUT_DIR = self.LOCAL_OUTPUT_DIR
         

@@ -54,6 +54,25 @@ class DictBuilder:
             if self.output_db and self.output_db.conn:
                 self.output_db.conn.close()
 
+    def run_zip_packaging(self):
+        """
+        Mode mới (-z): Chỉ lấy DB có sẵn, nén ZIP và đưa vào Web Assets.
+        Không build lại data, không sửa view.
+        """
+        logger.info(f"📦 Zip Packaging Mode: {self.config.output_path.name}")
+        
+        if not self.config.output_path.exists():
+            logger.error(f"[red]❌ Database not found at: {self.config.output_path}")
+            logger.info("   Please run build first (without -z).")
+            return
+
+        try:
+            logger.info(f"[green]Packaging existing Database for Web...[/green]")
+            if DbPackager.pack_database(self.config.output_path, self.config.WEB_OUTPUT_DIR):
+                logger.info(f"[green]✅ Web Artifacts created at: {self.config.WEB_OUTPUT_DIR}")
+        except Exception as e:
+            logger.error(f"[bold red]❌ Error packaging zip: {e}[/bold red]", exc_info=True)
+
     def run(self):
         start_time = time.time()
         # Always JSON
@@ -247,3 +266,7 @@ def run_view_injector(mode: str = "mini"):
 
 def run_builder_with_export(mode: str = "mini", export_flag: bool = False):
     run_builder(mode=mode, export_web=export_flag)
+
+def run_zip_packager(mode: str = "mini"):
+    builder = DictBuilder(mode=mode, export_web=True, zip_only=True) # export_web=True để set path đúng
+    builder.run_zip_packaging()

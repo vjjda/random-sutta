@@ -1,8 +1,8 @@
 # Path: src/dict_builder/__main__.py
 import argparse
 from .logging_setup import setup_dict_builder_logging
-# [UPDATED] Import thêm run_view_injector
-from .dict_builder_app import run_builder_with_export, run_view_injector
+# [UPDATED] Import thêm run_view_injector, run_zip_packager
+from .dict_builder_app import run_builder_with_export, run_view_injector, run_zip_packager
 from .logic.db_converter import DbConverter
 from .builder_config import BuilderConfig
 from .logic.builder_exporter import BuilderExporter
@@ -22,6 +22,9 @@ def main():
     # [NEW] View Injection Flag
     parser.add_argument("-v", "--view", action="store_true", help="Inject/Update Search Views ONLY (No Data Rebuild)")
 
+    # [NEW] Zip Packaging Flag
+    parser.add_argument("-z", "--zip", action="store_true", help="Zip existing DB and export to Web Assets ONLY (No Build)")
+
     parser.add_argument("-e", "--export", dest="export_flag", action="store_true", help="Export to web assets")
 
     args = parser.parse_args()
@@ -33,7 +36,18 @@ def main():
     elif args.full: modes_to_run = ["full"]
     else: modes_to_run = ["mini"] # Default
 
-    # --- LOGIC MỚI: CHỈ UPDATE VIEW ---
+    # --- LOGIC MỚI 1: CHỈ ZIP PACKAGING (-z) ---
+    if args.zip:
+        logger.info(f"[bold magenta]{'='*60}[/bold magenta]")
+        logger.info(f"[bold magenta]📦 ZIP PACKAGING MODE (No Build)[/bold magenta]")
+        logger.info(f"[bold magenta]{'='*60}[/bold magenta]\n")
+        
+        for mode in modes_to_run:
+            run_zip_packager(mode=mode)
+        return # Kết thúc
+    # -------------------------------------------
+
+    # --- LOGIC MỚI 2: CHỈ UPDATE VIEW (-v) ---
     if args.view:
         logger.info(f"[bold magenta]{'='*60}[/bold magenta]")
         logger.info(f"[bold magenta]🔮 VIEW INJECTION MODE (Logic Only)[/bold magenta]")
