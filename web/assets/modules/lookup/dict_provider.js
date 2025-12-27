@@ -55,5 +55,28 @@ export const DictProvider = {
             }
         }
         return results;
+    },
+
+    /**
+     * Checks if the element can trigger a lookup based on active dictionaries.
+     * @param {HTMLElement} element 
+     * @returns {boolean}
+     */
+    canTrigger(element) {
+        if (!element) return false;
+        
+        for (const id of activeDicts) {
+            const config = dictConfigs[id];
+            // If no triggerSelectors defined, it means global trigger -> True
+            if (!config || !config.triggerSelectors || config.triggerSelectors.length === 0) {
+                return true;
+            }
+            
+            // Check if element matches any selector
+            const isMatch = config.triggerSelectors.some(sel => element.closest(sel));
+            if (isMatch) return true;
+        }
+        
+        return false;
     }
 };
