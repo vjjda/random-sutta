@@ -57,12 +57,14 @@ export const LookupUI = {
         if (this.elements.btnPrev) {
             this.elements.btnPrev.addEventListener("click", (e) => {
                 e.stopPropagation();
+                this.elements.btnPrev.blur(); // [UX] Remove focus to restore low-profile
                 if (callbacks.onNavigate) callbacks.onNavigate(-1);
             });
         }
         if (this.elements.btnNext) {
             this.elements.btnNext.addEventListener("click", (e) => {
                 e.stopPropagation();
+                this.elements.btnNext.blur(); // [UX] Remove focus to restore low-profile
                 if (callbacks.onNavigate) callbacks.onNavigate(1);
             });
         }

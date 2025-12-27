@@ -28,10 +28,16 @@ export const CommentUI = {
         });
 
         if (this.elements.btnPrev) {
-            this.elements.btnPrev.addEventListener("click", () => callbacks.onNavigate(-1));
+            this.elements.btnPrev.addEventListener("click", () => {
+                this.elements.btnPrev.blur();
+                callbacks.onNavigate(-1);
+            });
         }
         if (this.elements.btnNext) {
-            this.elements.btnNext.addEventListener("click", () => callbacks.onNavigate(1));
+            this.elements.btnNext.addEventListener("click", () => {
+                this.elements.btnNext.blur();
+                callbacks.onNavigate(1);
+            });
         }
 
         // Swipe Gestures (Shared Handler)
