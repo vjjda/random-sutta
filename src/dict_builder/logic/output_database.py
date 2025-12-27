@@ -1,7 +1,6 @@
 # Path: src/dict_builder/logic/output_database.py
 import sqlite3
 import logging
-from datetime import datetime
 from typing import List, Tuple
 
 from ..builder_config import BuilderConfig
@@ -31,7 +30,6 @@ class OutputDatabase:
         self._create_tables()
         
         # Metadata
-        # [DETERMINISTIC] Use static version to prevent hash changes on rebuilds without data changes
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("version", "1.0"))
         self.cursor.execute("INSERT INTO metadata (key, value) VALUES (?, ?)", ("mode", self.config.mode))
         
@@ -124,10 +122,6 @@ class OutputDatabase:
 
     def populate_pack_schemas(self) -> None:
         """Populate the schema descriptions for packed columns."""
-        # Description of the Grouped Nested Array structure
-        # Outer list contains groups. Each group is [headword, pos, list_of_lines].
-        # Each line is [component1, component2, component3...]
-        # Example: [["buddha", "masc", [["nom", "sg"], ["voc", "sg"]]]]
         grammar_schema = '[["headword", "pos", [["g1", "g2", "g3"]]]]'
         
         data = [
@@ -188,19 +182,21 @@ class OutputDatabase:
         self.conn.commit()
 
     def create_grand_view(self) -> None:
+        """
+        Tạo View tổng hợp (Content Layer).
+        Đã nâng cấp để expose đủ cột cho Search View.
+        """
         logger.info("[cyan]Creating 'grand_lookups' view (Unified Definition)...[/cyan]")
         
         suffix = "html" if self.config.html_mode else "json"
         
         # 1. Grammar Note Field
         if self.config.html_mode:
-            grammar_note_field = "gn.grammar_html AS grammar_note"
+            grammar_note_field = "gn.grammar_html"
         else:
-            grammar_note_field = "gn.grammar_pack AS grammar_note"
+            grammar_note_field = "gn.grammar_pack"
 
-        # 2. Unified Definition Field (Using CASE WHEN)
-        # Type 0 = Deconstruction, 1 = Entry, 2 = Root
-        # [RENAMED] d.split_string -> d.components
+        # 2. Unified Definition (Logic cũ vẫn giữ để tương thích backward)
         definition_field = (
             f"CASE "
             f"WHEN l.type = 0 THEN d.components "
@@ -209,7 +205,7 @@ class OutputDatabase:
             f"ELSE NULL END AS definition"
         )
         
-        # 3. Unified Headword Field
+        # 3. Headword Logic
         headword_field = (
             "CASE "
             "WHEN l.type = 1 THEN e.headword "
@@ -217,12 +213,24 @@ class OutputDatabase:
             "ELSE NULL END AS headword"
         )
 
-        # 4. Extra columns for Entries (Grammar/Example) - Only if not Tiny Mode
-        extra_entry_cols = ""
-        if not self.config.is_tiny_mode:
-            extra_entry_cols = f", e.grammar_{suffix} AS entry_grammar, e.example_{suffix} AS entry_example"
+        # 4. Clean Key Logic (Dùng cho is_exact check)
+        clean_headword_field = (
+            "CASE "
+            "WHEN l.type = 1 THEN e.headword_clean "
+            "WHEN l.type = 0 THEN d.word "
+            "WHEN l.type = 2 THEN r.root_clean "
+            "ELSE NULL END AS headword_clean"
+        )
 
-        # View with UNIFIED 'definition' column
+        # 5. Các cột Raw (để Search View dùng lại)
+        # Chỉ lấy cột grammar/example nếu bảng entries có cột đó (trừ tiny mode)
+        extra_cols = ""
+        if not self.config.is_tiny_mode:
+            extra_cols = (
+                f", e.grammar_{suffix} AS raw_grammar"
+                f", e.example_{suffix} AS raw_example"
+            )
+
         sql = f"""
             CREATE VIEW IF NOT EXISTS grand_lookups AS
             SELECT 
@@ -230,9 +238,10 @@ class OutputDatabase:
                 l.target_id, 
                 l.type AS lookup_type,
                 {headword_field},
+                {clean_headword_field},
                 {definition_field},
-                {grammar_note_field}
-                {extra_entry_cols}
+                {grammar_note_field} AS gn_grammar
+                {extra_cols}
             FROM lookups l
             LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1
             LEFT JOIN deconstructions d ON l.target_id = d.id AND l.type = 0
@@ -247,7 +256,6 @@ class OutputDatabase:
             logger.info("[green]View 'grand_lookups' created successfully.[/green]")
         except Exception as e:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
-            logger.debug(f"SQL was: {sql}")
 
     def _sort_lookups_table_python_side(self) -> None:
         """
@@ -262,7 +270,6 @@ class OutputDatabase:
             
             # 2. Sort using Python Pali Key
             # [OPTIMIZED] Sort by LENGTH first, then Alphabet.
-            # This ensures short words (exact matches) have lower rowids and are found first by FTS.
             rows.sort(key=lambda x: (len(x[0]), pali_sort_key(x[0])))
             
             # 3. Drop Trigger
@@ -289,10 +296,88 @@ class OutputDatabase:
         except Exception as e:
             logger.error(f"[red]Failed to sort lookups table: {e}")
 
+    def create_search_procedures(self) -> None:
+        """
+        Tạo cơ chế 'Stored Procedure' giả lập bằng Parametric View.
+        Cho phép tái sử dụng query phức tạp 'effortlessly'.
+        """
+        logger.info("[cyan]Injecting Search Procedures (Table + View)...[/cyan]")
+        
+        try:
+            # 1. Tạo bảng tham số (_search_params)
+            self.cursor.execute("DROP TABLE IF EXISTS _search_params")
+            self.cursor.execute("CREATE TABLE _search_params (term TEXT)")
+            self.cursor.execute("INSERT INTO _search_params (term) VALUES ('')")
+
+            # 2. Tạo View Logic
+            sql_view = """
+            CREATE VIEW view_search_results AS
+            WITH input_param AS (
+                SELECT term FROM _search_params LIMIT 1
+            ),
+            ft_results AS (
+                SELECT * FROM (
+                    -- Priority 1: Exact Match
+                    SELECT key, target_id, type, rank, 1 AS priority
+                    FROM lookups_fts
+                    WHERE lookups_fts MATCH (SELECT term FROM input_param)
+                    LIMIT 20
+                )
+                UNION ALL
+                SELECT * FROM (
+                    -- Priority 2: Prefix Match
+                    SELECT key, target_id, type, rank, 2 AS priority
+                    FROM lookups_fts
+                    WHERE lookups_fts MATCH (SELECT term FROM input_param) || '*'
+                    LIMIT 100
+                )
+            ),
+            raw_matches AS (
+                SELECT key, target_id, type, rank, priority FROM ft_results
+            )
+            SELECT 
+                matches.key, 
+                matches.target_id, 
+                matches.type,
+                gl.headword,
+                gl.definition,
+                gl.raw_grammar AS grammar,
+                gl.raw_example AS example,
+                gl.gn_grammar,
+                (
+                    matches.key = (SELECT term FROM input_param) 
+                    AND 
+                    matches.key = COALESCE(gl.headword_clean, matches.key)
+                ) AS is_exact
+            FROM raw_matches matches
+            JOIN grand_lookups gl 
+                ON matches.target_id = gl.target_id 
+                AND matches.type = gl.lookup_type
+            GROUP BY matches.type, matches.target_id
+            ORDER BY 
+                matches.priority ASC, 
+                is_exact DESC, 
+                length(matches.key) ASC, 
+                matches.rank
+            LIMIT 20;
+            """
+
+            self.cursor.execute("DROP VIEW IF EXISTS view_search_results")
+            self.cursor.execute(sql_view)
+            self.conn.commit()
+            logger.info("[green]Search procedures injected successfully.[/green]")
+            
+        except Exception as e:
+            logger.error(f"[red]Failed to inject search procedures: {e}[/red]")
+
     def close(self) -> None:
         if self.conn:
             self._sort_lookups_table_python_side()
-            self.create_grand_view()
+            
+            # [UPDATED] Gọi 2 hàm tạo View
+            self.create_grand_view() 
+            self.create_search_procedures()
+            
             logger.info("[green]Indexing & Optimizing (VACUUM)...[/green]")
             self.conn.execute("VACUUM")
             self.conn.close()
