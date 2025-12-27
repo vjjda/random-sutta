@@ -49,8 +49,7 @@
     background-color: var(--bg-drawer);
     color: var(
     --text-muted);
-    border: 1px none var(
-    --border-light);
+    border: 1px none transparent;
     border-radius: 12px;
     padding: 4px 12px;
     font-size: 0.8rem;
@@ -63,21 +62,21 @@
 .lookup-gnote-trigger:hover {
     background-color: var(--bg-hover);
     color: var(--primary-color);
-    border-color: var(--primary-color);
+    border-color: none;
 }
 
 .lookup-gnote-trigger.active {
     background-color: var(--primary-color);
     color: #fff;
-    /* border-color: var(--primary-color); */
+    border-color: none;
 }
 
 .lookup-gnote-trigger.disabled {
     opacity: 0.3;
     cursor: default;
     pointer-events: none;
-    background-color: transparent;
-    border-color: var(--border-light);
+    background-color: none;
+    /* border-color: var(--border-light); */
 }
 
 /* --- SECTIONS --- */
