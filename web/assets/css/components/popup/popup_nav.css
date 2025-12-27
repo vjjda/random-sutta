@@ -78,8 +78,11 @@
   box-shadow: none;
 }
 
-/* Mobile: Hide completely (Use Swipe) */
-@media (max-width: 600px) {
+/* Mobile/Touch Devices: Hide completely (Use Swipe) 
+   We use 'pointer: coarse' to detect touch screens accurately, 
+   instead of relying on screen width.
+*/
+@media (pointer: coarse) {
   .popup-nav-bar {
     display: none !important;
   }
