@@ -1,6 +1,6 @@
 // Path: web/assets/modules/lookup/core/lookup_event_handler.js
 import { LookupHighlighter } from './lookup_highlighter.js';
-import { LookupState } from './lookup_state.js';
+import { DictProvider } from 'lookup/dict_provider.js'; // [FIXED] Use alias
 
 export const LookupEventHandler = {
     handleClick(e, onLookupCallback) {
@@ -8,6 +8,9 @@ export const LookupEventHandler = {
         if (!container || !container.contains(e.target)) return;
         
         if (e.target.closest("a, button, .lookup-highlight")) return;
+
+        // [FIX] Dynamic trigger check based on active dictionaries
+        if (!DictProvider.canTrigger(e.target)) return;
 
         // Clear previous first (Normalize DOM)
         LookupHighlighter.clearHighlight();
