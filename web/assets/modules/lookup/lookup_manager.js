@@ -48,7 +48,8 @@ export const LookupManager = {
         if (!text) return;
         
         // Clean Text
-        const cleanText = text.toLowerCase().replace(/[.,;:"'’“”—?!()…]/g, '').trim();
+        // [UPDATED] Include all smart quotes
+        const cleanText = text.toLowerCase().replace(/[.,;:"'‘’“”\—?!()…]/g, '').trim();
         
         if (cleanText.length > 50 || cleanText.length < 1) return; 
         
@@ -66,7 +67,7 @@ export const LookupManager = {
             
             // Auto Scroll (only if first look, not nav)
             if (!LookupState.isNavigating) {
-                LookupHighlighter.scrollToElement(contextNode);
+                LookupHighlighter.scrollToElement(contextNode, true);
             }
         } else {
             // Not found

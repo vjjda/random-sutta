@@ -36,13 +36,25 @@ export const LookupHighlighter = {
         }
     },
 
-    scrollToElement(element) {
+    scrollToElement(element, force = false) {
         if (!element) return;
         const rect = element.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const viewportHeight = window.innerHeight;
         
+        // Define Safe Zone (e.g., 15% to 60% from top)
+        // If the element is within this range, we don't need to scroll.
+        const safeTop = viewportHeight * 0.15;
+        const safeBottom = viewportHeight * 0.60;
+        
+        const isInSafeZone = (rect.top >= safeTop && rect.bottom <= safeBottom);
+
+        if (!force && isInSafeZone) {
+            return; // No scroll needed
+        }
+
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const ratio = AppConfig.LOOKUP?.SCROLL_OFFSET_RATIO || 0.25;
-        const targetY = rect.top + scrollTop - (window.innerHeight * ratio);
+        const targetY = rect.top + scrollTop - (viewportHeight * ratio);
         
         window.scrollTo({
             top: targetY,
