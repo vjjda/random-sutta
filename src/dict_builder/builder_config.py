@@ -21,22 +21,21 @@ class BuilderConfig:
     BATCH_SIZE_DECON: int = 10000
     BATCH_SIZE_GRAMMAR: int = 10000
     
-    # [MOVED] Root Specific Configs
     ROOTS_START_ID: int = 1
     ROOTS_BATCH_SIZE: int = 500
 
     # EBTS Books Filter
     EBTS_BOOKS: List[str] = [""]
 
-    def __init__(self, mode: str = "mini", html_mode: bool = False, export_web: bool = False):
+    def __init__(self, mode: str = "mini", export_web: bool = False):
         self.mode = mode
-        self.html_mode = html_mode
+        # [REMOVED] html_mode
         self.export_web = export_web
         
-        # [UPDATED] Always build raw DB locally first
         self.OUTPUT_DIR = self.LOCAL_OUTPUT_DIR
-            
-        prefix = "dpd_html_" if self.html_mode else "dpd_"
+        
+        # [CLEANUP] Luôn dùng prefix chuẩn, không còn dpd_html_
+        prefix = "dpd_"
         
         if self.mode == "tiny":
             self.DB_NAME = f"{prefix}tiny.db"

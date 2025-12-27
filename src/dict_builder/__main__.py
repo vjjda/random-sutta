@@ -16,18 +16,12 @@ def main():
     
     # Flags chọn chế độ
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("-t", "--tiny", action="store_true", help="Build tiny version (JSON/HTML Definitions)")
+    group.add_argument("-t", "--tiny", action="store_true", help="Build tiny version (JSON Definitions)")
     group.add_argument("-m", "--mini", action="store_true", help="Build mini version (Default)")
     group.add_argument("-f", "--full", action="store_true", help="Build full version")
     group.add_argument("-a", "--all", action="store_true", help="Build ALL versions sequentially")
 
-    # [FIXED] Đổi -h thành -H để tránh trùng với --help
-    parser.add_argument(
-        "-H", "--html", 
-        dest="html_mode", 
-        action="store_true", 
-        help="Output HTML columns instead of JSON.\nFiles will be named dpd_html_*.db"
-    )
+    # [REMOVED] -H / --html argument
 
     parser.add_argument(
         "-e", "--export",
@@ -40,7 +34,7 @@ def main():
 
     modes_to_run = []
     if args.all:
-        modes_to_run = ["mini", "tiny", "full"] # Order matters for optimization
+        modes_to_run = ["mini", "tiny", "full"] 
     elif args.tiny:
         modes_to_run = ["tiny"]
     elif args.full:
@@ -50,9 +44,7 @@ def main():
     else:
         modes_to_run = ["mini"]
 
-    # OPTIMIZATION: If running both Mini and Tiny, build Mini first, then convert to Tiny
     has_mini = "mini" in modes_to_run
-    has_tiny = "tiny" in modes_to_run
     
     processed_modes = set()
 
@@ -66,9 +58,9 @@ def main():
             logger.info(f"[bold yellow]⚡ SMART BUILD: Converting MINI -> TINY[/bold yellow]")
             logger.info(f"[bold yellow]{'='*60}[/bold yellow]\n")
             
-            # Create Configs
-            mini_conf = BuilderConfig(mode="mini", html_mode=args.html_mode)
-            tiny_conf = BuilderConfig(mode="tiny", html_mode=args.html_mode)
+            # [UPDATED] Removed html_mode arg
+            mini_conf = BuilderConfig(mode="mini")
+            tiny_conf = BuilderConfig(mode="tiny")
             
             success = DbConverter.create_tiny_from_mini(mini_conf, tiny_conf)
             
@@ -81,13 +73,13 @@ def main():
                 logger.warning("Smart build failed. Falling back to normal build.")
 
         # Normal Build
-        fmt = "HTML" if args.html_mode else "JSON"
         logger.info(f"[bold yellow]{'='*60}[/bold yellow]")
-        logger.info(f"[bold yellow]🚀 TRIGGERING BUILD MODE: {mode.upper()} ({fmt})[/bold yellow]")
+        logger.info(f"[bold yellow]🚀 TRIGGERING BUILD MODE: {mode.upper()} (JSON)[/bold yellow]")
         logger.info(f"[bold yellow]{'='*60}[/bold yellow]\n")
         
         try:
-            run_builder_with_export(mode=mode, html_mode=args.html_mode, export_flag=args.export_flag)
+            # [UPDATED] Removed html_mode arg
+            run_builder_with_export(mode=mode, export_flag=args.export_flag)
             processed_modes.add(mode)
         except Exception as e:
             logger.critical(f"[bold red]❌ Critical Error while building {mode}: {e}[/bold red]", exc_info=True)

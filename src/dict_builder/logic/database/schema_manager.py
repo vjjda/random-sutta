@@ -28,7 +28,8 @@ class SchemaManager:
         self.cursor.execute("CREATE TABLE IF NOT EXISTS pack_schemas (table_name TEXT, column_name TEXT, schema TEXT, PRIMARY KEY (table_name, column_name));")
 
     def _create_content_tables(self):
-        suffix = "html" if self.config.html_mode else "json"
+        # [CLEANUP] Luôn dùng suffix 'json'
+        suffix = "json"
         
         # Entries Table
         if self.config.is_tiny_mode:
@@ -41,10 +42,8 @@ class SchemaManager:
         self.cursor.execute(f"CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, root_clean TEXT NOT NULL, definition_{suffix} TEXT);")
         
         # Grammar Notes Table
-        if self.config.html_mode:
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
-        else:
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_pack TEXT);")
+        # [CLEANUP] Luôn dùng grammar_pack (JSON)
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_pack TEXT);")
 
     def _create_fts_and_triggers(self):
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
@@ -63,22 +62,19 @@ class SchemaManager:
         meta = [
             ("version", "1.0"),
             ("mode", self.config.mode),
-            ("format", "html" if self.config.html_mode else "json"),
+            ("format", "json"), # [CLEANUP] Always JSON
             ("compression", "zlib" if self.config.USE_COMPRESSION else "none")
         ]
         self.cursor.executemany("INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)", meta)
 
     def _populate_static_data(self):
-        # JSON Keys
         key_list = get_key_map_list()
         swapped_list = sorted([(abbr, full) for full, abbr in key_list], key=lambda x: x[0])
         self.cursor.executemany("INSERT OR IGNORE INTO json_keys (abbr_key, full_key) VALUES (?, ?)", swapped_list)
 
-        # Table Types
         types = [(0, "deconstructions"), (1, "entries"), (2, "roots")]
         self.cursor.executemany("INSERT OR IGNORE INTO table_types (type, table_name) VALUES (?, ?)", types)
 
-        # Pack Schemas
         grammar_schema = '[["headword", "pos", [["g1", "g2", "g3"]]]]'
         self.cursor.execute("INSERT OR IGNORE INTO pack_schemas (table_name, column_name, schema) VALUES (?, ?, ?)", ("grammar_notes", "grammar_pack", grammar_schema))
         

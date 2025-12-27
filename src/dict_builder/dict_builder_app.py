@@ -7,13 +7,11 @@ from src.dict_builder.db.models import Lookup, DpdRoot
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 from .builder_config import BuilderConfig
-# [FIXED] Import từ package 'database' thay vì module 'output_database' cũ
 from .logic.database import OutputDatabase
 from .logic.word_selector import WordSelector
 from .logic.parallel_processor import ParallelProcessor
 from .tools.db_packager import DbPackager 
 
-# Import workers and wrappers
 from .logic.batch_worker import (
     process_batch_worker, 
     process_grammar_notes_worker, 
@@ -27,15 +25,18 @@ class DictBuilder:
     """
     Orchestrator Class: Chỉ điều phối luồng xử lý, không chứa logic chi tiết.
     """
-    def __init__(self, mode: str = "mini", html_mode: bool = False, export_web: bool = False):
-        self.config = BuilderConfig(mode=mode, html_mode=html_mode, export_web=export_web)
+    # [FIXED] Removed html_mode argument from __init__
+    def __init__(self, mode: str = "mini", export_web: bool = False):
+        # [FIXED] Removed html_mode argument passed to BuilderConfig
+        self.config = BuilderConfig(mode=mode, export_web=export_web)
         self.processor = ParallelProcessor()
         self.output_db = None
         self.session = None
 
     def run(self):
         start_time = time.time()
-        fmt = "HTML" if self.config.html_mode else "JSON"
+        # [FIXED] Always JSON
+        fmt = "JSON"
         target_str = "WEB" if self.config.export_web else "LOCAL"
         logger.info(f"🚀 Starting Dictionary Builder (Mode: {self.config.mode}, Format: {fmt}, Target: {target_str})...")
         
@@ -188,10 +189,11 @@ class DictBuilder:
             if self.session:
                 self.session.close()
 
-def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = False):
-    builder = DictBuilder(mode=mode, html_mode=html_mode, export_web=export_web)
+# [FIXED] Updated helper functions
+def run_builder(mode: str = "mini", export_web: bool = False):
+    builder = DictBuilder(mode=mode, export_web=export_web)
     builder.run()
     return builder
 
-def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_flag: bool = False):
-    run_builder(mode=mode, html_mode=html_mode, export_web=export_flag)
+def run_builder_with_export(mode: str = "mini", export_flag: bool = False):
+    run_builder(mode=mode, export_web=export_flag)
