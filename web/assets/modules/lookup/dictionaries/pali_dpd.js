@@ -35,26 +35,25 @@ export const PaliDPD = {
         if (!term) return [];
         const cleanTerm = term.toLowerCase().trim();
         
-        let sql;
-
-        // Dynamic Query Strategy
+        // 1. Parallel Search: Deconstruction (Exact) + Main Lookup (FTS)
+        const deconSql = "SELECT components FROM deconstructions WHERE word = ? LIMIT 1";
+        
+        let mainSql;
         if (cleanTerm.length < 2) {
-            // [OPTIMIZATION] Single char -> EXACT MATCH ONLY.
-            // Avoids expensive prefix scan for "a*", "b*".
-            sql = `
+            // [OPTIMIZATION] Single char -> EXACT MATCH ONLY
+            mainSql = `
                 SELECT 
                     matches.key, 
                     matches.target_id, 
                     matches.type,
                     CASE 
                         WHEN matches.type = 1 THEN e.headword
-                        WHEN matches.type = 2 THEN r.root
+                        WHEN matches.type = 0 THEN r.root
                         ELSE matches.key
                     END AS headword,
                     CASE 
                         WHEN matches.type = 1 THEN e.definition_json
-                        WHEN matches.type = 2 THEN r.definition_json
-                        WHEN matches.type = 0 THEN d.components
+                        WHEN matches.type = 0 THEN r.definition_json
                     END AS definition,
                     e.grammar_json AS grammar,
                     e.example_json AS example,
@@ -67,27 +66,25 @@ export const PaliDPD = {
                     LIMIT 20
                 ) matches
                 LEFT JOIN entries e ON matches.target_id = e.id AND matches.type = 1
-                LEFT JOIN deconstructions d ON matches.target_id = d.id AND matches.type = 0
-                LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 2
+                LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 0
                 LEFT JOIN grammar_notes gn ON matches.key = gn.key
                 ORDER BY length(matches.key) ASC, matches.rank
             `;
         } else {
             // [STANDARD] Priority Union (Exact + Prefix)
-            sql = `
+            mainSql = `
                 SELECT 
                     matches.key, 
                     matches.target_id, 
                     matches.type,
                     CASE 
                         WHEN matches.type = 1 THEN e.headword
-                        WHEN matches.type = 2 THEN r.root
+                        WHEN matches.type = 0 THEN r.root
                         ELSE matches.key
                     END AS headword,
                     CASE 
                         WHEN matches.type = 1 THEN e.definition_json
-                        WHEN matches.type = 2 THEN r.definition_json
-                        WHEN matches.type = 0 THEN d.components
+                        WHEN matches.type = 0 THEN r.definition_json
                     END AS definition,
                     e.grammar_json AS grammar,
                     e.example_json AS example,
@@ -95,8 +92,7 @@ export const PaliDPD = {
                     (matches.key = :term AND matches.key = (
                         CASE 
                             WHEN matches.type = 1 THEN e.headword_clean
-                            WHEN matches.type = 0 THEN d.word
-                            WHEN matches.type = 2 THEN r.root_clean
+                            WHEN matches.type = 0 THEN r.root_clean
                             ELSE matches.key
                         END
                     )) AS is_exact
@@ -106,8 +102,7 @@ export const PaliDPD = {
                     SELECT * FROM (SELECT key, target_id, type, rank, 2 AS priority FROM lookups_fts WHERE key MATCH :pattern LIMIT 100)
                 ) matches
                 LEFT JOIN entries e ON matches.target_id = e.id AND matches.type = 1
-                LEFT JOIN deconstructions d ON matches.target_id = d.id AND matches.type = 0
-                LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 2
+                LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 0
                 LEFT JOIN grammar_notes gn ON matches.key = gn.key
                 GROUP BY matches.type, matches.target_id
                 ORDER BY matches.priority ASC, is_exact DESC, length(matches.key) ASC, matches.rank
@@ -116,34 +111,54 @@ export const PaliDPD = {
         }
 
         try {
-            const ftsRes = await this.connection.run(sql, {
-                ':term': cleanTerm,
-                ':pattern': `${cleanTerm}*`
-            });
+            const [deconRes, ftsRes] = await Promise.all([
+                this.connection.run(deconSql, [cleanTerm]),
+                this.connection.run(mainSql, {
+                    ':term': cleanTerm,
+                    ':pattern': `${cleanTerm}*`
+                })
+            ]);
             
-            if (!ftsRes.length) return [];
-
             const results = [];
             const seenTargets = new Set();
             
-            for (const row of ftsRes) {
-                const uniqueId = `${row.type}_${row.target_id}`;
-                if (seenTargets.has(uniqueId)) continue;
-                seenTargets.add(uniqueId);
-                
-                // Map DB row directly to result object
-                results.push({
-                    lookup_key: row.key,
-                    target_id: row.target_id,
-                    lookup_type: row.type,
-                    headword: row.headword,
-                    definition: row.definition,
-                    entry_grammar: row.grammar,
-                    entry_example: row.example,
-                    grammar_note: row.gn_grammar,
-                    keyMap: this._keyMap
+            // 2. Add Deconstruction Result (if any)
+            if (deconRes && deconRes.length > 0) {
+                 results.push({
+                    lookup_key: cleanTerm,
+                    target_id: 0, // Virtual ID
+                    lookup_type: -1, // Special Type for Deconstruction
+                    headword: cleanTerm,
+                    definition: deconRes[0].components,
+                    entry_grammar: null,
+                    entry_example: null,
+                    grammar_note: null,
+                    keyMap: this._keyMap,
+                    is_deconstruction: true
                 });
             }
+
+            // 3. Add FTS Results
+            if (ftsRes && ftsRes.length > 0) {
+                for (const row of ftsRes) {
+                    const uniqueId = `${row.type}_${row.target_id}`;
+                    if (seenTargets.has(uniqueId)) continue;
+                    seenTargets.add(uniqueId);
+                    
+                    results.push({
+                        lookup_key: row.key,
+                        target_id: row.target_id,
+                        lookup_type: row.type,
+                        headword: row.headword,
+                        definition: row.definition,
+                        entry_grammar: row.grammar,
+                        entry_example: row.example,
+                        grammar_note: row.gn_grammar,
+                        keyMap: this._keyMap
+                    });
+                }
+            }
+            
             return results;
         } catch (error) {
             logger.error("Search Error", error);
