@@ -83,8 +83,8 @@ class OutputDatabase:
     def refresh_views(self) -> None:
         """Chỉ chạy lại logic tạo View (Không đụng đến data)."""
         if self.views:
-            # Tạo views mới (Hàm này đã bao gồm drop view cũ)
-            self.views.create_all_views()
+            # [UPDATED] sort=False vì dữ liệu đã được sort khi build rồi
+            self.views.create_all_views(sort=False)
             self.conn.commit()
             
             logger.info("[green]Optimizing (VACUUM)...[/green]")
@@ -92,9 +92,15 @@ class OutputDatabase:
 
     def close(self) -> None:
         if self.conn:
-            # Nếu đang ở chế độ build full (có inserter), ta tạo view trước khi đóng
+            # Nếu đang ở chế độ build full (có inserter), ta CẦN sort (sort=True mặc định)
             if self.inserter:
-                self.views.create_all_views()
+                if not self.views:
+                     # Init views manager if not exists (case of lazy init)
+                     self.views = ViewManager(self.cursor, self.config, self.schema)
+                
+                # [NOTE] Build mới thì vẫn Sort như bình thường
+                self.views.create_all_views(sort=True)
+                
                 self.conn.commit()
                 logger.info("[green]Indexing & Optimizing (VACUUM)...[/green]")
                 self.conn.execute("VACUUM")

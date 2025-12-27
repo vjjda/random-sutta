@@ -12,8 +12,13 @@ class ViewManager:
         self.config = config
         self.schema_manager = schema_manager 
 
-    def create_all_views(self):
-        self._sort_lookups_table()
+    # [UPDATED] Thêm tham số sort, mặc định là True
+    def create_all_views(self, sort: bool = True):
+        if sort:
+            self._sort_lookups_table()
+        else:
+            logger.info("⏩ Skipping Sort (View Injection Mode)")
+
         self._create_grand_view()
         self._create_search_procedures()
 
