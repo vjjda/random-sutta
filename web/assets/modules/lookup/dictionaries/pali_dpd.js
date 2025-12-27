@@ -111,13 +111,15 @@ export const PaliDPD = {
         }
 
         try {
-            const [deconRes, ftsRes] = await Promise.all([
-                this.connection.run(deconSql, [cleanTerm]),
-                this.connection.run(mainSql, {
-                    ':term': cleanTerm,
-                    ':pattern': `${cleanTerm}*`
-                })
-            ]);
+            // [CRITICAL FIX] Execute sequentially to avoid SQLite WASM Race Conditions/Memory Corruption
+            // The old version worked because it was a SINGLE query. 
+            // Splitting into two parallel queries triggers WASM memory bounds issues.
+            const deconRes = await this.connection.run(deconSql, [cleanTerm]);
+            
+            const ftsRes = await this.connection.run(mainSql, {
+                ':term': cleanTerm,
+                ':pattern': `${cleanTerm}*`
+            });
             
             const results = [];
             const seenTargets = new Set();
