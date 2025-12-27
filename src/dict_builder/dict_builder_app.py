@@ -7,6 +7,7 @@ from src.dict_builder.db.models import Lookup, DpdRoot
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 from .builder_config import BuilderConfig
+# [FIXED] Import từ package 'database' thay vì module 'output_database' cũ
 from .logic.database import OutputDatabase
 from .logic.word_selector import WordSelector
 from .logic.parallel_processor import ParallelProcessor
@@ -68,11 +69,8 @@ class DictBuilder:
                 total_items=len(target_ids), 
                 result_handler=headword_handler, 
                 config=self.config, 
-                target_set=target_set # Pass as kwargs or positional depending on worker signature
+                target_set=target_set 
             )
-            # Note: ParallelProcessor passes `*args`. process_batch_worker signature: (ids, config, target_set)
-            # chunks (chunk) is arg 1. self.config is arg 2. target_set is arg 3.
-            # Fixed arguments passing in run_safe call above: `self.config, target_set` are *args.
             
             logger.info(f"\n[green]Headwords processing finished in {time.time() - start_time:.2f}s")
 
@@ -100,14 +98,12 @@ class DictBuilder:
                 self.output_db.insert_deconstructions(decons, lookups)
                 return len(decons)
 
-            # Wrapper expects tuple (keys, start_id) as first arg, config as second
             self.processor.run_safe(
                 worker_func=decon_worker_wrapper,
                 chunks=decon_chunks, 
                 label="deconstructions",
                 total_items=len(decon_keys),
                 result_handler=decon_handler,
-                # Additional args passed to wrapper
                 config=self.config 
             )
 
@@ -147,7 +143,6 @@ class DictBuilder:
             logger.info("[yellow]Sorting Root keys (Pali Order)...[/yellow]")
             root_keys.sort(key=pali_sort_key)
             
-            # [UPDATED] Use config constants
             ROOTS_START_ID = self.config.ROOTS_START_ID
             ROOTS_BATCH_SIZE = self.config.ROOTS_BATCH_SIZE
             
@@ -199,6 +194,4 @@ def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = 
     return builder
 
 def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_flag: bool = False):
-    # 1. Run Unified Build (Packaging is now internal)
-    # Pass export_flag to DictBuilder so it knows whether to package or not
     run_builder(mode=mode, html_mode=html_mode, export_web=export_flag)
