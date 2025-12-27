@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 from ..builder_config import BuilderConfig
 from .database import OutputDatabase
-# [FIXED] Import ViewManager từ package database
 from .database.view_manager import ViewManager
 
 logger = logging.getLogger("dict_builder.converter")
@@ -66,11 +65,11 @@ class DbConverter:
             tiny_db.conn = sqlite3.connect(tiny_config.output_path)
             tiny_db.cursor = tiny_db.conn.cursor()
             
-            # Init ViewManager (không cần schema_manager)
+            # Init ViewManager
             views = ViewManager(tiny_db.cursor, tiny_config)
             
-            # [NOTE] sort=False vì Mini đã sort rồi
-            views.create_all_views(sort=False)
+            # [FIXED] Không truyền tham số sort nữa
+            views.create_all_views()
             
             # 4. Optimize
             # [CRITICAL FIX] Phải commit transaction trước khi VACUUM
@@ -87,7 +86,6 @@ class DbConverter:
             logger.error(f"Failed to convert DB: {e}", exc_info=True)
             return False
         finally:
-            # Cleanup connection 1 nếu lỗi xảy ra giữa chừng
             if conn:
                 try:
                     conn.close()
