@@ -7,7 +7,7 @@ from src.dict_builder.db.models import Lookup, DpdRoot
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 from .builder_config import BuilderConfig
-from .logic.output_database import OutputDatabase
+from .logic.database import OutputDatabase
 from .logic.word_selector import WordSelector
 from .logic.parallel_processor import ParallelProcessor
 from .tools.db_packager import DbPackager 
