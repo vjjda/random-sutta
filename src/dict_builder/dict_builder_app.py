@@ -10,7 +10,7 @@ from .builder_config import BuilderConfig
 from .logic.output_database import OutputDatabase
 from .logic.word_selector import WordSelector
 from .logic.parallel_processor import ParallelProcessor
-from .logic.builder_exporter import BuilderExporter
+from .tools.db_packager import DbPackager 
 
 # Import workers and wrappers
 from .logic.batch_worker import (
@@ -174,6 +174,14 @@ class DictBuilder:
             # --- PHASE 5: CLEANUP & FINAL SORT ---
             self.output_db.close() 
             
+            # --- PHASE 6: PACKAGING ---
+            if self.config.export_web:
+                logger.info("\n[green]Packaging Database for Web...[/green]")
+                if DbPackager.pack_database(self.config.output_path, self.config.WEB_OUTPUT_DIR):
+                    logger.info(f"[green]✅ Web Artifacts created at: {self.config.WEB_OUTPUT_DIR}")
+            else:
+                logger.info(f"\n[dim]Skipping web packaging (Use -e to export). Raw file at: {self.config.output_path}[/dim]")
+            
             logger.info(f"\n✅ Build Complete: {self.config.output_path}")
             logger.info(f"⏱️ Total Time: {time.time() - start_time:.2f}s")
             
@@ -191,10 +199,6 @@ def run_builder(mode: str = "mini", html_mode: bool = False, export_web: bool = 
     return builder
 
 def run_builder_with_export(mode: str = "mini", html_mode: bool = False, export_flag: bool = False):
-    # 1. Run Local Build
-    logger.info(f"🚀 Starting Unified Build (Mode: {mode.upper()})...")
-    builder = run_builder(mode=mode, html_mode=html_mode, export_web=False) 
-    
-    # 2. Export using the new Exporter module
-    if export_flag:
-        BuilderExporter.export_to_web(builder.config.output_path, builder.config.WEB_OUTPUT_DIR)
+    # 1. Run Unified Build (Packaging is now internal)
+    # Pass export_flag to DictBuilder so it knows whether to package or not
+    run_builder(mode=mode, html_mode=html_mode, export_web=export_flag)
