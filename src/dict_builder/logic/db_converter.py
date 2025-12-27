@@ -4,6 +4,7 @@ import sqlite3
 import logging
 from pathlib import Path
 from ..builder_config import BuilderConfig
+from .output_database import OutputDatabase
 
 logger = logging.getLogger("dict_builder.converter")
 
@@ -12,7 +13,7 @@ class DbConverter:
     def create_tiny_from_mini(mini_config: BuilderConfig, tiny_config: BuilderConfig) -> bool:
         """
         Tạo database Tiny bằng cách copy Mini và xóa cột dư thừa.
-        Nhanh hơn rất nhiều so với build lại từ đầu.
+        Re-generates views để phù hợp schema mới.
         """
         src_path = mini_config.output_path
         dest_path = tiny_config.output_path
@@ -33,7 +34,7 @@ class DbConverter:
             logger.error(f"Failed to copy DB: {e}")
             return False
 
-        # 2. Modify DB
+        # 2. Modify DB (Drop Columns & Old Views)
         conn = None
         try:
             conn = sqlite3.connect(dest_path)
@@ -42,15 +43,13 @@ class DbConverter:
             # Determine suffix
             suffix = "html" if mini_config.html_mode else "json"
             
-            logger.info("   Dropping grammar and example columns...")
+            logger.info("   Dropping unused views and columns...")
             
-            # [FIX] Drop View first to avoid dependency errors
+            # [CRITICAL FIX] Drop Dependent View FIRST
+            cursor.execute("DROP VIEW IF EXISTS view_search_results")
             cursor.execute("DROP VIEW IF EXISTS grand_lookups")
             
-            # SQLite does not support dropping multiple columns in one statement in older versions,
-            # but modern SQLite does. To be safe, we use separate statements.
-            # Also, standard SQLite DROP COLUMN might require VACUUM to reclaim space.
-            
+            # Drop heavy columns
             cursor.execute(f"ALTER TABLE entries DROP COLUMN grammar_{suffix}")
             cursor.execute(f"ALTER TABLE entries DROP COLUMN example_{suffix}")
             
@@ -59,17 +58,35 @@ class DbConverter:
             cursor.execute("UPDATE metadata SET value = ? WHERE key = 'mode'", ("tiny",))
             
             conn.commit()
+            conn.close()
+
+            # 3. Re-generate Views using OutputDatabase logic
+            # Chúng ta dùng OutputDatabase để tái tạo Views chuẩn cho Tiny Mode
+            logger.info("   Regenerating optimized views for Tiny Mode...")
             
-            # 3. Optimize
+            # Khởi tạo OutputDatabase nhưng trỏ vào file đã có (không gọi setup() để tránh wipe data)
+            tiny_db = OutputDatabase(tiny_config)
+            tiny_db.conn = sqlite3.connect(tiny_config.output_path)
+            tiny_db.cursor = tiny_db.conn.cursor()
+            
+            # Gọi hàm tạo view (sẽ tự detect is_tiny_mode=True để tạo view rút gọn)
+            tiny_db.create_grand_view()
+            tiny_db.create_search_procedures()
+            
+            # 4. Optimize
             logger.info("   Optimizing (VACUUM)...")
-            conn.execute("VACUUM")
+            tiny_db.conn.execute("VACUUM")
+            tiny_db.conn.close()
             
             logger.info(f"✅ Tiny DB created successfully at {dest_path}")
             return True
             
         except Exception as e:
-            logger.error(f"Failed to convert DB: {e}")
+            logger.error(f"Failed to convert DB: {e}", exc_info=True)
             return False
         finally:
             if conn:
-                conn.close()
+                try:
+                    conn.close()
+                except:
+                    pass
