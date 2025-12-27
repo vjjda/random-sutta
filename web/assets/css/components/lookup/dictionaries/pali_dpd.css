@@ -161,7 +161,7 @@ details[open] .dpd-detail-icon {
     width: 100%;
     border-collapse: collapse;
     margin: 12px 0;
-    font-size: 0.95em;
+    font-size: 0.9em;
     background-color: transparent;
     border-radius: 0;
 }
@@ -199,12 +199,12 @@ details[open] .dpd-detail-icon {
     font-weight: 600;
     text-transform: none;
     width: auto;
-    font-size: clamp(0.8rem, 2.5vw, 0.95em);
+    font-size: clamp(0.75rem, 2.5vw, 0.9em);
     white-space: nowrap; /* Keep headers on one line if possible */
 }
 .grammar-note-table td {
     padding: 4px 12px;
-    font-size: clamp(0.8rem, 2.5vw, 0.95em);
+    font-size: clamp(0.7rem, 2.5vw, 0.85em);
 }
 
 /* Compact Container */
