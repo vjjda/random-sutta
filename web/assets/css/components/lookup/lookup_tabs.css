@@ -4,9 +4,9 @@
 .lookup-header-tabs {
     display: flex;
     align-items: flex-end; /* Tabs sit on bottom line */
-    background-color: var(--bg-body); /* Darker/Contrast header bg */
-    padding: 8px 8px 0 8px; /* Top/Side padding, no bottom padding */
-    height: 44px; /* Fixed header height */
+    background-color: var(--bg-header-tabs); /* [UPDATED] Use semantic variable */
+    padding: 4px 8px; /* Top/Side padding, no bottom padding */
+    /* height: 44px; */ /* Fixed header height */
     position: relative;
 }
 
@@ -14,7 +14,7 @@
     padding: 8px 16px;
     margin-right: 2px;
     background-color: transparent;
-    border-radius: 8px 8px 0 0; /* Rounded top corners */
+    border-radius: 8px; /* Rounded top corners */
     cursor: pointer;
     font-size: 0.9rem;
     color: var(--text-muted);
@@ -52,6 +52,7 @@
     color: var(--text-muted);
     cursor: pointer;
     padding: 0 8px;
+    margin-right: 1px;
     line-height: 1;
     align-self: center;
     margin-bottom: 4px;

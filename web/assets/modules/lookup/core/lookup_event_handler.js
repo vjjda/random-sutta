@@ -33,7 +33,8 @@ export const LookupEventHandler = {
         const textContent = textNode.textContent;
 
         // 2. Expand to Word Boundaries
-        const delimiters = /[.,;:"'’“”—?!()…\s]/;
+        // [UPDATED] Include all smart quotes and special punctuation
+        const delimiters = /[.,;:"'‘’“”\—?!()…\s]/;
         let start = offset;
         let end = offset;
 
