@@ -6,23 +6,23 @@
     align-items: flex-end; /* Tabs sit on bottom line */
     background-color: var(--bg-header-tabs); /* [UPDATED] Use semantic variable */
     padding: 4px 8px; /* Top/Side padding, no bottom padding */
-    /* height: 44px; */ /* Fixed header height */
+     /* Fixed header height */
     position: relative;
 }
 
 .lookup-tab {
-    padding: 8px 16px;
+    padding: 6px 16px;
     margin-right: 2px;
     background-color: transparent;
     border-radius: 8px; /* Rounded top corners */
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
-    transition: background-color 0.2s, color 0.2s;
+    /* transition: background-color 0.2s, color 0.2s; */
     user-select: none;
     position: relative;
     font-family: var(--font-main);
-    font-weight: 500;
+    font-weight: 400;
     
     /* Borderless look */
     border: none;
@@ -36,10 +36,10 @@
 .lookup-tab.active {
     background-color: var(--bg-card); /* Matches Popup Body */
     color: var(--primary-color);
-    font-weight: 600;
+    font-weight: 450;
     
     /* Visual connection to content */
-    box-shadow: 0 -4px 6px -4px rgba(0,0,0,0.1); 
+    box-shadow: 0 -4px 6px -4px rgba(0,0,0,0.1);
     z-index: 10;
 }
 
