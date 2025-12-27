@@ -70,8 +70,12 @@
     border-color: var(--primary-color);
 }
 
-.lookup-gnote-trigger.hidden {
-    display: none;
+.lookup-gnote-trigger.disabled {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
+    background-color: transparent;
+    border-color: var(--border-light);
 }
 
 /* --- SECTIONS --- */
