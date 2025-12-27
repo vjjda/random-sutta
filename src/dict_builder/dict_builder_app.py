@@ -25,8 +25,8 @@ class DictBuilder:
     """
     Orchestrator Class: Chỉ điều phối luồng xử lý, không chứa logic chi tiết.
     """
-    def __init__(self, mode: str = "mini", export_web: bool = False):
-        self.config = BuilderConfig(mode=mode, export_web=export_web)
+    def __init__(self, mode: str = "mini", export_web: bool = False, zip_only: bool = False):
+        self.config = BuilderConfig(mode=mode, export_web=export_web, zip_only=zip_only)
         self.processor = ParallelProcessor()
         self.output_db = None
         self.session = None
