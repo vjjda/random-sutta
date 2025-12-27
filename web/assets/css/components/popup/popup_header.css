@@ -1,0 +1,122 @@
+/* Path: web/assets/css/components/popup/popup_header.css */
+
+/* [UPDATED] Unified Header Close Button */
+.header-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  
+  /* Kích thước thống nhất cho cả 2 popup */
+  width: 30px;
+  height: 30px;
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  
+  /* Căn chỉnh vị trí so với padding của header */
+  margin-right: -10px;
+  margin-top: -4px;
+}
+
+.header-close-btn:hover {
+  color: var(--primary-color);
+  background-color: var(--bg-hover);
+}
+
+/* --- POPUP HEADERS (SHARED LAYOUT) --- */
+.comment-header, 
+.quicklook-header {
+  padding: 10px 15px;
+  background-color: var(--bg-body);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 50px;
+}
+
+/* Style riêng cho text trong Comment Header */
+.comment-header-text {
+  flex: 1;
+  font-family: var(--font-sutta);
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--text-muted);
+  
+  align-self: center;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-right: 5px;
+}
+
+.comment-header-text::-webkit-scrollbar {
+  display: none;
+}
+
+/* [NEW] Quicklook Title Layout */
+#quicklook-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ql-uid-badge {
+  color: var(--primary-color);
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.ql-sutta-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ql-header-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ql-context {
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ql-ref {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

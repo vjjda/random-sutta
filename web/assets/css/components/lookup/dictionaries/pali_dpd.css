@@ -1,106 +1,4 @@
-/* Path: web/assets/css/components/_lookup.css */
-
-/* --- LOOKUP POPUP --- */
-#lookup-popup {
-  bottom: var(--tts-popup-offset);
-  max-height: var(--popup-comment-height);
-  height: var(--popup-comment-height);
-  border-left: 5px solid var(--primitive-blue-500, #3b82f6);
-  z-index: 1030;
-  transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  display: flex;
-  flex-direction: column;
-}
-
-#lookup-popup .popup-body {
-    padding-bottom: 30vh; /* [UX] Generous overscroll space */
-    flex: 1;
-    overflow-y: auto;
-    position: relative; /* Context for tab content */
-}
-
-/* --- TABS HEADER (Chrome-like) --- */
-.lookup-header-tabs {
-    display: flex;
-    align-items: flex-end; /* Tabs sit on bottom line */
-    background-color: var(--bg-body); /* Darker/Contrast header bg */
-    padding: 8px 8px 0 8px; /* Top/Side padding, no bottom padding */
-    height: 44px; /* Fixed header height */
-    position: relative;
-    /* Optional: shadow to separate header from body if both are light */
-    /* box-shadow: 0 1px 0 var(--border-light); */
-}
-
-.lookup-tab {
-    padding: 8px 16px;
-    margin-right: 2px;
-    background-color: transparent;
-    border-radius: 8px 8px 0 0; /* Rounded top corners */
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    transition: background-color 0.2s, color 0.2s;
-    user-select: none;
-    position: relative;
-    font-family: var(--font-main);
-    font-weight: 500;
-    
-    /* Borderless look */
-    border: none;
-}
-
-.lookup-tab:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-main);
-}
-
-.lookup-tab.active {
-    background-color: var(--bg-card); /* Matches Popup Body */
-    color: var(--primary-color);
-    font-weight: 600;
-    
-    /* Visual connection to content */
-    box-shadow: 0 -4px 6px -4px rgba(0,0,0,0.1); 
-    z-index: 10;
-}
-
-/* Close Button in Tab Bar */
-.lookup-header-tabs .header-close-btn {
-    margin-left: auto;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 0 8px;
-    line-height: 1;
-    align-self: center;
-    margin-bottom: 4px;
-}
-
-.lookup-header-tabs .header-close-btn:hover {
-    color: var(--text-color);
-}
-
-
-/* --- TAB CONTENT --- */
-.lookup-tab-content {
-    display: none;
-    padding-top: 16px; /* Inner padding */
-}
-
-.lookup-tab-content.active {
-    display: block;
-    animation: fadeIn 0.2s ease;
-}
-
-
-/* --- HEADER (Legacy override) --- */
-/* Override specific lookup title styles to be prominent */
-#lookup-title {
-    /* Title is now inside the tab */
-    text-transform: none; /* Allow Pali case */
-}
+/* Path: web/assets/css/components/lookup/dictionaries/pali_dpd.css */
 
 /* --- DPD RESULT STYLES --- */
 .dpd-result {
@@ -119,20 +17,17 @@
 }
 
 .dpd-summary {
-    /* Summary is now a clickable header container */
     cursor: pointer;
     list-style: none; 
     position: relative;
     min-height: 24px;
-    display: block; /* Content wrapper handles layout */
+    display: block; 
 }
 
-/* Hide default marker */
 .dpd-summary::-webkit-details-marker {
     display: none;
 }
 
-/* Wrapper for text content */
 .dpd-summary-content {
     display: flex;
     flex-direction: column;
@@ -149,58 +44,51 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.4; /* Faint */
+    opacity: 0.4;
     transition: opacity 0.2s, background-color 0.2s, color 0.2s, border-color 0.2s;
-    /* border: 1px solid var(--text-light); */
     border-radius: 50%;
     color: var(--text-light);
     font-size: 10px;
-    font-family: var(--font-mono, monospace); /* Monospace for centered 'i' */
+    font-family: var(--font-mono, monospace);
     font-weight: 700;
     line-height: 1;
-    /* Prevent shrinking/growing */
     flex-shrink: 0;
 }
 
-/* The 'i' character */
 .dpd-detail-icon::after {
     content: 'i';
     display: block;
-    margin-top: -1px; /* Optical center adjustment */
+    margin-top: -1px; 
 }
 
-/* Hover State */
 .dpd-summary:hover .dpd-detail-icon {
     opacity: 1;
     border-color: var(--text-muted);
     color: var(--text-muted);
 }
 
-/* Open State (Filled Circle) */
 details[open] .dpd-detail-icon {
     opacity: 1;
     background-color: var(--primary-color);
     border-color: var(--primary-color);
-    color: #fff; /* White text on primary bg */
+    color: #fff;
 }
 
-/* --- DISABLED STATE (No Details) --- */
 .no-details .dpd-summary {
     cursor: default; 
 }
 
-
 /* --- LINE 1: LEMMA & POS --- */
 .dpd-summary-line-1 {
     display: flex;
-    justify-content: space-between; /* Lemma Left, POS Right */
+    justify-content: space-between;
     align-items: baseline;
     width: 100%;
 }
 
 .dpd-lemma {
     font-weight: 700;
-    color: var(--primary-color); /* Updated to match Theme */
+    color: var(--primary-color);
     font-size: 1.1em;
 }
 
@@ -224,10 +112,10 @@ details[open] .dpd-detail-icon {
 /* --- LINE 2: CONSTRUCTION --- */
 .dpd-summary-line-2 {
     font-size: 0.85em;
-    color: var(--text-light); /* Muted gray */
+    color: var(--text-light);
     font-family: var(--font-mono, monospace);
     line-height: 1.2;
-    margin-top: -2px; /* Pull closer to Lemma */
+    margin-top: -2px;
 }
 
 /* --- LINE 3: MEANING & DEGREE --- */
@@ -245,9 +133,8 @@ details[open] .dpd-detail-icon {
     font-weight: 500;
 }
 
-/* Hidden/Low-profile Degree checkmark */
 .dpd-degree {
-    opacity: 0.15; /* Extremely faint per request */
+    opacity: 0.15;
     font-size: 0.75em;
     margin-left: 8px;
     white-space: nowrap;
@@ -266,37 +153,33 @@ details[open] .dpd-detail-icon {
     to { opacity: 1; transform: translateY(0); }
 }
 
-
 /* Tables */
 .dpd-grammar-table, .grammar-note-table {
     width: 100%;
     border-collapse: collapse;
     margin: 12px 0;
     font-size: 0.95em;
-    background-color: transparent; /* Cleaner background */
+    background-color: transparent;
     border-radius: 0;
 }
 
 .dpd-grammar-table td, .grammar-note-table td, 
 .dpd-grammar-table th, .grammar-note-table th {
-    padding: 6px 0; /* Horizontal padding removed, we use width gap */
+    padding: 6px 0;
     border-bottom: 1px solid var(--border-light);
-    vertical-align: middle; /* [UPDATED] Center align */
+    vertical-align: middle;
 }
 
-/* CUSTOM COLUMN STYLING (The Request) */
 .dpd-grammar-table th {
-    text-align: right;             /* Right Align */
-    padding-right: 16px;           /* Gap between col 1 and 2 */
-    width: 33%;                    /* Fixed width for labels */
-    
-    /* Low Profile Style */
-    color: var(--text-light);      /* Muted color */
-    font-weight: 500;              /* Lighter weight */
-    font-size: 0.84rem;             /* Smaller font */
-    text-transform: lowercase;     /* Caps for style */
+    text-align: right;
+    padding-right: 16px;
+    width: 33%;
+    color: var(--text-light);
+    font-weight: 500;
+    font-size: 0.84rem;
+    text-transform: lowercase;
     letter-spacing: 0.5px;
-    border-right: 1px solid transparent; /* No vertical line, just space */
+    border-right: 1px solid transparent;
 }
 
 .dpd-grammar-table td {
@@ -306,7 +189,6 @@ details[open] .dpd-detail-icon {
     width: 65%;
 }
 
-/* Grammar Note Table specific overrides (if needed) */
 .grammar-note-table th {
     text-align: left;
     background-color: var(--bg-secondary);
@@ -318,7 +200,6 @@ details[open] .dpd-detail-icon {
 .grammar-note-table td {
     padding: 8px;
 }
-
 
 /* Examples */
 .dpd-examples {
@@ -361,7 +242,6 @@ details[open] .dpd-detail-icon {
 }
 
 .decon-key {
-    /* Match dpd-lemma style */
     font-weight: 700;
     color: var(--primary-color);
     font-size: 1.1em;
@@ -385,7 +265,6 @@ details[open] .dpd-detail-icon {
     white-space: nowrap;
 }
 
-/* Plus Sign */
 .decon-plus {
     color: var(--text-light);
     font-weight: normal;
@@ -394,25 +273,14 @@ details[open] .dpd-detail-icon {
     opacity: 0.7;
 }
 
-/* Cell Alignment: Inner cells centered */
 .decon-cell {
     text-align: center;
 }
 
-/* First Column: Align Right (Towards center) */
 .dpd-deconstruction-table tr td:first-child {
     text-align: right;
 }
 
-/* Last Column: Align Left (Towards center) */
 .dpd-deconstruction-table tr td:last-child {
     text-align: left;
-}
-
-/* Word Highlight (Simulated Selection) */
-.lookup-highlight {
-    background-color: var(--highlight-color-segment, rgba(255, 215, 0, 0.3));
-    border-radius: 2px;
-    /* Optional: Slight spread to look like selection */
-    box-shadow: 0 0 0 1px var(--highlight-color-segment, rgba(255, 215, 0, 0.3));
 }

@@ -1,0 +1,9 @@
+/* Path: web/assets/css/components/lookup/lookup_main.css */
+
+/* Lookup Module Styles */
+@import "lookup_layout.css";
+@import "lookup_tabs.css";
+@import "lookup_highlight.css";
+
+/* Dictionaries */
+@import "dictionaries/pali_dpd.css";

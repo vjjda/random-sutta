@@ -1,0 +1,108 @@
+/* Path: web/assets/css/components/popup/popup_layout.css */
+
+/* --- SHARED STYLES --- */
+:root {
+  --popup-comment-height: 40vh;
+  --popup-quicklook-top: 70px;
+  
+  /* [UPDATED] Biến offset cho popup. 
+     Mặc định: Luôn cộng thêm vùng an toàn (Safe Area) để tránh Home Bar trên iPhone X+ */
+  --tts-popup-offset: env(safe-area-inset-bottom, 0px); 
+}
+
+/* [NEW] Khi TTS Open -> Đẩy popup lên cao hơn Player.
+   Player height ~120px (bao gồm cả Pill và Controls).
+   Ta để dư ra 115px cộng với safe area để đảm bảo không dính.
+*/
+body.tts-open {
+  --tts-popup-offset: 90px;
+}
+
+.popup-container {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96%;
+  max-width: var(--container-width);
+  background-color: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  opacity: 1;
+}
+
+.popup-container.hidden {
+  opacity: 0;
+  transform: translate(-50%, 50px);
+  pointer-events: none;
+}
+
+.popup-body {
+  position: relative;
+  padding: var(--popup-padding-mobile);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* [UX] Cho phép cuộn dọc mượt mà, nhưng nhường quyền xử lý vuốt ngang cho JS */
+  touch-action: pan-y;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 600px) {
+  .popup-body { padding: var(--popup-padding-desktop); }
+}
+
+/* --- COMMENT POPUP (Layer 1) --- */
+#comment-popup {
+  /* [UPDATED] Dùng biến offset để tự động trượt lên khi có Player */
+  bottom: var(--tts-popup-offset);
+  
+  max-height: var(--popup-comment-height);
+  height: var(--popup-comment-height);
+  border-left: 5px solid var(--primary-color);
+  z-index: 1020;
+  
+  /* [NEW] Thêm transition cho bottom để hiệu ứng mượt mà */
+  transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* --- QUICKLOOK POPUP (Layer 2) --- */
+#quicklook-popup {
+  top: var(--popup-quicklook-top);
+  
+  /* [UPDATED] Tính toán vị trí đáy:
+     Chiều cao Comment Popup (40vh) + Khoảng đệm TTS (nếu có)
+     Giúp Quicklook co lại nhường chỗ cho Comment Popup trượt lên
+  */
+  bottom: calc(var(--popup-comment-height) + var(--tts-popup-offset));
+  
+  height: auto;
+  max-height: none;
+  border-radius: 0;
+  border-left: 5px solid var(--primitive-brown-300);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 1010;
+  
+  /* [NEW] Transition mượt mà đồng bộ với Comment Popup */
+  transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s;
+}
+
+#quicklook-popup.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: none; 
+}
+
+/* Ensure content isn't hidden behind floating nav */
+#comment-popup .popup-body {
+  padding-bottom: 60px;
+}
+
+/* [NEW] Body Padding for Popup
+   Ensures content behind popup can be scrolled into view.
+   Popup is ~40vh high.
+*/
+body.popup-open, body.lookup-open {
+  padding-bottom: 45vh !important;
+  transition: padding-bottom 0.3s ease;
+}

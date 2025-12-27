@@ -1,0 +1,114 @@
+/* Path: web/assets/css/components/popup/popup_nav.css */
+
+/* --- NAV BAR --- */
+.popup-nav-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 15px;
+  background: transparent;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@media (min-width: 600px) {
+  .popup-nav-bar {
+    padding: 10px 15px;
+  }
+}
+
+.popup-nav-bar > * {
+  pointer-events: auto;
+  background-color: var(--bg-card);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.popup-nav-info { 
+  font-size: 0.8rem; 
+  color: var(--text-light); 
+  font-family: monospace;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.popup-nav-btn {
+  background-color: var(--bg-card);
+  border: 1px none var(--border-light);
+  border-radius: 50%;
+  width: 40px; /* Increased from 36px */
+  height: 40px; /* Increased from 36px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative; /* Anchor for pseudo-element */
+}
+
+/* [UX] Hit Area Expansion: Invisible larger touch target */
+.popup-nav-btn::after {
+  content: '';
+  position: absolute;
+  top: -10px; bottom: -10px; 
+  left: -10px; right: -10px;
+  background: transparent;
+}
+
+.popup-nav-btn:hover:not(:disabled) { background-color: var(--bg-hover); color: var(--primary-color); border-color: var(--primary-color);
+}
+.popup-nav-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+/* --- QUICKLOOK FAB --- */
+.quicklook-fab {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  background-color: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  opacity: 0.4;
+  box-shadow: none;
+  
+  --dot-size: 6px;
+}
+
+/* The visual solid dot */
+.quicklook-fab::after {
+  content: '';
+  display: block;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: 50%;
+  background-color: var(--text-muted);
+}
+
+.quicklook-fab:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.quicklook-fab:hover::after {
+  background-color: var(--primary-color);
+}
+
+.quicklook-fab.hidden {
+  display: none;
+}
+
+.comment-marker {
+  color: var(--primary-color); font-weight: bold; cursor: pointer; font-size: 0.75em;
+  vertical-align: super; margin-left: 2px;
+  padding: 0 3px; user-select: none;
+}
+.comment-marker:hover { background-color: var(--highlight-color-segment); border-radius: 50%;
+}

@@ -1,0 +1,6 @@
+/* Path: web/assets/css/components/popup/popup_main.css */
+
+/* Shared Popup Module Styles */
+@import "popup_layout.css";
+@import "popup_header.css";
+@import "popup_nav.css";
