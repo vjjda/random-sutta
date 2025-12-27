@@ -69,7 +69,7 @@
 
 .lookup-tab-content.active {
     display: block;
-    animation: fadeIn 0.2s ease;
+    /* animation: fadeIn 0.2s ease; */
 }
 
 /* Override specific lookup title styles to be prominent */
