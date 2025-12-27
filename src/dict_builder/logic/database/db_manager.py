@@ -2,6 +2,7 @@
 import sqlite3
 import logging
 from typing import List, Tuple
+from pathlib import Path
 
 from ...builder_config import BuilderConfig
 from .schema_manager import SchemaManager
@@ -13,7 +14,6 @@ logger = logging.getLogger("dict_builder.db")
 class OutputDatabase:
     """
     Facade Class: Quản lý DB Connection và điều phối các Manager con.
-    Thay thế cho output_database.py cũ.
     """
     def __init__(self, config: BuilderConfig):
         self.config = config
@@ -26,62 +26,77 @@ class OutputDatabase:
         self.views: ViewManager | None = None
 
     def setup(self) -> None:
-        """Khởi tạo DB và Schema."""
+        """Khởi tạo DB MỚI (Xóa cũ nếu có). Dùng cho quá trình Build Data."""
         if not self.config.OUTPUT_DIR.exists():
             self.config.OUTPUT_DIR.mkdir(parents=True)
         if self.config.output_path.exists():
             self.config.output_path.unlink()
         
-        self.conn = sqlite3.connect(self.config.output_path)
-        self.cursor = self.conn.cursor()
+        self._connect()
         
-        # Performance settings
-        self.cursor.execute("PRAGMA synchronous = OFF")
-        self.cursor.execute("PRAGMA journal_mode = MEMORY")
-        
-        # Init Managers
+        # Init Managers & Schema
         self.schema = SchemaManager(self.cursor, self.config)
         self.inserter = DataInserter(self.conn, self.cursor, self.config)
         self.views = ViewManager(self.cursor, self.config, self.schema)
         
-        # Run Setup
         self.schema.create_tables()
         self.conn.commit()
 
-    # --- Delegation Methods (Giữ API cũ để không phải sửa code gọi) ---
+    def connect_to_existing(self) -> bool:
+        """Kết nối vào DB ĐÃ CÓ. Dùng cho quá trình Inject View."""
+        if not self.config.output_path.exists():
+            logger.error(f"Database not found at: {self.config.output_path}")
+            return False
+            
+        self._connect()
+        
+        # Init Managers (Schema cần thiết để tạo lại Trigger)
+        self.schema = SchemaManager(self.cursor, self.config)
+        self.views = ViewManager(self.cursor, self.config, self.schema)
+        # Không init Inserter vì không dùng đến
+        
+        return True
+
+    def _connect(self):
+        """Internal helper to establish connection."""
+        self.conn = sqlite3.connect(self.config.output_path)
+        self.cursor = self.conn.cursor()
+        self.cursor.execute("PRAGMA synchronous = OFF")
+        self.cursor.execute("PRAGMA journal_mode = MEMORY")
+
+    # --- Delegation Methods ---
 
     def insert_batch(self, entries: List[Tuple], lookups: List[Tuple]) -> None:
-        self.inserter.insert_entries_batch(entries, lookups)
+        if self.inserter: self.inserter.insert_entries_batch(entries, lookups)
 
     def insert_deconstructions(self, deconstructions: List[Tuple], lookups: List[Tuple]) -> None:
-        self.inserter.insert_deconstructions(deconstructions, lookups)
+        if self.inserter: self.inserter.insert_deconstructions(deconstructions, lookups)
 
     def insert_roots(self, roots: List[Tuple], lookups: List[Tuple]) -> None:
-        self.inserter.insert_roots(roots, lookups)
+        if self.inserter: self.inserter.insert_roots(roots, lookups)
 
     def insert_grammar_notes(self, grammar_batch: List[Tuple]) -> None:
-        self.inserter.insert_grammar_notes(grammar_batch)
+        if self.inserter: self.inserter.insert_grammar_notes(grammar_batch)
 
-    # --- Closing & Post-processing ---
+    # --- Logic Operations ---
+
+    def refresh_views(self) -> None:
+        """Chỉ chạy lại logic tạo View (Không đụng đến data)."""
+        if self.views:
+            # Tạo views mới (Hàm này đã bao gồm drop view cũ)
+            self.views.create_all_views()
+            self.conn.commit()
+            
+            logger.info("[green]Optimizing (VACUUM)...[/green]")
+            self.conn.execute("VACUUM")
 
     def close(self) -> None:
         if self.conn:
-            # Recreate views & sort logic before closing
-            # Lưu ý: ViewManager cần SchemaManager để tạo lại Trigger
-            if not self.views:
-                 self.schema = SchemaManager(self.cursor, self.config)
-                 self.views = ViewManager(self.cursor, self.config, self.schema)
+            # Nếu đang ở chế độ build full (có inserter), ta tạo view trước khi đóng
+            if self.inserter:
+                self.views.create_all_views()
+                self.conn.commit()
+                logger.info("[green]Indexing & Optimizing (VACUUM)...[/green]")
+                self.conn.execute("VACUUM")
             
-            self.views.create_all_views()
-            
-            self.conn.commit()
-            logger.info("[green]Indexing & Optimizing (VACUUM)...[/green]")
-            self.conn.execute("VACUUM")
             self.conn.close()
-            
-    # Hỗ trợ cho DbConverter tái tạo view
-    def create_grand_view(self):
-        if self.views: self.views._create_grand_view()
-        
-    def create_search_procedures(self):
-        if self.views: self.views._create_search_procedures()

@@ -33,6 +33,29 @@ class DictBuilder:
         self.output_db = None
         self.session = None
 
+    def run_view_injection(self):
+        """
+        Mode mới: Chỉ kết nối vào DB có sẵn và cập nhật Search Logic (Views).
+        """
+        logger.info(f"⚡ Injecting Views into existing database: {self.config.output_path.name}")
+        
+        try:
+            self.output_db = OutputDatabase(self.config)
+            if not self.output_db.connect_to_existing():
+                logger.error("❌ Cannot inject views: Database file not found.")
+                return
+
+            # Chỉ chạy logic Views
+            self.output_db.refresh_views()
+            
+            logger.info(f"✅ Views Updated Successfully for {self.config.mode}")
+            
+        except Exception as e:
+            logger.error(f"[bold red]❌ Error injecting views: {e}[/bold red]", exc_info=True)
+        finally:
+            if self.output_db and self.output_db.conn:
+                self.output_db.conn.close()
+
     def run(self):
         start_time = time.time()
         # [FIXED] Always JSON
@@ -194,6 +217,10 @@ def run_builder(mode: str = "mini", export_web: bool = False):
     builder = DictBuilder(mode=mode, export_web=export_web)
     builder.run()
     return builder
+
+def run_view_injector(mode: str = "mini"):
+    builder = DictBuilder(mode=mode)
+    builder.run_view_injection()
 
 def run_builder_with_export(mode: str = "mini", export_flag: bool = False):
     run_builder(mode=mode, export_web=export_flag)
