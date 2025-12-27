@@ -72,7 +72,9 @@ class SchemaManager:
         swapped_list = sorted([(abbr, full) for full, abbr in key_list], key=lambda x: x[0])
         self.cursor.executemany("INSERT OR IGNORE INTO json_keys (abbr_key, full_key) VALUES (?, ?)", swapped_list)
 
-        types = [(0, "deconstructions"), (1, "entries"), (2, "roots")]
+        # [UPDATE] New Type Mappings: 0=roots, 1=entries
+        # Deconstructions are now handled separately (not via lookups table)
+        types = [(0, "roots"), (1, "entries")]
         self.cursor.executemany("INSERT OR IGNORE INTO table_types (type, table_name) VALUES (?, ?)", types)
 
         grammar_schema = '[["headword", "pos", [["g1", "g2", "g3"]]]]'
