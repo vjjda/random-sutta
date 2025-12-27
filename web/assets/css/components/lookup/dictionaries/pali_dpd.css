@@ -141,17 +141,20 @@ details[open] .dpd-detail-icon {
 }
 
 /* Details Content Animation/Spacing */
+
 .dpd-details-content {
+
     margin-top: 12px;
+
     padding-top: 12px;
+
     border-top: 1px dashed var(--border-light);
-    animation: fadeIn 0.3s ease-in-out;
+
+    /* [UX] No animation -> Snappy */
+
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+
 
 /* Tables */
 .dpd-grammar-table, .grammar-note-table {
