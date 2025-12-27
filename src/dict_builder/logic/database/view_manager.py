@@ -10,7 +10,7 @@ class ViewManager:
     def __init__(self, cursor: Cursor, config: BuilderConfig, schema_manager):
         self.cursor = cursor
         self.config = config
-        self.schema_manager = schema_manager # Need to recreate trigger after sort
+        self.schema_manager = schema_manager 
 
     def create_all_views(self):
         self._sort_lookups_table()
@@ -62,8 +62,12 @@ class ViewManager:
             logger.error(f"Failed to create grand view: {e}")
 
     def _create_search_procedures(self) -> None:
-        """Tạo search view tối ưu (Inline Joins)."""
-        logger.info("[cyan]Injecting Optimized Search Procedures...[/cyan]")
+        """
+        Tạo search view thông minh (Smart Switching).
+        - Tự động chọn chiến lược 'Exact Only' nếu từ khóa < 2 ký tự.
+        - Tự động chọn chiến lược 'Priority Union' nếu từ khóa >= 2 ký tự.
+        """
+        logger.info("[cyan]Injecting Smart Search Procedures (Dynamic Strategy)...[/cyan]")
         try:
             self.cursor.execute("DROP TABLE IF EXISTS _search_params")
             self.cursor.execute("CREATE TABLE _search_params (term TEXT)")
@@ -71,13 +75,13 @@ class ViewManager:
 
             suffix = "html" if self.config.html_mode else "json"
             
-            # Select Columns
+            # Select Columns (Tiny vs Standard)
             if self.config.is_tiny_mode:
                 cols_raw = "NULL AS grammar, NULL AS example"
             else:
                 cols_raw = f"e.grammar_{suffix} AS grammar, e.example_{suffix} AS example"
 
-            # Expressions (Inline Logic)
+            # Expressions (Inline Logic for JOINs)
             def_expr = f"CASE WHEN matches.type = 0 THEN d.components WHEN matches.type = 1 THEN e.definition_{suffix} WHEN matches.type = 2 THEN r.definition_{suffix} ELSE NULL END"
             hw_expr = "CASE WHEN matches.type = 1 THEN e.headword WHEN matches.type = 2 THEN r.root ELSE matches.key END"
             clean_hw_expr = "CASE WHEN matches.type = 1 THEN e.headword_clean WHEN matches.type = 0 THEN d.word WHEN matches.type = 2 THEN r.root_clean ELSE matches.key END"
@@ -85,24 +89,65 @@ class ViewManager:
 
             sql_view = f"""
             CREATE VIEW view_search_results AS
-            WITH input_param AS (SELECT term FROM _search_params LIMIT 1),
-            ft_results AS (
-                SELECT * FROM (
-                    SELECT key, target_id, type, rank, 1 AS priority FROM lookups_fts WHERE lookups_fts MATCH (SELECT term FROM input_param) LIMIT 20
-                ) UNION ALL SELECT * FROM (
-                    SELECT key, target_id, type, rank, 2 AS priority FROM lookups_fts WHERE lookups_fts MATCH (SELECT term FROM input_param) || '*' LIMIT 100
-                )
+            WITH input_param AS (
+                SELECT term FROM _search_params LIMIT 1
             ),
+            
+            -- STRATEGY 1: Short Term (< 2 chars) -> Exact Match Only
+            -- Chạy siêu nhanh, không quét prefix '*'
+            match_short AS (
+                SELECT key, target_id, type, rank, 0 AS priority
+                FROM lookups_fts, input_param
+                WHERE length(input_param.term) < 2
+                  AND lookups_fts MATCH input_param.term
+                LIMIT 20
+            ),
+            
+            -- STRATEGY 2: Long Term (>= 2 chars) -> Priority Union
+            -- Gom nhóm Exact (Priority 1) và Prefix (Priority 2)
+            match_long_exact AS (
+                SELECT key, target_id, type, rank, 1 AS priority
+                FROM lookups_fts, input_param
+                WHERE length(input_param.term) >= 2
+                  AND lookups_fts MATCH input_param.term
+                LIMIT 20
+            ),
+            match_long_prefix AS (
+                SELECT key, target_id, type, rank, 2 AS priority
+                FROM lookups_fts, input_param
+                WHERE length(input_param.term) >= 2
+                  AND lookups_fts MATCH input_param.term || '*'
+                LIMIT 100
+            ),
+            
+            -- Hợp nhất kết quả thô
+            -- Lưu ý: Chỉ 1 trong 2 nhánh (Short hoặc Long) sẽ trả về dữ liệu
+            all_raw_matches AS (
+                SELECT * FROM match_short
+                UNION ALL
+                SELECT * FROM match_long_exact
+                UNION ALL
+                SELECT * FROM match_long_prefix
+            ),
+            
+            -- Lọc và Sắp xếp cuối cùng (Final IDs)
             final_ids AS (
-                SELECT key, target_id, type, rank, priority FROM ft_results ORDER BY priority ASC, length(key) ASC, rank LIMIT 20
+                SELECT key, target_id, type, rank, priority 
+                FROM all_raw_matches 
+                ORDER BY priority ASC, length(key) ASC, rank 
+                LIMIT 20
             )
+            
+            -- JOIN lấy dữ liệu chi tiết
             SELECT 
                 matches.key, matches.target_id, matches.type,
                 {hw_expr} AS headword,
                 {def_expr} AS definition,
                 {cols_raw},
                 {gn_expr} AS gn_grammar,
-                (matches.key = (SELECT term FROM input_param) AND matches.key = COALESCE({clean_hw_expr}, matches.key)) AS is_exact
+                -- Logic is_exact: Kiểm tra khớp tuyệt đối với từ khóa
+                (matches.key = (SELECT term FROM input_param) 
+                 AND matches.key = COALESCE({clean_hw_expr}, matches.key)) AS is_exact
             FROM final_ids matches
             LEFT JOIN entries e ON matches.target_id = e.id AND matches.type = 1
             LEFT JOIN deconstructions d ON matches.target_id = d.id AND matches.type = 0
