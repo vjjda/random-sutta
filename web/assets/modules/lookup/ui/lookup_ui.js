@@ -9,11 +9,10 @@ export const LookupUI = {
         this.elements = {
             popup: document.getElementById("lookup-popup"),
             
-            // Tabs
-            tabDpd: document.getElementById("tab-dpd"),
-            tabGnote: document.getElementById("tab-gnote"),
-            title: document.getElementById("lookup-title"), // Inside tab-dpd
+            // Header & Controls
             closeBtn: document.getElementById("close-lookup"),
+            wordHeading: document.getElementById("lookup-word-heading"),
+            btnGnote: document.getElementById("btn-toggle-gnote"),
             
             // Content
             popupBody: document.querySelector("#lookup-popup .popup-body"),
@@ -49,9 +48,13 @@ export const LookupUI = {
             }
         });
         
-        // Tab Switching
-        this.elements.tabDpd.addEventListener("click", () => this._switchTab('dpd'));
-        this.elements.tabGnote.addEventListener("click", () => this._switchTab('gnote'));
+        // Grammar Toggle
+        if (this.elements.btnGnote) {
+            this.elements.btnGnote.addEventListener("click", () => {
+                this.elements.contentGnote.classList.toggle("hidden");
+                this.elements.btnGnote.classList.toggle("active");
+            });
+        }
 
         // Navigation
         if (this.elements.btnPrev) {
@@ -76,27 +79,6 @@ export const LookupUI = {
         });
     },
 
-    _switchTab(tabName) {
-        // Deactivate all
-        this.elements.tabDpd.classList.remove("active");
-        this.elements.tabGnote.classList.remove("active");
-        this.elements.contentDpd.classList.add("hidden");
-        this.elements.contentDpd.classList.remove("active");
-        this.elements.contentGnote.classList.add("hidden");
-        this.elements.contentGnote.classList.remove("active");
-        
-        // Activate selected
-        if (tabName === 'dpd') {
-            this.elements.tabDpd.classList.add("active");
-            this.elements.contentDpd.classList.remove("hidden");
-            this.elements.contentDpd.classList.add("active");
-        } else if (tabName === 'gnote') {
-            this.elements.tabGnote.classList.add("active");
-            this.elements.contentGnote.classList.remove("hidden");
-            this.elements.contentGnote.classList.add("active");
-        }
-    },
-
     render(data, titleWord = "Lookup") {
         let dictHtml = "";
         let noteHtml = "";
@@ -109,23 +91,27 @@ export const LookupUI = {
             noteHtml = data.noteHtml || "";
         }
 
-        // 1. Set Title (Tab Name)
-        if (this.elements.title) this.elements.title.textContent = titleWord;
+        // 1. Set Title (Heading Row)
+        if (this.elements.wordHeading) this.elements.wordHeading.textContent = titleWord;
 
         // 2. Render DPD Content
         if (this.elements.contentDpd) this.elements.contentDpd.innerHTML = dictHtml;
 
-        // 3. Render G.Note Content & Toggle Tab
-        if (this.elements.contentGnote) this.elements.contentGnote.innerHTML = noteHtml;
-        
-        if (noteHtml) {
-            this.elements.tabGnote.classList.remove("hidden");
-        } else {
-            this.elements.tabGnote.classList.add("hidden");
+        // 3. Render G.Note Content & Toggle Button
+        if (this.elements.contentGnote) {
+            this.elements.contentGnote.innerHTML = noteHtml;
+            // Always collapse by default when rendering new word
+            this.elements.contentGnote.classList.add("hidden");
         }
-
-        // 4. Default to DPD tab
-        this._switchTab('dpd');
+        
+        if (this.elements.btnGnote) {
+            this.elements.btnGnote.classList.remove("active");
+            if (noteHtml) {
+                this.elements.btnGnote.classList.remove("hidden");
+            } else {
+                this.elements.btnGnote.classList.add("hidden");
+            }
+        }
 
         // [Z-INDEX] Bring to front
         ZIndexManager.bringToFront(this.elements.popup);
@@ -140,8 +126,8 @@ export const LookupUI = {
 
     showLoading(title = "Searching...") {
         this.render('<div style="text-align:center; padding: 20px;">Searching...</div>', title);
-        // Hide G.Note tab while searching
-        if (this.elements.tabGnote) this.elements.tabGnote.classList.add("hidden");
+        // Hide G.Note trigger
+        if (this.elements.btnGnote) this.elements.btnGnote.classList.add("hidden");
     },
 
     showError(msg) {
