@@ -143,15 +143,10 @@ details[open] .dpd-detail-icon {
 /* Details Content Animation/Spacing */
 
 .dpd-details-content {
-
     margin-top: 12px;
-
     padding-top: 12px;
-
     border-top: 1px dashed var(--border-light);
-
     /* [UX] No animation -> Snappy */
-
 }
 
 
@@ -161,7 +156,7 @@ details[open] .dpd-detail-icon {
     width: 100%;
     border-collapse: collapse;
     margin: 12px 0;
-    font-size: 0.9em;
+    font-size: 0.85em;
     background-color: transparent;
     border-radius: 0;
 }
@@ -169,7 +164,7 @@ details[open] .dpd-detail-icon {
 .dpd-grammar-table td, 
 .dpd-grammar-table th {
     padding: 6px 0;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px none var(--border-light);
     vertical-align: middle;
 }
 
@@ -178,8 +173,8 @@ details[open] .dpd-detail-icon {
     padding-right: 16px;
     width: 33%;
     color: var(--text-light);
-    font-weight: 500;
-    font-size: 0.84rem;
+    font-weight: 300;
+    font-size: 0.75rem;
     text-transform: lowercase;
     letter-spacing: 0.5px;
     border-right: 1px solid transparent;
@@ -188,7 +183,7 @@ details[open] .dpd-detail-icon {
 .dpd-grammar-table td {
     text-align: left;
     color: var(--text-main);
-    font-weight: 400;
+    font-weight: 300;
     width: 65%;
 }
 
@@ -216,11 +211,11 @@ details[open] .dpd-detail-icon {
 .grammar-note-table {
     width: auto; /* Shrink to fit */
     max-width: 100%;
-    margin: 12px auto; /* Center horizontally */
+    margin: 8px auto; /* Center horizontally */
     border-collapse: collapse;
     background-color: transparent;
     border-radius: 8px; /* Rounded corners if supported by collapse */
-    border: 1px solid var(--border-light); /* Frame it */
+    border: 1px none var(--border-light); /* Frame it */
     overflow: hidden; /* For rounded corners */
 }
 .dpd-examples {
@@ -234,19 +229,22 @@ details[open] .dpd-detail-icon {
     color: var(--text-muted);
     margin-bottom: 8px;
     font-weight: 600;
+    display: none;
 }
 
 .example-box {
     background-color: var(--bg-secondary);
-    padding: 12px;
+    padding: 6px 12px 0px 12px;
     border-radius: 8px;
-    margin-bottom: 10px;
-    border-left: none; 
+    margin-bottom: 5px;
+    border-left: none;
 }
 
 .example-text {
     font-style: italic;
     margin-bottom: 6px;
+    margin-top:  6px;
+    font-size: 0.9rem;
 }
 
 .example-source {
