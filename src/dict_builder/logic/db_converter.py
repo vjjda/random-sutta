@@ -4,7 +4,8 @@ import sqlite3
 import logging
 from pathlib import Path
 from ..builder_config import BuilderConfig
-from .output_database import OutputDatabase
+# [FIXED] Import từ package 'database' thay vì module 'output_database' cũ
+from .database import OutputDatabase
 
 logger = logging.getLogger("dict_builder.converter")
 
@@ -61,17 +62,25 @@ class DbConverter:
             conn.close()
 
             # 3. Re-generate Views using OutputDatabase logic
-            # Chúng ta dùng OutputDatabase để tái tạo Views chuẩn cho Tiny Mode
             logger.info("   Regenerating optimized views for Tiny Mode...")
             
-            # Khởi tạo OutputDatabase nhưng trỏ vào file đã có (không gọi setup() để tránh wipe data)
+            # Khởi tạo OutputDatabase nhưng trỏ vào file đã có
             tiny_db = OutputDatabase(tiny_config)
+            
+            # [NOTE] OutputDatabase mới cần setup connection thủ công nếu không gọi setup()
+            # Vì ta đang attach vào DB có sẵn, ta cần init các managers
             tiny_db.conn = sqlite3.connect(tiny_config.output_path)
             tiny_db.cursor = tiny_db.conn.cursor()
             
-            # Gọi hàm tạo view (sẽ tự detect is_tiny_mode=True để tạo view rút gọn)
-            tiny_db.create_grand_view()
-            tiny_db.create_search_procedures()
+            # Init thủ công các managers cần thiết (vì không gọi setup())
+            from .database.view_manager import ViewManager
+            from .database.schema_manager import SchemaManager
+            
+            schema = SchemaManager(tiny_db.cursor, tiny_config)
+            views = ViewManager(tiny_db.cursor, tiny_config, schema)
+            
+            # Gọi hàm tạo view thông qua ViewManager
+            views.create_all_views()
             
             # 4. Optimize
             logger.info("   Optimizing (VACUUM)...")
