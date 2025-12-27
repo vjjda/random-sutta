@@ -4,6 +4,7 @@ import { ZIndexManager } from 'ui/common/z_index_manager.js';
 
 export const LookupUI = {
     elements: {},
+    _isGrammarOpen: false, // Persistent state
 
     init(callbacks = {}) {
         this.elements = {
@@ -48,11 +49,11 @@ export const LookupUI = {
             }
         });
         
-        // Grammar Toggle
+        // Grammar Toggle (Persistent State)
         if (this.elements.btnGnote) {
             this.elements.btnGnote.addEventListener("click", () => {
-                this.elements.contentGnote.classList.toggle("hidden");
-                this.elements.btnGnote.classList.toggle("active");
+                this._isGrammarOpen = !this._isGrammarOpen;
+                this._updateGrammarVisibility();
             });
         }
 
@@ -97,27 +98,45 @@ export const LookupUI = {
         // 2. Render DPD Content
         if (this.elements.contentDpd) this.elements.contentDpd.innerHTML = dictHtml;
 
-        // 3. Render G.Note Content & Toggle Button
+        // 3. Setup Grammar Note (Persistent & Disabled Logic)
         if (this.elements.contentGnote) {
             this.elements.contentGnote.innerHTML = noteHtml;
-            // Always collapse by default when rendering new word
-            this.elements.contentGnote.classList.add("hidden");
         }
         
         if (this.elements.btnGnote) {
-            this.elements.btnGnote.classList.remove("active");
+            // Always show button, just toggle state
+            this.elements.btnGnote.classList.remove("hidden");
+            
             if (noteHtml) {
-                this.elements.btnGnote.classList.remove("hidden");
+                this.elements.btnGnote.classList.remove("disabled");
             } else {
-                this.elements.btnGnote.classList.add("hidden");
+                this.elements.btnGnote.classList.add("disabled");
             }
         }
+        
+        // Sync visibility based on state and data availability
+        this._updateGrammarVisibility();
 
         // [Z-INDEX] Bring to front
         ZIndexManager.bringToFront(this.elements.popup);
 
         this.elements.popup.classList.remove("hidden");
         if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
+    },
+    
+    _updateGrammarVisibility() {
+        if (!this.elements.contentGnote || !this.elements.btnGnote) return;
+        
+        // Check if there is actual content (button not disabled)
+        const hasContent = !this.elements.btnGnote.classList.contains("disabled");
+        
+        if (this._isGrammarOpen && hasContent) {
+            this.elements.contentGnote.classList.remove("hidden");
+            this.elements.btnGnote.classList.add("active");
+        } else {
+            this.elements.contentGnote.classList.add("hidden");
+            this.elements.btnGnote.classList.remove("active");
+        }
     },
     
     updateNavInfo(text) {
