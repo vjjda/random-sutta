@@ -58,7 +58,7 @@ export const PaliDPD = {
                     END AS definition,
                     e.grammar_json AS grammar,
                     e.example_json AS example,
-                    gn.grammar_json AS gn_grammar,
+                    gn.grammar_pack AS gn_grammar,
                     1 AS is_exact
                 FROM (
                     SELECT key, target_id, type, rank 
@@ -91,7 +91,7 @@ export const PaliDPD = {
                     END AS definition,
                     e.grammar_json AS grammar,
                     e.example_json AS example,
-                    gn.grammar_json AS gn_grammar,
+                    gn.grammar_pack AS gn_grammar,
                     (matches.key = :term AND matches.key = (
                         CASE 
                             WHEN matches.type = 1 THEN e.headword_clean
