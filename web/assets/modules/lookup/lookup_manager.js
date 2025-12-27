@@ -29,6 +29,14 @@ export const LookupManager = {
             LookupEventHandler.handleClick(e, this._performLookup.bind(this))
         );
         
+        // Keyboard Navigation
+        document.addEventListener("keydown", (e) => {
+            if (LookupUI.isVisible()) {
+                if (e.key === "ArrowLeft") LookupNavigator.navigate(-1, this._performLookup.bind(this));
+                if (e.key === "ArrowRight") LookupNavigator.navigate(1, this._performLookup.bind(this));
+            }
+        });
+        
         // Global Integration
         window.addEventListener('popup:close-all', () => {
             LookupUI.hide();
