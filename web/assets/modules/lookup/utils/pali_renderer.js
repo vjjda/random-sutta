@@ -261,36 +261,41 @@ export const PaliRenderer = {
         </div>`;
     },
 
-    _renderGrammarNotes(notes, getAbbr) {
+    _renderGrammarNotes(notesGroups, getAbbr) {
         let html = `<div class="grammar-note-container">`;
         html += `<table class="grammar-note-table">`;
         html += `<tbody>`;
         
-        notes.forEach(item => {
-            const pos = item[getAbbr('pos')] || '';
-            const word = item[getAbbr('headword')] || '';
+        if (!Array.isArray(notesGroups)) return "";
+
+        notesGroups.forEach(group => {
+            // Check structure validity: [h, p, [[...]]]
+            if (!Array.isArray(group) || group.length < 3) return;
             
-            // New fields for split columns (g1, g2, g3)
-            const g1 = item[getAbbr('g1')] || '';
-            const g2 = item[getAbbr('g2')] || '';
-            const g3 = item[getAbbr('g3')] || '';
+            const [headword, pos, lines] = group;
             
-            // Fallback
-            const oldGrammar = item[getAbbr('grammar')] || '';
-            
-            html += `<tr>
-                <td class="col-word"><b>${word}</b></td>
-                <td class="col-pos">${pos}</td>`;
-            
-            if (g1 || g2 || g3) {
+            if (!Array.isArray(lines)) return;
+
+            lines.forEach(line => {
+                // line format: [g1, g2, g3...] (Array of strings)
+                
+                html += `<tr>
+                    <td class="col-word"><b>${headword}</b></td>
+                    <td class="col-pos">${pos}</td>`;
+                
+                // Handle split columns
+                const g1 = line[0] || "";
+                const g2 = line[1] || "";
+                
+                // Join remaining parts for the last column if > 3 parts
+                const g3 = line.slice(2).join(" "); 
+                
                 html += `<td class="col-g1">${g1}</td>
                          <td class="col-g2">${g2}</td>
                          <td class="col-g3">${g3}</td>`;
-            } else {
-                html += `<td class="col-grammar" colspan="3">${oldGrammar}</td>`;
-            }
-            
-            html += `</tr>`;
+                
+                html += `</tr>`;
+            });
         });
         
         html += `</tbody></table></div>`;
