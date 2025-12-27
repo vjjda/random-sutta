@@ -4,8 +4,9 @@ import sqlite3
 import logging
 from pathlib import Path
 from ..builder_config import BuilderConfig
-# [FIXED] Import từ package 'database' thay vì module 'output_database' cũ
 from .database import OutputDatabase
+# [FIXED] Import ViewManager từ package database
+from .database.view_manager import ViewManager
 
 logger = logging.getLogger("dict_builder.converter")
 
@@ -41,39 +42,40 @@ class DbConverter:
             conn = sqlite3.connect(dest_path)
             cursor = conn.cursor()
             
+            # [CLEANUP] Always json suffix
             suffix = "json"
             
             logger.info("   Dropping unused views and columns...")
             
-            # [CRITICAL FIX] Drop Dependent View FIRST
             cursor.execute("DROP VIEW IF EXISTS view_search_results")
             cursor.execute("DROP VIEW IF EXISTS grand_lookups")
             
-            # Drop heavy columns
             cursor.execute(f"ALTER TABLE entries DROP COLUMN grammar_{suffix}")
             cursor.execute(f"ALTER TABLE entries DROP COLUMN example_{suffix}")
             
-            # Update Metadata
             logger.info("   Updating metadata...")
             cursor.execute("UPDATE metadata SET value = ? WHERE key = 'mode'", ("tiny",))
             
             conn.commit()
             conn.close()
 
-            # 3. Re-generate Views
+            # 3. Re-generate Views using OutputDatabase logic
             logger.info("   Regenerating optimized views for Tiny Mode...")
             
-            # Khởi tạo OutputDatabase thủ công
             tiny_db = OutputDatabase(tiny_config)
             tiny_db.conn = sqlite3.connect(tiny_config.output_path)
             tiny_db.cursor = tiny_db.conn.cursor()
             
-            from .database.view_manager import ViewManager
-            # [FIXED] Không truyền schema_manager nữa
+            # Init ViewManager (không cần schema_manager)
             views = ViewManager(tiny_db.cursor, tiny_config)
-            views.create_all_views()
+            
+            # [NOTE] sort=False vì Mini đã sort rồi
+            views.create_all_views(sort=False)
             
             # 4. Optimize
+            # [CRITICAL FIX] Phải commit transaction trước khi VACUUM
+            tiny_db.conn.commit()
+            
             logger.info("   Optimizing (VACUUM)...")
             tiny_db.conn.execute("VACUUM")
             tiny_db.conn.close()
@@ -85,6 +87,7 @@ class DbConverter:
             logger.error(f"Failed to convert DB: {e}", exc_info=True)
             return False
         finally:
+            # Cleanup connection 1 nếu lỗi xảy ra giữa chừng
             if conn:
                 try:
                     conn.close()
