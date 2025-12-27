@@ -10,6 +10,9 @@ from src.dict_builder.tools.pali_sort_key import pali_sort_key
 logger = logging.getLogger("dict_builder")
 
 class OutputDatabase:
+    # ... (Giữ nguyên __init__, setup, populate_*, insert_* như cũ)
+    # ... (Copy lại toàn bộ phần đầu của file bạn đang có)
+    # ...
     def __init__(self, config: BuilderConfig):
         self.config = config
         self.conn: sqlite3.Connection | None = None
@@ -48,18 +51,10 @@ class OutputDatabase:
 
     def _create_tables(self) -> None:
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
-        
-        # [RENAMED] split_string -> components
         self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (id INTEGER PRIMARY KEY, word TEXT NOT NULL, components TEXT);")
-        
         self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, type INTEGER NOT NULL);")
-        
         self.cursor.execute("CREATE TABLE IF NOT EXISTS json_keys (abbr_key TEXT PRIMARY KEY, full_key TEXT);")
-        
-        # [NEW] Table Types Mapping
         self.cursor.execute("CREATE TABLE IF NOT EXISTS table_types (type INTEGER PRIMARY KEY, table_name TEXT);")
-
-        # [NEW] Pack Schemas (Documentation for opaque packed columns)
         self.cursor.execute("CREATE TABLE IF NOT EXISTS pack_schemas (table_name TEXT, column_name TEXT, schema TEXT, PRIMARY KEY (table_name, column_name));")
 
         suffix = "html" if self.config.html_mode else "json"
@@ -75,17 +70,13 @@ class OutputDatabase:
         self.cursor.execute(sql_roots)
         
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
-        
-        # FTS5 for Full Text Search
         self.cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS lookups_fts USING fts5(key, target_id UNINDEXED, type UNINDEXED, tokenize='unicode61 remove_diacritics 2');")
         
-        # Trigger creation
         self._create_lookup_trigger()
         
         if self.config.html_mode:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
         else:
-            # [OPTIMIZED] Columnar storage for Grammar Notes (Grouped JSON)
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS grammar_notes (
                     key TEXT PRIMARY KEY,
@@ -94,7 +85,6 @@ class OutputDatabase:
             """)
 
     def _create_lookup_trigger(self) -> None:
-        """Helper to create the trigger."""
         self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
         self.cursor.execute("""
             CREATE TRIGGER lookups_ai AFTER INSERT ON lookups BEGIN
@@ -108,28 +98,17 @@ class OutputDatabase:
         self.cursor.executemany("INSERT INTO json_keys (abbr_key, full_key) VALUES (?, ?)", swapped_list)
 
     def populate_table_types(self) -> None:
-        """Populate table_types with static mapping data."""
-        data = [
-            (0, "deconstructions"),
-            (1, "entries"),
-            (2, "roots")
-        ]
+        data = [(0, "deconstructions"), (1, "entries"), (2, "roots")]
         try:
             self.cursor.executemany("INSERT OR IGNORE INTO table_types (type, table_name) VALUES (?, ?)", data)
-            logger.info("[cyan]Populated 'table_types' mapping table.[/cyan]")
         except Exception as e:
             logger.error(f"[red]Failed to populate table_types: {e}[/red]")
 
     def populate_pack_schemas(self) -> None:
-        """Populate the schema descriptions for packed columns."""
         grammar_schema = '[["headword", "pos", [["g1", "g2", "g3"]]]]'
-        
-        data = [
-            ("grammar_notes", "grammar_pack", grammar_schema)
-        ]
+        data = [("grammar_notes", "grammar_pack", grammar_schema)]
         try:
             self.cursor.executemany("INSERT OR IGNORE INTO pack_schemas (table_name, column_name, schema) VALUES (?, ?, ?)", data)
-            logger.info("[cyan]Populated 'pack_schemas'.[/cyan]")
         except Exception as e:
             logger.error(f"[red]Failed to populate pack_schemas: {e}[/red]")
 
@@ -157,7 +136,6 @@ class OutputDatabase:
 
     def insert_deconstructions(self, deconstructions: List[Tuple], lookups: List[Tuple]) -> None:
         if deconstructions:
-            # [RENAMED] split_string -> components
             self.cursor.executemany("INSERT INTO deconstructions (id, word, components) VALUES (?, ?, ?)", deconstructions)
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
@@ -168,7 +146,6 @@ class OutputDatabase:
             suffix = "html" if self.config.html_mode else "json"
             sql = "INSERT INTO roots (id, root, root_clean, definition_" + suffix + ") VALUES (?, ?, ?, ?)"
             self.cursor.executemany(sql, roots)
-        
         if lookups:
             self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
         self.conn.commit()
@@ -181,10 +158,33 @@ class OutputDatabase:
                 self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_pack) VALUES (?, ?)", grammar_batch)
         self.conn.commit()
 
+    def _sort_lookups_table_python_side(self) -> None:
+        logger.info("[yellow]Re-sorting 'lookups' table (Python Pali Sort)...[/yellow]")
+        try:
+            self.cursor.execute("SELECT key, target_id, type FROM lookups")
+            rows = self.cursor.fetchall()
+            rows.sort(key=lambda x: (len(x[0]), pali_sort_key(x[0])))
+            self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
+            self.cursor.execute("DELETE FROM lookups")
+            self.cursor.execute("DELETE FROM lookups_fts")
+            logger.info(f"   Inserting {len(rows)} sorted rows into 'lookups'...")
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", rows)
+            logger.info("   Populating 'lookups_fts'...")
+            self.cursor.execute("INSERT INTO lookups_fts (key, target_id, type) SELECT key, target_id, type FROM lookups")
+            self._create_lookup_trigger()
+            self.conn.commit()
+            logger.info(f"[green]Lookups & FTS tables sorted and rebuilt successfully.[/green]")
+        except Exception as e:
+            logger.error(f"[red]Failed to sort lookups table: {e}")
+
+    # =========================================================================
+    # [UPDATED] CREATE VIEWS LOGIC
+    # =========================================================================
+
     def create_grand_view(self) -> None:
         """
-        Tạo View tổng hợp (Content Layer).
-        Đã nâng cấp để expose đủ cột cho Search View.
+        Tạo View tổng hợp.
+        Tự động điều chỉnh cột dựa trên chế độ (Tiny/Mini/Full).
         """
         logger.info("[cyan]Creating 'grand_lookups' view (Unified Definition)...[/cyan]")
         
@@ -196,7 +196,7 @@ class OutputDatabase:
         else:
             grammar_note_field = "gn.grammar_pack"
 
-        # 2. Unified Definition (Logic cũ vẫn giữ để tương thích backward)
+        # 2. Unified Definition
         definition_field = (
             f"CASE "
             f"WHEN l.type = 0 THEN d.components "
@@ -213,7 +213,7 @@ class OutputDatabase:
             "ELSE NULL END AS headword"
         )
 
-        # 4. Clean Key Logic (Dùng cho is_exact check)
+        # 4. Clean Key Logic
         clean_headword_field = (
             "CASE "
             "WHEN l.type = 1 THEN e.headword_clean "
@@ -222,8 +222,7 @@ class OutputDatabase:
             "ELSE NULL END AS headword_clean"
         )
 
-        # 5. Các cột Raw (để Search View dùng lại)
-        # Chỉ lấy cột grammar/example nếu bảng entries có cột đó (trừ tiny mode)
+        # 5. Các cột Raw (Chỉ thêm nếu KHÔNG phải Tiny Mode)
         extra_cols = ""
         if not self.config.is_tiny_mode:
             extra_cols = (
@@ -257,60 +256,28 @@ class OutputDatabase:
         except Exception as e:
             logger.critical(f"[bold red]❌ Failed to create grand view: {e}")
 
-    def _sort_lookups_table_python_side(self) -> None:
-        """
-        Sắp xếp bảng Lookups theo Pali Sort Key (Python Side).
-        """
-        logger.info("[yellow]Re-sorting 'lookups' table (Python Pali Sort)...[/yellow]")
-        
-        try:
-            # 1. Fetch ALL lookups
-            self.cursor.execute("SELECT key, target_id, type FROM lookups")
-            rows = self.cursor.fetchall()
-            
-            # 2. Sort using Python Pali Key
-            # [OPTIMIZED] Sort by LENGTH first, then Alphabet.
-            rows.sort(key=lambda x: (len(x[0]), pali_sort_key(x[0])))
-            
-            # 3. Drop Trigger
-            self.cursor.execute("DROP TRIGGER IF EXISTS lookups_ai")
-            
-            # 4. Truncate tables
-            self.cursor.execute("DELETE FROM lookups")
-            self.cursor.execute("DELETE FROM lookups_fts")
-            
-            # 5. Re-insert
-            logger.info(f"   Inserting {len(rows)} sorted rows into 'lookups'...")
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", rows)
-            
-            # 6. Populate FTS
-            logger.info("   Populating 'lookups_fts'...")
-            self.cursor.execute("INSERT INTO lookups_fts (key, target_id, type) SELECT key, target_id, type FROM lookups")
-            
-            # 7. Re-create Trigger
-            self._create_lookup_trigger()
-            
-            self.conn.commit()
-            logger.info(f"[green]Lookups & FTS tables sorted and rebuilt successfully.[/green]")
-            
-        except Exception as e:
-            logger.error(f"[red]Failed to sort lookups table: {e}")
-
     def create_search_procedures(self) -> None:
         """
         Tạo cơ chế 'Stored Procedure' giả lập bằng Parametric View.
-        Cho phép tái sử dụng query phức tạp 'effortlessly'.
+        [UPDATED] Hỗ trợ Tiny Mode (trả về NULL cho các cột thiếu).
         """
         logger.info("[cyan]Injecting Search Procedures (Table + View)...[/cyan]")
         
         try:
-            # 1. Tạo bảng tham số (_search_params)
+            # 1. Tạo bảng tham số
             self.cursor.execute("DROP TABLE IF EXISTS _search_params")
             self.cursor.execute("CREATE TABLE _search_params (term TEXT)")
             self.cursor.execute("INSERT INTO _search_params (term) VALUES ('')")
 
-            # 2. Tạo View Logic
-            sql_view = """
+            # 2. Chuẩn bị các cột select (Tiny mode trả về NULL)
+            if self.config.is_tiny_mode:
+                # Tiny mode không có raw_grammar/raw_example trong grand_lookups
+                cols_select = "NULL AS grammar, NULL AS example"
+            else:
+                cols_select = "gl.raw_grammar AS grammar, gl.raw_example AS example"
+
+            # 3. Tạo View Logic
+            sql_view = f"""
             CREATE VIEW view_search_results AS
             WITH input_param AS (
                 SELECT term FROM _search_params LIMIT 1
@@ -341,8 +308,7 @@ class OutputDatabase:
                 matches.type,
                 gl.headword,
                 gl.definition,
-                gl.raw_grammar AS grammar,
-                gl.raw_example AS example,
+                {cols_select},
                 gl.gn_grammar,
                 (
                     matches.key = (SELECT term FROM input_param) 
@@ -373,11 +339,8 @@ class OutputDatabase:
     def close(self) -> None:
         if self.conn:
             self._sort_lookups_table_python_side()
-            
-            # [UPDATED] Gọi 2 hàm tạo View
             self.create_grand_view() 
             self.create_search_procedures()
-            
             logger.info("[green]Indexing & Optimizing (VACUUM)...[/green]")
             self.conn.execute("VACUUM")
             self.conn.close()
