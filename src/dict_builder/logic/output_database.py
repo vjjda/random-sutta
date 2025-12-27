@@ -10,9 +10,6 @@ from src.dict_builder.tools.pali_sort_key import pali_sort_key
 logger = logging.getLogger("dict_builder")
 
 class OutputDatabase:
-    # ... (Giữ nguyên __init__, setup, populate_*, insert_* như cũ)
-    # ... (Copy lại toàn bộ phần đầu của file bạn đang có)
-    # ...
     def __init__(self, config: BuilderConfig):
         self.config = config
         self.conn: sqlite3.Connection | None = None
@@ -259,9 +256,9 @@ class OutputDatabase:
     def create_search_procedures(self) -> None:
         """
         Tạo cơ chế 'Stored Procedure' giả lập bằng Parametric View.
-        [UPDATED] Hỗ trợ Tiny Mode (trả về NULL cho các cột thiếu).
+        [OPTIMIZED] Inline Join để đạt hiệu năng cao (< 20ms).
         """
-        logger.info("[cyan]Injecting Search Procedures (Table + View)...[/cyan]")
+        logger.info("[cyan]Injecting Search Procedures (Optimized Table + View)...[/cyan]")
         
         try:
             # 1. Tạo bảng tham số
@@ -269,14 +266,51 @@ class OutputDatabase:
             self.cursor.execute("CREATE TABLE _search_params (term TEXT)")
             self.cursor.execute("INSERT INTO _search_params (term) VALUES ('')")
 
-            # 2. Chuẩn bị các cột select (Tiny mode trả về NULL)
+            # 2. Chuẩn bị Logic (Copy từ logic của create_grand_view để đảm bảo đồng bộ)
+            suffix = "html" if self.config.html_mode else "json"
+            
+            # --- Logic Select Cột ---
             if self.config.is_tiny_mode:
-                # Tiny mode không có raw_grammar/raw_example trong grand_lookups
-                cols_select = "NULL AS grammar, NULL AS example"
+                cols_raw = "NULL AS grammar, NULL AS example"
             else:
-                cols_select = "gl.raw_grammar AS grammar, gl.raw_example AS example"
+                cols_raw = f"e.grammar_{suffix} AS grammar, e.example_{suffix} AS example"
 
-            # 3. Tạo View Logic
+            # --- Logic Definition ---
+            definition_expr = (
+                f"CASE "
+                f"WHEN matches.type = 0 THEN d.components "
+                f"WHEN matches.type = 1 THEN e.definition_{suffix} "
+                f"WHEN matches.type = 2 THEN r.definition_{suffix} "
+                f"ELSE NULL END"
+            )
+
+            # --- Logic Headword ---
+            headword_expr = (
+                "CASE "
+                "WHEN matches.type = 1 THEN e.headword "
+                "WHEN matches.type = 2 THEN r.root "
+                "ELSE matches.key END"
+            )
+
+            # --- Logic Headword Clean (cho is_exact) ---
+            clean_headword_expr = (
+                "CASE "
+                "WHEN matches.type = 1 THEN e.headword_clean "
+                "WHEN matches.type = 0 THEN d.word "
+                "WHEN matches.type = 2 THEN r.root_clean "
+                "ELSE matches.key END"
+            )
+
+            # --- Logic Grammar Notes ---
+            if self.config.html_mode:
+                gn_expr = "gn.grammar_html"
+            else:
+                gn_expr = "gn.grammar_pack"
+
+            # 3. Tạo View Tối Ưu
+            # Thay vì JOIN grand_lookups, ta JOIN trực tiếp các bảng vật lý
+            # NHƯNG chỉ join với các dòng đã được lọc bởi CTE ft_results
+            
             sql_view = f"""
             CREATE VIEW view_search_results AS
             WITH input_param AS (
@@ -299,39 +333,43 @@ class OutputDatabase:
                     LIMIT 100
                 )
             ),
-            raw_matches AS (
-                SELECT key, target_id, type, rank, priority FROM ft_results
+            -- Giới hạn kết quả FTS TRƯỚC khi Join
+            final_ids AS (
+                SELECT key, target_id, type, rank, priority 
+                FROM ft_results
+                ORDER BY priority ASC, length(key) ASC, rank
+                LIMIT 20 -- 🔥 LỌC SỚM TẠI ĐÂY LÀ CHÌA KHÓA TỐC ĐỘ
             )
             SELECT 
                 matches.key, 
                 matches.target_id, 
                 matches.type,
-                gl.headword,
-                gl.definition,
-                {cols_select},
-                gl.gn_grammar,
+                {headword_expr} AS headword,
+                {definition_expr} AS definition,
+                {cols_raw},
+                {gn_expr} AS gn_grammar,
                 (
                     matches.key = (SELECT term FROM input_param) 
                     AND 
-                    matches.key = COALESCE(gl.headword_clean, matches.key)
+                    matches.key = COALESCE({clean_headword_expr}, matches.key)
                 ) AS is_exact
-            FROM raw_matches matches
-            JOIN grand_lookups gl 
-                ON matches.target_id = gl.target_id 
-                AND matches.type = gl.lookup_type
-            GROUP BY matches.type, matches.target_id
+            FROM final_ids matches
+            -- 🔥 Join trực tiếp (Inline) thay vì qua grand_lookups
+            LEFT JOIN entries e ON matches.target_id = e.id AND matches.type = 1
+            LEFT JOIN deconstructions d ON matches.target_id = d.id AND matches.type = 0
+            LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 2
+            LEFT JOIN grammar_notes gn ON matches.key = gn.key
             ORDER BY 
                 matches.priority ASC, 
                 is_exact DESC, 
                 length(matches.key) ASC, 
-                matches.rank
-            LIMIT 20;
+                matches.rank;
             """
 
             self.cursor.execute("DROP VIEW IF EXISTS view_search_results")
             self.cursor.execute(sql_view)
             self.conn.commit()
-            logger.info("[green]Search procedures injected successfully.[/green]")
+            logger.info("[green]Search procedures injected successfully (Optimized).[/green]")
             
         except Exception as e:
             logger.error(f"[red]Failed to inject search procedures: {e}[/red]")
