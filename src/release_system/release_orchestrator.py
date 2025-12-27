@@ -81,10 +81,8 @@ def run_release_process(
         if not zip_packager.create_db_bundle(BUILD_PWA_DIR):
              logger.warning("⚠️ Failed to create DB bundle zip.")
         
-        # [NEW] Create DPD DB Zip for Offline Cache
-        if not zip_packager.create_dpd_db_zip(BUILD_PWA_DIR):
-             logger.warning("⚠️ Failed to create DPD DB zip.")
-
+        # [REMOVED] create_dpd_db_zip is now handled by dict_builder internal packager
+        
         # [NEW] Remove raw dictionary files to reduce deployment size (bypass GitHub 100MB limit)
         web_content_modifier.remove_raw_dictionary_files(BUILD_PWA_DIR)
 
