@@ -1,5 +1,6 @@
 # Path: src/dict_builder/logic/batch_worker.py
 import zlib
+import json
 from typing import List, Tuple, Set, Optional
 from sqlalchemy.orm import joinedload
 
@@ -93,13 +94,42 @@ def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List
         for item in items:
             grammar_list = item.grammar_unpack_list
             if not grammar_list: continue
+            
             content_val = None
             if config.html_mode:
                 html_str = renderer.render_grammar_notes_html(grammar_list)
                 content_val = process_data(html_str, config.USE_COMPRESSION)
             else:
-                json_str = renderer.render_grammar_notes_json(grammar_list)
+                # [OPTIMIZED] Grouped Grammar Pack Strategy
+                # Input grammar_list: [(h1, p1, gr1), (h1, p1, gr2), (h2, p2, gr3)...]
+                
+                # 1. Sort by Headword then POS for grouping
+                grammar_list.sort(key=lambda x: (x[0], x[1]))
+                
+                packed_data = []
+                current_group = None
+                current_h = None
+                current_p = None
+                
+                for h, p, gr_str in grammar_list:
+                    # Parse grammar string into components array
+                    # Example: "masc nom sg" -> ["masc", "nom", "sg"]
+                    # Handle "reflx" special case or just simple split
+                    components = gr_str.split()
+                    
+                    if h == current_h and p == current_p:
+                        # Append to current group's grammar list (index 2)
+                        current_group[2].append(components)
+                    else:
+                        # Start new group: [headword, pos, [ [components] ]]
+                        current_h = h
+                        current_p = p
+                        current_group = [h, p, [components]]
+                        packed_data.append(current_group)
+                
+                json_str = json.dumps(packed_data, ensure_ascii=False, separators=(',', ':'))
                 content_val = process_data(json_str, config.USE_COMPRESSION)
+                
             grammar_batch.append((item.lookup_key, content_val))
     except Exception as e:
         print(f"[red]Error in grammar notes worker: {e}")

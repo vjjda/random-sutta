@@ -44,6 +44,7 @@ class OutputDatabase:
         # Populate Static Data
         self.populate_json_keys()
         self.populate_table_types()
+        self.populate_pack_schemas()
         
         self.conn.commit()
 
@@ -59,6 +60,9 @@ class OutputDatabase:
         
         # [NEW] Table Types Mapping
         self.cursor.execute("CREATE TABLE IF NOT EXISTS table_types (type INTEGER PRIMARY KEY, table_name TEXT);")
+
+        # [NEW] Pack Schemas (Documentation for opaque packed columns)
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS pack_schemas (table_name TEXT, column_name TEXT, schema TEXT, PRIMARY KEY (table_name, column_name));")
 
         suffix = "html" if self.config.html_mode else "json"
         
@@ -83,7 +87,13 @@ class OutputDatabase:
         if self.config.html_mode:
             self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_html TEXT);")
         else:
-            self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_json TEXT);")
+            # [OPTIMIZED] Columnar storage for Grammar Notes (Grouped JSON)
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS grammar_notes (
+                    key TEXT PRIMARY KEY,
+                    grammar_pack TEXT
+                );
+            """)
 
     def _create_lookup_trigger(self) -> None:
         """Helper to create the trigger."""
@@ -111,6 +121,23 @@ class OutputDatabase:
             logger.info("[cyan]Populated 'table_types' mapping table.[/cyan]")
         except Exception as e:
             logger.error(f"[red]Failed to populate table_types: {e}[/red]")
+
+    def populate_pack_schemas(self) -> None:
+        """Populate the schema descriptions for packed columns."""
+        # Description of the Grouped Nested Array structure
+        # Outer list contains groups. Each group is [headword, pos, list_of_lines].
+        # Each line is [component1, component2, component3...]
+        # Example: [["buddha", "masc", [["nom", "sg"], ["voc", "sg"]]]]
+        grammar_schema = '[["headword", "pos", [["g1", "g2", "g3"]]]]'
+        
+        data = [
+            ("grammar_notes", "grammar_pack", grammar_schema)
+        ]
+        try:
+            self.cursor.executemany("INSERT OR IGNORE INTO pack_schemas (table_name, column_name, schema) VALUES (?, ?, ?)", data)
+            logger.info("[cyan]Populated 'pack_schemas'.[/cyan]")
+        except Exception as e:
+            logger.error(f"[red]Failed to populate pack_schemas: {e}[/red]")
 
     def insert_batch(self, entries: List[Tuple], lookups: List[Tuple]) -> None:
         if entries:
@@ -157,7 +184,7 @@ class OutputDatabase:
             if self.config.html_mode:
                 self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_html) VALUES (?, ?)", grammar_batch)
             else:
-                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_json) VALUES (?, ?)", grammar_batch)
+                self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_pack) VALUES (?, ?)", grammar_batch)
         self.conn.commit()
 
     def create_grand_view(self) -> None:
@@ -169,7 +196,7 @@ class OutputDatabase:
         if self.config.html_mode:
             grammar_note_field = "gn.grammar_html AS grammar_note"
         else:
-            grammar_note_field = "gn.grammar_json AS grammar_note"
+            grammar_note_field = "gn.grammar_pack AS grammar_note"
 
         # 2. Unified Definition Field (Using CASE WHEN)
         # Type 0 = Deconstruction, 1 = Entry, 2 = Root
