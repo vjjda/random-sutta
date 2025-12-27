@@ -464,21 +464,24 @@
 
         <div id="lookup-popup" class="popup-container hidden">
           <div class="lookup-header-tabs">
-            <div id="tab-dpd" class="lookup-tab active" title="Dictionary Results">
-                <span id="lookup-title">Lookup</span>
-            </div>
-            <div id="tab-gnote" class="lookup-tab" title="Grammar Notes">
-                <span>Grammar</span>
+            <div id="tab-dpd" class="lookup-tab active" title="Digital Pali Dictionary">
+                <span>DPD</span>
             </div>
             <button id="close-lookup" class="header-close-btn">×</button>
           </div>
           
           <div class="popup-body">
-            <!-- Tab Content 1: DPD Results -->
-            <div id="lookup-content-dpd" class="lookup-tab-content active"></div>
-            
-            <!-- Tab Content 2: Grammar Notes -->
-            <div id="lookup-content-gnote" class="lookup-tab-content hidden"></div>
+            <!-- Heading Row -->
+            <div class="lookup-heading-row">
+                <h3 id="lookup-word-heading"></h3>
+                <button id="btn-toggle-gnote" class="lookup-gnote-trigger hidden" title="Show Grammar Notes">Grammar</button>
+            </div>
+
+            <!-- Grammar Note Content (Hidden by default) -->
+            <div id="lookup-content-gnote" class="lookup-gnote-section hidden"></div>
+
+            <!-- Main Content -->
+            <div id="lookup-content-dpd" class="lookup-main-content"></div>
           </div>
 
           <div class="popup-nav-bar">
