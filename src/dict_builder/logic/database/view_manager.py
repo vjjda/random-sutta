@@ -26,14 +26,13 @@ class ViewManager:
         
         definition_field = (
             f"CASE "
-            f"WHEN l.type = 0 THEN d.components "
             f"WHEN l.type = 1 THEN e.definition_{suffix} "
-            f"WHEN l.type = 2 THEN r.definition_{suffix} "
+            f"WHEN l.type = 0 THEN r.definition_{suffix} "
             f"ELSE NULL END AS definition"
         )
         
-        headword_field = "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 2 THEN r.root ELSE NULL END AS headword"
-        clean_headword_field = "CASE WHEN l.type = 1 THEN e.headword_clean WHEN l.type = 0 THEN d.word WHEN l.type = 2 THEN r.root_clean ELSE NULL END AS headword_clean"
+        headword_field = "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 0 THEN r.root ELSE NULL END AS headword"
+        clean_headword_field = "CASE WHEN l.type = 1 THEN e.headword_clean WHEN l.type = 0 THEN r.root_clean ELSE NULL END AS headword_clean"
 
         extra_cols = ""
         if not self.config.is_tiny_mode:
@@ -48,8 +47,7 @@ class ViewManager:
                 {extra_cols}
             FROM lookups l
             LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1
-            LEFT JOIN deconstructions d ON l.target_id = d.id AND l.type = 0
-            LEFT JOIN roots r ON l.target_id = r.id AND l.type = 2
+            LEFT JOIN roots r ON l.target_id = r.id AND l.type = 0
             LEFT JOIN grammar_notes gn ON l.key = gn.key;
         """
         
@@ -89,9 +87,9 @@ class ViewManager:
             else:
                 cols_raw = f"e.grammar_{suffix} AS grammar, e.example_{suffix} AS example"
 
-            def_expr = f"CASE WHEN matches.type = 0 THEN d.components WHEN matches.type = 1 THEN e.definition_{suffix} WHEN matches.type = 2 THEN r.definition_{suffix} ELSE NULL END"
-            hw_expr = "CASE WHEN matches.type = 1 THEN e.headword WHEN matches.type = 2 THEN r.root ELSE matches.key END"
-            clean_hw_expr = "CASE WHEN matches.type = 1 THEN e.headword_clean WHEN matches.type = 0 THEN d.word WHEN matches.type = 2 THEN r.root_clean ELSE matches.key END"
+            def_expr = f"CASE WHEN matches.type = 1 THEN e.definition_{suffix} WHEN matches.type = 0 THEN r.definition_{suffix} ELSE NULL END"
+            hw_expr = "CASE WHEN matches.type = 1 THEN e.headword WHEN matches.type = 0 THEN r.root ELSE matches.key END"
+            clean_hw_expr = "CASE WHEN matches.type = 1 THEN e.headword_clean WHEN matches.type = 0 THEN r.root_clean ELSE matches.key END"
             gn_expr = "gn.grammar_pack"
 
             sql_view = f"""
@@ -155,8 +153,7 @@ class ViewManager:
                  AND matches.key = COALESCE({clean_hw_expr}, matches.key)) AS is_exact
             FROM final_ids matches
             LEFT JOIN entries e ON matches.target_id = e.id AND matches.type = 1
-            LEFT JOIN deconstructions d ON matches.target_id = d.id AND matches.type = 0
-            LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 2
+            LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 0
             LEFT JOIN grammar_notes gn ON matches.key = gn.key
             ORDER BY matches.priority ASC, is_exact DESC, length(matches.key) ASC, matches.rank;
             """

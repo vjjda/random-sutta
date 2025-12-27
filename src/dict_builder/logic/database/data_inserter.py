@@ -32,9 +32,8 @@ class DataInserter:
 
     def insert_deconstructions(self, deconstructions: List[Tuple], lookups: List[Tuple]) -> None:
         if deconstructions:
-            self.cursor.executemany("INSERT INTO deconstructions (id, word, components) VALUES (?, ?, ?)", deconstructions)
-        if lookups:
-            self._insert_lookups(lookups)
+            self.cursor.executemany("INSERT INTO deconstructions (word, components) VALUES (?, ?)", deconstructions)
+        # Note: Deconstructions no longer have lookups
         self.conn.commit()
 
     def insert_roots(self, roots: List[Tuple], lookups: List[Tuple]) -> None:

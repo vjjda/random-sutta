@@ -72,21 +72,24 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
     renderer = DpdRenderer(config)
     session = get_db_session(config.DPD_DB_PATH)
     decon_batch = []
+    # [CLEANUP] Deconstructions no longer need lookups
     decon_lookup_batch = []
-    current_id = start_id
+    
     try:
         items = session.query(Lookup).filter(Lookup.lookup_key.in_(keys)).all()
         for d in items:
             split_str = "; ".join(d.deconstructor_unpack_list)
-            decon_batch.append((current_id, d.lookup_key, process_data(split_str, config.USE_COMPRESSION)))
-            decon_lookup_batch.append((d.lookup_key, current_id, 0))
-            current_id += 1
+            # Tuple format: (word, components) - No ID needed
+            decon_batch.append((d.lookup_key, process_data(split_str, config.USE_COMPRESSION)))
+            
     except Exception as e:
         print(f"[red]Error in decon worker: {e}")
     finally:
         session.close()
-    decon_batch.sort(key=lambda x: pali_sort_key(x[1]))
-    decon_lookup_batch.sort(key=lambda x: pali_sort_key(x[0]))
+    
+    # Sort by Word (Pali Order)
+    decon_batch.sort(key=lambda x: pali_sort_key(x[0]))
+    
     return decon_batch, decon_lookup_batch
 
 def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List[tuple]:
@@ -143,7 +146,8 @@ def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderCon
             content = renderer.extract_root_json(r)
             roots_data.append((current_id, r.root, r.root_clean, process_data(content, config.USE_COMPRESSION)))
             clean_key = r.root_clean
-            lookups_data.append((clean_key, current_id, 2))
+            # Type 0 = Roots (Previously 2)
+            lookups_data.append((clean_key, current_id, 0))
             current_id += 1
     except Exception as e:
         print(f"[red]Error in roots worker: {e}")
