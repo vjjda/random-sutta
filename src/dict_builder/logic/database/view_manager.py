@@ -97,65 +97,66 @@ class ViewManager:
             WITH input_param AS (
                 SELECT term, limit_exact, limit_prefix, limit_final FROM _search_params LIMIT 1
             ),
-            match_short AS (
-                -- Strategy 1: Short Term (< 2 chars) -> Exact Match Only
-                SELECT key, target_id, type, rank, 0 AS priority
-                FROM lookups_fts, input_param
-                WHERE length(input_param.term) < 2
-                  AND lookups_fts MATCH input_param.term
-                LIMIT (SELECT limit_exact FROM input_param)
-            ),
-            match_long_exact AS (
-                -- Strategy 2a: Exact Match
+            -- Priority 1: Exact Match
+            match_exact AS (
                 SELECT key, target_id, type, rank, 1 AS priority
                 FROM lookups_fts, input_param
-                WHERE length(input_param.term) >= 2
-                  AND lookups_fts MATCH input_param.term
+                WHERE lookups_fts MATCH input_param.term
                 LIMIT (SELECT limit_exact FROM input_param)
             ),
-            match_long_prefix AS (
-                -- Strategy 2b: Prefix Match
+            -- Priority 2: Prefix Match (Only if term length >= 2)
+            match_prefix AS (
                 SELECT key, target_id, type, rank, 2 AS priority
                 FROM lookups_fts, input_param
                 WHERE length(input_param.term) >= 2
                   AND lookups_fts MATCH input_param.term || '*'
                 LIMIT (SELECT limit_prefix FROM input_param)
             ),
-            all_raw_matches AS (
-                SELECT * FROM match_short
+            -- Combine Results
+            all_matches AS (
+                SELECT * FROM match_exact
                 UNION ALL
-                SELECT * FROM match_long_exact
-                UNION ALL
-                SELECT * FROM match_long_prefix
+                SELECT * FROM match_prefix
             ),
-            final_ids AS (
-                -- [FIX] GROUP BY để khử trùng lặp
-                -- Nếu một từ xuất hiện ở cả Exact (prio 1) và Prefix (prio 2),
-                -- lệnh MIN(priority) sẽ giữ lại Priority 1 (tốt hơn).
+            -- Deduplicate: Keep the best priority for each (target_id, type)
+            unique_matches AS (
                 SELECT 
-                    key, 
-                    target_id, 
-                    type, 
+                    key, target_id, type, 
                     MIN(rank) as rank, 
                     MIN(priority) as priority
-                FROM all_raw_matches
+                FROM all_matches
                 GROUP BY target_id, type
                 ORDER BY priority ASC, length(key) ASC, rank 
-                LIMIT (SELECT limit_final FROM input_param) -- Dynamic Limit
+                LIMIT (SELECT limit_final FROM input_param)
             )
             SELECT 
-                matches.key, matches.target_id, matches.type,
-                {hw_expr} AS headword,
-                {def_expr} AS definition,
+                m.key, m.target_id, m.type,
+                -- Headword Logic
+                CASE 
+                    WHEN m.type = 1 THEN e.headword
+                    WHEN m.type = 0 THEN r.root
+                    ELSE m.key
+                END AS headword,
+                -- Definition Logic
+                CASE 
+                    WHEN m.type = 1 THEN e.definition_{suffix} 
+                    WHEN m.type = 0 THEN r.definition_{suffix} 
+                    ELSE NULL 
+                END AS definition,
                 {cols_raw},
                 {gn_expr} AS gn_grammar,
-                (matches.key = (SELECT term FROM input_param) 
-                 AND matches.key = COALESCE({clean_hw_expr}, matches.key)) AS is_exact
-            FROM final_ids matches
-            LEFT JOIN entries e ON matches.target_id = e.id AND matches.type = 1
-            LEFT JOIN roots r ON matches.target_id = r.id AND matches.type = 0
-            LEFT JOIN grammar_notes gn ON matches.key = gn.key
-            ORDER BY matches.priority ASC, is_exact DESC, length(matches.key) ASC, matches.rank;
+                -- Is Exact Logic
+                (m.key = (SELECT term FROM input_param) 
+                 AND m.key = CASE 
+                    WHEN m.type = 1 THEN e.headword_clean
+                    WHEN m.type = 0 THEN r.root_clean
+                    ELSE m.key
+                 END) AS is_exact
+            FROM unique_matches m
+            LEFT JOIN entries e ON m.target_id = e.id AND m.type = 1
+            LEFT JOIN roots r ON m.target_id = r.id AND m.type = 0
+            LEFT JOIN grammar_notes gn ON m.key = gn.key
+            ORDER BY m.priority ASC, is_exact DESC, length(m.key) ASC, m.rank;
             """
 
             self.cursor.execute("DROP VIEW IF EXISTS view_search_results")
