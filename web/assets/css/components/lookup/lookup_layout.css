@@ -35,13 +35,13 @@
 
 #lookup-word-heading {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.4rem;
     font-weight: 700;
     color: var(--text-main);
     font-family: var(--font-main);
     line-height: 1.2;
     /* Allow Pali words to break if too long */
-    overflow-wrap: break-word; 
+    overflow-wrap: break-word;
 }
 
 /* --- GRAMMAR TOGGLE BTN --- */
