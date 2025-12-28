@@ -78,9 +78,18 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
     try:
         items = session.query(Lookup).filter(Lookup.lookup_key.in_(keys)).all()
         for d in items:
-            split_str = "; ".join(d.deconstructor_unpack_list)
-            # Tuple format: (word, components) - No ID needed
-            decon_batch.append((d.lookup_key, process_data(split_str, config.USE_COMPRESSION)))
+            # [REFACTOR] Convert to JSON Array of Arrays: [["part1", "part2"], ["part3", "part4"]]
+            raw_list = d.deconstructor_unpack_list # ["a + b", "c + d"]
+            processed_list = []
+            for item in raw_list:
+                # Split by "+" and strip whitespace
+                parts = [p.strip() for p in item.split("+")]
+                processed_list.append(parts)
+            
+            json_str = json.dumps(processed_list, ensure_ascii=False, separators=(',', ':'))
+            
+            # Tuple format: (word, components_json)
+            decon_batch.append((d.lookup_key, process_data(json_str, config.USE_COMPRESSION)))
             
     except Exception as e:
         print(f"[red]Error in decon worker: {e}")
