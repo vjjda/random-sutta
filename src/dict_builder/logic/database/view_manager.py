@@ -93,7 +93,9 @@ class ViewManager:
 
             # Definition Logic: Only for Entries (Type 1)
             # Roots (Type 0) will have their own columns
-            def_expr = f"CASE WHEN m.type = 1 THEN e.definition_{suffix} ELSE NULL END"
+            # [FIX] Do NOT define complete CASE statement here to avoid nesting error
+            # Just define the logic for Type 1
+            def_entry = f"e.definition_{suffix}"
             
             hw_expr = "CASE WHEN m.type = 1 THEN e.headword WHEN m.type = 0 THEN r.root ELSE m.key END"
             clean_hw_expr = "CASE WHEN m.type = 1 THEN e.headword_clean WHEN m.type = 0 THEN r.root_clean ELSE m.key END"
@@ -143,7 +145,6 @@ class ViewManager:
                 SELECT * FROM match_prefix
             ),
             -- Deduplicate: Keep the best priority for each (target_id, type)
-            -- Note: Decon (Type -1) is unique, so it won't conflict with Types 0/1
             unique_matches AS (
                 SELECT 
                     key, target_id, type, 
@@ -166,7 +167,8 @@ class ViewManager:
                 -- Definition Logic
                 CASE 
                     WHEN m.type = -1 THEN d.components -- Decon
-                    {def_expr}
+                    WHEN m.type = 1 THEN {def_entry}   -- Entry
+                    ELSE NULL 
                 END AS definition,
                 {cols_raw},
                 {gn_expr} AS gn_grammar,
