@@ -103,7 +103,7 @@ def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List
             if not grammar_list: continue
             
             # [CLEANUP] Luôn dùng Logic Grouped JSON Pack
-            grammar_list.sort(key=lambda x: (pali_sort_key(x[0]), x[1]))
+            grammar_list.sort(key=lambda x: (len(x[0]), pali_sort_key(x[0]), x[1]))
             packed_data = []
             current_group = None
             current_h = None
