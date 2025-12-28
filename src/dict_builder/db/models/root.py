@@ -1,10 +1,13 @@
 # Path: src/dict_builder/db/models/root.py
 import re
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, object_session
 from .base import Base
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
+
+if TYPE_CHECKING:
+    from .headword import DpdHeadword
 
 class DpdRoot(Base):
     __tablename__ = "dpd_roots"
