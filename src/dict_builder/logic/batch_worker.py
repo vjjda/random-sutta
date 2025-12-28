@@ -154,7 +154,6 @@ def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderCon
             
             # 3. Keys
             clean_key = r.root_clean        # "√gam"
-            no_sign_key = r.root_no_sign_   # "gam" (No sign, no space)
 
             # 4. Append Data (Schema: id, root, root_clean, meaning, info, sanskrit)
             roots_data.append((
@@ -170,10 +169,6 @@ def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderCon
             # Add clean key (√gam)
             lookups_data.append((clean_key, current_id, 0))
             
-            # Add no-sign key (gam) if different
-            if no_sign_key and no_sign_key != clean_key:
-                lookups_data.append((no_sign_key, current_id, 0))
-                
             current_id += 1
     except Exception as e:
         print(f"[red]Error in roots worker: {e}")
