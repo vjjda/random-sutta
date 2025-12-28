@@ -38,8 +38,16 @@ class ViewManager:
         if not self.config.is_tiny_mode:
             extra_cols = f", e.grammar_{suffix} AS raw_grammar, e.example_{suffix} AS raw_example"
 
-        # Root Columns
-        root_cols = "r.root_meaning, r.root_info, r.sanskrit_info"
+        # Root Columns (Reconstructed via SQL)
+        root_cols = """
+            r.root_meaning, 
+            (r.root_group || ' ' || r.root_sign) AS root_info, 
+            CASE 
+                WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
+                THEN r.sanskrit_root || ' ' || r.sanskrit_root_class || ' (' || r.sanskrit_root_meaning || ')'
+                ELSE ''
+            END AS sanskrit_info
+        """
 
         sql = f"""
             CREATE VIEW IF NOT EXISTS grand_lookups AS
@@ -101,8 +109,16 @@ class ViewManager:
             clean_hw_expr = "CASE WHEN m.type = 1 THEN e.headword_clean WHEN m.type = 0 THEN r.root_clean ELSE m.key END"
             gn_expr = "gn.grammar_pack"
             
-            # Root Columns
-            root_cols = "r.root_meaning, r.root_info, r.sanskrit_info"
+            # Root Columns (Reconstructed via SQL)
+            root_cols = """
+                r.root_meaning, 
+                (r.root_group || ' ' || r.root_sign) AS root_info, 
+                CASE 
+                    WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
+                    THEN r.sanskrit_root || ' ' || r.sanskrit_root_class || ' (' || r.sanskrit_root_meaning || ')'
+                    ELSE ''
+                END AS sanskrit_info
+            """
 
             sql_view = f"""
             CREATE VIEW view_search_results AS

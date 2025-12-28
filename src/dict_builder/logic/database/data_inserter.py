@@ -41,8 +41,9 @@ class DataInserter:
             sql = """
                 INSERT INTO roots (
                     id, root, root_clean, 
-                    root_meaning, root_info, sanskrit_info
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    root_meaning, root_group, root_sign,
+                    sanskrit_root, sanskrit_root_class, sanskrit_root_meaning
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             self.cursor.executemany(sql, roots)
         if lookups:

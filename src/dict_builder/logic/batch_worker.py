@@ -144,25 +144,20 @@ def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderCon
         for r in roots:
             # [REFACTOR] Extract physical columns instead of JSON
             
-            # 1. Info: "Group Sign"
-            root_info = f"{r.root_group} {r.root_sign}"
-            
-            # 2. Sanskrit: "Root Class (Meaning)"
-            sanskrit_info = ""
-            if r.sanskrit_root:
-                sanskrit_info = f"{r.sanskrit_root} {r.sanskrit_root_class} ({r.sanskrit_root_meaning})"
-            
             # 3. Keys
             clean_key = r.root_clean        # "√gam"
 
-            # 4. Append Data (Schema: id, root, root_clean, meaning, info, sanskrit)
+            # 4. Append Data (Schema: id, root, root_clean, meaning, group, sign, sk_root, sk_class, sk_meaning)
             roots_data.append((
                 current_id, 
                 r.root, 
                 clean_key, 
                 r.root_meaning, 
-                root_info, 
-                sanskrit_info
+                r.root_group,
+                r.root_sign,
+                r.sanskrit_root,
+                r.sanskrit_root_class,
+                r.sanskrit_root_meaning
             ))
             
             # 5. Lookups (Type 0 = Roots)

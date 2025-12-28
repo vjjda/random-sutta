@@ -46,8 +46,11 @@ class SchemaManager:
                 root TEXT NOT NULL, 
                 root_clean TEXT NOT NULL,
                 root_meaning TEXT,
-                root_info TEXT,
-                sanskrit_info TEXT
+                root_group INTEGER,
+                root_sign TEXT,
+                sanskrit_root TEXT,
+                sanskrit_root_class TEXT,
+                sanskrit_root_meaning TEXT
             );
         """)
         
