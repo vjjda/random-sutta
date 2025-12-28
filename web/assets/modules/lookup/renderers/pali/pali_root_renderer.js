@@ -1,17 +1,12 @@
 // Path: web/assets/modules/lookup/renderers/pali/pali_root_renderer.js
 
 export const PaliRootRenderer = {
-    render(root, getLabel) {
-        // Find keys dynamically
-        let rootVal = "", meaning = "", grammar = "", sanskrit = "";
-        
-        for (const [k, v] of Object.entries(root)) {
-            const label = getLabel(k).toLowerCase();
-            if (label === "root") rootVal = v;
-            else if (label === "meaning") meaning = v;
-            else if (label === "grammar") grammar = v;
-            else if (label === "sanskrit root") sanskrit = v;
-        }
+    render(data, getLabel) {
+        // Data contains: headword (root), root_meaning, root_info, sanskrit_info
+        const rootVal = data.headword || "";
+        const meaning = data.root_meaning || "";
+        const grammar = data.root_info || ""; // "Group X Sign"
+        const sanskrit = data.sanskrit_info || "";
 
         return `
         <div class="dpd-entry dpd-root-entry no-details">
@@ -25,8 +20,8 @@ export const PaliRootRenderer = {
                     </div>
                     
                     <div class="dpd-summary-line-2" style="display: flex;">
-                        ${sanskrit ? `<span class="root-sanskrit">[${sanskrit}]</span>` : ''}
-                        ${grammar ? `<span class="root-grammar" style="margin-left: auto;">${grammar}</span>` : ''}
+                        ${sanskrit ? `<span class="root-sanskrit">Skr: [${sanskrit}]</span>` : ''}
+                        ${grammar ? `<span class="root-grammar" style="margin-left: auto;">Group ${grammar}</span>` : ''}
                     </div>
 
                     <div class="dpd-summary-line-3">

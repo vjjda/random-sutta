@@ -24,10 +24,10 @@ class ViewManager:
         suffix = "json"
         grammar_note_field = "gn.grammar_pack"
         
+        # Definition: Only for Entries (Type 1)
         definition_field = (
             f"CASE "
             f"WHEN l.type = 1 THEN e.definition_{suffix} "
-            f"WHEN l.type = 0 THEN r.definition_{suffix} "
             f"ELSE NULL END AS definition"
         )
         
@@ -38,12 +38,16 @@ class ViewManager:
         if not self.config.is_tiny_mode:
             extra_cols = f", e.grammar_{suffix} AS raw_grammar, e.example_{suffix} AS raw_example"
 
+        # Root Columns
+        root_cols = "r.root_meaning, r.root_info, r.sanskrit_info"
+
         sql = f"""
             CREATE VIEW IF NOT EXISTS grand_lookups AS
             SELECT 
                 l.key AS lookup_key, l.target_id, l.type AS lookup_type,
                 {headword_field}, {clean_headword_field}, {definition_field},
-                {grammar_note_field} AS gn_grammar
+                {grammar_note_field} AS gn_grammar,
+                {root_cols}
                 {extra_cols}
             FROM lookups l
             LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1
@@ -87,17 +91,35 @@ class ViewManager:
             else:
                 cols_raw = f"e.grammar_{suffix} AS grammar, e.example_{suffix} AS example"
 
-            def_expr = f"CASE WHEN matches.type = 1 THEN e.definition_{suffix} WHEN matches.type = 0 THEN r.definition_{suffix} ELSE NULL END"
-            hw_expr = "CASE WHEN matches.type = 1 THEN e.headword WHEN matches.type = 0 THEN r.root ELSE matches.key END"
-            clean_hw_expr = "CASE WHEN matches.type = 1 THEN e.headword_clean WHEN matches.type = 0 THEN r.root_clean ELSE matches.key END"
+            # Definition Logic: Only for Entries (Type 1)
+            # Roots (Type 0) will have their own columns
+            def_expr = f"CASE WHEN m.type = 1 THEN e.definition_{suffix} ELSE NULL END"
+            
+            hw_expr = "CASE WHEN m.type = 1 THEN e.headword WHEN m.type = 0 THEN r.root ELSE m.key END"
+            clean_hw_expr = "CASE WHEN m.type = 1 THEN e.headword_clean WHEN m.type = 0 THEN r.root_clean ELSE m.key END"
             gn_expr = "gn.grammar_pack"
+            
+            # Root Columns
+            root_cols = "r.root_meaning, r.root_info, r.sanskrit_info"
 
             sql_view = f"""
             CREATE VIEW view_search_results AS
             WITH input_param AS (
                 SELECT term, limit_exact, limit_prefix, limit_final FROM _search_params LIMIT 1
             ),
-            -- Priority 1: Exact Match
+            -- Priority 0: Deconstruction (Exact Match)
+            match_decon AS (
+                SELECT 
+                    word AS key, 
+                    0 AS target_id, 
+                    -1 AS type, -- Type -1 for Deconstruction
+                    0 AS rank, 
+                    0 AS priority
+                FROM deconstructions, input_param
+                WHERE word = input_param.term
+                LIMIT 1
+            ),
+            -- Priority 1: Exact Match (FTS)
             match_exact AS (
                 SELECT key, target_id, type, rank, 1 AS priority
                 FROM lookups_fts, input_param
@@ -114,11 +136,14 @@ class ViewManager:
             ),
             -- Combine Results
             all_matches AS (
+                SELECT * FROM match_decon
+                UNION ALL
                 SELECT * FROM match_exact
                 UNION ALL
                 SELECT * FROM match_prefix
             ),
             -- Deduplicate: Keep the best priority for each (target_id, type)
+            -- Note: Decon (Type -1) is unique, so it won't conflict with Types 0/1
             unique_matches AS (
                 SELECT 
                     key, target_id, type, 
@@ -133,18 +158,19 @@ class ViewManager:
                 m.key, m.target_id, m.type,
                 -- Headword Logic
                 CASE 
+                    WHEN m.type = -1 THEN m.key -- Decon
                     WHEN m.type = 1 THEN e.headword
                     WHEN m.type = 0 THEN r.root
                     ELSE m.key
                 END AS headword,
                 -- Definition Logic
                 CASE 
-                    WHEN m.type = 1 THEN e.definition_{suffix} 
-                    WHEN m.type = 0 THEN r.definition_{suffix} 
-                    ELSE NULL 
+                    WHEN m.type = -1 THEN d.components -- Decon
+                    {def_expr}
                 END AS definition,
                 {cols_raw},
                 {gn_expr} AS gn_grammar,
+                {root_cols},
                 -- Is Exact Logic
                 (m.key = (SELECT term FROM input_param) 
                  AND m.key = CASE 
@@ -155,6 +181,7 @@ class ViewManager:
             FROM unique_matches m
             LEFT JOIN entries e ON m.target_id = e.id AND m.type = 1
             LEFT JOIN roots r ON m.target_id = r.id AND m.type = 0
+            LEFT JOIN deconstructions d ON m.key = d.word AND m.type = -1
             LEFT JOIN grammar_notes gn ON m.key = gn.key
             ORDER BY m.priority ASC, is_exact DESC, length(m.key) ASC, m.rank;
             """
