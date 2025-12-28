@@ -39,7 +39,17 @@ class SchemaManager:
         self.cursor.execute(sql)
             
         # Roots Table
-        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS roots (id INTEGER PRIMARY KEY, root TEXT NOT NULL, root_clean TEXT NOT NULL, definition_{suffix} TEXT);")
+        # [REFACTOR] Split definition_json into physical columns
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS roots (
+                id INTEGER PRIMARY KEY, 
+                root TEXT NOT NULL, 
+                root_clean TEXT NOT NULL,
+                root_meaning TEXT,
+                root_info TEXT,
+                sanskrit_info TEXT
+            );
+        """)
         
         # Grammar Notes Table
         # [CLEANUP] Luôn dùng grammar_pack (JSON)

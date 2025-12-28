@@ -38,7 +38,12 @@ class DataInserter:
 
     def insert_roots(self, roots: List[Tuple], lookups: List[Tuple]) -> None:
         if roots:
-            sql = f"INSERT INTO roots (id, root, root_clean, definition_{self.suffix}) VALUES (?, ?, ?, ?)"
+            sql = """
+                INSERT INTO roots (
+                    id, root, root_clean, 
+                    root_meaning, root_info, sanskrit_info
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """
             self.cursor.executemany(sql, roots)
         if lookups:
             self._insert_lookups(lookups)

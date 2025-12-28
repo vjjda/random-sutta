@@ -80,11 +80,8 @@ export const PaliMainRenderer = {
             }
             
         } else if (lookup_type === 0) {
-            // Root
-            const rootObj = this._parse(definition);
-            if (rootObj) {
-                html += PaliRootRenderer.render(rootObj, getLabel);
-            }
+            // Root (Refactored: Columns are in data object, not JSON definition)
+            html += PaliRootRenderer.render(data, getLabel);
         }
         
         // 2. GRAMMAR NOTES (Common) - Only if NOT skipped

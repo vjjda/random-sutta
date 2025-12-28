@@ -142,12 +142,38 @@ def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderCon
     try:
         roots = session.query(DpdRoot).filter(DpdRoot.root.in_(root_keys)).all()
         for r in roots:
-            # [CLEANUP] Luôn dùng JSON
-            content = renderer.extract_root_json(r)
-            roots_data.append((current_id, r.root, r.root_clean, process_data(content, config.USE_COMPRESSION)))
-            clean_key = r.root_clean
-            # Type 0 = Roots (Previously 2)
+            # [REFACTOR] Extract physical columns instead of JSON
+            
+            # 1. Info: "Group Sign"
+            root_info = f"{r.root_group} {r.root_sign}"
+            
+            # 2. Sanskrit: "Root Class (Meaning)"
+            sanskrit_info = ""
+            if r.sanskrit_root:
+                sanskrit_info = f"{r.sanskrit_root} {r.sanskrit_root_class} ({r.sanskrit_root_meaning})"
+            
+            # 3. Keys
+            clean_key = r.root_clean        # "√gam"
+            no_sign_key = r.root_no_sign_   # "gam" (No sign, no space)
+
+            # 4. Append Data (Schema: id, root, root_clean, meaning, info, sanskrit)
+            roots_data.append((
+                current_id, 
+                r.root, 
+                clean_key, 
+                r.root_meaning, 
+                root_info, 
+                sanskrit_info
+            ))
+            
+            # 5. Lookups (Type 0 = Roots)
+            # Add clean key (√gam)
             lookups_data.append((clean_key, current_id, 0))
+            
+            # Add no-sign key (gam) if different
+            if no_sign_key and no_sign_key != clean_key:
+                lookups_data.append((no_sign_key, current_id, 0))
+                
             current_id += 1
     except Exception as e:
         print(f"[red]Error in roots worker: {e}")
