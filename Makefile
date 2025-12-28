@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api sync-dpd dry data build re dev live serve view-pwa view-sl release zip deploy beta publish clean official noedit undo
+.PHONY: help setup sync sync-text sync-api sync-dpd dry data d de dv dz da dt df build re dev live serve view-pwa view-sl release zip deploy beta publish clean official noedit undo
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -20,6 +20,16 @@ help:
 	@echo "⚙️  DATA PROCESSING:"
 	@echo "  make data           - Process JSON -> Optimized Assets"
 	@echo "  make dry            - Process Data (Dry Run)"
+	@echo ""
+	@echo "📖 DICTIONARY BUILDER:"
+	@echo "  make d              - Build Mini Dictionary ONLY (-m)"
+	@echo "  make de           - Build Mini Dictionary & Zip (-e)"
+	@echo "  make dvz          - Update Search Logic & Zip (-vz)"
+	@echo "  make dv             - Update Search Logic ONLY (-v)"
+	@echo "  make dz           - Package Existing DB to Web Assets (-z)"
+	@echo "  make da           - Build ALL Dictionaries (-a)"
+	@echo "  make dt          - Build Tiny Dictionary & Zip (-t)"
+	@echo "  make df          - Build Full Dictionary & Zip (-f)"
 	@echo ""
 	@echo "🏗️  BUILD & PREVIEW:"
 	@echo "  make build          - Run Full Build (Data + Release)"
@@ -72,6 +82,41 @@ dry:
 data:
 	@echo "🧠 Processing Data..."
 	$(PYTHON) -m src.sutta_processor
+
+# ==============================================================================
+# 📖 DICTIONARY BUILDER
+# ==============================================================================
+d:
+	@echo "📖 Building Dictionary Local (Mini)..."
+	$(PYTHON) -m src.dict_builder -m
+
+de:
+	@echo "📖 Building Dictionary (Mini)..."
+	$(PYTHON) -m src.dict_builder -e
+
+dvz:
+	@echo "🔮 Updating Dictionary Views & Zip..."
+	$(PYTHON) -m src.dict_builder -vz
+
+dv:
+	@echo "🔮 Updating Dictionary Views (Logic Only)..."
+	$(PYTHON) -m src.dict_builder -v
+
+dz:
+	@echo "📦 Packaging Dictionary..."
+	$(PYTHON) -m src.dict_builder -z
+
+da:
+	@echo "📖 Building ALL Dictionaries..."
+	$(PYTHON) -m src.dict_builder -az
+
+dt:
+	@echo "📖 Building Dictionary (Tiny)..."
+	$(PYTHON) -m src.dict_builder -t
+
+df:
+	@echo "📖 Building Dictionary (Full)..."
+	$(PYTHON) -m src.dict_builder -f
 
 build: data re
 
