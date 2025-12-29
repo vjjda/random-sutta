@@ -40,7 +40,71 @@ export const UIManager = {
             this.elements.backdrop.addEventListener("click", () => this.closeAll());
         }
 
+        if (this.elements.drawer) {
+            this._setupScrollIsolation(this.elements.drawer);
+        }
+
         return this.elements;
+    },
+
+    // [NEW] Strict Scroll Isolation Helper
+    _setupScrollIsolation(element) {
+        // 1. Wheel Event (Mouse)
+        element.addEventListener("wheel", (e) => {
+            const { scrollHeight, clientHeight, scrollTop } = element;
+            const isScrollable = scrollHeight > clientHeight;
+            const delta = e.deltaY;
+
+            if (!isScrollable) {
+                e.preventDefault();
+                return;
+            }
+            if (delta < 0 && scrollTop <= 0) {
+                e.preventDefault();
+                return;
+            }
+            if (delta > 0 && scrollTop + clientHeight >= scrollHeight - 1) {
+                e.preventDefault();
+                return;
+            }
+            e.stopPropagation();
+        }, { passive: false });
+
+        // 2. Touch Events (Mobile)
+        let startY = 0;
+        element.addEventListener("touchstart", (e) => {
+            startY = e.touches[0].pageY;
+        }, { passive: true });
+
+        element.addEventListener("touchmove", (e) => {
+            const { scrollHeight, clientHeight, scrollTop } = element;
+            const isScrollable = scrollHeight > clientHeight;
+            const currentY = e.touches[0].pageY;
+            // Delta is inverted for touch (move up = scroll down)
+            // But here we think in terms of content movement.
+            // Finger moves UP (currentY < startY) -> Content scrolls DOWN (scrollTop increases)
+            // Finger moves DOWN (currentY > startY) -> Content scrolls UP (scrollTop decreases)
+            const delta = startY - currentY; 
+
+            if (!isScrollable) {
+                if (e.cancelable) e.preventDefault();
+                return;
+            }
+            
+            // Scrolling UP (Content moves down) -> Check Top
+            if (delta < 0 && scrollTop <= 0) {
+                 if (e.cancelable) e.preventDefault();
+                 return;
+            }
+            
+            // Scrolling DOWN (Content moves up) -> Check Bottom
+            if (delta > 0 && scrollTop + clientHeight >= scrollHeight - 1) {
+                 if (e.cancelable) e.preventDefault();
+                 return;
+            }
+            
+            e.stopPropagation();
+        }, { passive: false });
     },
 
     setHidden(isHidden) {

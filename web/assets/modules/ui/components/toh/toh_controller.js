@@ -73,6 +73,37 @@ export function setupTableOfHeadings() {
         e.stopPropagation();
     }, { passive: false });
 
+    // [FIX] Mobile Touch Isolation
+    let startY = 0;
+    els.menu.addEventListener("touchstart", (e) => {
+        startY = e.touches[0].pageY;
+    }, { passive: true });
+
+    els.menu.addEventListener("touchmove", (e) => {
+        const { scrollHeight, clientHeight, scrollTop } = els.menu;
+        const isScrollable = scrollHeight > clientHeight;
+        const currentY = e.touches[0].pageY;
+        const delta = startY - currentY; // Finger UP = Scroll DOWN (Positive Delta)
+
+        if (!isScrollable) {
+            if (e.cancelable) e.preventDefault();
+            return;
+        }
+
+        // Scrolling UP (Content moves UP, Finger moves DOWN)
+        if (delta < 0 && scrollTop <= 0) {
+            if (e.cancelable) e.preventDefault();
+            return;
+        }
+
+        // Scrolling DOWN (Content moves DOWN, Finger moves UP)
+        if (delta > 0 && scrollTop + clientHeight >= scrollHeight - 1) {
+            if (e.cancelable) e.preventDefault();
+            return;
+        }
+        e.stopPropagation();
+    }, { passive: false });
+
     // Click outside to close
     document.addEventListener("click", (e) => {
         if (!els.menu.classList.contains("hidden") && !els.wrapper.contains(e.target)) {

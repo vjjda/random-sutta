@@ -11,6 +11,7 @@
   border-radius: 8px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
+  overscroll-behavior: contain; /* Stop scroll propagation */
   z-index: 1101;
   opacity: 0;
   transform: translateY(-10px);
