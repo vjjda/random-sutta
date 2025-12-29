@@ -54,6 +54,7 @@
   
   padding: 15px;
   overflow-y: auto;
+  overscroll-behavior: contain; /* Prevents scroll chaining */
   animation: slideDown 0.2s ease-out;
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent; /* [FIXED] Firefox scrollbar */
