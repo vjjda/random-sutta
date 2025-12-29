@@ -32,18 +32,16 @@ class SearchSystemBuilder:
             """)
 
             suffix = "json"
-            
             if self.config.is_tiny_mode:
-                cols_raw = "NULL AS grammar, NULL AS example"
+                def_field = "NULL"
+                grammar_field = "NULL"
+                example_field = "NULL"
             else:
-                cols_raw = f"e.grammar_{suffix} AS grammar, e.example_{suffix} AS example"
+                def_field = f"e.definition_{suffix}"
+                grammar_field = f"e.grammar_{suffix}"
+                example_field = f"e.example_{suffix}"
 
-            # Definition Logic: Only for Entries (Type 1)
-            def_entry = f"e.definition_{suffix}"
-            
-            gn_expr = "gn.grammar_pack"
-            
-            # Root Columns (Reconstructed via SQL)
+            # Root Logic
             root_cols = """
                 r.root_meaning, 
                 (r.root_group || ' ' || r.root_sign) AS root_info, 
@@ -51,7 +49,8 @@ class SearchSystemBuilder:
                     WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
                     THEN r.sanskrit_root || ' ' || r.sanskrit_root_class || ' (' || r.sanskrit_root_meaning || ')'
                     ELSE ''
-                END AS sanskrit_info
+                END AS sanskrit_info,
+                r.root_clean
             """
 
             sql_view = f"""
@@ -59,83 +58,85 @@ class SearchSystemBuilder:
             WITH input_param AS (
                 SELECT term, limit_exact, limit_prefix, limit_final FROM _search_params LIMIT 1
             ),
-            -- Priority 0: Deconstruction (Exact Match)
-            match_decon AS (
+            -- 1. Keys from Deconstruction (Priority 0)
+            keys_decon AS (
                 SELECT 
                     word AS key, 
                     0 AS target_id, 
-                    -1 AS type, -- Type -1 for Deconstruction
+                    -1 AS type,
                     0 AS rank, 
                     0 AS priority
                 FROM deconstructions, input_param
                 WHERE word = input_param.term
                 LIMIT 1
             ),
-            -- Priority 1: Exact Match (FTS)
-            match_exact AS (
+            -- 2. Keys from Exact Match FTS (Priority 1)
+            keys_exact AS (
                 SELECT key, target_id, type, rank, 1 AS priority
                 FROM lookups_fts, input_param
                 WHERE lookups_fts MATCH input_param.term
                 LIMIT (SELECT limit_exact FROM input_param)
             ),
-            -- Priority 2: Prefix Match (Only if term length >= 2)
-            match_prefix AS (
+            -- 3. Keys from Prefix Match FTS (Priority 2)
+            keys_prefix AS (
                 SELECT key, target_id, type, rank, 2 AS priority
                 FROM lookups_fts, input_param
                 WHERE length(input_param.term) >= 2
                   AND lookups_fts MATCH input_param.term || '*'
                 LIMIT (SELECT limit_prefix FROM input_param)
             ),
-            -- Combine Results
-            all_matches AS (
-                SELECT * FROM match_decon
+            -- 4. Combine Keys
+            all_keys AS (
+                SELECT * FROM keys_decon
                 UNION ALL
-                SELECT * FROM match_exact
+                SELECT * FROM keys_exact
                 UNION ALL
-                SELECT * FROM match_prefix
+                SELECT * FROM keys_prefix
             ),
-            -- Deduplicate: Keep the best priority for each (target_id, type)
-            unique_matches AS (
+            -- 5. Deduplicate Keys (Best priority per target)
+            unique_keys AS (
                 SELECT 
                     key, target_id, type, 
                     MIN(rank) as rank, 
                     MIN(priority) as priority
-                FROM all_matches
+                FROM all_keys
                 GROUP BY target_id, type
                 ORDER BY priority ASC, length(key) ASC, rank 
                 LIMIT (SELECT limit_final FROM input_param)
             )
+            -- 6. Hydrate Data (Join Last)
             SELECT 
-                m.key, m.target_id, m.type,
+                k.key, k.target_id, k.type,
                 -- Headword Logic
                 CASE 
-                    WHEN m.type = -1 THEN m.key -- Decon
-                    WHEN m.type = 1 THEN e.headword
-                    WHEN m.type = 0 THEN r.root
-                    ELSE m.key
+                    WHEN k.type = -1 THEN k.key 
+                    WHEN k.type = 1 THEN e.headword
+                    WHEN k.type = 0 THEN r.root
+                    ELSE k.key
                 END AS headword,
                 -- Definition Logic
                 CASE 
-                    WHEN m.type = -1 THEN d.components -- Decon
-                    WHEN m.type = 1 THEN {def_entry}   -- Entry
+                    WHEN k.type = -1 THEN d.components
+                    WHEN k.type = 1 THEN {def_field}   -- Entry
                     ELSE NULL 
                 END AS definition,
-                {cols_raw},
-                {gn_expr} AS gn_grammar,
+                {grammar_field} AS grammar,
+                {example_field} AS example,
+                gn.grammar_pack AS gn_grammar,
                 {root_cols},
                 -- Is Exact Logic
-                (m.key = (SELECT term FROM input_param) 
-                 AND m.key = CASE 
-                    WHEN m.type = 1 THEN e.headword_clean
-                    WHEN m.type = 0 THEN r.root_clean
-                    ELSE m.key
+                (k.key = (SELECT term FROM input_param) 
+                 AND k.key = CASE 
+                    WHEN k.type = 1 THEN e.headword_clean
+                    WHEN k.type = 0 THEN r.root_clean
+                    ELSE k.key
                  END) AS is_exact
-            FROM unique_matches m
-            LEFT JOIN entries e ON m.target_id = e.id AND m.type = 1
-            LEFT JOIN roots r ON m.target_id = r.id AND m.type = 0
-            LEFT JOIN deconstructions d ON m.key = d.word AND m.type = -1
-            LEFT JOIN grammar_notes gn ON m.key = gn.key
-            ORDER BY m.priority ASC, is_exact DESC, length(m.key) ASC, m.rank;
+            FROM unique_keys k
+            LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
+            LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
+            LEFT JOIN deconstructions d ON k.key = d.word AND k.type = -1
+            LEFT JOIN grammar_notes gn ON k.key = gn.key
+            ORDER BY k.priority ASC, is_exact DESC, length(k.key) ASC, k.rank;
             """
 
             self.cursor.execute("DROP VIEW IF EXISTS view_search_results")
