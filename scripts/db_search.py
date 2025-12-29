@@ -2,11 +2,14 @@ import argparse
 import sqlite3
 import sys
 import os
+import csv
+import subprocess
+import time
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-# Cấu hình đường dẫn DB mặc định (Ưu tiên tìm trong dist hoặc data)
+# Cấu hình đường dẫn DB mặc định
 POSSIBLE_DBS = [
     "dist/dpd.db",
     "data/processed/dpd.db",
@@ -14,29 +17,60 @@ POSSIBLE_DBS = [
 ]
 
 def find_db():
-    # 1. Check env var
     if "DPD_DB_PATH" in os.environ:
         return Path(os.environ["DPD_DB_PATH"])
-    
-    # 2. Check common paths
     for path in POSSIBLE_DBS:
         if os.path.exists(path):
             return Path(path)
-            
-    # 3. Not found
     return None
 
-def search(term, db_path):
+def open_in_vscode(file_path, console):
+    """Mở file bằng VS Code CLI."""
+    try:
+        # Kiểm tra xem lệnh 'code' có tồn tại không
+        subprocess.run(["code", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        # Mở file
+        subprocess.run(["code", str(file_path)])
+        console.print(f"[green]✅ Đã mở file trong VS Code: {file_path}[/green]")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        console.print(f"[yellow]⚠️ Không tìm thấy lệnh 'code'. File đã được lưu tại: {file_path}[/yellow]")
+        console.print("Bạn có thể mở thủ công bằng cách click vào đường dẫn trên.")
+
+def export_to_csv(rows, term):
+    """Xuất kết quả ra file CSV trong thư mục tmp/."""
+    # 1. Tạo thư mục tmp nếu chưa có
+    tmp_dir = Path("tmp")
+    tmp_dir.mkdir(exist_ok=True)
+
+    # 2. Tạo tên file unique
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    clean_term = "".join(x for x in term if x.isalnum() or x in ('-', '_'))
+    filename = f"search_{clean_term}_{timestamp}.csv"
+    file_path = tmp_dir / filename
+
+    # 3. Ghi file
+    if rows:
+        keys = rows[0].keys()
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(keys) # Header
+            for row in rows:
+                # Xử lý None thành chuỗi rỗng để CSV sạch hơn
+                row_data = [str(item) if item is not None else "" for item in row]
+                writer.writerow(row_data)
+    
+    return file_path
+
+def search(term, db_path, use_csv=False):
     console = Console()
     
     if not db_path:
         console.print("[bold red]❌ Không tìm thấy file database (.db)![/bold red]")
-        console.print(f"Vui lòng kiểm tra lại các đường dẫn: {POSSIBLE_DBS}")
-        console.print("Hoặc sử dụng cờ -d để chỉ định file DB cụ thể.")
         return
 
-    console.print(f"[dim]Connecting to: {db_path}[/dim]")
+    console.print(f"[dim]DB: {db_path}[/dim]")
     
+    conn = None
     try:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
@@ -44,6 +78,7 @@ def search(term, db_path):
 
         # 1. Update Params
         cursor.execute("UPDATE _search_params SET term = ?", (term,))
+        conn.commit() # Commit để chắc chắn param được lưu nếu có transaction khác
         
         # 2. Select Results
         cursor.execute("SELECT * FROM view_search_results")
@@ -53,36 +88,36 @@ def search(term, db_path):
             console.print(f"[yellow]Không tìm thấy kết quả cho: [bold]{term}[/bold][/yellow]")
             return
 
-        # 3. Render Table
-        table = Table(title=f"Search Results: {term} ({len(rows)})", show_lines=True)
-        
-        # Add columns dynamically
-        if rows:
-            keys = rows[0].keys()
-            for key in keys:
-                table.add_column(key, overflow="fold")
-
-        for row in rows:
-            # Convert row values to string and handle None
-            row_data = [str(item) if item is not None else "" for item in row]
-            table.add_row(*row_data)
-
-        console.print(table)
+        # 3. Handle Output
+        if use_csv:
+            file_path = export_to_csv(rows, term)
+            open_in_vscode(file_path, console)
+        else:
+            # Render Table (Default)
+            table = Table(title=f"Search Results: {term} ({len(rows)})", show_lines=True)
+            if rows:
+                keys = rows[0].keys()
+                for key in keys:
+                    table.add_column(key, overflow="fold")
+            for row in rows:
+                row_data = [str(item) if item is not None else "" for item in row]
+                table.add_row(*row_data)
+            console.print(table)
+            console.print("[dim]💡 Mẹo: Dùng cờ [bold]-c[/bold] hoặc [bold]--csv[/bold] để xem bằng VS Code.[/dim]")
         
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
     finally:
-        if 'conn' in locals():
+        if conn:
             conn.close()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Search the dictionary database via CLI.")
-    parser.add_argument("term", type=str, help="The search term (e.g., 'mahesinti')")
-    parser.add_argument("-d", "--db", type=str, help="Path to the .db file", default=None)
+    parser = argparse.ArgumentParser(description="Search the dictionary database.")
+    parser.add_argument("term", type=str, help="Từ khóa tìm kiếm")
+    parser.add_argument("-d", "--db", type=str, help="Đường dẫn file .db", default=None)
+    parser.add_argument("-c", "--csv", action="store_true", help="Xuất ra CSV và mở bằng VS Code")
     
     args = parser.parse_args()
     
-    # Determine DB path: Argument > Auto-detect
     db_path = args.db if args.db else find_db()
-    
-    search(args.term, db_path)
+    search(args.term, db_path, args.csv)
