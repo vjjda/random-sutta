@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api sync-dpd dry data d de dv dz da dt df build re dev live serve view-pwa view-sl release zip deploy beta publish clean official noedit undo
+.PHONY: help setup sync sync-text sync-api sync-dpd dry data d de dv dz da dt df build re dev live serve view-pwa view-sl release zip deploy beta official publish clean noedit undo mini
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -30,6 +30,7 @@ help:
 	@echo "  make da           - Build ALL Dictionaries (-a)"
 	@echo "  make dt          - Build Tiny Dictionary & Zip (-t)"
 	@echo "  make df          - Build Full Dictionary & Zip (-f)"
+	@echo "  make mini {word} - Search 'word' in Mini DB (Open CSV)"
 	@echo ""
 	@echo "🏗️  BUILD & PREVIEW:"
 	@echo "  make build          - Run Full Build (Data + Release)"
@@ -117,6 +118,18 @@ dt:
 df:
 	@echo "📖 Building Dictionary (Full)..."
 	$(PYTHON) -m src.dict_builder -f
+
+# Handle arguments for 'mini' command
+ifeq (mini,$(firstword $(MAKECMDGOALS)))
+  # Get arguments after 'mini'
+  MINI_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  # Turn them into do-nothing targets so make doesn't complain
+  $(eval $(MINI_ARGS):;@:)
+endif
+
+mini:
+	@echo "🔍 Searching for '$(MINI_ARGS)' in Mini DB..."
+	$(PYTHON) scripts/db_search.py $(MINI_ARGS) -d data/dpd/dpd_mini.db -c
 
 build: data re
 
