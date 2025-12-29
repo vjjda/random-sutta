@@ -11,9 +11,7 @@ from rich.table import Table
 
 # Cấu hình đường dẫn DB mặc định
 POSSIBLE_DBS = [
-    "dist/dpd.db",
-    "data/processed/dpd.db",
-    "data/db_mirror/dpd.db"
+    "data/dpd/dpd_mini.db",
 ]
 
 def find_db():
