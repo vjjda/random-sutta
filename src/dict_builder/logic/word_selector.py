@@ -139,8 +139,21 @@ class WordSelector:
         rows = session.execute(stmt).all()
         filtered_rows = []
         
+        # [NEW] Pre-fetch Idioms IDs to ensure they are included
+        print("[yellow]Fetching all Idioms & Sandhi (force include)...")
+        # Fetch both 'idiom' and 'sandhi'
+        special_ids_query = select(DpdHeadword.id).filter(DpdHeadword.pos.in_(['idiom', 'sandhi']))
+        special_ids = {r[0] for r in session.execute(special_ids_query).all()}
+        print(f"   Found {len(special_ids)} special entries (idiom/sandhi) in source DB.")
+
         for r in rows:
             r_id, lemma_1, inf1, inf2 = r
+            
+            # Force include if it is an idiom or sandhi
+            if r_id in special_ids:
+                filtered_rows.append(r)
+                continue
+
             lemma_clean = lemma_1.split(" ", 1)[0]
             
             if lemma_clean in target_set:

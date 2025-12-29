@@ -47,9 +47,7 @@ class DpdDownloader:
     def _download_and_extract(self, url: str, tag: str) -> None:
         logger.info(f"   ⬇️  Downloading {DpdConfig.ASSET_NAME}...")
         
-        # Ensure directory exists
-        if DpdConfig.DATA_DIR.exists():
-            shutil.rmtree(DpdConfig.DATA_DIR)
+        # Ensure directory exists (Don't wipe it!)
         DpdConfig.DATA_DIR.mkdir(parents=True, exist_ok=True)
 
         temp_tar_path = DpdConfig.DATA_DIR / "temp_dpd.tar.bz2"
@@ -61,8 +59,10 @@ class DpdDownloader:
             
             logger.info("   📦 Extracting archive...")
             
-            # 2. Extract
+            # 2. Extract (Overwrite existing files)
             with tarfile.open(temp_tar_path, "r:bz2") as tar:
+                # Security warning: tarfile.extractall is unsafe for untrusted archives, 
+                # but we trust DPD official release.
                 tar.extractall(path=DpdConfig.DATA_DIR)
             
             # 3. Cleanup & Versioning

@@ -96,17 +96,36 @@ def search(term, db_path, use_csv=False):
             file_path = export_to_csv(rows, term)
             open_in_vscode(file_path, console)
         else:
-            # Render Table (Default)
-            table = Table(title=f"Search Results: {term} ({len(rows)})", show_lines=True)
-            if rows:
-                keys = rows[0].keys()
-                for key in keys:
-                    table.add_column(key, overflow="fold")
+            # Render Table (Simplified)
+            table = Table(title=f"Search Results: '{term}' ({len(rows)})", show_lines=True)
+            
+            # Define specific columns we want to see
+            table.add_column("Type", style="cyan", width=8)
+            table.add_column("Key", style="green")
+            table.add_column("Headword", style="bold yellow")
+            table.add_column("Definition / Info")
+            
             for row in rows:
-                row_data = [str(item) if item is not None else "" for item in row]
-                table.add_row(*row_data)
+                # Type mapping
+                type_val = row['type']
+                if type_val == 1: type_str = "ENTRY"
+                elif type_val == 0: type_str = "ROOT"
+                elif type_val == -1: type_str = "DECON"
+                else: type_str = str(type_val)
+
+                # Definition Truncation
+                definition = str(row['definition']) if row['definition'] else ""
+                if len(definition) > 150:
+                    definition = definition[:147] + "..."
+                
+                # Handling NULLs cleanly
+                key = row['key'] or ""
+                headword = row['headword'] or ""
+                
+                table.add_row(type_str, key, headword, definition)
+
             console.print(table)
-            console.print("[dim]💡 Mẹo: Dùng cờ [bold]-c[/bold] hoặc [bold]--csv[/bold] để xem bằng VS Code.[/dim]")
+            console.print("[dim]💡 Tip: Use [bold]-c[/bold] or [bold]--csv[/bold] to see full details in VS Code.[/dim]")
         
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
