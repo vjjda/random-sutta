@@ -78,7 +78,7 @@ class LookupSystemBuilder:
                 FROM lookups_fts, params
                 WHERE lookups_fts MATCH params.term
                 -- Explicitly filter Exact Match logic here on the small result set
-                AND key = params.term
+                -- AND key = params.term
             ),
             -- 3. Union Keys Only (Lightweight)
             all_keys AS (
@@ -119,7 +119,14 @@ class LookupSystemBuilder:
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
             LEFT JOIN deconstructions d ON k.key = d.word AND k.type = -1
             LEFT JOIN grammar_notes gn ON k.key = gn.key
-            ORDER BY k.priority ASC, k.type DESC;
+            ORDER BY 
+                k.priority ASC, 
+                (CASE 
+                    WHEN k.type = 1 THEN e.headword_clean = (SELECT term FROM params)
+                    WHEN k.type = 0 THEN r.root_clean = (SELECT term FROM params)
+                    ELSE 0 
+                END) DESC,
+                k.type DESC;
             """
 
             self.cursor.execute("DROP VIEW IF EXISTS view_lookup_results")
