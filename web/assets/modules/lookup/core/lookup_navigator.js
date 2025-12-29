@@ -15,6 +15,12 @@ export const LookupNavigator = {
             if (!anchorNode) return;
         }
 
+        // If current highlight is hidden, jump segment immediately
+        if (anchorNode.offsetParent === null) {
+            this._jumpSegment(anchorNode, direction, onLookupCallback);
+            return;
+        }
+
         const parent = anchorNode.parentElement;
         const fullText = parent.textContent;
         
@@ -141,7 +147,16 @@ export const LookupNavigator = {
         
         if (currentIdx === -1) return;
         
-        const nextIdx = currentIdx + direction;
+        let nextIdx = currentIdx + direction;
+        
+        // Skip hidden segments
+        while (nextIdx >= 0 && nextIdx < allSegments.length) {
+            if (allSegments[nextIdx].offsetParent !== null) {
+                break;
+            }
+            nextIdx += direction;
+        }
+        
         if (nextIdx < 0 || nextIdx >= allSegments.length) return; 
         
         const targetWrapper = allSegments[nextIdx];
