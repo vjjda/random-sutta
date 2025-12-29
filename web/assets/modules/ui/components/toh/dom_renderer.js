@@ -39,9 +39,9 @@ export const DomRenderer = {
             // Main Click Handler
             mainTextDiv.onclick = (e) => {
                 e.stopPropagation();
-                // [FIXED] Jump & Highlight
+                // [FIXED] Jump & Highlight (Temporary)
                 Scroller.jumpTo(item.id); 
-                Scroller.highlightElement(item.id); // <--- Thêm dòng này
+                Scroller.highlightElement(item.id, true); 
                 if (callbacks.onItemClick) callbacks.onItemClick();
             };
             headerRow.appendChild(mainTextDiv);
@@ -81,9 +81,9 @@ export const DomRenderer = {
                     if (sub.id) {
                         subDiv.onclick = (e) => {
                             e.stopPropagation();
-                            // [FIXED] Jump & Highlight for Sub-items
+                            // [FIXED] Jump & Highlight for Sub-items (Temporary)
                             Scroller.jumpTo(sub.id);
-                            Scroller.highlightElement(sub.id); // <--- Thêm dòng này
+                            Scroller.highlightElement(sub.id, true);
                             if (callbacks.onItemClick) callbacks.onItemClick();
                         };
                     } else {

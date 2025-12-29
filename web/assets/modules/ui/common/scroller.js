@@ -80,7 +80,7 @@ export const Scroller = {
         this.smoothScrollTo(targetId);
     },
 
-    highlightElement: function(targetId) {
+    highlightElement: function(targetId, autoRemove = false) {
         document.querySelectorAll('.highlight, .highlight-container').forEach(el => {
             el.classList.remove('highlight', 'highlight-container');
         });
@@ -88,10 +88,21 @@ export const Scroller = {
 
         const el = document.getElementById(targetId);
         if (el) {
-            if (el.classList.contains('segment')) {
-                el.classList.add('highlight');
-            } else {
-                el.classList.add('highlight-container');
+            const highlightClass = el.classList.contains('segment') ? 'highlight' : 'highlight-container';
+            el.classList.add(highlightClass);
+
+            if (autoRemove) {
+                // Clear any existing timer for this element to prevent race conditions
+                if (el.dataset.highlightTimer) {
+                    clearTimeout(parseInt(el.dataset.highlightTimer));
+                }
+                
+                const timerId = setTimeout(() => {
+                    el.classList.remove(highlightClass);
+                    delete el.dataset.highlightTimer;
+                }, 2000);
+                
+                el.dataset.highlightTimer = timerId;
             }
         }
     },
