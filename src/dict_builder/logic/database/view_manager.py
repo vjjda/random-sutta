@@ -32,6 +32,7 @@ class ViewManager:
         
         # 2. Headword Logic
         headword_field = "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 0 THEN r.root ELSE NULL END AS headword"
+        clean_headword_field = "CASE WHEN l.type = 1 THEN e.headword_clean WHEN l.type = 0 THEN r.root_clean ELSE NULL END AS headword_clean"
         
         # 3. Grammar & Example (Entry)
         if self.config.is_tiny_mode:
@@ -54,7 +55,6 @@ class ViewManager:
         """
 
         # 5. Extra Fields
-        clean_headword_field = "CASE WHEN l.type = 1 THEN e.headword_clean WHEN l.type = 0 THEN r.root_clean ELSE NULL END AS headword_clean"
         components_field = "d.components"
         grammar_note_field = "gn.grammar_pack AS gn_grammar"
 
@@ -65,26 +65,26 @@ class ViewManager:
                 l.key AS key, 
                 l.target_id, 
                 l.type AS type,
+                tt.table_name,
                 
                 -- Main Content
                 {headword_field}, 
+                {clean_headword_field},
+                {components_field},
                 {definition_field},
                 {grammar_field}, 
                 {example_field},
                 {grammar_note_field},
                 
                 -- Root Details
-                {root_cols},
-                
-                -- Extended Details
-                {components_field},
-                {clean_headword_field}
+                {root_cols}
                 
             FROM lookups l
             LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1
             LEFT JOIN roots r ON l.target_id = r.id AND l.type = 0
             LEFT JOIN grammar_notes gn ON l.key = gn.key
-            LEFT JOIN deconstructions d ON l.key = d.word;
+            LEFT JOIN deconstructions d ON l.key = d.word
+            LEFT JOIN table_types tt ON l.type = tt.type;
         """
         
         try:
