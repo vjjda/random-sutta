@@ -48,6 +48,7 @@ class DbConverter:
             
             cursor.execute("DROP VIEW IF EXISTS view_search_results")
             cursor.execute("DROP VIEW IF EXISTS grand_lookups")
+            cursor.execute("DROP VIEW IF EXISTS view_grand_lookups")
             
             cursor.execute(f"ALTER TABLE entries DROP COLUMN grammar_{suffix}")
             cursor.execute(f"ALTER TABLE entries DROP COLUMN example_{suffix}")

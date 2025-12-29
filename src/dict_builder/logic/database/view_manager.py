@@ -19,7 +19,7 @@ class ViewManager:
 
     def _create_grand_view(self) -> None:
         """Tạo View tổng hợp (Content Layer)."""
-        logger.info("[cyan]Creating 'grand_lookups' view...[/cyan]")
+        logger.info("[cyan]Creating 'view_grand_lookups' view...[/cyan]")
         
         suffix = "json"
         grammar_note_field = "gn.grammar_pack"
@@ -36,7 +36,7 @@ class ViewManager:
 
         extra_cols = ""
         if not self.config.is_tiny_mode:
-            extra_cols = f", e.grammar_{suffix} AS raw_grammar, e.example_{suffix} AS raw_example"
+            extra_cols = f", e.grammar_{suffix} AS grammar, e.example_{suffix} AS example"
 
         # Root Columns (Reconstructed via SQL)
         root_cols = """
@@ -50,9 +50,9 @@ class ViewManager:
         """
 
         sql = f"""
-            CREATE VIEW IF NOT EXISTS grand_lookups AS
+            CREATE VIEW IF NOT EXISTS view_grand_lookups AS
             SELECT 
-                l.key AS lookup_key, l.target_id, l.type AS lookup_type,
+                l.key AS key, l.target_id, l.type AS type,
                 {headword_field}, {clean_headword_field}, {definition_field},
                 {grammar_note_field} AS gn_grammar,
                 {root_cols}
@@ -64,7 +64,8 @@ class ViewManager:
         """
         
         try:
-            self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;")
+            self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;") # Clean up old name if exists
+            self.cursor.execute("DROP VIEW IF EXISTS view_grand_lookups;")
             self.cursor.execute(sql)
         except Exception as e:
             logger.error(f"Failed to create grand view: {e}")
