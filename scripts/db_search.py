@@ -81,8 +81,13 @@ def search(term, db_path, use_csv=False):
         conn.commit() # Commit để chắc chắn param được lưu nếu có transaction khác
         
         # 2. Select Results
+        start_time = time.perf_counter()
         cursor.execute("SELECT * FROM view_search_results")
         rows = cursor.fetchall()
+        end_time = time.perf_counter()
+        
+        duration_ms = (end_time - start_time) * 1000
+        console.print(f"[cyan]⏱️  Query Executed in: {duration_ms:.2f} ms[/cyan]")
 
         if not rows:
             console.print(f"[yellow]Không tìm thấy kết quả cho: [bold]{term}[/bold][/yellow]")
