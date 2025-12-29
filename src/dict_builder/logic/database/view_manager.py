@@ -4,6 +4,7 @@ from sqlite3 import Cursor
 from ...builder_config import BuilderConfig
 from .views.search_system import SearchSystemBuilder
 from .views.grand_view import GrandViewBuilder
+from .views.lookup_system import LookupSystemBuilder
 
 logger = logging.getLogger("dict_builder.views")
 
@@ -18,8 +19,11 @@ class ViewManager:
 
     def create_all_views(self):
         """Execute all view creation strategies."""
-        # 1. Frontend / Production Views
+        # 1. Frontend / Production Views (Search)
         SearchSystemBuilder(self.cursor, self.config).create()
+
+        # 2. Frontend / Production Views (Lookup)
+        LookupSystemBuilder(self.cursor, self.config).create()
         
-        # 2. Debug / Overview Views
+        # 3. Debug / Overview Views
         GrandViewBuilder(self.cursor, self.config).create()

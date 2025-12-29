@@ -47,7 +47,6 @@ class GrandViewBuilder:
         """
 
         # 5. Extra Fields
-        components_field = "d.components"
         grammar_note_field = "gn.grammar_pack AS gn_grammar"
 
         sql = f"""
@@ -62,7 +61,6 @@ class GrandViewBuilder:
                 -- Main Content
                 {headword_field}, 
                 {clean_headword_field},
-                {components_field},
                 {definition_field},
                 {grammar_field}, 
                 {example_field},
@@ -75,7 +73,6 @@ class GrandViewBuilder:
             LEFT JOIN entries e ON l.target_id = e.id AND l.type = 1
             LEFT JOIN roots r ON l.target_id = r.id AND l.type = 0
             LEFT JOIN grammar_notes gn ON l.key = gn.key
-            LEFT JOIN deconstructions d ON l.key = d.word
             LEFT JOIN table_types tt ON l.type = tt.type;
         """
         
