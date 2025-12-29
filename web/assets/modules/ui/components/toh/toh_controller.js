@@ -43,6 +43,36 @@ export function setupTableOfHeadings() {
     // Binding Events
     els.fab.onclick = toggleMenu;
 
+    // [FIX] Strict Scroll Isolation: Prevent scroll chaining to body
+    // This ensures that hovering the TOH and scrolling NEVER moves the main text
+    els.menu.addEventListener("wheel", (e) => {
+        const { scrollHeight, clientHeight, scrollTop } = els.menu;
+        const isScrollable = scrollHeight > clientHeight;
+        const delta = e.deltaY;
+
+        // 1. If content fits entirely (not scrollable), block scroll completely
+        if (!isScrollable) {
+            e.preventDefault();
+            return;
+        }
+
+        // 2. If at Top Boundary and trying to scroll UP -> Block
+        if (delta < 0 && scrollTop <= 0) {
+            e.preventDefault();
+            return;
+        }
+
+        // 3. If at Bottom Boundary and trying to scroll DOWN -> Block
+        // Use 1px buffer for float rounding differences
+        if (delta > 0 && scrollTop + clientHeight >= scrollHeight - 1) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Otherwise, allow internal scroll but stop propagation just in case
+        e.stopPropagation();
+    }, { passive: false });
+
     // Click outside to close
     document.addEventListener("click", (e) => {
         if (!els.menu.classList.contains("hidden") && !els.wrapper.contains(e.target)) {
