@@ -74,6 +74,8 @@ export const CommentController = {
 
     close() {
         CommentUI.hide();
-        window.dispatchEvent(new CustomEvent('popup:close-all'));
+        QuicklookUI.hide(); // Close child popup (Quicklook)
+        PopupState.clearActive();
+        Scroller.highlightElement(null);
     }
 };

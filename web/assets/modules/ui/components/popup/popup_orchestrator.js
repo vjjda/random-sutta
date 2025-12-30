@@ -64,7 +64,13 @@ export const PopupOrchestrator = {
                         }
                     } else if (CommentUI.isVisible() && !CommentUI.elements.popup.contains(e.target)) {
                         // [FIX] Don't close if clicking inside Lookup Popup
-                        if (!document.getElementById("lookup-popup")?.contains(e.target)) {
+                        // [FIX] Don't close if Lookup is currently ACTIVE (e.g. user clicking text to lookup new word)
+                        const lookupPopup = document.getElementById("lookup-popup");
+                        if (lookupPopup && !lookupPopup.classList.contains("hidden")) {
+                            return;
+                        }
+
+                        if (!lookupPopup?.contains(e.target)) {
                             this.closeAll();
                         }
                     }
