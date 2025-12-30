@@ -16,8 +16,8 @@ class DpdRenderer:
     # JSON DELEGATION
     # =========================================================================
 
-    def extract_definition_json(self, i: DpdHeadword) -> str:
-        return self.json_renderer.render_definition(i)
+    def extract_definition_data(self, i: DpdHeadword) -> dict:
+        return self.json_renderer.extract_definition_data(i)
 
     def extract_grammar_json(self, i: DpdHeadword) -> str:
         return self.json_renderer.render_grammar(i)

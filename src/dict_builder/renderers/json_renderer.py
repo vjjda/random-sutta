@@ -28,23 +28,23 @@ class DpdJsonRenderer:
             
         return json.dumps(data, ensure_ascii=False)
 
-    def render_definition(self, i: DpdHeadword) -> str:
-        """Trích xuất Definition JSON."""
+    def extract_definition_data(self, i: DpdHeadword) -> dict:
+        """Trích xuất dữ liệu Definition thành Dict phẳng (cho Column Insert)."""
         final_meaning = i.meaning_1 if i.meaning_1 else i.meaning_2
         
-        data = {
-            self._k("pos"): i.pos,
-            self._k("meaning"): final_meaning
+        return {
+            "pos": i.pos,
+            "meaning": final_meaning,
+            "construction": i.construction_summary,
+            "degree": i.degree_of_completion,
+            "meaning_lit": i.meaning_lit,
+            "plus_case": i.plus_case
         }
-        
-        if i.meaning_lit: data[self._k("meaning_lit")] = i.meaning_lit
-        if i.plus_case: data[self._k("plus_case")] = i.plus_case
-        if i.construction_summary: data[self._k("construction")] = i.construction_summary
-        if i.degree_of_completion: data[self._k("degree")] = i.degree_of_completion
-        
-        # [MOVED] Commentary removed from here to render_grammar
-            
-        return json.dumps(data, ensure_ascii=False)
+
+    def render_definition(self, i: DpdHeadword) -> str:
+        """Legacy method if needed, or redirect to extract"""
+        # ... (We can remove this if we update entry_renderer)
+        pass
 
     def render_grammar(self, i: DpdHeadword) -> str:
         """Trích xuất Grammar JSON."""

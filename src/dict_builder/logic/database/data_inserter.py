@@ -17,10 +17,19 @@ class DataInserter:
     def insert_entries_batch(self, entries: List[Tuple], lookups: List[Tuple]) -> None:
         if entries:
             try:
-                if self.config.is_tiny_mode:
-                    sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{self.suffix}) VALUES (?, ?, ?, ?)"
-                else:
-                    sql = f"INSERT INTO entries (id, headword, headword_clean, definition_{self.suffix}, grammar_{self.suffix}, example_{self.suffix}) VALUES (?, ?, ?, ?, ?, ?)"
+                # [REFACTOR] Insert into new explicit columns
+                # entry tuple: (id, headword, headword_clean, pos, meaning, construction, degree, meaning_lit, plus_case, grammar, example)
+                sql = """
+                    INSERT INTO entries (
+                        id, headword, headword_clean, 
+                        pos, meaning, construction, degree, 
+                        meaning_lit, plus_case, 
+                        grammar_json, example_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                
+                # If tiny mode, we might need to adjust what data is passed, 
+                # but better to handle filtering in the Worker and pass NULLs here.
                 self.cursor.executemany(sql, entries)
             except Exception as e:
                 logger.error(f"Entries insert failed: {e}")

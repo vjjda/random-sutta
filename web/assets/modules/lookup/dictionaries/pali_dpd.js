@@ -58,12 +58,33 @@ export const PaliDPD = {
                 if (seenTargets.has(uniqueId)) continue;
                 seenTargets.add(uniqueId);
                 
+                // Logic Definition
+                let finalDef = null;
+                
+                if (row.type === -1) {
+                    // Deconstruction: use the raw definition column (which holds components)
+                    finalDef = row.definition;
+                } else {
+                    // Entry: Reconstruct JSON object from columns
+                    const defObj = {
+                        p: row.pos,
+                        m: row.meaning,
+                        c: row.construction,
+                        d: row.degree,
+                        ml: row.meaning_lit,
+                        pc: row.plus_case
+                    };
+                    finalDef = JSON.stringify(defObj);
+                }
+
                 finalResults.push({
                     lookup_key: row.key,
                     target_id: row.target_id,
                     lookup_type: row.type,
                     headword: row.headword,
-                    definition: row.definition,
+                    
+                    definition: finalDef,
+                    
                     entry_grammar: row.grammar,
                     entry_example: row.example,
                     grammar_note: row.gn_grammar,

@@ -43,15 +43,27 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
             .all()
         )
         for i in headwords:
-            # [CLEANUP] Luôn dùng Logic JSON
-            definition_json = renderer.extract_definition_json(i)
+            # [REFACTOR] Extract data columns instead of JSON
+            def_data = renderer.extract_definition_data(i)
             
-            if config.is_tiny_mode:
-                entries_data.append((i.id, i.lemma_1, i.lemma_clean, process_data(definition_json, config.USE_COMPRESSION)))
-            else:
-                grammar_json = renderer.extract_grammar_json(i)
-                example_json = renderer.extract_example_json(i)
-                entries_data.append((i.id, i.lemma_1, i.lemma_clean, process_data(definition_json, config.USE_COMPRESSION), process_data(grammar_json, config.USE_COMPRESSION), process_data(example_json, config.USE_COMPRESSION)))
+            grammar_json = renderer.extract_grammar_json(i) if not config.is_tiny_mode else None
+            example_json = renderer.extract_example_json(i) if not config.is_tiny_mode else None
+            
+            # Prepare Tuple for Insert
+            # Schema: id, headword, headword_clean, pos, meaning, construction, degree, meaning_lit, plus_case, grammar_json, example_json
+            entries_data.append((
+                i.id, 
+                i.lemma_1, 
+                i.lemma_clean,
+                def_data["pos"],
+                def_data["meaning"],
+                def_data["construction"],
+                def_data["degree"],
+                def_data["meaning_lit"],
+                def_data["plus_case"],
+                process_data(grammar_json, config.USE_COMPRESSION), 
+                process_data(example_json, config.USE_COMPRESSION)
+            ))
             
             lookups_data.append((i.lemma_clean, i.id, 1))
             unique_infs = set(i.inflections_list_all)

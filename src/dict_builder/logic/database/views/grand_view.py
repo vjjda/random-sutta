@@ -15,12 +15,28 @@ class GrandViewBuilder:
         
         suffix = "json"
         
-        # 1. Definition (Logic Entry)
-        definition_field = (
-            f"CASE "
-            f"WHEN l.type = 1 THEN e.definition_{suffix} "
-            f"ELSE NULL END AS definition"
-        )
+        # 1. Definition Columns (Logic Entry)
+        entry_cols = """
+            e.pos, 
+            e.meaning, 
+            e.construction, 
+            e.degree, 
+            e.meaning_lit, 
+            e.plus_case
+        """
+        
+        # Synthesized Definition (Human Readable)
+        # Logic: ({plus_case}) {meaning}; lit. {meaning_lit}
+        # SQLite: Using concatenations and IIF/CASE for clean formatting
+        def_synth = """
+            CASE WHEN l.type = 1 THEN
+                TRIM(
+                    (CASE WHEN e.plus_case IS NOT NULL AND e.plus_case != '' THEN '(' || e.plus_case || ') ' ELSE '' END) ||
+                    COALESCE(e.meaning, '') ||
+                    (CASE WHEN e.meaning_lit IS NOT NULL AND e.meaning_lit != '' THEN '; lit. ' || e.meaning_lit ELSE '' END)
+                )
+            ELSE NULL END AS definition
+        """
         
         # 2. Headword Logic
         headword_field = "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 0 THEN r.root ELSE NULL END AS headword"
@@ -61,7 +77,8 @@ class GrandViewBuilder:
                 -- Main Content
                 {headword_field}, 
                 {clean_headword_field},
-                {definition_field},
+                {entry_cols},
+                {def_synth},
                 {grammar_field}, 
                 {example_field},
                 {grammar_note_field},
@@ -75,6 +92,7 @@ class GrandViewBuilder:
             LEFT JOIN grammar_notes gn ON l.key = gn.key
             LEFT JOIN table_types tt ON l.type = tt.type;
         """
+
         
         try:
             self.cursor.execute("DROP VIEW IF EXISTS grand_lookups;") 

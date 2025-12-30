@@ -31,12 +31,25 @@ class SchemaManager:
         # [CLEANUP] Luôn dùng suffix 'json'
         suffix = "json"
         
-        # Entries Table
-        if self.config.is_tiny_mode:
-            sql = f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT);"
-        else:
-            sql = f"CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY, headword TEXT NOT NULL, headword_clean TEXT NOT NULL, definition_{suffix} TEXT, grammar_{suffix} TEXT, example_{suffix} TEXT);"
-        self.cursor.execute(sql)
+        # Entries Table [REFACTORED: COLUMNS]
+        # Core columns extracted from definition_json
+        cols = """
+            id INTEGER PRIMARY KEY, 
+            headword TEXT NOT NULL, 
+            headword_clean TEXT NOT NULL,
+            pos TEXT,
+            meaning TEXT,
+            construction TEXT,
+            degree TEXT,
+            meaning_lit TEXT,
+            plus_case TEXT,
+            grammar_json TEXT,
+            example_json TEXT
+        """
+        
+        # Tiny mode: Drop optional columns if needed (but SQLite handles NULL efficiently)
+        # For simplicity, we use the same schema but insert NULLs in Tiny mode
+        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS entries ({cols});")
             
         # Roots Table
         # [REFACTOR] Split definition_json into physical columns

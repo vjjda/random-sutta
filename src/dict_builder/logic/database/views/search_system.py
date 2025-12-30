@@ -41,6 +41,30 @@ class SearchSystemBuilder:
                 grammar_field = f"e.grammar_{suffix}"
                 example_field = f"e.example_{suffix}"
 
+            # 1. Definition Columns (Logic Entry)
+            entry_cols = """
+                e.pos, 
+                e.meaning, 
+                e.construction, 
+                e.degree, 
+                e.meaning_lit, 
+                e.plus_case
+            """
+            
+            # Synthesized Definition
+            def_synth = """
+                CASE 
+                    WHEN k.type = -1 THEN d.components
+                    WHEN k.type = 1 THEN 
+                        TRIM(
+                            (CASE WHEN e.plus_case IS NOT NULL AND e.plus_case != '' THEN '(' || e.plus_case || ') ' ELSE '' END) ||
+                            COALESCE(e.meaning, '') ||
+                            (CASE WHEN e.meaning_lit IS NOT NULL AND e.meaning_lit != '' THEN '; lit. ' || e.meaning_lit ELSE '' END)
+                        )
+                    ELSE NULL 
+                END AS definition
+            """
+
             # Root Logic
             root_cols = """
                 r.root_meaning, 
@@ -115,11 +139,10 @@ class SearchSystemBuilder:
                     ELSE k.key
                 END AS headword,
                 -- Definition Logic
-                CASE 
-                    WHEN k.type = -1 THEN d.components
-                    WHEN k.type = 1 THEN {def_field}   -- Entry
-                    ELSE NULL 
-                END AS definition,
+                {def_synth},
+                -- New Columns
+                {entry_cols},
+                -- Old Fields
                 {grammar_field} AS grammar,
                 {example_field} AS example,
                 gn.grammar_pack AS gn_grammar,
