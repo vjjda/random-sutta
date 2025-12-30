@@ -4,14 +4,6 @@
 # Based on src/dict_builder/renderers/json_renderer.py
 
 JSON_KEY_MAP = {
-    # --- Definition ---
-    "pos": "p",
-    "meaning": "m",
-    "meaning_lit": "ml",
-    "plus_case": "pc",
-    "construction": "c",  # construction summary
-    "degree": "d",
-
     # --- Grammar ---
     "Grammar": "g",
     "Root Family": "rf",
@@ -39,7 +31,6 @@ JSON_KEY_MAP = {
     "text": "txt",
 
     # --- Grammar Notes (Obsolete keys removed) ---
-    # "pos" is reused from Definition (p)
 }
 
 def get_key_map_list() -> list[tuple]:
