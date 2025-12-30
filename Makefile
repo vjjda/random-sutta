@@ -28,8 +28,8 @@ help:
 	@echo "  make dv             - Update Search Logic ONLY (-v)"
 	@echo "  make dz           - Package Existing DB to Web Assets (-z)"
 	@echo "  make da           - Build ALL Dictionaries (-a)"
-	@echo "  make dt          - Build Tiny Dictionary & Zip (-t)"
-	@echo "  make df          - Build Full Dictionary & Zip (-f)"
+	@echo "  make dt          - Build Tiny Dictionary (-t)"
+	@echo "  make df          - Build Full Dictionary (-f)"
 	@echo "  make mini {word} - Search 'word' in Mini DB (Open CSV)"
 	@echo ""
 	@echo "🏗️  BUILD & PREVIEW:"
@@ -109,7 +109,7 @@ dz:
 
 da:
 	@echo "📖 Building ALL Dictionaries..."
-	$(PYTHON) -m src.dict_builder -az
+	$(PYTHON) -m src.dict_builder -a
 
 dt:
 	@echo "📖 Building Dictionary (Tiny)..."
