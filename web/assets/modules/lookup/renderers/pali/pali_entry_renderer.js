@@ -41,7 +41,7 @@ export const PaliEntryRenderer = {
         let line3 = `
             <div class="dpd-summary-line-3">
                 <span class="dpd-meaning">${meaning}</span>
-                ${meaningLit ? `<span class="dpd-meaning-lit">; lit. ${meaningLit}</span>` : ''}
+                ${meaningLit ? `<span class="dpd-meaning-lit">lit. ${meaningLit}</span>` : ''}
             </div>`;
         
         // Summary Header
