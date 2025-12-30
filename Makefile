@@ -109,7 +109,7 @@ dz:
 
 da:
 	@echo "📖 Building ALL Dictionaries..."
-	$(PYTHON) -m src.dict_builder -az
+	$(PYTHON) -m src.dict_builder -a
 
 dt:
 	@echo "📖 Building Dictionary (Tiny)..."
