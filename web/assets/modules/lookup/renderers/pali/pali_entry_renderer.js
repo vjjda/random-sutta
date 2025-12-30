@@ -5,6 +5,7 @@ export const PaliEntryRenderer = {
         const pos = def[getAbbr('pos')] || '';
         const meaning = def[getAbbr('meaning')] || '';
         const plusCase = def[getAbbr('plus_case')] || '';
+        const meaningLit = def[getAbbr('meaning_lit')] || '';
         const construction = def[getAbbr('construction')] || '';
         const degree = def[getAbbr('degree')] || '';
         
@@ -36,10 +37,11 @@ export const PaliEntryRenderer = {
             line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">[${construction}]</span></div>`;
         }
 
-        // Line 3: Meaning (Left)
+        // Line 3: Meaning + Lit Meaning (Left)
         let line3 = `
             <div class="dpd-summary-line-3">
                 <span class="dpd-meaning">${meaning}</span>
+                ${meaningLit ? `<span class="dpd-meaning-lit">; lit. ${meaningLit}</span>` : ''}
             </div>`;
         
         // Summary Header

@@ -133,6 +133,13 @@ details[open] .dpd-detail-icon {
     font-weight: 500;
 }
 
+.dpd-meaning-lit {
+    color: var(--text-light);
+    font-size: 0.9em;
+    font-style: italic;
+    margin-left: 4px;
+}
+
 .dpd-degree {
     opacity: 0.15;
     font-size: 0.75em;
