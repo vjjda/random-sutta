@@ -118,11 +118,9 @@ details[open] .dpd-detail-icon {
     margin-top: -2px;
 }
 
-/* --- LINE 3: MEANING & DEGREE --- */
+/* --- LINE 3: MEANING & LIT --- */
 .dpd-summary-line-3 {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+    display: block; /* Flow text naturally */
     font-size: 0.95em;
     line-height: 1.4;
     color: var(--text-main);
