@@ -58,42 +58,35 @@ export const PaliDPD = {
                 if (seenTargets.has(uniqueId)) continue;
                 seenTargets.add(uniqueId);
                 
-                // Logic Definition
-                let finalDef = null;
+                // Logic Definition / Meaning
+                // Type -1: Deconstruction (Components in 'meaning' col)
+                // Type 1: Entry (Meaning in 'meaning' col)
+                // Type 0: Root (Meaning in 'meaning' col)
                 
-                if (row.type === -1) {
-                    // Deconstruction: components are now in 'meaning' column
-                    finalDef = row.meaning;
-                } else {
-                    // Entry: Reconstruct JSON object from columns
-                    const defObj = {
-                        p: row.pos,
-                        m: row.meaning,
-                        c: row.construction,
-                        d: row.degree,
-                        ml: row.meaning_origin, // Mapped from alias 'meaning_origin'
-                        pc: row.plus_case
-                    };
-                    finalDef = defObj;
-                }
-
                 finalResults.push({
                     lookup_key: row.key,
                     target_id: row.target_id,
                     lookup_type: row.type,
                     headword: row.headword,
                     
-                    definition: finalDef,
+                    // Flattened Entry Columns
+                    pos: row.pos,
+                    meaning: row.meaning,
+                    construction: row.construction,
+                    degree: row.degree,
+                    meaning_lit: row.meaning_origin,
+                    plus_case: row.plus_case,
                     
+                    // Legacy JSON Bags
                     entry_grammar: row.grammar,
                     entry_example: row.example,
                     grammar_note: row.gn_grammar,
-                    // Root specific fields
-                    // In new View, root_meaning is merged into 'meaning' column
-                    root_meaning: row.meaning, 
+                    
+                    // Root specific fields (Also flattened/mapped)
+                    root_meaning: row.meaning, // Alias for clarity in renderer
                     root_info: row.root_info,
                     sanskrit_info: row.sanskrit_info,
-                    root_meaning_origin: row.meaning_origin, // Pass Sanskrit Meaning
+                    root_meaning_origin: row.meaning_origin,
                     
                     keyMap: this._keyMap,
                     is_deconstruction: (row.type === -1)

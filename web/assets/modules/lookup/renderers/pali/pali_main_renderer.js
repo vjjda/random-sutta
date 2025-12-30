@@ -46,7 +46,7 @@ export const PaliMainRenderer = {
 
     render(data, isOpen = false, skipGrammar = false) {
         if (!data) return "";
-        const { lookup_type, lookup_key, definition, grammar_note, entry_grammar, entry_example, keyMap } = data;
+        const { lookup_type, lookup_key, grammar_note, entry_grammar, entry_example, keyMap } = data;
         
         // Helper: Data Lookup (Full -> Abbr)
         const getAbbr = (fullKey) => keyMap && keyMap.fullToAbbr && keyMap.fullToAbbr[fullKey] 
@@ -60,27 +60,21 @@ export const PaliMainRenderer = {
         
         let html = '<div class="dpd-result">';
         
-        // 1. MAIN CONTENT based on TYPE (UPDATED SCHEMA)
-        // Type -1: Deconstruction (Frontend Special)
-        // Type 0 : Root (DB Schema v2)
-        // Type 1 : Entry (DB Schema v2)
+        // 1. MAIN CONTENT based on TYPE
         
         if (lookup_type === -1 || (data.is_deconstruction === true)) {
-            // Deconstruction
-            html += PaliDeconRenderer.render(lookup_key, definition);
+            // Deconstruction: components are now in 'meaning' field
+            html += PaliDeconRenderer.render(lookup_key, data.meaning);
             
         } else if (lookup_type === 1) {
-            // Entry
-            const defObj = (typeof definition === 'string') ? this._parse(definition) : definition;
+            // Entry: Pass Flattened Data Object
             const gramObj = this._parse(entry_grammar);
             const exArr = this._parse(entry_example);
             
-            if (defObj) {
-                html += PaliEntryRenderer.render(defObj, gramObj, exArr, getAbbr, getLabel, data.headword, isOpen);
-            }
+            html += PaliEntryRenderer.render(data, gramObj, exArr, getAbbr, getLabel, data.headword, isOpen);
             
         } else if (lookup_type === 0) {
-            // Root (Refactored: Columns are in data object, not JSON definition)
+            // Root
             html += PaliRootRenderer.render(data, getLabel);
         }
         

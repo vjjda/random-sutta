@@ -1,13 +1,14 @@
 // Path: web/assets/modules/lookup/renderers/pali/pali_entry_renderer.js
 
 export const PaliEntryRenderer = {
-    render(def, gram, examples, getAbbr, getLabel, headword, isOpen) {
-        const pos = def[getAbbr('pos')] || '';
-        const meaning = def[getAbbr('meaning')] || '';
-        const plusCase = def[getAbbr('plus_case')] || '';
-        const meaningLit = def[getAbbr('meaning_lit')] || '';
-        const construction = def[getAbbr('construction')] || '';
-        const degree = def[getAbbr('degree')] || '';
+    render(data, gram, examples, getAbbr, getLabel, headword, isOpen) {
+        // Read directly from flattened object
+        const pos = data.pos || '';
+        const meaning = data.meaning || '';
+        const plusCase = data.plus_case || '';
+        const meaningLit = data.meaning_lit || '';
+        const construction = data.construction || '';
+        const degree = data.degree || '';
         
         // Check if there is content to expand
         const hasDetails = (gram && Object.keys(gram).length > 0) || (examples && Array.isArray(examples) && examples.length > 0);
