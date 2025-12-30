@@ -141,6 +141,7 @@ class LookupSystemBuilder:
             LEFT JOIN grammar_notes gn ON k.key = gn.key
             ORDER BY 
                 k.priority ASC, 
+                (k.key = (SELECT term FROM params)) DESC,
                 (CASE 
                     WHEN k.type = 1 THEN e.headword_clean = (SELECT term FROM params)
                     WHEN k.type = 0 THEN r.root_clean = (SELECT term FROM params)
