@@ -51,6 +51,7 @@ class LookupSystemBuilder:
                     WHEN k.type = 1 THEN e.meaning 
                     WHEN k.type = 0 THEN r.root_meaning 
                     WHEN k.type = -1 THEN d.components
+                    WHEN k.type = -2 THEN gn.grammar_pack
                     ELSE NULL 
                 END AS meaning
             """
@@ -97,13 +98,26 @@ class LookupSystemBuilder:
                 -- Explicitly filter Exact Match logic here on the small result set
                 -- AND key = params.term
             ),
-            -- 3. Union Keys Only (Lightweight)
+            -- 3. Get Keys from Grammar Notes (Priority 0)
+            keys_grammar AS (
+                SELECT 
+                    key, 
+                    0 as target_id, 
+                    -2 as type,
+                    0 as priority
+                FROM grammar_notes, params
+                WHERE key = params.term
+                LIMIT 1
+            ),
+            -- 4. Union Keys Only (Lightweight)
             all_keys AS (
                 SELECT * FROM keys_decon
                 UNION ALL
                 SELECT * FROM keys_main
+                UNION ALL
+                SELECT * FROM keys_grammar
             )
-            -- 4. Hydrate Data (Join only what is needed)
+            -- 5. Hydrate Data (Join only what is needed)
             SELECT 
                 k.key, k.target_id, k.type,
                 -- Headword Logic
@@ -111,6 +125,7 @@ class LookupSystemBuilder:
                     WHEN k.type = -1 THEN k.key 
                     WHEN k.type = 1 THEN e.headword
                     WHEN k.type = 0 THEN r.root
+                    WHEN k.type = -2 THEN k.key
                     ELSE k.key
                 END AS headword,
                 
@@ -122,7 +137,6 @@ class LookupSystemBuilder:
                 
                 {grammar_field} AS grammar, 
                 {example_field} AS example,
-                gn.grammar_pack AS gn_grammar,
                 
                 {root_cols},
                 
@@ -138,7 +152,7 @@ class LookupSystemBuilder:
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
             LEFT JOIN deconstructions d ON k.key = d.word AND k.type = -1
-            LEFT JOIN grammar_notes gn ON k.key = gn.key
+            LEFT JOIN grammar_notes gn ON k.key = gn.key AND k.type = -2
             ORDER BY 
                 k.priority ASC, 
                 (k.key = (SELECT term FROM params)) DESC,

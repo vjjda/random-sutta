@@ -15,15 +15,21 @@ export const PaliMainRenderer = {
         let matchedGrammarNote = null;
         let keyMapRef = null;
 
+        // 1. Separate Grammar Note (Type -2) from Content
+        const grammarItem = dataList.find(d => d.is_grammar === true);
+        
+        // Exact Match Logic for Grammar Note Activation
+        if (grammarItem && searchTerm && grammarItem.lookup_key === searchTerm) {
+            matchedGrammarNote = grammarItem.meaning;
+            keyMapRef = grammarItem.keyMap;
+        }
+
+        // 2. Render Content Items (Exclude Grammar Item)
         dataList.forEach((data) => {
-            // Check for grammar note match (Exact Match Only)
-            if (searchTerm && data.lookup_key === searchTerm && data.grammar_note && !matchedGrammarNote) {
-                matchedGrammarNote = data.grammar_note;
-                keyMapRef = data.keyMap; 
-            }
-            
+            if (data.is_grammar) return; // Skip Grammar Item
+
             // Render entry
-            dictHtml += this.render(data, false, true);
+            dictHtml += this.render(data, false);
         });
         
         dictHtml += '</div>';
@@ -44,9 +50,9 @@ export const PaliMainRenderer = {
         return { dictHtml, noteHtml };
     },
 
-    render(data, isOpen = false, skipGrammar = false) {
+    render(data, isOpen = false) {
         if (!data) return "";
-        const { lookup_type, lookup_key, grammar_note, entry_grammar, entry_example, keyMap } = data;
+        const { lookup_type, lookup_key, entry_grammar, entry_example, keyMap } = data;
         
         // Helper: Data Lookup (Full -> Abbr)
         const getAbbr = (fullKey) => keyMap && keyMap.fullToAbbr && keyMap.fullToAbbr[fullKey] 
@@ -76,14 +82,6 @@ export const PaliMainRenderer = {
         } else if (lookup_type === 0) {
             // Root
             html += PaliRootRenderer.render(data, getLabel);
-        }
-        
-        // 2. GRAMMAR NOTES (Common) - Only if NOT skipped
-        if (!skipGrammar) {
-            const gnArr = this._parse(grammar_note);
-            if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
-                 html += PaliGrammarRenderer.renderNotes(gnArr);
-            }
         }
         
         html += '</div>';

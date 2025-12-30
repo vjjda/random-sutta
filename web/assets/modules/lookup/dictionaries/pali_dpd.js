@@ -60,6 +60,7 @@ export const PaliDPD = {
                 
                 // Logic Definition / Meaning
                 // Type -1: Deconstruction (Components in 'meaning' col)
+                // Type -2: Grammar Note (Pack in 'meaning' col)
                 // Type 1: Entry (Meaning in 'meaning' col)
                 // Type 0: Root (Meaning in 'meaning' col)
                 
@@ -80,7 +81,7 @@ export const PaliDPD = {
                     // Legacy JSON Bags
                     entry_grammar: row.grammar,
                     entry_example: row.example,
-                    grammar_note: row.gn_grammar,
+                    // grammar_note removed (moved to Type -2 meaning)
                     
                     // Root specific fields (Also flattened/mapped)
                     root_meaning: row.meaning, // Alias for clarity in renderer
@@ -89,7 +90,8 @@ export const PaliDPD = {
                     root_meaning_origin: row.meaning_origin,
                     
                     keyMap: this._keyMap,
-                    is_deconstruction: (row.type === -1)
+                    is_deconstruction: (row.type === -1),
+                    is_grammar: (row.type === -2)
                 });
             }
             return finalResults;

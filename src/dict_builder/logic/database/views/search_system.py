@@ -53,6 +53,7 @@ class SearchSystemBuilder:
                     WHEN k.type = 1 THEN e.meaning 
                     WHEN k.type = 0 THEN r.root_meaning 
                     WHEN k.type = -1 THEN d.components
+                    WHEN k.type = -2 THEN gn.grammar_pack
                     ELSE NULL 
                 END AS meaning
             """
@@ -90,6 +91,18 @@ class SearchSystemBuilder:
                 WHERE word = input_param.term
                 LIMIT 1
             ),
+            -- 1b. Keys from Grammar Notes (Priority 0)
+            keys_grammar AS (
+                SELECT 
+                    key, 
+                    0 AS target_id, 
+                    -2 AS type,
+                    0 AS rank,
+                    0 AS priority
+                FROM grammar_notes, input_param
+                WHERE key = input_param.term
+                LIMIT 1
+            ),
             -- 2. Keys from Exact Match FTS (Priority 1)
             keys_exact AS (
                 SELECT key, target_id, type, rank, 1 AS priority
@@ -108,6 +121,8 @@ class SearchSystemBuilder:
             -- 4. Combine Keys
             all_keys AS (
                 SELECT * FROM keys_decon
+                UNION ALL
+                SELECT * FROM keys_grammar
                 UNION ALL
                 SELECT * FROM keys_exact
                 UNION ALL
@@ -132,6 +147,7 @@ class SearchSystemBuilder:
                     WHEN k.type = -1 THEN k.key 
                     WHEN k.type = 1 THEN e.headword
                     WHEN k.type = 0 THEN r.root
+                    WHEN k.type = -2 THEN k.key
                     ELSE k.key
                 END AS headword,
                 
@@ -143,7 +159,6 @@ class SearchSystemBuilder:
                 
                 {grammar_field} AS grammar,
                 {example_field} AS example,
-                gn.grammar_pack AS gn_grammar,
                 
                 {root_cols},
                 
@@ -158,7 +173,7 @@ class SearchSystemBuilder:
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
             LEFT JOIN deconstructions d ON k.key = d.word AND k.type = -1
-            LEFT JOIN grammar_notes gn ON k.key = gn.key
+            LEFT JOIN grammar_notes gn ON k.key = gn.key AND k.type = -2
             ORDER BY k.priority ASC, is_exact DESC, length(k.key) ASC, k.rank;
             """
 
