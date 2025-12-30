@@ -18,14 +18,6 @@ export const PaliMainRenderer = {
         // 1. Separate Grammar Note (Type -2) from Content
         const grammarItem = dataList.find(d => d.is_grammar === true);
         
-        // [DEBUG] Check Grammar Item
-        if (grammarItem) {
-            console.log("Grammar Item Found:", grammarItem);
-            console.log("Raw Meaning:", grammarItem.meaning);
-        } else {
-            console.log("No Grammar Item (Type -2) found in results.");
-        }
-        
         // Exact Match Logic for Grammar Note Activation
         // Note: SQL View already enforces 'key = term' for Type -2. 
         // So if grammarItem exists, it is the correct one.
@@ -52,13 +44,9 @@ export const PaliMainRenderer = {
                 : fullKey;
             
             const gnArr = this._parse(matchedGrammarNote);
-            console.log("Parsed Grammar Data:", gnArr); // [DEBUG]
             
             if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
                  noteHtml = PaliGrammarRenderer.renderNotes(gnArr);
-                 console.log("Generated Note HTML Len:", noteHtml.length); // [DEBUG]
-            } else {
-                 console.warn("Grammar Data Invalid or Empty Array"); // [DEBUG]
             }
         }
 
