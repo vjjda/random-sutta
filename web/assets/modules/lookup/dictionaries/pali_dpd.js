@@ -62,8 +62,8 @@ export const PaliDPD = {
                 let finalDef = null;
                 
                 if (row.type === -1) {
-                    // Deconstruction: use the raw definition column (which holds components)
-                    finalDef = row.definition;
+                    // Deconstruction: components are now in 'meaning' column
+                    finalDef = row.meaning;
                 } else {
                     // Entry: Reconstruct JSON object from columns
                     const defObj = {
