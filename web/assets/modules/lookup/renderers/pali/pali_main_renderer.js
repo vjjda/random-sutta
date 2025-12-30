@@ -19,7 +19,9 @@ export const PaliMainRenderer = {
         const grammarItem = dataList.find(d => d.is_grammar === true);
         
         // Exact Match Logic for Grammar Note Activation
-        if (grammarItem && searchTerm && grammarItem.lookup_key === searchTerm) {
+        // Note: SQL View already enforces 'key = term' for Type -2. 
+        // So if grammarItem exists, it is the correct one.
+        if (grammarItem) {
             matchedGrammarNote = grammarItem.meaning;
             keyMapRef = grammarItem.keyMap;
         }
