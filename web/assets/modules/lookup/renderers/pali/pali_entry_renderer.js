@@ -35,7 +35,9 @@ export const PaliEntryRenderer = {
         // Line 2: Construction (Standalone, Low Profile)
         let line2 = '';
         if (construction) {
-            line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">[${construction}]</span></div>`;
+            // Replace newlines with a visual separator for inline display
+            const cleanConstr = construction.replace(/\n/g, ' | ');
+            line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">[${cleanConstr}]</span></div>`;
         }
 
         // Line 3: Meaning + Lit Meaning (Left)
