@@ -62,18 +62,9 @@ export const PopupOrchestrator = {
                         } else {
                             this.closeAll();
                         }
-                    } else if (CommentUI.isVisible() && !CommentUI.elements.popup.contains(e.target)) {
-                        // [FIX] Don't close if clicking inside Lookup Popup
-                        // [FIX] Don't close if Lookup is currently ACTIVE (e.g. user clicking text to lookup new word)
-                        const lookupPopup = document.getElementById("lookup-popup");
-                        if (lookupPopup && !lookupPopup.classList.contains("hidden")) {
-                            return;
-                        }
-
-                        if (!lookupPopup?.contains(e.target)) {
-                            this.closeAll();
-                        }
                     }
+                    // [MODIFIED] Comment Popup now ONLY closes via the Close Button (X).
+                    // The "Click Outside" logic for CommentUI has been removed per user request for better stability.
                 }
             });
         }
