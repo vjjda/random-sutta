@@ -25,6 +25,10 @@ export const OfflineManager = {
             // [UPDATED] Update Button Handler triggers Smart Update
             els.btnUpdate.addEventListener("click", (e) => this._handleUpdateClick(e));
         }
+
+        if (els.btnReset) {
+            els.btnReset.addEventListener("click", () => this._handleResetClick());
+        }
     },
 
     async _handleDownloadClick() {
@@ -34,6 +38,50 @@ export const OfflineManager = {
         } else {
             localStorage.removeItem('sutta_offline_version');
             this.runSmartBackgroundDownload();
+        }
+    },
+
+    // [NEW] Hard Reset Handler (Nuclear Option)
+    async _handleResetClick() {
+        if (!confirm("⚠️ Factory Reset?\n\nThis will fix issues by deleting ALL offline data and reloading the app.\n\nAre you sure?")) return;
+
+        logger.warn("Reset", "Initiating Factory Reset...");
+        
+        try {
+            // 1. Unregister Service Workers
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.unregister();
+                }
+                logger.info("Reset", "Service Workers Unregistered.");
+            }
+
+            // 2. Clear Cache Storage
+            if ('caches' in window) {
+                const keys = await caches.keys();
+                for (const key of keys) {
+                    await caches.delete(key);
+                }
+                logger.info("Reset", "Cache Storage Cleared.");
+            }
+
+            // 3. Clear IndexedDB (Try best effort)
+            const dbs = await window.indexedDB.databases ? await window.indexedDB.databases() : [];
+            for (const db of dbs) {
+                window.indexedDB.deleteDatabase(db.name);
+            }
+
+            // 4. Clear LocalStorage Flags
+            localStorage.removeItem('sutta_offline_version');
+            localStorage.removeItem('dpd_mini.db_hash');
+            
+            // 5. Force Reload (Bypass Cache)
+            window.location.reload(true);
+            
+        } catch (e) {
+            alert("Reset failed partially. Please manually clear browser data.");
+            window.location.reload();
         }
     },
 
