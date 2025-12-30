@@ -112,7 +112,7 @@ export const OfflineManager = {
 
         if (OfflineService.isOfflineReady()) {
             logger.info("BackgroundDL", `Cache up-to-date.`);
-            OfflineView.renderState('ready', "Offline Ready");
+            OfflineView.renderState('ready', "Offline");
             this.checkQuota(); 
             return;
         }
@@ -128,7 +128,7 @@ export const OfflineManager = {
                 OfflineView.renderState('syncing', "Syncing...", percent);
             });
             
-            OfflineView.renderState('ready', "Offline Ready");
+            OfflineView.renderState('ready', "Offline");
             this.checkQuota();
 
         } catch (e) {

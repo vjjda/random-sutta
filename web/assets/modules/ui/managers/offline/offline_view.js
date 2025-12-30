@@ -97,12 +97,11 @@ export const OfflineView = {
     },
 
     flashVersion(versionString) {
-        if (!this.elements.label) return;
-        const originalText = this.elements.label.textContent;
-        this.elements.label.textContent = `v${versionString.replace('v', '')}`;
-        
-        setTimeout(() => {
-            this.elements.label.textContent = originalText;
-        }, 3000);
+        if (!this.elements.btnDownload) return;
+        const v = `Version: ${versionString}`;
+        // Set title for long-press/hover
+        this.elements.btnDownload.title = v;
+        // Show quick notification
+        alert(v);
     }
 };
