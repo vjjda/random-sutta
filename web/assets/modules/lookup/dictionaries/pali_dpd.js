@@ -71,7 +71,7 @@ export const PaliDPD = {
                         m: row.meaning,
                         c: row.construction,
                         d: row.degree,
-                        ml: row.meaning_lit,
+                        ml: row.meaning_origin, // Mapped from alias 'meaning_origin'
                         pc: row.plus_case
                     };
                     finalDef = JSON.stringify(defObj);
@@ -89,7 +89,8 @@ export const PaliDPD = {
                     entry_example: row.example,
                     grammar_note: row.gn_grammar,
                     // Root specific fields
-                    root_meaning: row.root_meaning,
+                    // In new View, root_meaning is merged into 'meaning' column
+                    root_meaning: row.meaning, 
                     root_info: row.root_info,
                     sanskrit_info: row.sanskrit_info,
                     
