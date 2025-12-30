@@ -68,7 +68,7 @@
   grid-column: 2;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px; /* Space between Reset, Info, Update */
 }
 
 /* 1. Status/Action Button */
@@ -81,26 +81,37 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 2px; /* Small gap between label and icon */
-  padding: 4px;
+  gap: 6px; 
+  padding: 6px 8px; /* Standard padding */
   border-radius: 4px;
   transition: all 0.2s;
 }
 
 #btn-download-offline .label {
-  margin-right: 4px; /* Reduced margin */
+  margin-right: 0; 
 }
 
-#btn-download-offline .icon {
+/* Special styling for "Offline" Text Status */
+.offline-main-btn.offline-info {
+  padding: 6px 4px; /* Less padding for just text */
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.offline-main-btn.offline-info:hover {
+  background-color: transparent;
+  color: var(--primary-color);
+  text-decoration: underline; /* Subtle indication it's clickable */
+}
+
+.offline-main-btn:hover:not(.offline-info) {
+  background-color: var(--bg-hover);
+  color: var(--primary-color);
+}
+
+.offline-main-btn .icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.offline-main-btn:hover {
-  background-color: var(--bg-hover);
 }
 
 .offline-main-btn .icon svg {
@@ -109,18 +120,12 @@
   display: block;
 }
 
-/* Specific style for update button when nested in icon */
-#btn-download-offline .icon #btn-update-offline {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  padding: 0;
-  background: transparent;
+/* Update Button (Sibling) Styling */
+#btn-update-offline {
+  color: var(--text-muted);
 }
-
-#btn-download-offline .icon #btn-update-offline:hover {
-  background: var(--bg-hover);
-  border-radius: 50%;
+#btn-update-offline:hover {
+  background-color: var(--bg-hover);
 }
 
 /* --- RIGHT GROUP: THEME TOGGLE --- */
