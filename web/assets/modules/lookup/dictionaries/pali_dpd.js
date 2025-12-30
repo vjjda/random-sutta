@@ -54,16 +54,6 @@ export const PaliDPD = {
             const seenTargets = new Set();
             
             for (const row of results) {
-                // [SELF-HEALING] Detect Stale DB View (Old Schema)
-                // The new View definition removed the 'gn_grammar' column.
-                // If this column still exists in the result, the Browser DB is outdated.
-                if ('gn_grammar' in row) {
-                    logger.warn("Search", "Stale DB View detected (gn_grammar column found). Resetting DB...");
-                    await this.connection.resetDatabase();
-                    window.location.reload();
-                    return [];
-                }
-
                 const uniqueId = `${row.type}_${row.target_id}`;
                 if (seenTargets.has(uniqueId)) continue;
                 seenTargets.add(uniqueId);
