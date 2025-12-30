@@ -74,7 +74,7 @@ export const PaliDPD = {
                         ml: row.meaning_origin, // Mapped from alias 'meaning_origin'
                         pc: row.plus_case
                     };
-                    finalDef = JSON.stringify(defObj);
+                    finalDef = defObj;
                 }
 
                 finalResults.push({

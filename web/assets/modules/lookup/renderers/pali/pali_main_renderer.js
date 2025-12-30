@@ -71,7 +71,7 @@ export const PaliMainRenderer = {
             
         } else if (lookup_type === 1) {
             // Entry
-            const defObj = this._parse(definition);
+            const defObj = (typeof definition === 'string') ? this._parse(definition) : definition;
             const gramObj = this._parse(entry_grammar);
             const exArr = this._parse(entry_example);
             
