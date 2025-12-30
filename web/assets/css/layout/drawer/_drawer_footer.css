@@ -81,25 +81,46 @@
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 4px;
+  gap: 2px; /* Small gap between label and icon */
+  padding: 4px;
   border-radius: 4px;
   transition: all 0.2s;
 }
 
 #btn-download-offline .label {
-  margin-right: 10px;
+  margin-right: 4px; /* Reduced margin */
+}
+
+#btn-download-offline .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
 }
 
 .offline-main-btn:hover {
   background-color: var(--bg-hover);
-  color: var(--primary-color);
 }
 
 .offline-main-btn .icon svg {
   width: 16px;
   height: 16px;
   display: block;
+}
+
+/* Specific style for update button when nested in icon */
+#btn-download-offline .icon #btn-update-offline {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+#btn-download-offline .icon #btn-update-offline:hover {
+  background: var(--bg-hover);
+  border-radius: 50%;
 }
 
 /* --- RIGHT GROUP: THEME TOGGLE --- */
@@ -251,15 +272,10 @@
 
 /* Ready */
 #drawer-footer.ready .offline-main-btn {
-  cursor: default;
+  /* Cursor managed by JS */
 }
 #drawer-footer.ready .offline-main-btn:hover {
-  background-color: transparent;
-  color: var(--text-muted);
-}
-#drawer-footer.ready .icon svg {
-  stroke: #4caf50;
-  stroke-width: 2.5;
+  color: var(--primary-color);
 }
 #drawer-footer.ready #btn-update-offline {
   display: flex;

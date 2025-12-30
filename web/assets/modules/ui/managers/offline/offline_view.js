@@ -19,6 +19,12 @@ export const OfflineView = {
             icon: document.querySelector("#btn-download-offline .icon")
         };
 
+        // [MODIFIED] Integrate Update Button into the main button's icon span
+        if (this.elements.btnUpdate && this.elements.icon) {
+            this.elements.icon.appendChild(this.elements.btnUpdate);
+            this.elements.btnUpdate.classList.add("hidden"); // Default hidden
+        }
+
         // [NEW] Dynamically inject Reset Button
         const offlineWidget = document.querySelector(".offline-widget");
         if (offlineWidget && !document.getElementById("btn-reset-app")) {
@@ -52,14 +58,23 @@ export const OfflineView = {
             if (label) label.textContent = text;
             
             if (state === 'syncing') {
+                if (btnUpdate) btnUpdate.classList.add("hidden");
                 btnDownload.disabled = true;
                 btnDownload.style.cursor = 'wait';
                 if (icon) icon.innerHTML = ICONS.SYNC;
             } else if (state === 'ready') {
                 btnDownload.disabled = false;
                 btnDownload.style.cursor = 'help';
-                if (icon) icon.innerHTML = ICONS.CHECK;
+                if (icon) {
+                    icon.innerHTML = ""; // Clear existing (like sync icon)
+                    if (btnUpdate) {
+                        icon.appendChild(btnUpdate);
+                        btnUpdate.classList.remove("hidden");
+                        btnUpdate.style.color = "#27ae60"; // Green color when ready
+                    }
+                }
             } else if (state === 'error') {
+                if (btnUpdate) btnUpdate.classList.add("hidden");
                 btnDownload.disabled = false;
                 btnDownload.style.cursor = 'pointer';
                 if (icon) icon.innerHTML = ICONS.ALERT;
@@ -69,10 +84,13 @@ export const OfflineView = {
             }
         }
 
+        // Remove standalone btnUpdate logic as it's now internal
+        /*
         if (btnUpdate) {
             if (state === 'ready') btnUpdate.classList.remove('hidden');
             else btnUpdate.classList.add('hidden');
         }
+        */
 
         // [NEW] Show Reset button when Ready or Error
         if (btnReset) {
