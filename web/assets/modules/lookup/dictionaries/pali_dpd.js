@@ -93,6 +93,7 @@ export const PaliDPD = {
                     root_meaning: row.meaning, 
                     root_info: row.root_info,
                     sanskrit_info: row.sanskrit_info,
+                    root_meaning_origin: row.meaning_origin, // Pass Sanskrit Meaning
                     
                     keyMap: this._keyMap,
                     is_deconstruction: (row.type === -1)
