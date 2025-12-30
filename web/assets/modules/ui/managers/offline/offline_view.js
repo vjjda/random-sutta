@@ -34,9 +34,9 @@ export const OfflineView = {
             btnReset.title = "Hard Reset (Fix Issues)";
             btnReset.innerHTML = ICONS.RESET;
             
-            // Insert before btnUpdate or append
-            if (this.elements.btnUpdate) {
-                offlineWidget.insertBefore(btnReset, this.elements.btnUpdate);
+            // Insert before btnDownload (main button) or append
+            if (this.elements.btnDownload) {
+                offlineWidget.insertBefore(btnReset, this.elements.btnDownload);
             } else {
                 offlineWidget.appendChild(btnReset);
             }
