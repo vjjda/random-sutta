@@ -73,13 +73,24 @@ export class SqliteConnection {
         }
     }
 
+    async resetDatabase() {
+        logger.warn("Reset", `Force resetting database ${this.dbName}...`);
+        await this._deleteDB();
+        localStorage.removeItem(`${this.dbName}_hash`);
+    }
+
     async _checkAndApplyUpdate() {
         if (!this.zipUrl) return;
         
         try {
             const manifestUrl = this.zipUrl.replace(".db.zip", ".json");
-            const res = await fetch(manifestUrl, { cache: "no-store" });
-            if (!res.ok) return; // Silent fail if no manifest
+            // Add timestamp to prevent caching of manifest itself
+            const res = await fetch(`${manifestUrl}?t=${Date.now()}`, { cache: "no-store" });
+            
+            if (!res.ok) {
+                logger.warn("Update", `Manifest check failed: ${res.status} ${res.statusText}`);
+                return; 
+            }
             
             const remoteData = await res.json();
             const remoteHash = remoteData.hash;
@@ -89,6 +100,8 @@ export class SqliteConnection {
                 logger.info("Init", `Update found! Remote: ${remoteHash.substr(0,8)} != Local: ${localHash ? localHash.substr(0,8) : 'null'}`);
                 await this._deleteDB();
                 localStorage.setItem(`${this.dbName}_hash`, remoteHash);
+            } else {
+                logger.info("Init", "Database is up to date.");
             }
         } catch (e) {
             logger.warn("Init", "Update check failed", e);

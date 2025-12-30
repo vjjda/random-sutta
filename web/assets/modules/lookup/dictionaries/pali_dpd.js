@@ -94,6 +94,14 @@ export const PaliDPD = {
             }
             return finalResults;
         } catch (error) {
+            // [SELF-HEALING] Detect Schema Mismatch (Old DB vs New Code)
+            if (error.message && error.message.includes("no such table")) {
+                logger.error("Search Error", "Schema Mismatch detected! Resetting DB...");
+                await this.connection.resetDatabase();
+                window.location.reload();
+                return [];
+            }
+            
             logger.error("Search Error", error);
             return [];
         }
