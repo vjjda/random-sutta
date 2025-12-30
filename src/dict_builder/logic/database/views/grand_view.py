@@ -15,34 +15,25 @@ class GrandViewBuilder:
         
         suffix = "json"
         
-        # 1. Definition Columns (Logic Entry)
-        entry_cols = """
-            e.pos, 
-            e.meaning, 
-            e.construction, 
-            e.degree, 
-            e.meaning_lit, 
-            e.plus_case
-        """
+        # [REFACTOR] Unified Columns Logic (Entry + Root)
         
-        # Synthesized Definition (Human Readable)
-        # Logic: ({plus_case}) {meaning}; lit. {meaning_lit}
-        # SQLite: Using concatenations and IIF/CASE for clean formatting
-        def_synth = """
-            CASE WHEN l.type = 1 THEN
-                TRIM(
-                    (CASE WHEN e.plus_case IS NOT NULL AND e.plus_case != '' THEN '(' || e.plus_case || ') ' ELSE '' END) ||
-                    COALESCE(e.meaning, '') ||
-                    (CASE WHEN e.meaning_lit IS NOT NULL AND e.meaning_lit != '' THEN '; lit. ' || e.meaning_lit ELSE '' END)
-                )
-            ELSE NULL END AS definition
-        """
+        # 1. POS
+        pos_field = "CASE WHEN l.type = 1 THEN e.pos WHEN l.type = 0 THEN 'root' ELSE NULL END AS pos"
         
-        # 2. Headword Logic
+        # 2. Meaning (Entry Meaning or Root Meaning)
+        meaning_field = "CASE WHEN l.type = 1 THEN e.meaning WHEN l.type = 0 THEN r.root_meaning ELSE NULL END AS meaning"
+        
+        # 3. Meaning Origin (Lit Meaning or Sanskrit Meaning)
+        origin_field = "CASE WHEN l.type = 1 THEN e.meaning_lit WHEN l.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
+        
+        # 4. Entry-Specific Columns (NULL for Roots)
+        entry_cols = "e.plus_case, e.construction, e.degree"
+
+        # 5. Headword Logic
         headword_field = "CASE WHEN l.type = 1 THEN e.headword WHEN l.type = 0 THEN r.root ELSE NULL END AS headword"
         clean_headword_field = "CASE WHEN l.type = 1 THEN e.headword_clean WHEN l.type = 0 THEN r.root_clean ELSE NULL END AS headword_clean"
         
-        # 3. Grammar & Example (Entry)
+        # 6. Grammar & Example (Entry)
         if self.config.is_tiny_mode:
             grammar_field = "NULL AS grammar"
             example_field = "NULL AS example"
@@ -50,19 +41,19 @@ class GrandViewBuilder:
             grammar_field = f"e.grammar_{suffix} AS grammar"
             example_field = f"e.example_{suffix} AS example"
 
-        # 4. Root Columns
+        # 7. Root Details (Extra info not covered by unified columns)
+        # We kept root_meaning in 'meaning', sanskrit_meaning in 'meaning_origin'.
+        # Remaining: group, sign, sanskrit_root, class
         root_cols = """
-            r.root_meaning, 
             (r.root_group || ' ' || r.root_sign) AS root_info, 
             CASE 
                 WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
-                THEN r.sanskrit_root || ' ' || r.sanskrit_root_class || ' (' || r.sanskrit_root_meaning || ')'
+                THEN r.sanskrit_root || ' ' || r.sanskrit_root_class
                 ELSE ''
-            END AS sanskrit_info,
-            r.root_clean
+            END AS sanskrit_info
         """
 
-        # 5. Extra Fields
+        # 8. Extra Fields
         grammar_note_field = "gn.grammar_pack AS gn_grammar"
 
         sql = f"""
@@ -74,16 +65,20 @@ class GrandViewBuilder:
                 l.type AS type,
                 tt.table_name,
                 
-                -- Main Content
+                -- Main Content (Unified)
                 {headword_field}, 
                 {clean_headword_field},
-                {entry_cols},
-                {def_synth},
+                {pos_field},
+                {entry_cols}, -- plus_case, construction, degree
+                {meaning_field},
+                {origin_field}, -- meaning_lit / sk_meaning
+                
+                -- Details
                 {grammar_field}, 
                 {example_field},
                 {grammar_note_field},
                 
-                -- Root Details
+                -- Root Extras
                 {root_cols}
                 
             FROM lookups l

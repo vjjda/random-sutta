@@ -33,48 +33,44 @@ class SearchSystemBuilder:
 
             suffix = "json"
             if self.config.is_tiny_mode:
-                def_field = "NULL"
                 grammar_field = "NULL"
                 example_field = "NULL"
             else:
-                def_field = f"e.definition_{suffix}"
                 grammar_field = f"e.grammar_{suffix}"
                 example_field = f"e.example_{suffix}"
 
-            # 1. Definition Columns (Logic Entry)
-            entry_cols = """
-                e.pos, 
-                e.meaning, 
-                e.construction, 
-                e.degree, 
-                e.meaning_lit, 
-                e.plus_case
+            # 1. Unified Columns (Entry + Root + Decon)
+            
+            # POS
+            pos_field = "CASE WHEN k.type = 1 THEN e.pos WHEN k.type = 0 THEN 'root' ELSE NULL END AS pos"
+            
+            # Meaning (Entry, Root, Decon Components)
+            # For Decon (Type -1), we put components into 'meaning' field for now, or keep it separate?
+            # Let's follow Grand View logic: Entry/Root only. Decon components are usually mapped to 'definition' in legacy.
+            # Here: meaning -> e.meaning / r.root_meaning / d.components
+            meaning_field = """
+                CASE 
+                    WHEN k.type = 1 THEN e.meaning 
+                    WHEN k.type = 0 THEN r.root_meaning 
+                    WHEN k.type = -1 THEN d.components
+                    ELSE NULL 
+                END AS meaning
             """
             
-            # Synthesized Definition
-            def_synth = """
-                CASE 
-                    WHEN k.type = -1 THEN d.components
-                    WHEN k.type = 1 THEN 
-                        TRIM(
-                            (CASE WHEN e.plus_case IS NOT NULL AND e.plus_case != '' THEN '(' || e.plus_case || ') ' ELSE '' END) ||
-                            COALESCE(e.meaning, '') ||
-                            (CASE WHEN e.meaning_lit IS NOT NULL AND e.meaning_lit != '' THEN '; lit. ' || e.meaning_lit ELSE '' END)
-                        )
-                    ELSE NULL 
-                END AS definition
-            """
+            # Meaning Origin
+            origin_field = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
+            
+            # Entry Cols
+            entry_cols = "e.plus_case, e.construction, e.degree"
 
-            # Root Logic
+            # Root Extras
             root_cols = """
-                r.root_meaning, 
                 (r.root_group || ' ' || r.root_sign) AS root_info, 
                 CASE 
                     WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
-                    THEN r.sanskrit_root || ' ' || r.sanskrit_root_class || ' (' || r.sanskrit_root_meaning || ')'
+                    THEN r.sanskrit_root || ' ' || r.sanskrit_root_class
                     ELSE ''
-                END AS sanskrit_info,
-                r.root_clean
+                END AS sanskrit_info
             """
 
             sql_view = f"""
@@ -138,15 +134,19 @@ class SearchSystemBuilder:
                     WHEN k.type = 0 THEN r.root
                     ELSE k.key
                 END AS headword,
-                -- Definition Logic
-                {def_synth},
-                -- New Columns
-                {entry_cols},
-                -- Old Fields
+                
+                -- Unified Content
+                {pos_field},
+                {entry_cols}, -- plus_case, construction, degree
+                {meaning_field},
+                {origin_field}, -- meaning_origin
+                
                 {grammar_field} AS grammar,
                 {example_field} AS example,
                 gn.grammar_pack AS gn_grammar,
+                
                 {root_cols},
+                
                 -- Is Exact Logic
                 (k.key = (SELECT term FROM input_param) 
                  AND k.key = CASE 

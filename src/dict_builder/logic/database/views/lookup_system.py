@@ -40,40 +40,35 @@ class LookupSystemBuilder:
                 grammar_field = f"e.grammar_{suffix}"
                 example_field = f"e.example_{suffix}"
 
-            # 1. Definition Columns (Logic Entry)
-            entry_cols = """
-                e.pos, 
-                e.meaning, 
-                e.construction, 
-                e.degree, 
-                e.meaning_lit, 
-                e.plus_case
+            # 1. Unified Columns (Entry + Root + Decon)
+            
+            # POS
+            pos_field = "CASE WHEN k.type = 1 THEN e.pos WHEN k.type = 0 THEN 'root' ELSE NULL END AS pos"
+            
+            # Meaning
+            meaning_field = """
+                CASE 
+                    WHEN k.type = 1 THEN e.meaning 
+                    WHEN k.type = 0 THEN r.root_meaning 
+                    WHEN k.type = -1 THEN d.components
+                    ELSE NULL 
+                END AS meaning
             """
             
-            # Synthesized Definition
-            def_synth = """
-                CASE 
-                    WHEN k.type = -1 THEN d.components
-                    WHEN k.type = 1 THEN 
-                        TRIM(
-                            (CASE WHEN e.plus_case IS NOT NULL AND e.plus_case != '' THEN '(' || e.plus_case || ') ' ELSE '' END) ||
-                            COALESCE(e.meaning, '') ||
-                            (CASE WHEN e.meaning_lit IS NOT NULL AND e.meaning_lit != '' THEN '; lit. ' || e.meaning_lit ELSE '' END)
-                        )
-                    ELSE NULL 
-                END AS definition
-            """
+            # Meaning Origin
+            origin_field = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
+            
+            # Entry Cols
+            entry_cols = "e.plus_case, e.construction, e.degree"
 
-            # Root Logic
+            # Root Extras
             root_cols = """
-                r.root_meaning, 
                 (r.root_group || ' ' || r.root_sign) AS root_info, 
                 CASE 
                     WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
-                    THEN r.sanskrit_root || ' ' || r.sanskrit_root_class || ' (' || r.sanskrit_root_meaning || ')'
+                    THEN r.sanskrit_root || ' ' || r.sanskrit_root_class
                     ELSE ''
-                END AS sanskrit_info,
-                r.root_clean
+                END AS sanskrit_info
             """
 
             sql_view = f"""
@@ -118,21 +113,26 @@ class LookupSystemBuilder:
                     WHEN k.type = 0 THEN r.root
                     ELSE k.key
                 END AS headword,
+                
+                -- Unified Content
+                {pos_field},
+                {entry_cols}, -- plus_case, construction, degree
+                {meaning_field},
+                {origin_field}, -- meaning_origin
+                
+                {grammar_field} AS grammar, 
+                {example_field} AS example,
+                gn.grammar_pack AS gn_grammar,
+                
+                {root_cols},
+                
                 -- Headword Clean
                 CASE 
                     WHEN k.type = 1 THEN e.headword_clean
                     WHEN k.type = 0 THEN r.root_clean
                     ELSE NULL
                 END AS headword_clean,
-                -- Definition Logic
-                {def_synth},
-                -- New Columns
-                {entry_cols},
-                -- Other Fields
-                {grammar_field} AS grammar, 
-                {example_field} AS example,
-                gn.grammar_pack AS gn_grammar,
-                {root_cols},
+                
                 k.priority
             FROM all_keys k
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1

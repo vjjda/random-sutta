@@ -48,7 +48,7 @@ def lookup_single_term(conn, term, console):
         table.add_column("Type", style="cyan", width=8)
         table.add_column("Key", style="green")
         table.add_column("Headword", style="bold")
-        table.add_column("Definition / Components")
+        table.add_column("Meaning / Components")
         
         for row in rows:
             # Type Display
@@ -57,8 +57,8 @@ def lookup_single_term(conn, term, console):
             elif row['type'] == 0: type_str = "ROOT"
             elif row['type'] == 1: type_str = "ENTRY"
 
-            # Definition Truncate
-            defn = str(row['definition'])
+            # Meaning Truncate (Use 'meaning' column now)
+            defn = str(row['meaning']) if row['meaning'] else ""
             if len(defn) > 100:
                 defn = defn[:97] + "..."
 
