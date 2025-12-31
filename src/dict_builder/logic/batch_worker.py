@@ -30,6 +30,44 @@ def process_data(data_str: str, compress: bool) -> str | bytes:
     if compress: return zlib.compress(data_str.encode('utf-8'))
     return data_str
 
+def _generate_inflection_map(stem: str, template_data: List) -> dict:
+    """
+    Generate a map of inflection forms to their grammatical descriptions.
+    Returns: Dict[form_str, List[grammatical_descriptions]]
+    """
+    if not stem or not template_data or stem.startswith("!") or stem.startswith("-"):
+        return {}
+    
+    inf_map = {} # Dict[form, Set[meta]]
+    
+    try:
+        # Skip header row (index 0)
+        for row in template_data[1:]:
+            if not row: continue
+            
+            # Row structure: [Label, [Suf1], [Meta1], [Suf2], [Meta2], ...]
+            # Start from index 1, step 2 to get Suffixes. Metadata is at i+1.
+            for i in range(1, len(row), 2):
+                if i+1 >= len(row): break 
+                
+                suffixes = row[i]
+                metadata = row[i+1] # List of strings e.g. ["masc nom sg"]
+                
+                meta_desc = metadata[0] if metadata else ""
+                if not meta_desc: continue
+
+                for sfx in suffixes:
+                    form = f"{stem}{sfx}" if sfx else stem
+                    if form not in inf_map:
+                        inf_map[form] = set()
+                    inf_map[form].add(meta_desc)
+                    
+    except Exception:
+        pass
+        
+    # Convert sets to sorted lists
+    return {k: sorted(list(v)) for k, v in inf_map.items()}
+
 def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Optional[Set[str]]) -> Tuple[List, List]:
     renderer = DpdRenderer(config)
     session = get_db_session(config.DPD_DB_PATH)
@@ -38,7 +76,7 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
     try:
         headwords = (
             session.query(DpdHeadword)
-            .options(joinedload(DpdHeadword.rt))
+            .options(joinedload(DpdHeadword.rt), joinedload(DpdHeadword.it)) # [UPDATE] Load InflectionTemplates
             .filter(DpdHeadword.id.in_(ids))
             .all()
         )
@@ -50,7 +88,6 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
             example_json = renderer.extract_example_json(i) if not config.is_tiny_mode else None
             
             # Prepare Tuple for Insert
-            # Schema: id, headword, headword_clean, pos, meaning, construction, degree, meaning_lit, plus_case, grammar_json, example_json
             entries_data.append((
                 i.id, 
                 i.lemma_1, 
@@ -65,12 +102,28 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
                 process_data(example_json, config.USE_COMPRESSION)
             ))
             
-            lookups_data.append((i.lemma_clean, i.id, 1))
+            # [UPDATE] Inflection Map Generation
+            inflection_map = {}
+            if i.it and i.stem:
+                 inflection_map = _generate_inflection_map(i.stem, i.it.inflection_template_unpack)
+
+            # Headword Lookup
+            # Check if headword itself has mapping (e.g. nom sg)
+            headword_map = inflection_map.get(i.lemma_clean)
+            headword_json = json.dumps(headword_map, ensure_ascii=False) if headword_map else None
+            lookups_data.append((i.lemma_clean, i.id, 1, headword_json))
+            
             unique_infs = set(i.inflections_list_all)
             for inf in unique_infs:
                 if not inf or inf == i.lemma_clean: continue
                 if target_set is not None and inf not in target_set: continue
-                lookups_data.append((inf, i.id, 1))
+                
+                # Get map for this form
+                form_map = inflection_map.get(inf)
+                form_json = json.dumps(form_map, ensure_ascii=False) if form_map else None
+                
+                lookups_data.append((inf, i.id, 1, form_json))
+                
     except Exception as e:
         print(f"[red]Error in entries worker: {e}")
     finally:

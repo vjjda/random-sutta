@@ -183,13 +183,15 @@ class LookupSystemBuilder:
                 {col_root_extras},
                 {col_headword_clean},
                 k.priority,
-                (k.key = (SELECT term FROM params)) AS is_exact,
-                {col_has_word}
+                {col_is_exact},
+                {col_has_word},
+                l.inflection_map
             FROM all_keys k
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
             LEFT JOIN deconstructions d ON k.key = d.word AND k.type = -1
             LEFT JOIN grammar_notes gn ON k.key = gn.key AND k.type = -2
+            LEFT JOIN lookups l ON k.key = l.key AND k.target_id = l.target_id AND k.type = l.type
             ORDER BY 
                 k.priority ASC, 
                 is_exact DESC,

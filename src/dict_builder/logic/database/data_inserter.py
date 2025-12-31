@@ -66,4 +66,12 @@ class DataInserter:
         self.conn.commit()
 
     def _insert_lookups(self, lookups: List[Tuple]):
-        self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
+        if not lookups:
+            return
+        
+        # Check dimensionality of the first item
+        first_item = lookups[0]
+        if len(first_item) == 4:
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, type, inflection_map) VALUES (?, ?, ?, ?)", lookups)
+        else:
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
