@@ -313,7 +313,11 @@ details[open] .dpd-detail-icon {
 .dpd-inflection-info {
     color: var(--text-pali);
     font-size: 0.75em;
+<<<<<<< HEAD
     font-weight: 500;
+=======
+    font-weight: 350;
+>>>>>>> refs/remotes/origin/main
     text-transform: lowercase;
     display: flex;
     flex-wrap: wrap;
