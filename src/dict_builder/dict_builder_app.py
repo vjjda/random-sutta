@@ -14,7 +14,6 @@ from .tools.db_packager import DbPackager
 
 from .logic.batch_worker import (
     process_batch_worker, 
-    process_grammar_notes_worker, 
     decon_worker_wrapper, 
     roots_worker_wrapper
 )
@@ -173,36 +172,7 @@ class DictBuilder:
                 config=self.config 
             )
 
-            # --- PHASE 3: GRAMMAR NOTES ---
-            logger.info("\n[green]Processing Grammar Notes (Parallel)...")
-            grammar_keys = [r.lookup_key for r in self.session.query(Lookup.lookup_key).filter(Lookup.grammar != "").all()]
-            
-            if target_set is not None:
-                original_grammar_count = len(grammar_keys)
-                grammar_keys = [k for k in grammar_keys if k in target_set]
-                logger.info(f"[cyan]Filtered grammar notes: {original_grammar_count} -> {len(grammar_keys)}")
-
-            logger.info("[yellow]Sorting Grammar Note keys (Pali Order)...[/yellow]")
-            grammar_keys.sort(key=pali_sort_key)
-
-            GRAMMAR_BATCH_SIZE = self.config.BATCH_SIZE_GRAMMAR
-            grammar_chunks = [grammar_keys[i : i + GRAMMAR_BATCH_SIZE] for i in range(0, len(grammar_keys), GRAMMAR_BATCH_SIZE)]
-            
-            def grammar_handler(result):
-                grammar_batch = result
-                self.output_db.insert_grammar_notes(grammar_batch)
-                return len(grammar_batch)
-                
-            self.processor.run_safe(
-                worker_func=process_grammar_notes_worker,
-                chunks=grammar_chunks,
-                label="grammar notes",
-                total_items=len(grammar_keys),
-                result_handler=grammar_handler,
-                config=self.config
-            )
-
-            # --- PHASE 4: ROOTS ---
+            # --- PHASE 3: ROOTS ---
             logger.info("\n[green]Processing Roots (Parallel)...")
             root_keys = [r.root for r in self.session.query(DpdRoot.root).all()]
             
@@ -232,10 +202,10 @@ class DictBuilder:
                 config=self.config
             )
 
-            # --- PHASE 5: CLEANUP & FINAL SORT ---
+            # --- PHASE 4: CLEANUP & FINAL SORT ---
             self.output_db.close() 
             
-            # --- PHASE 6: PACKAGING ---
+            # --- PHASE 5: PACKAGING ---
             if self.config.export_web:
                 logger.info("\n[green]Packaging Database for Web...[/green]")
                 if DbPackager.pack_database(self.config.output_path, self.config.WEB_OUTPUT_DIR):

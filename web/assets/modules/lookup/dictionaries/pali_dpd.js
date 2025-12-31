@@ -94,7 +94,6 @@ export const PaliDPD = {
                     
                     keyMap: this._keyMap,
                     is_deconstruction: (row.type === -1),
-                    is_grammar: (row.type === -2),
                     is_exact: row.is_exact,
                     has_word: row.has_word
                 });

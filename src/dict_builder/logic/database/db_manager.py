@@ -65,8 +65,6 @@ class OutputDatabase:
         if self.inserter: self.inserter.insert_deconstructions(deconstructions, lookups)
     def insert_roots(self, roots, lookups):
         if self.inserter: self.inserter.insert_roots(roots, lookups)
-    def insert_grammar_notes(self, grammar_batch):
-        if self.inserter: self.inserter.insert_grammar_notes(grammar_batch)
 
     # --- Logic Operations ---
 

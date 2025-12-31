@@ -45,7 +45,6 @@ class LookupSystemBuilder:
                     WHEN k.type = -1 THEN k.key 
                     WHEN k.type = 1 THEN e.headword
                     WHEN k.type = 0 THEN r.root
-                    WHEN k.type = -2 THEN k.key
                     ELSE k.key
                 END AS headword
             """
@@ -68,7 +67,6 @@ class LookupSystemBuilder:
                     WHEN k.type = 1 THEN e.meaning 
                     WHEN k.type = 0 THEN r.root_meaning 
                     WHEN k.type = -1 THEN d.components
-                    WHEN k.type = -2 THEN gn.grammar_pack
                     ELSE NULL 
                 END AS meaning
             """
@@ -126,21 +124,6 @@ class LookupSystemBuilder:
             )
             """
 
-            # 2. Grammar Notes (Priority 0)
-            cte_grammar = """
-            keys_grammar AS (
-                SELECT 
-                    key, 
-                    0 as target_id, 
-                    -2 as type,
-                    0 as priority,
-                    0 as rank
-                FROM grammar_notes, params
-                WHERE key = params.term
-                LIMIT 1
-            )
-            """
-
             # 3. Main Search (Priority 1) - Uses FTS
             cte_main = """
             keys_main AS (
@@ -158,8 +141,6 @@ class LookupSystemBuilder:
             all_keys AS (
                 SELECT * FROM keys_decon
                 UNION ALL
-                SELECT * FROM keys_grammar
-                UNION ALL
                 SELECT * FROM keys_main
             )
             """
@@ -171,7 +152,6 @@ class LookupSystemBuilder:
             WITH 
                 {cte_params},
                 {cte_decon},
-                {cte_grammar},
                 {cte_main},
                 {cte_all_keys}
             SELECT 
@@ -193,7 +173,6 @@ class LookupSystemBuilder:
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
             LEFT JOIN deconstructions d ON k.key = d.word AND k.type = -1
-            LEFT JOIN grammar_notes gn ON k.key = gn.key AND k.type = -2
             LEFT JOIN lookups l ON k.key = l.key AND k.target_id = l.target_id AND k.type = l.type
             ORDER BY 
                 k.priority ASC, 

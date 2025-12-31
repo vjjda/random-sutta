@@ -59,12 +59,6 @@ class DataInserter:
             self._insert_lookups(lookups)
         self.conn.commit()
 
-    def insert_grammar_notes(self, grammar_batch: List[Tuple]) -> None:
-        if grammar_batch:
-            # [CLEANUP] Always insert into grammar_pack
-            self.cursor.executemany("INSERT INTO grammar_notes (key, grammar_pack) VALUES (?, ?)", grammar_batch)
-        self.conn.commit()
-
     def _insert_lookups(self, lookups: List[Tuple]):
         if not lookups:
             return

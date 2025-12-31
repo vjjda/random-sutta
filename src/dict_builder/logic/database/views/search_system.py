@@ -62,7 +62,6 @@ class SearchSystemBuilder:
                     WHEN k.type = 1 THEN e.meaning 
                     WHEN k.type = 0 THEN r.root_meaning 
                     WHEN k.type = -1 THEN d.components
-                    WHEN k.type = -2 THEN gn.grammar_pack
                     ELSE NULL 
                 END AS meaning
             """
@@ -114,21 +113,6 @@ class SearchSystemBuilder:
             )
             """
 
-            # 2. Grammar Notes (Priority 0)
-            cte_grammar = """
-            keys_grammar AS (
-                SELECT 
-                    key, 
-                    0 AS target_id, 
-                    -2 AS type,
-                    0 AS rank,
-                    0 AS priority
-                FROM grammar_notes, input_param
-                WHERE key = input_param.term
-                LIMIT 1
-            )
-            """
-
             # 3. Exact Match FTS (Priority 1)
             cte_exact = """
             keys_exact AS (
@@ -154,8 +138,6 @@ class SearchSystemBuilder:
             cte_all_keys = """
             all_keys AS (
                 SELECT * FROM keys_decon
-                UNION ALL
-                SELECT * FROM keys_grammar
                 UNION ALL
                 SELECT * FROM keys_exact
                 UNION ALL
@@ -184,7 +166,6 @@ class SearchSystemBuilder:
             WITH 
                 {cte_params},
                 {cte_decon},
-                {cte_grammar},
                 {cte_exact},
                 {cte_prefix},
                 {cte_all_keys},
@@ -205,7 +186,6 @@ class SearchSystemBuilder:
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
             LEFT JOIN deconstructions d ON k.key = d.word AND k.type = -1
-            LEFT JOIN grammar_notes gn ON k.key = gn.key AND k.type = -2
             LEFT JOIN lookups l ON k.key = l.key AND k.target_id = l.target_id AND k.type = l.type
             ORDER BY k.priority ASC, is_exact DESC, length(k.key) ASC, k.rank;
             """

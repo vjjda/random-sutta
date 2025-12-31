@@ -66,10 +66,6 @@ class SchemaManager:
                 sanskrit_root_meaning TEXT
             );
         """)
-        
-        # Grammar Notes Table
-        # [CLEANUP] Luôn dùng grammar_pack (JSON)
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS grammar_notes (key TEXT PRIMARY KEY, grammar_pack TEXT);")
 
     def _create_fts_and_triggers(self):
         self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
@@ -99,16 +95,12 @@ class SchemaManager:
         self.cursor.executemany("INSERT OR IGNORE INTO json_keys (abbr_key, full_key) VALUES (?, ?)", swapped_list)
 
         # [UPDATE] New Type Mappings
-        # 0=roots, 1=entries, -1=deconstructions, -2=grammar_notes
+        # 0=roots, 1=entries, -1=deconstructions
         types = [
             (0, "roots"), 
             (1, "entries"),
-            (-1, "deconstructions"),
-            (-2, "grammar_notes")
+            (-1, "deconstructions")
         ]
         self.cursor.executemany("INSERT OR IGNORE INTO table_types (type, table_name) VALUES (?, ?)", types)
-
-        grammar_schema = '[["headword", "pos", [["g1", "g2", "g3"]]]]'
-        self.cursor.execute("INSERT OR IGNORE INTO pack_schemas (table_name, column_name, schema) VALUES (?, ?, ?)", ("grammar_notes", "grammar_pack", grammar_schema))
         
         logger.info("Schema initialized.")

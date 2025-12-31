@@ -2,7 +2,6 @@
 
 import { PaliDeconRenderer } from './pali_decon_renderer.js';
 import { PaliEntryRenderer } from './pali_entry_renderer.js';
-import { PaliGrammarRenderer } from './pali_grammar_renderer.js';
 import { PaliRootRenderer } from './pali_root_renderer.js';
 
 export const PaliMainRenderer = {
@@ -12,16 +11,6 @@ export const PaliMainRenderer = {
         }
         
         let dictHtml = '<div class="dpd-result-list">';
-        let matchedGrammarNote = null;
-        let keyMapRef = null;
-
-        // 1. Separate Grammar Note (Type -2)
-        const grammarItem = dataList.find(d => d.is_grammar === true);
-        
-        if (grammarItem) {
-            matchedGrammarNote = grammarItem.meaning;
-            keyMapRef = grammarItem.keyMap;
-        }
 
         // 2. Bucketing Logic
         const exactGroup = [];
@@ -29,13 +18,13 @@ export const PaliMainRenderer = {
         const similarGroup = [];
 
         dataList.forEach((data) => {
-            if (data.is_grammar) return; // Skip
-
+            // Prioritize: Exact -> Phrase (Has Word) -> Similar
             if (data.is_exact) {
                 exactGroup.push(data);
             } else if (data.has_word) {
                 phraseGroup.push(data);
-            } else {
+            }
+            else {
                 similarGroup.push(data);
             }
         });
@@ -62,16 +51,7 @@ export const PaliMainRenderer = {
         
         dictHtml += '</div>';
 
-        // Prepare Grammar Note HTML
-        let noteHtml = "";
-        if (matchedGrammarNote) {
-            const gnArr = this._parse(matchedGrammarNote);
-            if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
-                 noteHtml = PaliGrammarRenderer.renderNotes(gnArr);
-            }
-        }
-
-        return { dictHtml, noteHtml };
+        return { dictHtml, noteHtml: "" };
     },
 
     render(data, isOpen = false, isSimilar = false) {

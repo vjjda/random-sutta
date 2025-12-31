@@ -25,6 +25,12 @@ def _grammar_line_sort_key(line: List[str]) -> Tuple:
     weights = [GRAMMAR_WEIGHTS.get(token, 999) for token in line]
     return tuple(weights) + (tuple(line),)
 
+def _inflection_str_sort_key(info_str: str) -> Tuple:
+    """Sort key for inflection strings (e.g. 'masc nom sg') using GRAMMAR_WEIGHTS."""
+    tokens = info_str.split()
+    weights = [GRAMMAR_WEIGHTS.get(token, 999) for token in tokens]
+    return tuple(weights) + (info_str,)
+
 def process_data(data_str: str, compress: bool) -> str | bytes:
     if not data_str: return None
     if compress: return zlib.compress(data_str.encode('utf-8'))
@@ -73,8 +79,8 @@ def _generate_inflection_map(stem: str, template_data: List) -> dict:
     except Exception:
         pass
         
-    # Convert sets to sorted lists
-    return {k: sorted(list(v)) for k, v in inf_map.items()}
+    # Convert sets to sorted lists using grammatical weights
+    return {k: sorted(list(v), key=_inflection_str_sort_key) for k, v in inf_map.items()}
 
 def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Optional[Set[str]]) -> Tuple[List, List]:
     renderer = DpdRenderer(config)
@@ -173,47 +179,6 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
     decon_batch.sort(key=lambda x: pali_sort_key(x[0]))
     
     return decon_batch, decon_lookup_batch
-
-def process_grammar_notes_worker(keys: List[str], config: BuilderConfig) -> List[tuple]:
-    renderer = DpdRenderer(config)
-    session = get_db_session(config.DPD_DB_PATH)
-    grammar_batch = []
-    try:
-        items = session.query(Lookup).filter(Lookup.lookup_key.in_(keys)).all()
-        for item in items:
-            grammar_list = item.grammar_unpack_list
-            if not grammar_list: continue
-            
-            # [CLEANUP] Luôn dùng Logic Grouped JSON Pack
-            grammar_list.sort(key=lambda x: (len(x[0]), pali_sort_key(x[0]), x[1]))
-            packed_data = []
-            current_group = None
-            current_h = None
-            current_p = None
-            
-            for h, p, gr_str in grammar_list:
-                components = gr_str.split()
-                if h == current_h and p == current_p:
-                    current_group[2].append(components)
-                else:
-                    current_h = h
-                    current_p = p
-                    current_group = [h, p, [components]]
-                    packed_data.append(current_group)
-            
-            for group in packed_data:
-                group[2].sort(key=_grammar_line_sort_key)
-
-            json_str = json.dumps(packed_data, ensure_ascii=False, separators=(',', ':'))
-            content_val = process_data(json_str, config.USE_COMPRESSION)
-                
-            grammar_batch.append((item.lookup_key, content_val))
-    except Exception as e:
-        print(f"[red]Error in grammar notes worker: {e}")
-    finally:
-        session.close()
-    grammar_batch.sort(key=lambda x: pali_sort_key(x[0]))
-    return grammar_batch
 
 def process_roots_worker(root_keys: List[str], start_id: int, config: BuilderConfig) -> Tuple[List, List]:
     renderer = DpdRenderer(config)
