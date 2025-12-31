@@ -47,7 +47,7 @@ export const PaliMainRenderer = {
 
         // Phrases / Compounds
         if (phraseGroup.length > 0) {
-            dictHtml += `<div class="dpd-group-header">Phrases containing "${searchTerm}"</div>`;
+            dictHtml += `<div class="dpd-group-header">Phrases</div>`;
             phraseGroup.forEach(d => dictHtml += this.render(d));
         }
 
