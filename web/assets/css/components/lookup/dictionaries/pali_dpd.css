@@ -311,9 +311,9 @@ details[open] .dpd-detail-icon {
 
 /* --- INFLECTION INFO --- */
 .dpd-inflection-info {
-    color: var(--text-pali); 
+    color: var(--text-pali);
     font-size: 0.75em;
-    font-weight: 600;
+    font-weight: 350;
     text-transform: lowercase;
     display: flex;
     flex-wrap: wrap;
@@ -327,13 +327,13 @@ details[open] .dpd-detail-icon {
     white-space: nowrap;
 }
 
-.dpd-separator {
+.dpd-inflection-item:not(:last-child):after {
+    content: '|';
     color: var(--text-light);
     opacity: 0.5;
     font-weight: 300;
-    margin: 0 6px;
+    margin: 0 8px;
     font-size: 0.9em;
-    vertical-align: 1px;
 }
 
 .dpd-separator-dot {
