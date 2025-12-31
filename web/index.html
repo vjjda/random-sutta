@@ -537,5 +537,17 @@
         console.log("Service Worker skipped (file:// protocol or unsupported)");
       }
     </script>
+    <script>
+      // [AUTO-UPDATE] Force Reload when Service Worker updates
+      if ('serviceWorker' in navigator) {
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          console.log("[App] Service Worker updated. Reloading...");
+          window.location.reload();
+        });
+      }
+    </script>
   </body>
 </html>
