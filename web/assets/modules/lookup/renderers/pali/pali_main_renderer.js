@@ -15,36 +15,57 @@ export const PaliMainRenderer = {
         let matchedGrammarNote = null;
         let keyMapRef = null;
 
-        // 1. Separate Grammar Note (Type -2) from Content
+        // 1. Separate Grammar Note (Type -2)
         const grammarItem = dataList.find(d => d.is_grammar === true);
         
-        // Exact Match Logic for Grammar Note Activation
-        // Note: SQL View already enforces 'key = term' for Type -2. 
-        // So if grammarItem exists, it is the correct one.
         if (grammarItem) {
             matchedGrammarNote = grammarItem.meaning;
             keyMapRef = grammarItem.keyMap;
         }
 
-        // 2. Render Content Items (Exclude Grammar Item)
-        dataList.forEach((data) => {
-            if (data.is_grammar) return; // Skip Grammar Item
+        // 2. Bucketing Logic
+        const exactGroup = [];
+        const phraseGroup = [];
+        const similarGroup = [];
 
-            // Render entry
-            dictHtml += this.render(data, false);
+        dataList.forEach((data) => {
+            if (data.is_grammar) return; // Skip
+
+            if (data.is_exact) {
+                exactGroup.push(data);
+            } else if (data.has_word) {
+                phraseGroup.push(data);
+            } else {
+                similarGroup.push(data);
+            }
         });
+
+        // 3. Render Groups
+        
+        // Exact Matches
+        exactGroup.forEach(d => dictHtml += this.render(d));
+
+        // Phrases / Compounds
+        if (phraseGroup.length > 0) {
+            dictHtml += `<div class="dpd-group-header">Phrases containing "${searchTerm}"</div>`;
+            phraseGroup.forEach(d => dictHtml += this.render(d));
+        }
+
+        // Similar Words
+        if (similarGroup.length > 0) {
+            dictHtml += `<div class="dpd-group-header">See also</div>`;
+            similarGroup.forEach(d => {
+                // Pass isSimilar=true to show the matched key
+                dictHtml += this.render(d, false, true);
+            });
+        }
         
         dictHtml += '</div>';
 
-        // Prepare Grammar Note HTML separately
+        // Prepare Grammar Note HTML
         let noteHtml = "";
         if (matchedGrammarNote) {
-            const getAbbr = (fullKey) => keyMapRef && keyMapRef.fullToAbbr && keyMapRef.fullToAbbr[fullKey] 
-                ? keyMapRef.fullToAbbr[fullKey] 
-                : fullKey;
-            
             const gnArr = this._parse(matchedGrammarNote);
-            
             if (gnArr && Array.isArray(gnArr) && gnArr.length > 0) {
                  noteHtml = PaliGrammarRenderer.renderNotes(gnArr);
             }
@@ -53,37 +74,30 @@ export const PaliMainRenderer = {
         return { dictHtml, noteHtml };
     },
 
-    render(data, isOpen = false) {
+    render(data, isOpen = false, isSimilar = false) {
         if (!data) return "";
         const { lookup_type, lookup_key, entry_grammar, entry_example, keyMap } = data;
         
-        // Helper: Data Lookup (Full -> Abbr)
         const getAbbr = (fullKey) => keyMap && keyMap.fullToAbbr && keyMap.fullToAbbr[fullKey] 
             ? keyMap.fullToAbbr[fullKey] 
             : fullKey;
 
-        // Helper: Label Display (Abbr -> Full)
         const getLabel = (abbrKey) => keyMap && keyMap.abbrToFull && keyMap.abbrToFull[abbrKey]
             ? keyMap.abbrToFull[abbrKey]
             : abbrKey;
         
         let html = '<div class="dpd-result">';
         
-        // 1. MAIN CONTENT based on TYPE
-        
         if (lookup_type === -1 || (data.is_deconstruction === true)) {
-            // Deconstruction: components are now in 'meaning' field
             html += PaliDeconRenderer.render(lookup_key, data.meaning);
             
         } else if (lookup_type === 1) {
-            // Entry: Pass Flattened Data Object
             const gramObj = this._parse(entry_grammar);
             const exArr = this._parse(entry_example);
             
-            html += PaliEntryRenderer.render(data, gramObj, exArr, getAbbr, getLabel, data.headword, isOpen);
+            html += PaliEntryRenderer.render(data, gramObj, exArr, getAbbr, getLabel, data.headword, isOpen, isSimilar);
             
         } else if (lookup_type === 0) {
-            // Root
             html += PaliRootRenderer.render(data, getLabel);
         }
         
@@ -93,7 +107,6 @@ export const PaliMainRenderer = {
 
     _parse(str) {
         if (!str) return null;
-        // Safety: If it's already an object/array, return it directly.
         if (typeof str === 'object') return str;
         try {
             return JSON.parse(str);

@@ -319,3 +319,25 @@ details[open] .dpd-detail-icon {
     margin-bottom: 2px;
     opacity: 0.85;
 }
+
+/* --- GROUP HEADERS --- */
+.dpd-group-header {
+    font-size: 0.8em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin: 16px 0 8px 0;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 4px;
+}
+
+/* --- MATCHED KEY --- */
+.dpd-matched-key {
+    color: var(--text-main);
+    opacity: 0.9;
+}
+
+.dpd-matched-key b {
+    color: var(--primary-color);
+}

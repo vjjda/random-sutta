@@ -1,7 +1,7 @@
 // Path: web/assets/modules/lookup/renderers/pali/pali_entry_renderer.js
 
 export const PaliEntryRenderer = {
-    render(data, gram, examples, getAbbr, getLabel, headword, isOpen) {
+    render(data, gram, examples, getAbbr, getLabel, headword, isOpen, isSimilar = false) {
         // Read directly from flattened object
         const pos = data.pos || '';
         const meaning = data.meaning || '';
@@ -10,8 +10,8 @@ export const PaliEntryRenderer = {
         const construction = data.construction || '';
         const degree = data.degree || '';
         
-        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
-        let line0 = '';
+        // Parse Inflection Info
+        let inflectionText = '';
         if (data.inflection_map) {
             try {
                 const mapData = typeof data.inflection_map === 'string' 
@@ -19,9 +19,28 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    line0 = `<div class="dpd-inflection-info">${mapData.join(' | ')}</div>`;
+                    inflectionText = mapData.join(' | ');
                 }
             } catch (e) { }
+        }
+
+        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
+        let line0 = '';
+        
+        if (isSimilar) {
+            // Similar Group: Show Matched Key
+            const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
+            
+            if (inflectionText) {
+                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml} • ${inflectionText}</div>`;
+            } else {
+                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}</div>`;
+            }
+        } else {
+            // Standard Group: Just Inflection Info
+            if (inflectionText) {
+                line0 = `<div class="dpd-inflection-info">${inflectionText}</div>`;
+            }
         }
         
         // Check if there is content to expand
