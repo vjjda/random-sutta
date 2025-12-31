@@ -29,10 +29,6 @@ class LookupSystemBuilder:
             self.cursor.execute("INSERT INTO _lookup_params (term) VALUES ('')")
 
             # 2. Xây dựng View
-            # Logic:
-            # - Priority 0: Deconstruction (từ bảng deconstructions) -> Type -1
-            # - Priority 1: Exact Match (từ view_grand_lookups qua lookups_fts) -> Type 0/1
-            
             suffix = "json"
             if self.config.is_tiny_mode:
                 grammar_field = "NULL"
@@ -41,13 +37,33 @@ class LookupSystemBuilder:
                 grammar_field = f"e.grammar_{suffix}"
                 example_field = f"e.example_{suffix}"
 
-            # 1. Unified Columns (Entry + Root + Decon)
+            # --- COLUMN DEFINITIONS (Logic for SELECT) ---
             
-            # POS
-            pos_field = "CASE WHEN k.type = 1 THEN e.pos WHEN k.type = 0 THEN 'root' ELSE NULL END AS pos"
-            
-            # Meaning
-            meaning_field = """
+            # Headword selection based on type
+            col_headword = """
+                CASE 
+                    WHEN k.type = -1 THEN k.key 
+                    WHEN k.type = 1 THEN e.headword
+                    WHEN k.type = 0 THEN r.root
+                    WHEN k.type = -2 THEN k.key
+                    ELSE k.key
+                END AS headword
+            """
+
+            # Headword Clean (for sorting/matching)
+            col_headword_clean = """
+                CASE 
+                    WHEN k.type = 1 THEN e.headword_clean
+                    WHEN k.type = 0 THEN r.root_clean
+                    ELSE NULL
+                END AS headword_clean
+            """
+
+            # Part of Speech
+            col_pos = "CASE WHEN k.type = 1 THEN e.pos WHEN k.type = 0 THEN 'root' ELSE NULL END AS pos"
+
+            # Meaning content
+            col_meaning = """
                 CASE 
                     WHEN k.type = 1 THEN e.meaning 
                     WHEN k.type = 0 THEN r.root_meaning 
@@ -56,15 +72,15 @@ class LookupSystemBuilder:
                     ELSE NULL 
                 END AS meaning
             """
-            
-            # Meaning Origin
-            origin_field = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
-            
-            # Entry Cols
-            entry_cols = "e.plus_case, e.construction, e.degree"
 
-            # Root Extras
-            root_cols = """
+            # Meaning Origin (Lit meaning or Sanskrit root)
+            col_origin = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
+
+            # Entry specific columns
+            col_entry_extras = "e.plus_case, e.construction, e.degree"
+
+            # Root specific columns
+            col_root_extras = """
                 (r.root_group || ' ' || r.root_sign) AS root_info, 
                 CASE 
                     WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
@@ -73,82 +89,87 @@ class LookupSystemBuilder:
                 END AS sanskrit_info
             """
 
-            sql_view = f"""
-            CREATE VIEW view_lookup_results AS
-            WITH params AS (
-                SELECT term FROM _lookup_params LIMIT 1
-            ),
-            -- 1. Get Keys from Deconstructions (Priority 0)
+            # --- CTE DEFINITIONS (Common Table Expressions) ---
+
+            # 0. Params (Input)
+            cte_params = "params AS (SELECT term FROM _lookup_params LIMIT 1)"
+
+            # 1. Deconstructions (Priority 0)
+            cte_decon = """
             keys_decon AS (
                 SELECT 
                     word as key, 
                     0 as target_id, 
                     -1 as type,
-                    0 as priority
+                    0 as priority,
+                    0 as rank
                 FROM deconstructions, params
                 WHERE word = params.term
                 LIMIT 1
-            ),
-            -- 2. Get Keys from Main Search (Priority 1)
-            keys_main AS (
-                SELECT 
-                    key, target_id, type, 
-                    1 as priority
-                FROM lookups_fts, params
-                WHERE lookups_fts MATCH params.term
-                -- Explicitly filter Exact Match logic here on the small result set
-                -- AND key = params.term
-            ),
-            -- 3. Get Keys from Grammar Notes (Priority 0)
+            )
+            """
+
+            # 2. Grammar Notes (Priority 0)
+            cte_grammar = """
             keys_grammar AS (
                 SELECT 
                     key, 
                     0 as target_id, 
                     -2 as type,
-                    0 as priority
+                    0 as priority,
+                    0 as rank
                 FROM grammar_notes, params
                 WHERE key = params.term
                 LIMIT 1
-            ),
-            -- 4. Union Keys Only (Lightweight)
+            )
+            """
+
+            # 3. Main Search (Priority 1) - Uses FTS
+            cte_main = """
+            keys_main AS (
+                SELECT 
+                    key, target_id, type, 
+                    1 as priority,
+                    rank
+                FROM lookups_fts, params
+                WHERE lookups_fts MATCH params.term
+            )
+            """
+
+            # 4. Union All (Combine Keys)
+            cte_all_keys = """
             all_keys AS (
                 SELECT * FROM keys_decon
                 UNION ALL
-                SELECT * FROM keys_main
-                UNION ALL
                 SELECT * FROM keys_grammar
+                UNION ALL
+                SELECT * FROM keys_main
             )
-            -- 5. Hydrate Data (Join only what is needed)
+            """
+
+            # --- FINAL ASSEMBLY ---
+            
+            sql_view = f"""
+            CREATE VIEW view_lookup_results AS
+            WITH 
+                {cte_params},
+                {cte_decon},
+                {cte_grammar},
+                {cte_main},
+                {cte_all_keys}
             SELECT 
                 k.key, k.target_id, k.type,
-                -- Headword Logic
-                CASE 
-                    WHEN k.type = -1 THEN k.key 
-                    WHEN k.type = 1 THEN e.headword
-                    WHEN k.type = 0 THEN r.root
-                    WHEN k.type = -2 THEN k.key
-                    ELSE k.key
-                END AS headword,
-                
-                -- Unified Content
-                {pos_field},
-                {entry_cols}, -- plus_case, construction, degree
-                {meaning_field},
-                {origin_field}, -- meaning_origin
-                
+                {col_headword},
+                {col_pos},
+                {col_entry_extras},
+                {col_meaning},
+                {col_origin},
                 {grammar_field} AS grammar, 
                 {example_field} AS example,
-                
-                {root_cols},
-                
-                -- Headword Clean
-                CASE 
-                    WHEN k.type = 1 THEN e.headword_clean
-                    WHEN k.type = 0 THEN r.root_clean
-                    ELSE NULL
-                END AS headword_clean,
-                
-                k.priority
+                {col_root_extras},
+                {col_headword_clean},
+                k.priority,
+                (k.key = (SELECT term FROM params)) AS is_exact
             FROM all_keys k
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
@@ -156,13 +177,8 @@ class LookupSystemBuilder:
             LEFT JOIN grammar_notes gn ON k.key = gn.key AND k.type = -2
             ORDER BY 
                 k.priority ASC, 
-                (k.key = (SELECT term FROM params)) DESC,
-                (CASE 
-                    WHEN k.type = 1 THEN e.headword_clean = (SELECT term FROM params)
-                    WHEN k.type = 0 THEN r.root_clean = (SELECT term FROM params)
-                    ELSE 0 
-                END) DESC,
-                k.type DESC;
+                is_exact DESC,
+                k.rank ASC;
             """
 
             self.cursor.execute("DROP VIEW IF EXISTS view_lookup_results")

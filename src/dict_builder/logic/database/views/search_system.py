@@ -40,16 +40,24 @@ class SearchSystemBuilder:
                 grammar_field = f"e.grammar_{suffix}"
                 example_field = f"e.example_{suffix}"
 
-            # 1. Unified Columns (Entry + Root + Decon)
-            
+            # --- COLUMN DEFINITIONS ---
+
+            # Headword Logic
+            col_headword = """
+                CASE 
+                    WHEN k.type = -1 THEN k.key 
+                    WHEN k.type = 1 THEN e.headword
+                    WHEN k.type = 0 THEN r.root
+                    WHEN k.type = -2 THEN k.key
+                    ELSE k.key
+                END AS headword
+            """
+
             # POS
-            pos_field = "CASE WHEN k.type = 1 THEN e.pos WHEN k.type = 0 THEN 'root' ELSE NULL END AS pos"
+            col_pos = "CASE WHEN k.type = 1 THEN e.pos WHEN k.type = 0 THEN 'root' ELSE NULL END AS pos"
             
-            # Meaning (Entry, Root, Decon Components)
-            # For Decon (Type -1), we put components into 'meaning' field for now, or keep it separate?
-            # Let's follow Grand View logic: Entry/Root only. Decon components are usually mapped to 'definition' in legacy.
-            # Here: meaning -> e.meaning / r.root_meaning / d.components
-            meaning_field = """
+            # Meaning
+            col_meaning = """
                 CASE 
                     WHEN k.type = 1 THEN e.meaning 
                     WHEN k.type = 0 THEN r.root_meaning 
@@ -60,13 +68,13 @@ class SearchSystemBuilder:
             """
             
             # Meaning Origin
-            origin_field = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
+            col_origin = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
             
             # Entry Cols
-            entry_cols = "e.plus_case, e.construction, e.degree"
+            col_entry_extras = "e.plus_case, e.construction, e.degree"
 
             # Root Extras
-            root_cols = """
+            col_root_extras = """
                 (r.root_group || ' ' || r.root_sign) AS root_info, 
                 CASE 
                     WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
@@ -75,12 +83,24 @@ class SearchSystemBuilder:
                 END AS sanskrit_info
             """
 
-            sql_view = f"""
-            CREATE VIEW view_search_results AS
-            WITH input_param AS (
-                SELECT term, limit_exact, limit_prefix, limit_final FROM _search_params LIMIT 1
-            ),
-            -- 1. Keys from Deconstruction (Priority 0)
+            # Is Exact Logic
+            # Check if key matches input term AND matches the clean headword (for entries/roots)
+            col_is_exact = """
+                (k.key = (SELECT term FROM input_param) 
+                 AND k.key = CASE 
+                    WHEN k.type = 1 THEN e.headword_clean
+                    WHEN k.type = 0 THEN r.root_clean
+                    ELSE k.key
+                 END) AS is_exact
+            """
+
+            # --- CTE DEFINITIONS ---
+
+            # 0. Params
+            cte_params = "input_param AS (SELECT term, limit_exact, limit_prefix, limit_final FROM _search_params LIMIT 1)"
+
+            # 1. Deconstruction (Priority 0)
+            cte_decon = """
             keys_decon AS (
                 SELECT 
                     word AS key, 
@@ -91,8 +111,11 @@ class SearchSystemBuilder:
                 FROM deconstructions, input_param
                 WHERE word = input_param.term
                 LIMIT 1
-            ),
-            -- 1b. Keys from Grammar Notes (Priority 0)
+            )
+            """
+
+            # 2. Grammar Notes (Priority 0)
+            cte_grammar = """
             keys_grammar AS (
                 SELECT 
                     key, 
@@ -103,23 +126,32 @@ class SearchSystemBuilder:
                 FROM grammar_notes, input_param
                 WHERE key = input_param.term
                 LIMIT 1
-            ),
-            -- 2. Keys from Exact Match FTS (Priority 1)
+            )
+            """
+
+            # 3. Exact Match FTS (Priority 1)
+            cte_exact = """
             keys_exact AS (
                 SELECT key, target_id, type, rank, 1 AS priority
                 FROM lookups_fts, input_param
                 WHERE lookups_fts MATCH input_param.term
                 LIMIT (SELECT limit_exact FROM input_param)
-            ),
-            -- 3. Keys from Prefix Match FTS (Priority 2)
+            )
+            """
+
+            # 4. Prefix Match FTS (Priority 2)
+            cte_prefix = """
             keys_prefix AS (
                 SELECT key, target_id, type, rank, 2 AS priority
                 FROM lookups_fts, input_param
                 WHERE length(input_param.term) >= 2
                   AND lookups_fts MATCH input_param.term || '*'
                 LIMIT (SELECT limit_prefix FROM input_param)
-            ),
-            -- 4. Combine Keys
+            )
+            """
+
+            # 5. Union All Keys
+            cte_all_keys = """
             all_keys AS (
                 SELECT * FROM keys_decon
                 UNION ALL
@@ -128,8 +160,11 @@ class SearchSystemBuilder:
                 SELECT * FROM keys_exact
                 UNION ALL
                 SELECT * FROM keys_prefix
-            ),
-            -- 5. Deduplicate Keys (Best priority per target)
+            )
+            """
+
+            # 6. Unique Keys (Deduplication & Limit)
+            cte_unique_keys = """
             unique_keys AS (
                 SELECT 
                     key, target_id, type, 
@@ -140,36 +175,31 @@ class SearchSystemBuilder:
                 ORDER BY priority ASC, length(key) ASC, rank 
                 LIMIT (SELECT limit_final FROM input_param)
             )
-            -- 6. Hydrate Data (Join Last)
+            """
+
+            # --- FINAL ASSEMBLY ---
+
+            sql_view = f"""
+            CREATE VIEW view_search_results AS
+            WITH 
+                {cte_params},
+                {cte_decon},
+                {cte_grammar},
+                {cte_exact},
+                {cte_prefix},
+                {cte_all_keys},
+                {cte_unique_keys}
             SELECT 
                 k.key, k.target_id, k.type,
-                -- Headword Logic
-                CASE 
-                    WHEN k.type = -1 THEN k.key 
-                    WHEN k.type = 1 THEN e.headword
-                    WHEN k.type = 0 THEN r.root
-                    WHEN k.type = -2 THEN k.key
-                    ELSE k.key
-                END AS headword,
-                
-                -- Unified Content
-                {pos_field},
-                {entry_cols}, -- plus_case, construction, degree
-                {meaning_field},
-                {origin_field}, -- meaning_origin
-                
+                {col_headword},
+                {col_pos},
+                {col_entry_extras},
+                {col_meaning},
+                {col_origin},
                 {grammar_field} AS grammar,
                 {example_field} AS example,
-                
-                {root_cols},
-                
-                -- Is Exact Logic
-                (k.key = (SELECT term FROM input_param) 
-                 AND k.key = CASE 
-                    WHEN k.type = 1 THEN e.headword_clean
-                    WHEN k.type = 0 THEN r.root_clean
-                    ELSE k.key
-                 END) AS is_exact
+                {col_root_extras},
+                {col_is_exact}
             FROM unique_keys k
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
