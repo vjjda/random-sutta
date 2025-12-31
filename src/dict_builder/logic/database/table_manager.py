@@ -17,8 +17,8 @@ class TableManager:
         """
         logger.info("[yellow]Re-sorting 'lookups' table (Python Pali Sort)...[/yellow]")
         try:
-            # 1. Fetch ALL lookups
-            self.cursor.execute("SELECT key, target_id, type FROM lookups")
+            # 1. Fetch ALL lookups (including inflection_map)
+            self.cursor.execute("SELECT key, target_id, type, inflection_map FROM lookups")
             rows = self.cursor.fetchall()
             
             # 2. Sort using Python Pali Key
@@ -34,9 +34,10 @@ class TableManager:
             
             # 5. Re-insert
             logger.info(f"   Inserting {len(rows)} sorted rows into 'lookups'...")
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", rows)
+            self.cursor.executemany("INSERT INTO lookups (key, target_id, type, inflection_map) VALUES (?, ?, ?, ?)", rows)
             
             # 6. Populate FTS (Bulk insert)
+            # FTS only needs key, target_id, type
             logger.info("   Populating 'lookups_fts'...")
             self.cursor.execute("INSERT INTO lookups_fts (key, target_id, type) SELECT key, target_id, type FROM lookups")
             
