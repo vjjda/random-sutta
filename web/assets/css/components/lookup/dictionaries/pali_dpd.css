@@ -315,11 +315,12 @@ details[open] .dpd-detail-icon {
     font-size: 0.75em;
     font-weight: 600;
     text-transform: lowercase;
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     margin-bottom: 2px;
     opacity: 0.85;
-    white-space: normal; /* Allow wrapping */
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .dpd-inflection-item {
