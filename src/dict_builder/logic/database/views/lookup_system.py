@@ -89,6 +89,9 @@ class LookupSystemBuilder:
                 END AS sanskrit_info
             """
 
+            # Is Exact Logic
+            col_is_exact = "(k.key = (SELECT term FROM params)) AS is_exact"
+
             # Contains Whole Word Logic
             # Prioritize keys containing the exact search term as a distinct word.
             # Covers: 'na hi' (start), 'hi na' (end), 'x na y' (middle).
