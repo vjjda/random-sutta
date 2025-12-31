@@ -318,7 +318,7 @@ details[open] .dpd-detail-icon {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    margin-bottom: 2px;
+    margin-bottom: 0px;
     opacity: 0.85;
     line-height: 1.5;
 }
