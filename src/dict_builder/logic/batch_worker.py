@@ -35,6 +35,7 @@ def _generate_inflection_map(stem: str, template_data: List) -> dict:
     Generate a map of inflection forms to their grammatical descriptions.
     Returns: Dict[form_str, List[grammatical_descriptions]]
     """
+    # Exclude non-inflected stems, but ALLOW "*" (irregular stems)
     if not stem or not template_data or stem.startswith("!") or stem.startswith("-"):
         return {}
     
@@ -57,7 +58,14 @@ def _generate_inflection_map(stem: str, template_data: List) -> dict:
                 if not meta_desc: continue
 
                 for sfx in suffixes:
-                    form = f"{stem}{sfx}" if sfx else stem
+                    # [UPDATE] Irregular Stem Logic
+                    if stem == "*":
+                        form = sfx # In irregular templates, suffix is the full form
+                    else:
+                        form = f"{stem}{sfx}" if sfx else stem
+                        
+                    if not form: continue
+                    
                     if form not in inf_map:
                         inf_map[form] = set()
                     inf_map[form].add(meta_desc)
