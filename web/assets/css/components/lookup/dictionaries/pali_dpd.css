@@ -308,3 +308,17 @@ details[open] .dpd-detail-icon {
 .dpd-deconstruction-table tr td:last-child {
     text-align: left;
 }
+
+/* --- INFLECTION INFO --- */
+.dpd-inflection-info {
+    color: var(--text-pali); 
+    background-color: var(--bg-hover);
+    font-size: 0.8em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-right: 6px;
+    font-weight: 500;
+    text-transform: lowercase;
+    display: inline-block;
+    vertical-align: middle;
+}

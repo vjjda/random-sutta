@@ -78,6 +78,9 @@ export const PaliDPD = {
                     meaning_lit: row.meaning_origin,
                     plus_case: row.plus_case,
                     
+                    // Inflection Map (Grammatical Context)
+                    inflection_map: row.inflection_map,
+
                     // Legacy JSON Bags
                     entry_grammar: row.grammar,
                     entry_example: row.example,

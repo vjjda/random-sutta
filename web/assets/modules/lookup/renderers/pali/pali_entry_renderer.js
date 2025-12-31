@@ -10,6 +10,24 @@ export const PaliEntryRenderer = {
         const construction = data.construction || '';
         const degree = data.degree || '';
         
+        // Inflection Map (Grammatical Context)
+        let inflectionHtml = '';
+        if (data.inflection_map) {
+            try {
+                // Handle potentially double-serialized JSON or direct object
+                const mapData = typeof data.inflection_map === 'string' 
+                    ? JSON.parse(data.inflection_map) 
+                    : data.inflection_map;
+                    
+                if (Array.isArray(mapData) && mapData.length > 0) {
+                    // Display e.g. "masc nom sg"
+                    inflectionHtml = `<span class="dpd-inflection-info">${mapData.join(' / ')}</span>`;
+                }
+            } catch (e) {
+                // Silent fail
+            }
+        }
+        
         // Check if there is content to expand
         const hasDetails = (gram && Object.keys(gram).length > 0) || (examples && Array.isArray(examples) && examples.length > 0);
         
@@ -21,12 +39,13 @@ export const PaliEntryRenderer = {
 
         let html = `<${tag} class="${classes}" ${openAttr}>`;
         
-        // Line 1: Lemma (Left) --- POS + Case + Degree (Right)
+        // Line 1: Lemma (Left) --- POS + Inflection + Case + Degree (Right)
         let line1 = `
             <div class="dpd-summary-line-1">
                 <span class="dpd-lemma">${headword}</span>
                 <span class="dpd-pos-group">
                     <span class="dpd-pos">${pos}</span>
+                    ${inflectionHtml}
                     ${plusCase ? `<span class="dpd-plus-case">(${plusCase})</span>` : ''}
                     ${degree ? `<span class="dpd-degree">${degree}</span>` : ''}
                 </span>
