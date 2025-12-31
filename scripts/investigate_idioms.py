@@ -1,3 +1,4 @@
+# Path: scripts/investigate_idioms.py
 import sqlite3
 import json
 import os

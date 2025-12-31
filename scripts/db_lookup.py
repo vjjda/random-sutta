@@ -1,3 +1,4 @@
+# Path: scripts/db_lookup.py
 import argparse
 import sqlite3
 import sys

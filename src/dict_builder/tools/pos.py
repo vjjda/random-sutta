@@ -1,4 +1,4 @@
-# Path: src/dict_builder/source_tools/pos.py
+# Path: src/dict_builder/tools/pos.py
 """
 List of Pali Parts of Speech.
 """

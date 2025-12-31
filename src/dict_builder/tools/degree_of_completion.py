@@ -1,4 +1,4 @@
-# Path: src/dict_builder/source_tools/degree_of_completion.py
+# Path: src/dict_builder/tools/degree_of_completion.py
 
 def degree_of_completion(i, html=True):
     """

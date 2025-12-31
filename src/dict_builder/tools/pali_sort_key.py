@@ -1,4 +1,4 @@
-# Path: src/dict_builder/source_tools/pali_sort_key.py
+# Path: src/dict_builder/tools/pali_sort_key.py
 from .pali_alphabet import pali_alphabet
 
 # --- PALI CONFIG ---

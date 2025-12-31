@@ -1,4 +1,4 @@
-# Path: src/dict_builder/source_tools/meaning_construction.py
+# Path: src/dict_builder/tools/meaning_construction.py
 import re
 
 def make_meaning_combo(i) -> str:

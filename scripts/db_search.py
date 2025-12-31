@@ -1,3 +1,4 @@
+# Path: scripts/db_search.py
 import argparse
 import sqlite3
 import sys

@@ -1,3 +1,4 @@
+# Path: scripts/analyze_json_keys.py
 import sqlite3
 import json
 import os

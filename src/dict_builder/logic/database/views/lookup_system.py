@@ -1,3 +1,4 @@
+# Path: src/dict_builder/logic/database/views/lookup_system.py
 import logging
 from sqlite3 import Cursor
 from ....builder_config import BuilderConfig

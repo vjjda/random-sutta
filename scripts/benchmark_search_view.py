@@ -1,3 +1,4 @@
+# Path: scripts/benchmark_search_view.py
 import sqlite3
 import time
 import os

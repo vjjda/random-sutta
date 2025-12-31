@@ -1,3 +1,4 @@
+# Path: scripts/benchmark_compare_views.py
 import sqlite3
 import time
 import os
