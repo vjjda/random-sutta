@@ -89,6 +89,20 @@ class LookupSystemBuilder:
                 END AS sanskrit_info
             """
 
+            # Contains Whole Word Logic
+            # Prioritize keys containing the exact search term as a distinct word.
+            # Covers: 'na hi' (start), 'hi na' (end), 'x na y' (middle).
+            # Excludes: 'ṅa' (diacritic mismatch), 'banana' (substring mismatch).
+            term_sel = "(SELECT term FROM params)"
+            col_has_word = f"""
+                (
+                    k.key = {term_sel} OR
+                    k.key LIKE {term_sel} || ' %' OR
+                    k.key LIKE '% ' || {term_sel} OR
+                    k.key LIKE '% ' || {term_sel} || ' %'
+                ) AS has_word
+            """
+
             # --- CTE DEFINITIONS (Common Table Expressions) ---
 
             # 0. Params (Input)
@@ -169,7 +183,8 @@ class LookupSystemBuilder:
                 {col_root_extras},
                 {col_headword_clean},
                 k.priority,
-                (k.key = (SELECT term FROM params)) AS is_exact
+                (k.key = (SELECT term FROM params)) AS is_exact,
+                {col_has_word}
             FROM all_keys k
             LEFT JOIN entries e ON k.target_id = e.id AND k.type = 1
             LEFT JOIN roots r ON k.target_id = r.id AND k.type = 0
@@ -178,6 +193,7 @@ class LookupSystemBuilder:
             ORDER BY 
                 k.priority ASC, 
                 is_exact DESC,
+                has_word DESC,
                 k.rank ASC;
             """
 
