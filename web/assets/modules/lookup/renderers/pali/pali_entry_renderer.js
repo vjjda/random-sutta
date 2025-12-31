@@ -19,7 +19,10 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    inflectionText = mapData.join(' | ');
+                    const separator = '<span class="dpd-separator">|</span>';
+                    inflectionText = mapData
+                        .map(item => `<span class="dpd-inflection-item">${item}</span>`)
+                        .join(separator);
                 }
             } catch (e) { }
         }
@@ -30,9 +33,10 @@ export const PaliEntryRenderer = {
         if (isSimilar) {
             // Similar Group: Show Matched Key
             const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
+            const dotSeparator = '<span class="dpd-separator-dot">•</span>';
             
             if (inflectionText) {
-                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml} • ${inflectionText}</div>`;
+                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}${dotSeparator}${inflectionText}</div>`;
             } else {
                 line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}</div>`;
             }

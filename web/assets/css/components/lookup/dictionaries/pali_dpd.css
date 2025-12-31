@@ -311,13 +311,32 @@ details[open] .dpd-detail-icon {
 
 /* --- INFLECTION INFO --- */
 .dpd-inflection-info {
-    color: var(--text-pali);
+    color: var(--text-pali); 
     font-size: 0.75em;
-    font-weight: 350;
+    font-weight: 600;
     text-transform: lowercase;
     display: block;
-    margin-bottom: 0px;
+    margin-bottom: 2px;
     opacity: 0.85;
+}
+
+.dpd-inflection-item {
+    white-space: nowrap;
+}
+
+.dpd-separator {
+    color: var(--text-light);
+    opacity: 0.5;
+    font-weight: 300;
+    margin: 0 6px;
+    font-size: 0.9em;
+    vertical-align: 1px;
+}
+
+.dpd-separator-dot {
+    color: var(--text-light);
+    margin: 0 8px;
+    opacity: 0.6;
 }
 
 /* --- GROUP HEADERS --- */
