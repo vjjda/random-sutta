@@ -10,22 +10,18 @@ export const PaliEntryRenderer = {
         const construction = data.construction || '';
         const degree = data.degree || '';
         
-        // Inflection Map (Grammatical Context)
-        let inflectionHtml = '';
+        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
+        let line0 = '';
         if (data.inflection_map) {
             try {
-                // Handle potentially double-serialized JSON or direct object
                 const mapData = typeof data.inflection_map === 'string' 
                     ? JSON.parse(data.inflection_map) 
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    // Display e.g. "masc nom sg"
-                    inflectionHtml = `<span class="dpd-inflection-info">${mapData.join(' / ')}</span>`;
+                    line0 = `<div class="dpd-inflection-info">${mapData.join(' | ')}</div>`;
                 }
-            } catch (e) {
-                // Silent fail
-            }
+            } catch (e) { }
         }
         
         // Check if there is content to expand
@@ -39,13 +35,12 @@ export const PaliEntryRenderer = {
 
         let html = `<${tag} class="${classes}" ${openAttr}>`;
         
-        // Line 1: Lemma (Left) --- POS + Inflection + Case + Degree (Right)
+        // Line 1: Lemma (Left) --- POS + Case + Degree (Right)
         let line1 = `
             <div class="dpd-summary-line-1">
                 <span class="dpd-lemma">${headword}</span>
                 <span class="dpd-pos-group">
                     <span class="dpd-pos">${pos}</span>
-                    ${inflectionHtml}
                     ${plusCase ? `<span class="dpd-plus-case">(${plusCase})</span>` : ''}
                     ${degree ? `<span class="dpd-degree">${degree}</span>` : ''}
                 </span>
@@ -69,6 +64,7 @@ export const PaliEntryRenderer = {
         // Summary Header
         html += `<${summaryTag} class="dpd-summary">
                     <div class="dpd-summary-content">
+                        ${line0}
                         ${line1}
                         ${line2}
                         ${line3}

@@ -312,13 +312,10 @@ details[open] .dpd-detail-icon {
 /* --- INFLECTION INFO --- */
 .dpd-inflection-info {
     color: var(--text-pali); 
-    background-color: var(--bg-hover);
-    font-size: 0.8em;
-    padding: 1px 5px;
-    border-radius: 4px;
-    margin-right: 6px;
-    font-weight: 500;
+    font-size: 0.75em;
+    font-weight: 600;
     text-transform: lowercase;
-    display: inline-block;
-    vertical-align: middle;
+    display: block;
+    margin-bottom: 2px;
+    opacity: 0.85;
 }
