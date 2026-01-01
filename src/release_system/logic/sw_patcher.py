@@ -55,7 +55,7 @@ def patch_sw_assets_for_offline(target_dir: Path) -> bool:
     
     return res1 and res2
 
-def patch_online_assets(target_dir: Path) -> bool:
+def patch_online_assets(target_dir: Path, version_tag: str) -> bool:
     """
     Quét toàn bộ file .js trong assets/modules và assets/libs để inject vào sw.js.
     """
@@ -75,7 +75,8 @@ def patch_online_assets(target_dir: Path) -> bool:
             
         for file_path in folder.rglob("*.js"):
             rel_path = file_path.relative_to(target_dir)
-            js_path_str = f'"./{rel_path.as_posix()}"'
+            # [FIXED] Append version tag to force cache bust
+            js_path_str = f'"./{rel_path.as_posix()}?v={version_tag}"'
             
             if "app.js" in js_path_str or "constants.js" in js_path_str:
                 continue

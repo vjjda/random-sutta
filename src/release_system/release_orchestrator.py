@@ -70,7 +70,7 @@ def run_release_process(
 
         # 4. Patch SW Assets
         sw_patcher.patch_sw_style_bundle(BUILD_PWA_DIR)
-        sw_patcher.patch_online_assets(BUILD_PWA_DIR)
+        sw_patcher.patch_online_assets(BUILD_PWA_DIR, version_tag)
 
         # 5. Patch HTML
         if not html_patcher.patch_online_html(BUILD_PWA_DIR, version_tag):
