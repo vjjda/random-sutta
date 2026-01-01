@@ -19,8 +19,7 @@
   flex-shrink: 0;
   
   /* Căn chỉnh vị trí so với padding của header */
-  margin-right: -10px;
-  margin-top: -4px;
+  /* margin-right: -10px; */
 }
 
 .header-close-btn:hover {
