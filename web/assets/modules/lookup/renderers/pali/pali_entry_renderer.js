@@ -38,39 +38,71 @@ export const PaliEntryRenderer = {
 
                 
 
-                        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
+                                // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
 
-                        let line0 = '';
+                
 
-                        
+                                let line0 = '';
 
-                        if (isSimilar) {
+                
 
-                            // Similar Group: Show Matched Key
+                                
 
-                            const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
+                
 
-                            
+                                // 1. Stem/Pattern Info (Top of Line 0)
 
-                            line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionText}</div>`;
+                
 
-                        } else {
+                                line0 += metaHtml;
 
-                            // Standard Group: Just Inflection Info
-
-                            if (inflectionText) {
-
-                                line0 += `<div class="dpd-inflection-info">${inflectionText}</div>`;
-
-                            }
-
-                        }
+                
 
                         
 
-                        // Append Stem/Pattern Info (Independent Block)
+                
 
-                        line0 += metaHtml;
+                                // 2. Grammatical Inflection Info
+
+                
+
+                                if (isSimilar) {
+
+                
+
+                                    // Similar Group: Show Matched Key
+
+                
+
+                                    const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
+
+                
+
+                                    line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionText}</div>`;
+
+                
+
+                                } else {
+
+                
+
+                                    // Standard Group: Just Inflection Info
+
+                
+
+                                    if (inflectionText) {
+
+                
+
+                                        line0 += `<div class="dpd-inflection-info">${inflectionText}</div>`;
+
+                
+
+                                    }
+
+                
+
+                                }
         
         // Check if there is content to expand
         const hasDetails = (gram && Object.keys(gram).length > 0) || (examples && Array.isArray(examples) && examples.length > 0);
