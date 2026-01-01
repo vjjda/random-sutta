@@ -19,10 +19,9 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    const separator = '<span class="dpd-separator">|</span>';
                     inflectionText = mapData
                         .map(item => `<span class="dpd-inflection-item">${item}</span>`)
-                        .join(separator);
+                        .join('');
                 }
             } catch (e) { }
         }
@@ -31,7 +30,7 @@ export const PaliEntryRenderer = {
         if (data.stem && data.pattern) {
             const metaInfo = `<span class="dpd-meta-info">stem: ${data.stem} • pattern: ${data.pattern}</span>`;
             if (inflectionText) {
-                inflectionText += `<span class="dpd-separator">|</span>${metaInfo}`;
+                inflectionText += `<span class="dpd-separator-dot">•</span>${metaInfo}`;
             } else {
                 inflectionText = metaInfo;
             }
