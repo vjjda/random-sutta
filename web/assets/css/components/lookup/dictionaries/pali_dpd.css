@@ -345,7 +345,7 @@ details[open] .dpd-detail-icon {
 
 /* --- INFLECTION INFO --- */
 .dpd-inflection-info {
-    color: var(--primitive-brown-500);
+    color: var(--primitive-brown-400);
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: lowercase;
@@ -353,7 +353,7 @@ details[open] .dpd-detail-icon {
     flex-wrap: wrap;
     align-items: center;
     margin-bottom: 2px;
-    opacity: 0.95;
+    opacity: 0.9;
     line-height: 1.5;
 }
 
