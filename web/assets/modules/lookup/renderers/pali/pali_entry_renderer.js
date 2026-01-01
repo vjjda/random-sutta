@@ -26,16 +26,15 @@ export const PaliEntryRenderer = {
             } catch (e) { }
         }
 
-        // Append Stem & Pattern Info
-        if (data.stem && data.pattern) {
-            const metaInfo = `<span class="dpd-meta-info">stem: ${data.stem} • pattern: ${data.pattern}</span>`;
-            if (inflectionText) {
-                inflectionText += `<span class="dpd-separator-dot">•</span>${metaInfo}`;
-            } else {
-                inflectionText = metaInfo;
-            }
-        }
-
+                // Append Stem & Pattern Info
+                if (data.stem && data.pattern) {
+                    const metaInfo = `<div class="dpd-meta-info">${data.stem} • ${data.pattern}</div>`;
+                    if (inflectionText) {
+                        inflectionText += `${metaInfo}`; 
+                    } else {
+                        inflectionText = metaInfo;
+                    }
+                }
         // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
         let line0 = '';
         
@@ -44,9 +43,9 @@ export const PaliEntryRenderer = {
             const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
             
             if (inflectionText) {
-                // Use a bullet separator for the "matched" prefix
-                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}<span class="dpd-separator-dot">•</span>${inflectionText}</div>`;
-            } else {
+                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionText}</div>`;
+            }
+             else {
                 line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}</div>`;
             }
         } else {

@@ -321,6 +321,7 @@ details[open] .dpd-detail-icon {
     margin-bottom: 2px;
     opacity: 0.85;
     line-height: 1.5;
+    gap: 4px 8px; /* Row gap 4px, Col gap 8px */
 }
 
 .dpd-inflection-item {
@@ -371,4 +372,7 @@ details[open] .dpd-detail-icon {
     font-weight: 400;
     white-space: nowrap;
     opacity: 0.8;
+    display: block;
+    width: 100%;
+    margin-top: 2px;
 }
