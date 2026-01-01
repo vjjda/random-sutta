@@ -7,6 +7,7 @@
 /* [UPDATED] Áp dụng Font Scaling và Warm Filter (Configurable) */
 html {
   font-size: calc(100% * var(--text-scale));
+  height: 100%; /* [Fix iOS] Ensure full height for overscroll control */
   
   /* Fallback values phòng khi JS chưa kịp load */
   --sepia-val: 0;
@@ -22,6 +23,9 @@ html {
     saturate(var(--sepia-saturate));
   
   transition: font-size 0.2s ease, filter 0.2s ease;
+  
+  /* [NEW] Prevent rubber-banding on iOS at root level */
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -29,6 +33,7 @@ body {
   background-color: var(--bg-body);
   color: var(--text-main);
   max-width: var(--container-width);
+  min-height: 100%; /* [Fix iOS] Fill the viewport */
   margin: 0 auto;
   padding: 0 20px 20px 20px;
   line-height: 1.6;
