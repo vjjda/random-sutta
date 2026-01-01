@@ -345,15 +345,15 @@ details[open] .dpd-detail-icon {
 
 /* --- INFLECTION INFO --- */
 .dpd-inflection-info {
-    color: var(--primitive-brown-400);
+    color: var(--text-pali);
     font-size: 0.75rem;
-    font-weight: 350;
+    font-weight: 300;
     text-transform: lowercase;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     margin-bottom: 2px;
-    opacity: 1;
+    opacity: 0.9;
     line-height: 1.5;
 }
 
@@ -379,7 +379,7 @@ details[open] .dpd-detail-icon {
     content: '|';
     color: var(--text-light);
     opacity: 0.5;
-    font-weight: 250;
+    font-weight: 300;
     margin: 0 8px;
     font-size: 0.9em;
 }
@@ -403,10 +403,10 @@ details[open] .dpd-detail-icon {
 
 /* --- GROUP HEADERS --- */
 .dpd-group-header {
-    font-size: 0.8em;
+    font-size: 1em;
     text-transform: uppercase;
     color: var(--text-muted);
-    font-weight: 700;
+    font-weight: 200;
     margin: 16px 0 8px 0;
     letter-spacing: 0.5px;
     border-bottom: 1px solid var(--border-light);
