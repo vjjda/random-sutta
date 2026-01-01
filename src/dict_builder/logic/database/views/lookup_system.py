@@ -29,14 +29,6 @@ class LookupSystemBuilder:
             self.cursor.execute("INSERT INTO _lookup_params (term) VALUES ('')")
 
             # 2. Xây dựng View
-            suffix = "json"
-            if self.config.is_tiny_mode:
-                grammar_field = "NULL"
-                example_field = "NULL"
-            else:
-                grammar_field = f"e.grammar_{suffix}"
-                example_field = f"e.example_{suffix}"
-
             # --- COLUMN DEFINITIONS (Logic for SELECT) ---
             
             # Headword selection based on type
@@ -71,29 +63,64 @@ class LookupSystemBuilder:
                 END AS meaning
             """
 
-            # Meaning Origin (Lit meaning or Sanskrit root)
-            col_origin = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
+            # Meaning Origin (Lit meaning or Sanskrit root meaning)
+            # Mapped to 'meaning_lit' column for Entry
+            col_meaning_origin = """
+                CASE 
+                    WHEN k.type = 1 THEN e.meaning_lit 
+                    WHEN k.type = 0 THEN r.sanskrit_root_meaning 
+                    ELSE NULL 
+                END AS meaning_origin
+            """
+            
+            # Entry Info (Mapped from flattened columns)
+            # Note: Select ALL flattened columns from Entries.
+            # Roots will return NULL for these columns, which is fine.
+            # We alias them clearly.
+            col_entry_info = """
+                e.grammar,
+                e.construction,
+                e.degree,
+                e.plus_case,
+                e.stem,
+                e.pattern,
+                e.root_family,
+                e.root_info AS entry_root_info,
+                e.root_in_sandhi,
+                e.base,
+                e.derivative,
+                e.phonetic,
+                e.compound,
+                e.antonym,
+                e.synonym,
+                e.variant,
+                e.commentary,
+                e.notes,
+                e.cognate,
+                e.link,
+                e.non_ia,
+                e.sanskrit AS entry_sanskrit,
+                e.sanskrit_root AS entry_sanskrit_root,
+                e.example_1,
+                e.example_2
+            """
 
-            # Entry specific columns
-            col_entry_extras = "e.plus_case, e.construction, e.degree"
-
-            # Root specific columns
-            col_root_extras = """
-                (r.root_group || ' ' || r.root_sign) AS root_info, 
+            # Root Info (Mapped from Roots table)
+            # We can alias these to match entry columns if we want polymorphic access,
+            # or keep them separate. Keeping separate avoids collision with Entry columns.
+            col_root_info = """
+                (r.root_group || ' ' || r.root_sign) AS root_basic_info, 
                 CASE 
                     WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
                     THEN r.sanskrit_root || ' ' || r.sanskrit_root_class
                     ELSE ''
-                END AS sanskrit_info
+                END AS root_sanskrit_info
             """
 
             # Is Exact Logic
             col_is_exact = "(k.key = (SELECT term FROM params)) AS is_exact"
 
             # Contains Whole Word Logic
-            # Prioritize keys containing the exact search term as a distinct word.
-            # Covers: 'na hi' (start), 'hi na' (end), 'x na y' (middle).
-            # Excludes: 'ṅa' (diacritic mismatch), 'banana' (substring mismatch).
             term_sel = "(SELECT term FROM params)"
             col_has_word = f"""
                 (
@@ -104,12 +131,10 @@ class LookupSystemBuilder:
                 ) AS has_word
             """
 
-            # --- CTE DEFINITIONS (Common Table Expressions) ---
+            # --- CTE DEFINITIONS ---
 
-            # 0. Params (Input)
             cte_params = "params AS (SELECT term FROM _lookup_params LIMIT 1)"
 
-            # 1. Deconstructions (Priority 0)
             cte_decon = """
             keys_decon AS (
                 SELECT 
@@ -124,7 +149,6 @@ class LookupSystemBuilder:
             )
             """
 
-            # 3. Main Search (Priority 1) - Uses FTS
             cte_main = """
             keys_main AS (
                 SELECT 
@@ -136,7 +160,6 @@ class LookupSystemBuilder:
             )
             """
 
-            # 4. Union All (Combine Keys)
             cte_all_keys = """
             all_keys AS (
                 SELECT * FROM keys_decon
@@ -157,15 +180,18 @@ class LookupSystemBuilder:
             SELECT 
                 k.key, k.target_id, k.type,
                 {col_headword},
-                {col_pos},
-                {col_entry_extras},
-                {col_meaning},
-                {col_origin},
-                {grammar_field} AS grammar, 
-                {example_field} AS example,
-                {col_root_extras},
                 {col_headword_clean},
-                e.stem, e.pattern,
+                {col_pos},
+                {col_meaning},
+                {col_meaning_origin},
+                
+                -- Entry Specifics
+                {col_entry_info},
+                
+                -- Root Specifics
+                {col_root_info},
+                
+                -- Meta
                 k.priority,
                 {col_is_exact},
                 {col_has_word},

@@ -39,22 +39,40 @@ class SchemaManager:
         # [CLEANUP] Luôn dùng suffix 'json'
         suffix = "json"
         
-        # Entries Table [REFACTORED: COLUMNS]
-        # Core columns extracted from definition_json
+        # Entries Table [REFACTORED: FLATTENED COLUMNS]
+        # REVISED Order
         cols = """
             id INTEGER PRIMARY KEY, 
             headword TEXT NOT NULL, 
             headword_clean TEXT NOT NULL,
             pos TEXT,
+            grammar TEXT,
             meaning TEXT,
+            meaning_lit TEXT,
             construction TEXT,
             degree TEXT,
-            meaning_lit TEXT,
             plus_case TEXT,
             stem TEXT,
             pattern TEXT,
-            grammar_json TEXT,
-            example_json TEXT
+            root_family TEXT,
+            root_info TEXT,
+            root_in_sandhi TEXT,
+            base TEXT,
+            derivative TEXT,
+            phonetic TEXT,
+            compound TEXT,
+            antonym TEXT,
+            synonym TEXT,
+            variant TEXT,
+            commentary TEXT,
+            notes TEXT,
+            cognate TEXT,
+            link TEXT,
+            non_ia TEXT,
+            sanskrit TEXT,
+            sanskrit_root TEXT,
+            example_1 TEXT,
+            example_2 TEXT
         """
         
         # Tiny mode: Drop optional columns if needed (but SQLite handles NULL efficiently)

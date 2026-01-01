@@ -6,8 +6,7 @@ from src.dict_builder.tools.json_key_map import JSON_KEY_MAP
 
 class DpdJsonRenderer:
     """
-    Chuyên trách việc trích xuất dữ liệu và format thành JSON.
-    Dùng cho các mode mặc định (Tiny, Mini, Full).
+    Chuyên trách việc trích xuất dữ liệu từ SQLAlchemy Models thành định dạng phẳng hoặc JSON.
     """
     
     def _k(self, key: str) -> str:
@@ -29,102 +28,87 @@ class DpdJsonRenderer:
         return json.dumps(data, ensure_ascii=False)
 
     def extract_definition_data(self, i: DpdHeadword) -> dict:
-        """Trích xuất dữ liệu Definition thành Dict phẳng (cho Column Insert)."""
+        """
+        Trích xuất TOÀN BỘ dữ liệu từ DpdHeadword thành một Dict phẳng.
+        Dữ liệu này sẽ được lưu trực tiếp vào các cột của bảng 'entries'.
+        """
         final_meaning = i.meaning_1 if i.meaning_1 else i.meaning_2
         
-        return {
+        # 1. Base Info
+        res = {
+            "id": i.id,
+            "headword": i.lemma_1,
+            "headword_clean": i.lemma_clean,
             "pos": i.pos,
             "meaning": final_meaning,
-            "construction": i.construction, # Use raw construction instead of summary
+            "construction": i.construction,
             "degree": i.degree_of_completion,
             "meaning_lit": i.meaning_lit,
-            "plus_case": i.plus_case
+            "plus_case": i.plus_case,
+            "stem": i.stem,
+            "pattern": i.pattern
         }
 
-    def render_definition(self, i: DpdHeadword) -> str:
-        """Legacy method if needed, or redirect to extract"""
-        # ... (We can remove this if we update entry_renderer)
-        pass
-
-    def render_grammar(self, i: DpdHeadword) -> str:
-        """Trích xuất Grammar JSON."""
-        if not i.meaning_1:
-            return ""
-
-        data = {}
-
-        # 1. Grammar Summary
-        grammar_line = make_grammar_line(i)
-        if grammar_line: data[self._k("Grammar")] = grammar_line
+        # 2. Grammar & Morphology
+        res["grammar"] = make_grammar_line(i)
+        res["root_family"] = i.family_root if i.family_root else None
         
-        # 2. Root Family
-        if i.family_root: data[self._k("Root Family")] = i.family_root
-
-        # 3. Root Details
         if i.root_key and i.rt:
-            root_str = f"{i.root_clean}{i.rt.root_has_verb}{i.rt.root_group} {i.root_sign} ({i.rt.root_meaning})"
-            data[self._k("Root")] = root_str
-            if i.rt.root_in_comps: data[self._k("√ In Sandhi")] = i.rt.root_in_comps
+            res["root_info"] = f"{i.root_clean}{i.rt.root_has_verb}{i.rt.root_group} {i.root_sign} ({i.rt.root_meaning})"
+            res["root_in_sandhi"] = i.rt.root_in_comps if i.rt.root_in_comps else None
+        else:
+            res["root_info"] = None
+            res["root_in_sandhi"] = None
 
-        # 4. Construction & Morphology
-        if i.root_base: data[self._k("Base")] = i.root_base
-        if i.construction: data[self._k("Construction")] = i.construction.replace("\n", "<br>")
+        res["base"] = i.root_base if i.root_base else None
         
         if i.derivative:
-            val = f"{i.derivative} ({i.suffix})" if i.suffix else i.derivative
-            data[self._k("Derivative")] = val
+            res["derivative"] = f"{i.derivative} ({i.suffix})" if i.suffix else i.derivative
+        else:
+            res["derivative"] = None
 
-        if i.phonetic: data[self._k("Phonetic Change")] = i.phonetic.replace("\n", "<br>")
+        res["phonetic"] = i.phonetic.replace("\n", "<br>") if i.phonetic else None
         
         if i.compound_type and "?" not in i.compound_type:
-            val = f"{i.compound_type} ({i.compound_construction})"
-            data[self._k("Compound")] = val
+            res["compound"] = f"{i.compound_type} ({i.compound_construction})"
+        else:
+            res["compound"] = None
 
-        # 5. Relations
-        if i.antonym: data[self._k("Antonym")] = i.antonym
-        if i.synonym: data[self._k("Synonym")] = i.synonym
-        if i.variant: data[self._k("Variant")] = i.variant
+        # 3. Relations
+        res["antonym"] = i.antonym if i.antonym else None
+        res["synonym"] = i.synonym if i.synonym else None
+        res["variant"] = i.variant if i.variant else None
 
-        # 6. Notes & Metadata
-        # [MOVED] Commentary logic moved here
-        if i.commentary and i.commentary != "-": 
-            data[self._k("Commentary")] = i.commentary.replace("\n", "<br>")
-
-        if i.notes: data[self._k("Notes")] = i.notes.replace("\n", "<br>")
-        if i.cognate: data[self._k("English Cognate")] = i.cognate
-        if i.link: data[self._k("Web Link")] = i.link 
-        if i.non_ia: data[self._k("Non IA")] = i.non_ia
+        # 4. Notes & Metadata
+        res["commentary"] = i.commentary.replace("\n", "<br>") if (i.commentary and i.commentary != "-") else None
+        res["notes"] = i.notes.replace("\n", "<br>") if i.notes else None
+        res["cognate"] = i.cognate if i.cognate else None
+        res["link"] = i.link if i.link else None
+        res["non_ia"] = i.non_ia if i.non_ia else None
         
-        # 7. Sanskrit
-        if i.sanskrit: data[self._k("Sanskrit")] = i.sanskrit
-
+        # 5. Sanskrit
+        res["sanskrit"] = i.sanskrit if i.sanskrit else None
         if i.root_key and i.rt and i.rt.sanskrit_root and i.rt.sanskrit_root != "-":
-            ss_str = f"{i.rt.sanskrit_root} {i.rt.sanskrit_root_class} ({i.rt.sanskrit_root_meaning})"
-            data[self._k("Sanskrit Root")] = ss_str
+            res["sanskrit_root"] = f"{i.rt.sanskrit_root} {i.rt.sanskrit_root_class} ({i.rt.sanskrit_root_meaning})"
+        else:
+            res["sanskrit_root"] = None
 
-        if not data: return ""
-        return json.dumps(data, ensure_ascii=False)
+        # 6. Examples (Packed format: source|sutta|text)
+        def _pack_ex(src, sutta, txt):
+            if not txt: return None
+            # Standardize: Source and Sutta can be empty but delimiters must exist
+            return f"{src if src else ''}|{sutta if sutta else ''}|{txt}"
 
-    def render_examples(self, i: DpdHeadword) -> str:
-        """Trích xuất Examples JSON."""
-        if not (i.meaning_1 and i.example_1):
-            return ""
-            
-        data = []
-        
-        ex1 = {
-            self._k("source"): i.source_1,
-            self._k("sutta"): i.sutta_1,
-            self._k("text"): i.example_1
-        }
-        data.append(ex1)
-        
-        if i.example_2:
-            ex2 = {
-                self._k("source"): i.source_2,
-                self._k("sutta"): i.sutta_2,
-                self._k("text"): i.example_2
-            }
-            data.append(ex2)
-            
-        return json.dumps(data, ensure_ascii=False)
+        res["example_1"] = _pack_ex(i.source_1, i.sutta_1, i.example_1)
+        res["example_2"] = _pack_ex(i.source_2, i.sutta_2, i.example_2)
+
+        return res
+
+    # Obsolete methods (kept for reference or temporary compatibility)
+    def render_grammar(self, i: DpdHeadword) -> str: return ""
+def render_examples(self, i: DpdHeadword) -> str: return ""
+def render_grammar_notes(self, grammar_list: list) -> str:
+        # Grammar notes table is still used in details expansion
+        # We can keep it as is or also flatten later. 
+        # For now, let's keep it JSON for the "Grammar Tables" in details.
+        return json.dumps(grammar_list, ensure_ascii=False)

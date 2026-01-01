@@ -17,20 +17,31 @@ class DataInserter:
     def insert_entries_batch(self, entries: List[Tuple], lookups: List[Tuple]) -> None:
         if entries:
             try:
-                # [REFACTOR] Insert into new explicit columns
-                # entry tuple: (id, headword, headword_clean, pos, meaning, construction, degree, meaning_lit, plus_case, grammar, example)
+                # [REFACTOR] Insert into flattened columns (31 columns)
+                # Order: id, hw, hw_clean, pos, GRAMMAR, meaning, lit, constr, degree, case, stem, pattern, ...
                 sql = """
                     INSERT INTO entries (
-                        id, headword, headword_clean, 
-                        pos, meaning, construction, degree, 
-                        meaning_lit, plus_case, 
+                        id, headword, headword_clean, pos, grammar, 
+                        meaning, meaning_lit, construction, degree, plus_case, 
                         stem, pattern,
-                        grammar_json, example_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        root_family, root_info, root_in_sandhi, 
+                        base, derivative, phonetic, compound, 
+                        antonym, synonym, variant, 
+                        commentary, notes, cognate, link, non_ia, 
+                        sanskrit, sanskrit_root, 
+                        example_1, example_2
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, 
+                        ?, ?, ?, ?, ?, 
+                        ?, ?,
+                        ?, ?, ?, 
+                        ?, ?, ?, ?, 
+                        ?, ?, ?, 
+                        ?, ?, ?, ?, ?, 
+                        ?, ?, 
+                        ?, ?
+                    )
                 """
-                
-                # If tiny mode, we might need to adjust what data is passed, 
-                # but better to handle filtering in the Worker and pass NULLs here.
                 self.cursor.executemany(sql, entries)
             except Exception as e:
                 logger.error(f"Entries insert failed: {e}")

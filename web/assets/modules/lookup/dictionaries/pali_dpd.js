@@ -64,35 +64,70 @@ export const PaliDPD = {
                 // Type 1: Entry (Meaning in 'meaning' col)
                 // Type 0: Root (Meaning in 'meaning' col)
                 
+                // Polymorphic Fields Handling
+                let rootInfo = null;
+                let sanskrit = null;
+                
+                if (row.type === 1) { // Entry
+                    rootInfo = row.entry_root_info;
+                    sanskrit = row.entry_sanskrit;
+                } else if (row.type === 0) { // Root
+                    rootInfo = row.root_basic_info;
+                    sanskrit = row.root_sanskrit_info;
+                }
+
                 finalResults.push({
                     lookup_key: row.key,
                     target_id: row.target_id,
                     lookup_type: row.type,
                     headword: row.headword,
                     
-                    // Flattened Entry Columns
+                    // Identity & Meaning
                     pos: row.pos,
                     meaning: row.meaning,
+                    meaning_lit: row.meaning_origin,
+                    
+                    // Morphology (Entry)
                     construction: row.construction,
                     degree: row.degree,
-                    meaning_lit: row.meaning_origin,
                     plus_case: row.plus_case,
                     stem: row.stem,
                     pattern: row.pattern,
+                    grammar: row.grammar,
+                    
+                    // Root / Family
+                    root_family: row.root_family,
+                    root_info: rootInfo,
+                    root_in_sandhi: row.root_in_sandhi,
+                    
+                    // Detail Morphology
+                    base: row.base,
+                    derivative: row.derivative,
+                    phonetic: row.phonetic,
+                    compound: row.compound,
+                    
+                    // Relations
+                    antonym: row.antonym,
+                    synonym: row.synonym,
+                    variant: row.variant,
+                    
+                    // Notes / Meta
+                    commentary: row.commentary,
+                    notes: row.notes,
+                    cognate: row.cognate,
+                    link: row.link,
+                    non_ia: row.non_ia,
+                    
+                    // Sanskrit
+                    sanskrit: sanskrit,
+                    sanskrit_root: row.entry_sanskrit_root, // Only for entries
+                    
+                    // Examples
+                    example_1: row.example_1,
+                    example_2: row.example_2,
                     
                     // Inflection Map (Grammatical Context)
                     inflection_map: row.inflection_map,
-
-                    // Legacy JSON Bags
-                    entry_grammar: row.grammar,
-                    entry_example: row.example,
-                    // grammar_note removed (moved to Type -2 meaning)
-                    
-                    // Root specific fields (Also flattened/mapped)
-                    root_meaning: row.meaning, // Alias for clarity in renderer
-                    root_info: row.root_info,
-                    sanskrit_info: row.sanskrit_info,
-                    root_meaning_origin: row.meaning_origin,
                     
                     keyMap: this._keyMap,
                     is_deconstruction: (row.type === -1),

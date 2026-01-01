@@ -1,7 +1,7 @@
 // Path: web/assets/modules/lookup/renderers/pali/pali_entry_renderer.js
 
 export const PaliEntryRenderer = {
-    render(data, gram, examples, getAbbr, getLabel, headword, isOpen, isSimilar = false) {
+    render(data, _gram, _examples, getAbbr, getLabel, headword, isOpen, isSimilar = false) {
         // Read directly from flattened object
         const pos = data.pos || '';
         const meaning = data.meaning || '';
@@ -10,6 +10,28 @@ export const PaliEntryRenderer = {
         const construction = data.construction || '';
         const degree = data.degree || '';
         
+        // Flattened Fields
+        const grammar = data.grammar;
+        const rootFamily = data.root_family;
+        const rootInfo = data.root_info;
+        const rootInSandhi = data.root_in_sandhi;
+        const base = data.base;
+        const derivative = data.derivative;
+        const phonetic = data.phonetic;
+        const compound = data.compound;
+        const antonym = data.antonym;
+        const synonym = data.synonym;
+        const variant = data.variant;
+        const commentary = data.commentary;
+        const notes = data.notes;
+        const cognate = data.cognate;
+        const link = data.link;
+        const nonIa = data.non_ia;
+        const sanskrit = data.sanskrit;
+        const sanskritRoot = data.sanskrit_root;
+        const example1 = data.example_1;
+        const example2 = data.example_2;
+
         // Parse Inflection Info & Group by Gender/Person
         let inflectionHtmlContent = '';
         if (data.inflection_map) {
@@ -24,16 +46,12 @@ export const PaliEntryRenderer = {
                     // mapData is now List of Packed Strings: "GroupKey|Main~Count" or "Main"
                     inflectionHtmlContent = mapData.map(packedStr => {
                         const parts = packedStr.split('|');
-                        
-                        // Check if the first part is a known group label
                         const hasLabel = groupKeys.includes(parts[0]);
                         const group = hasLabel ? parts[0] : '';
                         const items = hasLabel ? parts.slice(1) : parts;
                         
                         const itemsHtml = items.map(itemStr => {
-                            // itemStr is "Main~Count" or "Main"
                             const [main, count] = itemStr.split('~');
-                            
                             if (count) {
                                 return `<span class="dpd-inflection-item"><span class="inflection-main">${main}</span> <span class="inflection-count">${count}</span></span>`;
                             }
@@ -43,13 +61,11 @@ export const PaliEntryRenderer = {
                         const labelHtml = group 
                             ? `<span class="group-label">${group}:</span>` 
                             : '';
-                            
                         const groupClass = group ? `group-${group.replace(' ', '-')}` : 'group-other';
-                            
                         return `<div class="inflection-group ${groupClass} ">${labelHtml}${itemsHtml}</div>`;
                     }).join('');
                 }
-            } catch (e) { } // Ignore errors during parsing
+            } catch (e) { } 
         }
 
         // Append Stem & Pattern Info
@@ -58,28 +74,25 @@ export const PaliEntryRenderer = {
             metaHtml = `<div class="stem-pattern-info">${data.stem} • ${data.pattern}</div>`;
         }
 
-        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
-        let line0 = '';
-        
-        // 1. Stem/Pattern Info (Top of Line 0)
-        line0 += metaHtml;
-
-        // 2. Grammatical Inflection Info
+        // Line 0
+        let line0 = metaHtml;
         if (isSimilar) {
-            // Similar Group: Show Matched Key
             const matchedKeyHtml = `<div class="inflection-group group-key"><span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span></div>`;
             line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionHtmlContent}</div>`;
         } else {
-            // Standard Group: Just Inflection Info
             if (inflectionHtmlContent) {
                 line0 += `<div class="dpd-inflection-info">${inflectionHtmlContent}</div>`;
             }
         }
         
-        // Check if there is content to expand
-        const hasDetails = (gram && Object.keys(gram).length > 0) || (examples && Array.isArray(examples) && examples.length > 0);
+        // Check content to expand (Any of the detail fields present)
+        const detailFields = [
+            grammar, rootFamily, rootInfo, rootInSandhi, base, derivative, 
+            phonetic, compound, antonym, synonym, variant, commentary, notes, 
+            cognate, link, nonIa, sanskrit, sanskritRoot, example1, example2
+        ];
+        const hasDetails = detailFields.some(f => f);
         
-        // Determine tags and classes
         const tag = hasDetails ? 'details' : 'div';
         const summaryTag = hasDetails ? 'summary' : 'div';
         const classes = `dpd-entry ${hasDetails ? 'has-details' : 'no-details'}`;
@@ -87,7 +100,7 @@ export const PaliEntryRenderer = {
 
         let html = `<${tag} class="${classes}" ${openAttr}>`;
         
-        // Line 1: Lemma (Left) --- POS + Case + Degree (Right)
+        // Line 1
         let line1 = `
             <div class="dpd-summary-line-1">
                 <span class="dpd-lemma">${headword}</span>
@@ -98,27 +111,24 @@ export const PaliEntryRenderer = {
                 </span>
             </div>`;
 
-        // Line 2: Construction (Standalone, Low Profile)
+        // Line 2
         let line2 = '';
         if (construction) {
-            // Split by newline and wrap items for CSS styling
             const constrItems = construction.split('\n')
                 .map(item => item.trim())
                 .filter(item => item)
                 .map(item => `<span class="dpd-construction-item">${item}</span>`)
                 .join('');
-                
             line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">${constrItems}</span></div>`;
         }
 
-        // Line 3: Meaning + Lit Meaning (Stacked Blocks)
+        // Line 3
         let line3 = `
             <div class="dpd-summary-line-3">
                 <div class="dpd-meaning">${meaning}</div>
                 ${meaningLit ? `<div class="dpd-meaning-lit">lit. ${meaningLit}</div>` : ''}
             </div>`;
         
-        // Summary Header
         html += `<${summaryTag} class="dpd-summary">
                     <div class="dpd-summary-content">
                         ${line0}
@@ -129,37 +139,64 @@ export const PaliEntryRenderer = {
                     ${hasDetails ? '<span class="dpd-detail-icon"></span>' : ''}
                  </${summaryTag}>`;
         
-        // The expanded content (Only if details exist)
+        // Expanded Content
         if (hasDetails) {
             html += `<div class="dpd-details-content">`;
+            html += `<table class="dpd-grammar-table">`;
 
-            // Grammar Table
-            if (gram) {
-                html += `<table class="dpd-grammar-table">`;
-                for (const [k, v] of Object.entries(gram)) {
-                    const label = getLabel(k); 
-                    html += `<tr><th>${label}</th><td>${v}</td></tr>`;
-                }
-                html += `</table>`;
+            // Helper to render row
+            const renderRow = (label, value) => {
+                if (value) html += `<tr><th>${label}</th><td>${value}</td></tr>`;
             }
+
+            renderRow("Grammar", grammar);
+            renderRow("Root Family", rootFamily);
+            renderRow("Root Info", rootInfo);
+            renderRow("√ In Sandhi", rootInSandhi);
+            renderRow("Base", base);
+            renderRow("Derivative", derivative);
+            renderRow("Phonetic", phonetic);
+            renderRow("Compound", compound);
+            renderRow("Antonym", antonym);
+            renderRow("Synonym", synonym);
+            renderRow("Variant", variant);
+            renderRow("Commentary", commentary);
+            renderRow("Notes", notes);
+            renderRow("Cognate", cognate);
+            renderRow("Link", link ? `<a href="${link}" target="_blank">${link}</a>` : null);
+            renderRow("Non IA", nonIa);
+            renderRow("Sanskrit", sanskrit);
+            renderRow("Sanskrit Root", sanskritRoot);
+
+            html += `</table>`;
             
             // Examples
-            if (examples && Array.isArray(examples)) {
+            if (example1 || example2) {
                 html += `<div class="dpd-examples"><p class="example-heading">Examples</p>`;
-                examples.forEach(ex => {
-                    const source = ex[getAbbr('source')] || '';
-                    const sutta = ex[getAbbr('sutta')] || '';
-                    const text = ex[getAbbr('text')] || '';
+                
+                const renderExample = (exStr) => {
+                    if (!exStr) return;
+                    const parts = exStr.split('|');
+                    // Format: source|sutta|text
+                    const source = parts[0] || '';
+                    const sutta = parts[1] || '';
+                    // Text might contain pipes? Unlikely given HTML content, but let's join rest
+                    const text = parts.slice(2).join('|'); 
+                    
                     html += `
                     <div class="example-box">
                         <p class="example-text">${text}</p>
                         <p class="example-source">${source} ${sutta}</p>
                     </div>`;
-                });
+                };
+
+                renderExample(example1);
+                renderExample(example2);
+                
                 html += `</div>`;
             }
             
-            html += `</div>`; // End content
+            html += `</div>`;
         }
         
         html += `</${tag}>`;

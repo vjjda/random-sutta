@@ -32,14 +32,6 @@ class SearchSystemBuilder:
                 VALUES ('', 20, 100, 20)
             """)
 
-            suffix = "json"
-            if self.config.is_tiny_mode:
-                grammar_field = "NULL"
-                example_field = "NULL"
-            else:
-                grammar_field = f"e.grammar_{suffix}"
-                example_field = f"e.example_{suffix}"
-
             # --- COLUMN DEFINITIONS ---
 
             # Headword Logic
@@ -69,21 +61,46 @@ class SearchSystemBuilder:
             # Meaning Origin
             col_origin = "CASE WHEN k.type = 1 THEN e.meaning_lit WHEN k.type = 0 THEN r.sanskrit_root_meaning ELSE NULL END AS meaning_origin"
             
-            # Entry Cols
-            col_entry_extras = "e.plus_case, e.construction, e.degree"
+            # Entry Info (Mapped from flattened columns)
+            col_entry_info = """
+                e.grammar,
+                e.construction,
+                e.degree,
+                e.plus_case,
+                e.stem,
+                e.pattern,
+                e.root_family,
+                e.root_info AS entry_root_info,
+                e.root_in_sandhi,
+                e.base,
+                e.derivative,
+                e.phonetic,
+                e.compound,
+                e.antonym,
+                e.synonym,
+                e.variant,
+                e.commentary,
+                e.notes,
+                e.cognate,
+                e.link,
+                e.non_ia,
+                e.sanskrit AS entry_sanskrit,
+                e.sanskrit_root AS entry_sanskrit_root,
+                e.example_1,
+                e.example_2
+            """
 
             # Root Extras
             col_root_extras = """
-                (r.root_group || ' ' || r.root_sign) AS root_info, 
+                (r.root_group || ' ' || r.root_sign) AS root_basic_info, 
                 CASE 
                     WHEN r.sanskrit_root IS NOT NULL AND r.sanskrit_root != '' 
                     THEN r.sanskrit_root || ' ' || r.sanskrit_root_class
                     ELSE ''
-                END AS sanskrit_info
+                END AS root_sanskrit_info
             """
 
             # Is Exact Logic
-            # Check if key matches input term AND matches the clean headword (for entries/roots)
             col_is_exact = """
                 (k.key = (SELECT term FROM input_param) 
                  AND k.key = CASE 
@@ -95,10 +112,8 @@ class SearchSystemBuilder:
 
             # --- CTE DEFINITIONS ---
 
-            # 0. Params
             cte_params = "input_param AS (SELECT term, limit_exact, limit_prefix, limit_final FROM _search_params LIMIT 1)"
 
-            # 1. Deconstruction (Priority 0)
             cte_decon = """
             keys_decon AS (
                 SELECT 
@@ -113,7 +128,6 @@ class SearchSystemBuilder:
             )
             """
 
-            # 3. Exact Match FTS (Priority 1)
             cte_exact = """
             keys_exact AS (
                 SELECT key, target_id, type, rank, 1 AS priority
@@ -123,7 +137,6 @@ class SearchSystemBuilder:
             )
             """
 
-            # 4. Prefix Match FTS (Priority 2)
             cte_prefix = """
             keys_prefix AS (
                 SELECT key, target_id, type, rank, 2 AS priority
@@ -134,7 +147,6 @@ class SearchSystemBuilder:
             )
             """
 
-            # 5. Union All Keys
             cte_all_keys = """
             all_keys AS (
                 SELECT * FROM keys_decon
@@ -145,7 +157,6 @@ class SearchSystemBuilder:
             )
             """
 
-            # 6. Unique Keys (Deduplication & Limit)
             cte_unique_keys = """
             unique_keys AS (
                 SELECT 
@@ -174,13 +185,15 @@ class SearchSystemBuilder:
                 k.key, k.target_id, k.type,
                 {col_headword},
                 {col_pos},
-                {col_entry_extras},
                 {col_meaning},
                 {col_origin},
-                {grammar_field} AS grammar,
-                {example_field} AS example,
+                
+                -- Entry Specifics
+                {col_entry_info},
+                
+                -- Root Specifics
                 {col_root_extras},
-                e.stem, e.pattern,
+                
                 {col_is_exact},
                 l.inflection_map
             FROM unique_keys k

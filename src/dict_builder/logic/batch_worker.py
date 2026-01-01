@@ -29,27 +29,21 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
             .all()
         )
         for i in headwords:
-            # [REFACTOR] Extract data columns instead of JSON
-            def_data = renderer.extract_definition_data(i)
+            # [REFACTOR] Extract flattened data (all columns)
+            d = renderer.extract_definition_data(i)
             
-            grammar_json = renderer.extract_grammar_json(i) if not config.is_tiny_mode else None
-            example_json = renderer.extract_example_json(i) if not config.is_tiny_mode else None
-            
-            # Prepare Tuple for Insert
+            # Prepare Tuple for Insert (Order must match data_inserter.py REVISED)
             entries_data.append((
-                i.id, 
-                i.lemma_1, 
-                i.lemma_clean,
-                def_data["pos"],
-                def_data["meaning"],
-                def_data["construction"],
-                def_data["degree"],
-                def_data["meaning_lit"],
-                def_data["plus_case"],
-                i.stem,
-                i.pattern,
-                process_data(grammar_json, config.USE_COMPRESSION), 
-                process_data(example_json, config.USE_COMPRESSION)
+                d["id"], d["headword"], d["headword_clean"], d["pos"], d["grammar"], 
+                d["meaning"], d["meaning_lit"], 
+                d["construction"], d["degree"], d["plus_case"], 
+                d["stem"], d["pattern"],
+                d["root_family"], d["root_info"], d["root_in_sandhi"], 
+                d["base"], d["derivative"], d["phonetic"], d["compound"], 
+                d["antonym"], d["synonym"], d["variant"],
+                d["commentary"], d["notes"], d["cognate"], d["link"], d["non_ia"],
+                d["sanskrit"], d["sanskrit_root"],
+                d["example_1"], d["example_2"]
             ))
             
             # [UPDATE] Inflection Map Generation
