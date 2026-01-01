@@ -10,7 +10,7 @@ export const PaliEntryRenderer = {
         const construction = data.construction || '';
         const degree = data.degree || '';
         
-        // Parse Inflection Info & Group by Gender
+        // Parse Inflection Info & Group by Gender/Tense
         let inflectionHtmlContent = '';
         if (data.inflection_map) {
             try {
@@ -22,7 +22,7 @@ export const PaliEntryRenderer = {
                     // Grouping Configuration (Expanded based on DPD Docs)
                     const sortOrder = [
                         // Genders
-                        'masc', 'nt', 'neut', 'fem', 
+                        'masc', 'nt', 'neut', 'fem', 'x',
                         // Tenses & Moods
                         'pr', 'imp', 'opt', 'cond', 'fut', 'aor', 'imperf', 'perf',
                         // Verb Forms
@@ -60,8 +60,8 @@ export const PaliEntryRenderer = {
                     const renderGroup = (items, label) => {
                         const cleanItems = items.map(item => {
                             // Strip the label (case insensitive) from the start of the item
-                            const escapedLabel = label.replace(/[-\/\\^$*+?.()|[\\]{}]/g, '\\$&');
-                            const regex = new RegExp(`^${escapedLabel}\s+`, 'i');
+                            const escapedLabel = label.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                            const regex = new RegExp(`^${escapedLabel}\\s+`, 'i');
                             return item.replace(regex, '');
                         });
                         
@@ -84,21 +84,17 @@ export const PaliEntryRenderer = {
                         const ia = sortOrder.indexOf(a);
                         const ib = sortOrder.indexOf(b);
                         
-                        // If both are in sortOrder, compare indices
                         if (ia !== -1 && ib !== -1) return ia - ib;
-                        
-                        // If one is in sortOrder, it comes first
                         if (ia !== -1) return -1;
                         if (ib !== -1) return 1;
                         
-                        // Handling 'reflx ...' vs 'reflx ...' or unknown
                         return a.localeCompare(b);
                     });
                     
                     const parts = sortedKeys.map(key => renderGroup(groups[key], key));
                     inflectionHtmlContent = parts.join('');
                 }
-            } catch (e) { }
+            } catch (e) { } // Ignore errors during parsing
         }
 
         // Append Stem & Pattern Info
