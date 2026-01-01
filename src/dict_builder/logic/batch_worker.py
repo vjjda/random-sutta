@@ -260,7 +260,7 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
     return entries_data, lookups_data
 
 def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) -> Tuple[List, List]:
-    # Logic Deconstruction không thay đổi (vẫn trả về chuỗi)
+    # Logic Deconstruction
     renderer = DpdRenderer(config)
     session = get_db_session(config.DPD_DB_PATH)
     decon_batch = []
@@ -270,18 +270,27 @@ def process_decon_worker(keys: List[str], start_id: int, config: BuilderConfig) 
     try:
         items = session.query(Lookup).filter(Lookup.lookup_key.in_(keys)).all()
         for d in items:
-            # [REFACTOR] Convert to JSON Array of Arrays: [["part1", "part2"], ["part3", "part4"]]
-            raw_list = d.deconstructor_unpack_list # ["a + b", "c + d"]
-            processed_list = []
-            for item in raw_list:
-                # Split by "+" and strip whitespace
-                parts = [p.strip() for p in item.split("+")]
-                processed_list.append(parts)
+            # [REFACTOR] Convert to CSV-like String: "part1+part2,part3+part4"
+            # raw_list example: ["a + b", "c + d"]
+            raw_list = d.deconstructor_unpack_list 
+            processed_items = []
             
-            json_str = json.dumps(processed_list, ensure_ascii=False, separators=(',', ':'))
+            if raw_list:
+                for item in raw_list:
+                    # Remove spaces around the plus sign
+                    # " a + b " -> "a+b"
+                    clean_item = "".join([p.strip() for p in item.split("+")]).replace(" ", "") 
+                    # Actually, we want to keep internal structure but standardise delimiters.
+                    # If input is "apariyanta + iva", splitting by '+' gives ["apariyanta ", " iva"]
+                    # Stripping gives ["apariyanta", "iva"]. Joining with "+" gives "apariyanta+iva"
+                    parts = [p.strip() for p in item.split("+")]
+                    processed_items.append("+".join(parts))
             
-            # Tuple format: (word, components_json)
-            decon_batch.append((d.lookup_key, process_data(json_str, config.USE_COMPRESSION)))
+            # Join variants with comma
+            csv_str = ",".join(processed_items)
+            
+            # Tuple format: (word, components_string)
+            decon_batch.append((d.lookup_key, process_data(csv_str, config.USE_COMPRESSION)))
             
     except Exception as e:
         print(f"[red]Error in decon worker: {e}")

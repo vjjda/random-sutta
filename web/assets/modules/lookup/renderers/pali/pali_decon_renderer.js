@@ -1,8 +1,8 @@
 // Path: web/assets/modules/lookup/renderers/pali/pali_decon_renderer.js
 
 export const PaliDeconRenderer = {
-    render(word, componentsJson) {
-        if (!componentsJson) {
+    render(word, componentsStr) {
+        if (!componentsStr) {
              return `
             <div class="dpd-deconstruction">
                 <p class="decon-key"><b>${word}</b></p>
@@ -11,16 +11,19 @@ export const PaliDeconRenderer = {
 
         let rows = [];
         try {
-            // New Format: JSON String of Array of Arrays
-            // [["a", "b"], ["c", "d"]]
-            rows = JSON.parse(componentsJson);
+            // New Format: CSV String "part1+part2,part3+part4"
+            if (componentsStr.includes(',') || componentsStr.includes('+')) {
+                rows = componentsStr.split(',');
+            } else {
+                // Single item fallback
+                rows = [componentsStr];
+            }
         } catch (e) {
-            // Fallback for old format (just in case) or simple string
             console.warn("Decon Parse Error", e);
             return "";
         }
 
-        if (!Array.isArray(rows) || rows.length === 0) return "";
+        if (rows.length === 0) return "";
 
         let html = `
         <div class="dpd-deconstruction">
@@ -30,8 +33,9 @@ export const PaliDeconRenderer = {
             </div>
             <table class="dpd-deconstruction-table">`;
         
-        rows.forEach(parts => {
-            if (!Array.isArray(parts)) return; // Safety check
+        rows.forEach(rowStr => {
+            const parts = rowStr.split('+');
+            if (parts.length === 0) return;
             
             html += `<tr>`;
             parts.forEach((part, index) => {
