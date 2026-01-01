@@ -35,7 +35,7 @@ class DpdJsonRenderer:
         return {
             "pos": i.pos,
             "meaning": final_meaning,
-            "construction": i.construction_summary,
+            "construction": i.construction, # Use raw construction instead of summary
             "degree": i.degree_of_completion,
             "meaning_lit": i.meaning_lit,
             "plus_case": i.plus_case
