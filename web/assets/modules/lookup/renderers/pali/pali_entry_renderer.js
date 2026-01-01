@@ -23,6 +23,8 @@ export const PaliEntryRenderer = {
                     const sortOrder = [
                         // Genders
                         'masc', 'nt', 'neut', 'fem', 'x',
+                        // Person (for pronouns)
+                        '1st', '2nd', '3rd',
                         // Tenses & Moods
                         'pr', 'imp', 'opt', 'cond', 'fut', 'aor', 'imperf', 'perf',
                         // Verb Forms
