@@ -114,8 +114,26 @@ details[open] .dpd-detail-icon {
     font-size: 0.85em;
     color: var(--text-light);
     font-family: var(--font-mono, monospace);
-    line-height: 1.2;
-    margin-top: -2px;
+    line-height: 1.4;
+    margin-top: 2px;
+}
+
+.dpd-construction {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.dpd-construction-item {
+    white-space: nowrap;
+}
+
+.dpd-construction-item:not(:last-child):after {
+    content: '|';
+    color: var(--text-light);
+    opacity: 0.5;
+    margin: 0 6px;
+    font-weight: 300;
 }
 
 /* --- LINE 3: MEANING & LIT --- */
@@ -135,7 +153,9 @@ details[open] .dpd-detail-icon {
     color: var(--text-light);
     font-size: 0.9em;
     font-style: italic;
-    margin-left: 8px;
+    display: block;
+    margin-top: 2px;
+    margin-left: 0;
 }
 
 .dpd-degree {

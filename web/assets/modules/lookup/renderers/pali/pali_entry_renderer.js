@@ -97,16 +97,21 @@ export const PaliEntryRenderer = {
         // Line 2: Construction (Standalone, Low Profile)
         let line2 = '';
         if (construction) {
-            // Replace newlines with a visual separator for inline display
-            const cleanConstr = construction.replace(/\n/g, ' | ');
-            line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">[${cleanConstr}]</span></div>`;
+            // Split by newline and wrap items for CSS styling
+            const constrItems = construction.split('\n')
+                .map(item => item.trim())
+                .filter(item => item)
+                .map(item => `<span class="dpd-construction-item">${item}</span>`)
+                .join('');
+                
+            line2 = `<div class="dpd-summary-line-2"><span class="dpd-construction">${constrItems}</span></div>`;
         }
 
-        // Line 3: Meaning + Lit Meaning (Left)
+        // Line 3: Meaning + Lit Meaning (Stacked Blocks)
         let line3 = `
             <div class="dpd-summary-line-3">
-                <span class="dpd-meaning">${meaning}</span>
-                ${meaningLit ? `<span class="dpd-meaning-lit">lit. ${meaningLit}</span>` : ''}
+                <div class="dpd-meaning">${meaning}</div>
+                ${meaningLit ? `<div class="dpd-meaning-lit">lit. ${meaningLit}</div>` : ''}
             </div>`;
         
         // Summary Header
