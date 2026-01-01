@@ -19,11 +19,16 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    // mapData is now List of Packed Strings: "GroupKey|Main~Count|Main"
+                    const groupKeys = ['masc', 'nt', 'neut', 'fem', 'x', 'dual', '1st', '2nd', '3rd'];
+                    
+                    // mapData is now List of Packed Strings: "GroupKey|Main~Count" or "Main"
                     inflectionHtmlContent = mapData.map(packedStr => {
                         const parts = packedStr.split('|');
-                        const group = parts[0];
-                        const items = parts.slice(1);
+                        
+                        // Check if the first part is a known group label
+                        const hasLabel = groupKeys.includes(parts[0]);
+                        const group = hasLabel ? parts[0] : '';
+                        const items = hasLabel ? parts.slice(1) : parts;
                         
                         const itemsHtml = items.map(itemStr => {
                             // itemStr is "Main~Count" or "Main"
@@ -35,11 +40,13 @@ export const PaliEntryRenderer = {
                             return `<span class="dpd-inflection-item">${main}</span>`;
                         }).join('');
 
-                        const labelHtml = group !== 'other' 
+                        const labelHtml = group 
                             ? `<span class="group-label">${group}:</span>` 
                             : '';
                             
-                        return `<div class="inflection-group ${'group-' + group.replace(' ', '-')} ">${labelHtml}${itemsHtml}</div>`;
+                        const groupClass = group ? `group-${group.replace(' ', '-')}` : 'group-other';
+                            
+                        return `<div class="inflection-group ${groupClass} ">${labelHtml}${itemsHtml}</div>`;
                     }).join('');
                 }
             } catch (e) { } // Ignore errors during parsing

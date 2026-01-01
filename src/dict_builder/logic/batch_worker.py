@@ -117,10 +117,15 @@ def _group_inflection_items(items: List[str]) -> List[str]:
     
     result = []
     for k in present_keys:
-        # Join GroupKey and all Items with '|'
-        # e.g. "masc|nom~sg|acc~pl"
-        packed_str = "|".join([k] + grouped_map[k])
-        result.append(packed_str)
+        if k == "other":
+            # Omit 'other|' prefix for standalone items like "in comps"
+            packed_str = "|".join(grouped_map[k])
+        else:
+            # Join GroupKey and all Items with '|'
+            packed_str = "|".join([k] + grouped_map[k])
+        
+        if packed_str:
+            result.append(packed_str)
         
     return result
 
