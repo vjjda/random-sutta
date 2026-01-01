@@ -19,124 +19,111 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    // Grouping
-                    const groups = { masc: [], nt: [], fem: [], other: [] };
-                    
+                    // Grouping Configuration (Expanded based on DPD Docs)
+                    const sortOrder = [
+                        // Genders
+                        'masc', 'nt', 'neut', 'fem', 
+                        // Tenses & Moods
+                        'pr', 'imp', 'opt', 'cond', 'fut', 'aor', 'imperf', 'perf',
+                        // Verb Forms
+                        'pp', 'ppr', 'fpp', 'grd', 'ptp', 'abs', 'ger', 'inf',
+                        // Voice / Derivation
+                        'pass', 'caus', 'denom',
+                        // Parts of Speech
+                        'adj', 'pron', 'card', 'ord', 'indecl', 'adv', 'prep'
+                    ];
+
+                    const getGroupKey = (item) => {
+                        const parts = item.toLowerCase().split(' ');
+                        const first = parts[0];
+                        
+                        // Handle Reflexive: group by 'reflx + tense'
+                        if (first === 'reflx' && parts.length > 1) {
+                            return `reflx ${parts[1]}`;
+                        }
+                        
+                        // Group by known categories
+                        if (sortOrder.includes(first)) return first;
+                        
+                        return 'other';
+                    };
+
+                    // Execute Grouping
+                    const groups = {};
                     mapData.forEach(item => {
-                        const lower = item.toLowerCase();
-                        if (lower.startsWith('masc')) groups.masc.push(item);
-                        else if (lower.startsWith('nt') || lower.startsWith('neut')) groups.nt.push(item);
-                        else if (lower.startsWith('fem')) groups.fem.push(item);
-                        else groups.other.push(item);
+                        const key = getGroupKey(item);
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(item);
                     });
                     
+                    // Render Helper
                     const renderGroup = (items, label) => {
                         const cleanItems = items.map(item => {
-                            // Remove the first word (gender) if there are multiple words
-                            const spaceIdx = item.indexOf(' ');
-                            return spaceIdx !== -1 ? item.substring(spaceIdx + 1) : item;
+                            // Strip the label (case insensitive) from the start of the item
+                            const escapedLabel = label.replace(/[-\/\\^$*+?.()|[\\]{}]/g, '\\$&');
+                            const regex = new RegExp(`^${escapedLabel}\s+`, 'i');
+                            return item.replace(regex, '');
                         });
                         
                         const itemsHtml = cleanItems
                             .map(item => `<span class="dpd-inflection-item">${item}</span>`)
                             .join('');
                             
-                        return `<div class="inflection-group"><span class="group-label">${label}:</span>${itemsHtml}</div>`;
+                        const labelHtml = label !== 'other' 
+                            ? `<span class="group-label">${label}:</span>` 
+                            : '';
+                            
+                        return `<div class="inflection-group ${'group-' + label.replace(' ', '-')}">${labelHtml}${itemsHtml}</div>`;
                     };
                     
-                    const parts = [];
-                    if (groups.masc.length) parts.push(renderGroup(groups.masc, 'masc'));
-                    if (groups.nt.length) parts.push(renderGroup(groups.nt, 'nt'));
-                    if (groups.fem.length) parts.push(renderGroup(groups.fem, 'fem'));
-                    if (groups.other.length) {
-                        const itemsHtml = groups.other
-                            .map(item => `<span class="dpd-inflection-item">${item}</span>`)
-                            .join('');
-                        parts.push(`<div class="inflection-group">${itemsHtml}</div>`);
-                    }
+                    // Sort Keys and Build HTML
+                    const sortedKeys = Object.keys(groups).sort((a, b) => {
+                        if (a === 'other') return 1; // 'other' always last
+                        if (b === 'other') return -1;
+                        
+                        const ia = sortOrder.indexOf(a);
+                        const ib = sortOrder.indexOf(b);
+                        
+                        // If both are in sortOrder, compare indices
+                        if (ia !== -1 && ib !== -1) return ia - ib;
+                        
+                        // If one is in sortOrder, it comes first
+                        if (ia !== -1) return -1;
+                        if (ib !== -1) return 1;
+                        
+                        // Handling 'reflx ...' vs 'reflx ...' or unknown
+                        return a.localeCompare(b);
+                    });
                     
+                    const parts = sortedKeys.map(key => renderGroup(groups[key], key));
                     inflectionHtmlContent = parts.join('');
                 }
             } catch (e) { }
         }
 
-                        // Append Stem & Pattern Info
+        // Append Stem & Pattern Info
+        let metaHtml = '';
+        if (data.stem && data.pattern) {
+            metaHtml = `<div class="stem-pattern-info">${data.stem} • ${data.pattern}</div>`;
+        }
 
-                        let metaHtml = '';
+        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
+        let line0 = '';
+        
+        // 1. Stem/Pattern Info (Top of Line 0)
+        line0 += metaHtml;
 
-                        if (data.stem && data.pattern) {
-
-                            metaHtml = `<div class="stem-pattern-info">${data.stem} • ${data.pattern}</div>`;
-
-                        }
-
-                
-
-                                // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
-
-                
-
-                                let line0 = '';
-
-                
-
-                                
-
-                
-
-                                // 1. Stem/Pattern Info (Top of Line 0)
-
-                
-
-                                line0 += metaHtml;
-
-                
-
-                        
-
-                
-
-                                // 2. Grammatical Inflection Info
-
-                
-
-                                if (isSimilar) {
-
-                
-
-                                    // Similar Group: Show Matched Key
-
-                
-
-                                    const matchedKeyHtml = `<div class="inflection-group group-key"><span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span></div>`;
-
-                
-
-                                    line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionHtmlContent}</div>`;
-
-                
-
-                                } else {
-
-                
-
-                                    // Standard Group: Just Inflection Info
-
-                
-
-                                    if (inflectionHtmlContent) {
-
-                
-
-                                        line0 += `<div class="dpd-inflection-info">${inflectionHtmlContent}</div>`;
-
-                
-
-                                    }
-
-                
-
-                                }
+        // 2. Grammatical Inflection Info
+        if (isSimilar) {
+            // Similar Group: Show Matched Key
+            const matchedKeyHtml = `<div class="inflection-group group-key"><span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span></div>`;
+            line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionHtmlContent}</div>`;
+        } else {
+            // Standard Group: Just Inflection Info
+            if (inflectionHtmlContent) {
+                line0 += `<div class="dpd-inflection-info">${inflectionHtmlContent}</div>`;
+            }
+        }
         
         // Check if there is content to expand
         const hasDetails = (gram && Object.keys(gram).length > 0) || (examples && Array.isArray(examples) && examples.length > 0);
