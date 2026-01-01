@@ -78,8 +78,10 @@ export const PaliEntryRenderer = {
                             .map(item => `<span class="dpd-inflection-item">${item}</span>`)
                             .join('');
                             
-                        // Show label
-                        const labelHtml = `<span class="group-label">${label}:</span>`;
+                        // Show label unless it's 'other'
+                        const labelHtml = label !== 'other' 
+                            ? `<span class="group-label">${label}:</span>` 
+                            : '';
                             
                         return `<div class="inflection-group ${'group-' + label.replace(' ', '-')} ">${labelHtml}${itemsHtml}</div>`;
                     };
