@@ -347,13 +347,13 @@ details[open] .dpd-detail-icon {
 .dpd-inflection-info {
     color: var(--primitive-brown-400);
     font-size: 0.75rem;
-    font-weight: 300;
+    font-weight: 350;
     text-transform: lowercase;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     margin-bottom: 2px;
-    opacity: 0.9;
+    opacity: 1;
     line-height: 1.5;
 }
 
@@ -365,7 +365,7 @@ details[open] .dpd-detail-icon {
 }
 
 .group-label {
-    font-weight: 350;
+    font-weight: 400;
     margin-right: 8px;
     color: var(--text-muted);
     opacity: 0.8;
