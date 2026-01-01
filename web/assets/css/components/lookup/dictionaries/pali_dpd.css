@@ -89,7 +89,7 @@ details[open] .dpd-detail-icon {
 .dpd-lemma {
     font-weight: 700;
     color: var(--primary-color);
-    font-size: 1.1em;
+    font-size: 1.2rem;
 }
 
 .dpd-pos-group {
@@ -347,7 +347,7 @@ details[open] .dpd-detail-icon {
 .dpd-inflection-info {
     color: var(--primitive-brown-400);
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 300;
     text-transform: lowercase;
     display: flex;
     flex-wrap: wrap;
@@ -365,7 +365,7 @@ details[open] .dpd-detail-icon {
 }
 
 .group-label {
-    font-weight: 700;
+    font-weight: 350;
     margin-right: 8px;
     color: var(--text-muted);
     opacity: 0.8;
@@ -379,7 +379,7 @@ details[open] .dpd-detail-icon {
     content: '|';
     color: var(--text-light);
     opacity: 0.5;
-    font-weight: 300;
+    font-weight: 250;
     margin: 0 8px;
     font-size: 0.9em;
 }
