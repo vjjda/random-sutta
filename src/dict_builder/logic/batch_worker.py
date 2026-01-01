@@ -11,14 +11,34 @@ from ..builder_config import BuilderConfig
 from src.dict_builder.tools.pali_sort_key import pali_sort_key
 
 GRAMMAR_WEIGHTS = {
-    "masc": 1, "nt": 2, "fem": 3,
+    # Gender (1-9)
+    "masc": 1, "nt": 2, "neut": 2, "fem": 3, "x": 4, 
+    
+    # Case (10-19)
     "nom": 10, "acc": 11, "instr": 12, "dat": 13, "abl": 14, "gen": 15, "loc": 16, "voc": 17,
+    
+    # Number (20-29)
     "sg": 20, "pl": 21,
+    
+    # Person (30-39)
     "3rd": 30, "2nd": 31, "1st": 32,
-    "pres": 40, "aor": 41, "fut": 42, "imp": 43, "opt": 44, "cond": 45,
-    "part": 50, "inf": 51, "ger": 52, "abs": 53,
-    "act": 60, "reflx": 61,
+    
+    # Tense/Mood (40-49)
+    "pr": 40, "pres": 40, "imp": 41, "opt": 42, "cond": 43, "fut": 44, 
+    "aor": 45, "imperf": 46, "perf": 47,
+    
+    # Verb Forms (50-59)
+    "pp": 50, "ppr": 51, "fpp": 52, "grd": 52, "ptp": 52, 
+    "abs": 53, "ger": 53, "inf": 54, "part": 55,
+    
+    # Voice/Derivation (60-69)
+    "act": 60, "reflx": 61, "pass": 62, "caus": 63, "denom": 64,
+    
+    # Degree (70-79)
     "pos": 70, "comp": 71, "super": 72,
+    
+    # Part of Speech (80-89)
+    "adj": 80, "pron": 81, "card": 82, "ord": 83, "adv": 84, "prep": 85,
 }
 
 def _grammar_line_sort_key(line: List[str]) -> Tuple:
