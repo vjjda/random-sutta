@@ -51,10 +51,13 @@ def _inflection_str_sort_key(info_str: str) -> Tuple:
     weights = [GRAMMAR_WEIGHTS.get(token, 999) for token in tokens]
     return tuple(weights) + (info_str,)
 
-def _group_inflection_items(items: List[str]) -> List:
+def _group_inflection_items(items: List[str]) -> List[str]:
     """
     Groups a flat list of inflection strings into a structured format for the frontend.
-    Structure: [[GroupKey, [[Main, Count], [Main, Count]]], ...]
+    Returns a list of packed strings to save space.
+    Format: "GroupKey|Main~Count|Main~Count"
+    - '|' separates GroupKey from items, and items from each other.
+    - '~' separates Main from Count (if Count exists).
     """
     if not items: return []
     
@@ -64,7 +67,7 @@ def _group_inflection_items(items: List[str]) -> List:
         "person": {'1st', '2nd', '3rd'},
     }
     
-    grouped_map = {} # Key: GroupName, Value: List of [Main, Count]
+    grouped_map = {} # Key: GroupName, Value: List of string (formatted as "Main~Count" or "Main")
     
     for item in items:
         tokens = item.split()
@@ -98,15 +101,28 @@ def _group_inflection_items(items: List[str]) -> List:
                 count_part = None
                 main_part = " ".join(content_tokens)
         
+        # Format the item string
+        if count_part:
+            formatted_item = f"{main_part}~{count_part}"
+        else:
+            formatted_item = main_part
+
         if group_key not in grouped_map:
             grouped_map[group_key] = []
-        grouped_map[group_key].append([main_part, count_part])
+        grouped_map[group_key].append(formatted_item)
 
-    # 3. Sort and Build Result
+    # 3. Sort and Build Packed Strings
     sort_order = ["masc", "nt", "neut", "fem", "x", "dual", "1st", "2nd", "3rd", "other"]
     present_keys = sorted(grouped_map.keys(), key=lambda k: sort_order.index(k) if k in sort_order else 999)
     
-    return [[k, grouped_map[k]] for k in present_keys]
+    result = []
+    for k in present_keys:
+        # Join GroupKey and all Items with '|'
+        # e.g. "masc|nom~sg|acc~pl"
+        packed_str = "|".join([k] + grouped_map[k])
+        result.append(packed_str)
+        
+    return result
 
 def process_data(data_str: str, compress: bool) -> str | bytes:
     if not data_str: return None

@@ -19,9 +19,16 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    // mapData is now structured: [[groupKey, [[main, count], ...]], ...]
-                    inflectionHtmlContent = mapData.map(([group, items]) => {
-                        const itemsHtml = items.map(([main, count]) => {
+                    // mapData is now List of Packed Strings: "GroupKey|Main~Count|Main"
+                    inflectionHtmlContent = mapData.map(packedStr => {
+                        const parts = packedStr.split('|');
+                        const group = parts[0];
+                        const items = parts.slice(1);
+                        
+                        const itemsHtml = items.map(itemStr => {
+                            // itemStr is "Main~Count" or "Main"
+                            const [main, count] = itemStr.split('~');
+                            
                             if (count) {
                                 return `<span class="dpd-inflection-item"><span class="inflection-main">${main}</span> <span class="inflection-count">${count}</span></span>`;
                             }
