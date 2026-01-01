@@ -22,7 +22,15 @@ class SchemaManager:
     def _create_core_tables(self):
         self.cursor.execute("CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS deconstructions (word TEXT PRIMARY KEY, components TEXT);")
-        self.cursor.execute("CREATE TABLE IF NOT EXISTS lookups (key TEXT NOT NULL, target_id INTEGER NOT NULL, type INTEGER NOT NULL, inflection_map TEXT);")
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lookups (
+                key TEXT NOT NULL, 
+                target_id INTEGER NOT NULL, 
+                type INTEGER NOT NULL, 
+                inflection_map TEXT, 
+                PRIMARY KEY (key, type, target_id)
+            );
+        """)
         self.cursor.execute("CREATE TABLE IF NOT EXISTS json_keys (abbr_key TEXT PRIMARY KEY, full_key TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS table_types (type INTEGER PRIMARY KEY, table_name TEXT);")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS pack_schemas (table_name TEXT, column_name TEXT, schema TEXT, PRIMARY KEY (table_name, column_name));")
@@ -70,7 +78,7 @@ class SchemaManager:
         """)
 
     def _create_fts_and_triggers(self):
-        self.cursor.execute("CREATE INDEX IF NOT EXISTS idx_lookups_key ON lookups(key);")
+        # [OPTIMIZATION] idx_lookups_key is redundant due to Composite PK on lookups(key, type, target_id)
         self.cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS lookups_fts USING fts5(key, target_id UNINDEXED, type UNINDEXED, tokenize='unicode61 remove_diacritics 2');")
         self.create_lookup_trigger()
 

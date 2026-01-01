@@ -67,6 +67,8 @@ class DataInserter:
         # Check dimensionality of the first item
         first_item = lookups[0]
         if len(first_item) == 4:
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, type, inflection_map) VALUES (?, ?, ?, ?)", lookups)
+            # Schema: key, type, target_id, inflection_map
+            self.cursor.executemany("INSERT INTO lookups (key, type, target_id, inflection_map) VALUES (?, ?, ?, ?)", lookups)
         else:
-            self.cursor.executemany("INSERT INTO lookups (key, target_id, type) VALUES (?, ?, ?)", lookups)
+            # Schema: key, type, target_id
+            self.cursor.executemany("INSERT INTO lookups (key, type, target_id) VALUES (?, ?, ?)", lookups)
