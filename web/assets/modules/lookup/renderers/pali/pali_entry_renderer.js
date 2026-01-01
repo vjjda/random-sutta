@@ -10,8 +10,8 @@ export const PaliEntryRenderer = {
         const construction = data.construction || '';
         const degree = data.degree || '';
         
-        // Parse Inflection Info
-        let inflectionText = '';
+        // Parse Inflection Info & Group by Gender
+        let inflectionHtmlContent = '';
         if (data.inflection_map) {
             try {
                 const mapData = typeof data.inflection_map === 'string' 
@@ -19,9 +19,43 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    inflectionText = mapData
-                        .map(item => `<span class="dpd-inflection-item">${item}</span>`)
-                        .join('');
+                    // Grouping
+                    const groups = { masc: [], nt: [], fem: [], other: [] };
+                    
+                    mapData.forEach(item => {
+                        const lower = item.toLowerCase();
+                        if (lower.startsWith('masc')) groups.masc.push(item);
+                        else if (lower.startsWith('nt') || lower.startsWith('neut')) groups.nt.push(item);
+                        else if (lower.startsWith('fem')) groups.fem.push(item);
+                        else groups.other.push(item);
+                    });
+                    
+                    const renderGroup = (items, label) => {
+                        const cleanItems = items.map(item => {
+                            // Remove the first word (gender) if there are multiple words
+                            const spaceIdx = item.indexOf(' ');
+                            return spaceIdx !== -1 ? item.substring(spaceIdx + 1) : item;
+                        });
+                        
+                        const itemsHtml = cleanItems
+                            .map(item => `<span class="dpd-inflection-item">${item}</span>`)
+                            .join('');
+                            
+                        return `<div class="inflection-group"><span class="group-label">${label}:</span>${itemsHtml}</div>`;
+                    };
+                    
+                    const parts = [];
+                    if (groups.masc.length) parts.push(renderGroup(groups.masc, 'masc'));
+                    if (groups.nt.length) parts.push(renderGroup(groups.nt, 'nt'));
+                    if (groups.fem.length) parts.push(renderGroup(groups.fem, 'fem'));
+                    if (groups.other.length) {
+                        const itemsHtml = groups.other
+                            .map(item => `<span class="dpd-inflection-item">${item}</span>`)
+                            .join('');
+                        parts.push(`<div class="inflection-group">${itemsHtml}</div>`);
+                    }
+                    
+                    inflectionHtmlContent = parts.join('');
                 }
             } catch (e) { }
         }
@@ -74,11 +108,11 @@ export const PaliEntryRenderer = {
 
                 
 
-                                    const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
+                                    const matchedKeyHtml = `<div class="inflection-group group-key"><span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span></div>`;
 
                 
 
-                                    line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionText}</div>`;
+                                    line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionHtmlContent}</div>`;
 
                 
 
@@ -90,11 +124,11 @@ export const PaliEntryRenderer = {
 
                 
 
-                                    if (inflectionText) {
+                                    if (inflectionHtmlContent) {
 
                 
 
-                                        line0 += `<div class="dpd-inflection-info">${inflectionText}</div>`;
+                                        line0 += `<div class="dpd-inflection-info">${inflectionHtmlContent}</div>`;
 
                 
 
