@@ -26,34 +26,51 @@ export const PaliEntryRenderer = {
             } catch (e) { }
         }
 
-                // Append Stem & Pattern Info
-                if (data.stem && data.pattern) {
-                    const metaInfo = `<div class="dpd-meta-info">${data.stem} • ${data.pattern}</div>`;
-                    if (inflectionText) {
-                        inflectionText += `${metaInfo}`; 
-                    } else {
-                        inflectionText = metaInfo;
-                    }
-                }
-        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
-        let line0 = '';
-        
-        if (isSimilar) {
-            // Similar Group: Show Matched Key
-            const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
-            
-            if (inflectionText) {
-                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionText}</div>`;
-            }
-             else {
-                line0 = `<div class="dpd-inflection-info">${matchedKeyHtml}</div>`;
-            }
-        } else {
-            // Standard Group: Just Inflection Info
-            if (inflectionText) {
-                line0 = `<div class="dpd-inflection-info">${inflectionText}</div>`;
-            }
-        }
+                        // Append Stem & Pattern Info
+
+                        let metaHtml = '';
+
+                        if (data.stem && data.pattern) {
+
+                            metaHtml = `<div class="stem-pattern-info">${data.stem} • ${data.pattern}</div>`;
+
+                        }
+
+                
+
+                        // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)
+
+                        let line0 = '';
+
+                        
+
+                        if (isSimilar) {
+
+                            // Similar Group: Show Matched Key
+
+                            const matchedKeyHtml = `<span class="dpd-matched-key">matched: <b>${data.lookup_key}</b></span>`;
+
+                            
+
+                            line0 += `<div class="dpd-inflection-info">${matchedKeyHtml}${inflectionText}</div>`;
+
+                        } else {
+
+                            // Standard Group: Just Inflection Info
+
+                            if (inflectionText) {
+
+                                line0 += `<div class="dpd-inflection-info">${inflectionText}</div>`;
+
+                            }
+
+                        }
+
+                        
+
+                        // Append Stem/Pattern Info (Independent Block)
+
+                        line0 += metaHtml;
         
         // Check if there is content to expand
         const hasDetails = (gram && Object.keys(gram).length > 0) || (examples && Array.isArray(examples) && examples.length > 0);
