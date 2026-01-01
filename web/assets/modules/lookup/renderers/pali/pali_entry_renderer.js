@@ -19,93 +19,21 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    // 1. Define Priority Lists for Grouping
-                    const priorityGroups = {
-                        gender: ['masc', 'nt', 'neut', 'fem', 'x'],
-                        person: ['1st', '2nd', '3rd'],
-                        // Fallback categories (Tense/Form) for items without gender/person
-                        tense: ['pr', 'imp', 'opt', 'cond', 'fut', 'aor', 'imperf', 'perf'],
-                        form: ['pp', 'ppr', 'fpp', 'grd', 'ptp', 'abs', 'ger', 'inf']
-                    };
+                    // mapData is now structured: [[groupKey, [[main, count], ...]], ...]
+                    inflectionHtmlContent = mapData.map(([group, items]) => {
+                        const itemsHtml = items.map(([main, count]) => {
+                            if (count) {
+                                return `<span class="dpd-inflection-item"><span class="inflection-main">${main}</span> <span class="inflection-count">${count}</span></span>`;
+                            }
+                            return `<span class="dpd-inflection-item">${main}</span>`;
+                        }).join('');
 
-                    // Sorting Order: Gender -> Person -> Tense -> Form -> Other
-                    const sortOrder = [
-                        ...priorityGroups.gender,
-                        ...priorityGroups.person,
-                        ...priorityGroups.tense,
-                        ...priorityGroups.form
-                    ];
-
-                    const getGroupKey = (item) => {
-                        const tokens = item.toLowerCase().split(' ');
-                        
-                        // Priority 1: Gender (Nouns, Adjectives, Participles)
-                        const gender = tokens.find(t => priorityGroups.gender.includes(t));
-                        if (gender) return gender;
-
-                        // Priority 2: Person (Verbs, Pronouns)
-                        const person = tokens.find(t => priorityGroups.person.includes(t));
-                        if (person) return person;
-
-                        // Priority 3: Tense/Form (Fallback for indeclinables, infinitives, etc.)
-                        const tense = tokens.find(t => priorityGroups.tense.includes(t));
-                        if (tense) return tense;
-                        
-                        const form = tokens.find(t => priorityGroups.form.includes(t));
-                        if (form) return form;
-
-                        return 'other';
-                    };
-
-                    // Execute Grouping
-                    const groups = {};
-                    mapData.forEach(item => {
-                        const key = getGroupKey(item);
-                        if (!groups[key]) groups[key] = [];
-                        groups[key].push(item);
-                    });
-                    
-                    // Render Helper
-                    const renderGroup = (items, label) => {
-                        const cleanItems = items.map(item => {
-                            // Remove the label token from the item string
-                            const escapedLabel = label.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-                            const regex = new RegExp(`\\b${escapedLabel}\\b`, 'gi');
-                            return item.replace(regex, '').replace(/\s+/g, ' ').trim();
-                        });
-                        
-                        const itemsHtml = cleanItems
-                            .map(item => {
-                                const parts = item.split(' ');
-                                const lastPart = parts[parts.length - 1];
-                                if (parts.length > 1 && ['sg', 'pl'].includes(lastPart)) {
-                                    const main = parts.slice(0, -1).join(' ');
-                                    return `<span class="dpd-inflection-item"><span class="inflection-main">${main}</span> <span class="inflection-count">${lastPart}</span></span>`;
-                                }
-                                return `<span class="dpd-inflection-item">${item}</span>`;
-                            })
-                            .join('');
-                            
-                        // Show label unless it's 'other'
-                        const labelHtml = label !== 'other' 
-                            ? `<span class="group-label">${label}:</span>` 
+                        const labelHtml = group !== 'other' 
+                            ? `<span class="group-label">${group}:</span>` 
                             : '';
                             
-                        return `<div class="inflection-group ${'group-' + label.replace(' ', '-')} ">${labelHtml}${itemsHtml}</div>`;
-                    };
-                    
-                    // Sort Keys and Build HTML
-                    const sortedKeys = Object.keys(groups).sort((a, b) => {
-                        const ia = sortOrder.indexOf(a);
-                        const ib = sortOrder.indexOf(b);
-                        if (ia !== -1 && ib !== -1) return ia - ib;
-                        if (ia !== -1) return -1;
-                        if (ib !== -1) return 1;
-                        return a.localeCompare(b);
-                    });
-                    
-                    const parts = sortedKeys.map(key => renderGroup(groups[key], key));
-                    inflectionHtmlContent = parts.join('');
+                        return `<div class="inflection-group ${'group-' + group.replace(' ', '-')} ">${labelHtml}${itemsHtml}</div>`;
+                    }).join('');
                 }
             } catch (e) { } // Ignore errors during parsing
         }

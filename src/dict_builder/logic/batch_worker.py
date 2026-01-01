@@ -51,6 +51,63 @@ def _inflection_str_sort_key(info_str: str) -> Tuple:
     weights = [GRAMMAR_WEIGHTS.get(token, 999) for token in tokens]
     return tuple(weights) + (info_str,)
 
+def _group_inflection_items(items: List[str]) -> List:
+    """
+    Groups a flat list of inflection strings into a structured format for the frontend.
+    Structure: [[GroupKey, [[Main, Count], [Main, Count]]], ...]
+    """
+    if not items: return []
+    
+    # Priority Groups (dual is treated as a gender-like group)
+    GROUPS = {
+        "gender": {'masc', 'nt', 'neut', 'fem', 'x', 'dual'},
+        "person": {'1st', '2nd', '3rd'},
+    }
+    
+    grouped_map = {} # Key: GroupName, Value: List of [Main, Count]
+    
+    for item in items:
+        tokens = item.split()
+        group_key = "other"
+        token_set = set(t.lower() for t in tokens)
+        
+        # 1. Determine Group Key
+        found_gender = token_set.intersection(GROUPS["gender"])
+        if found_gender:
+            group_key = list(found_gender)[0]
+        else:
+            found_person = token_set.intersection(GROUPS["person"])
+            if found_person:
+                group_key = list(found_person)[0]
+        
+        # 2. Extract Content (Main & Count)
+        if group_key != "other":
+            content_tokens = [t for t in tokens if t.lower() != group_key]
+        else:
+            content_tokens = tokens
+            
+        if not content_tokens:
+            main_part = ""
+            count_part = None
+        else:
+            last_token = content_tokens[-1]
+            if last_token.lower() in ['sg', 'pl']:
+                count_part = last_token
+                main_part = " ".join(content_tokens[:-1])
+            else:
+                count_part = None
+                main_part = " ".join(content_tokens)
+        
+        if group_key not in grouped_map:
+            grouped_map[group_key] = []
+        grouped_map[group_key].append([main_part, count_part])
+
+    # 3. Sort and Build Result
+    sort_order = ["masc", "nt", "neut", "fem", "x", "dual", "1st", "2nd", "3rd", "other"]
+    present_keys = sorted(grouped_map.keys(), key=lambda k: sort_order.index(k) if k in sort_order else 999)
+    
+    return [[k, grouped_map[k]] for k in present_keys]
+
 def process_data(data_str: str, compress: bool) -> str | bytes:
     if not data_str: return None
     if compress: return zlib.compress(data_str.encode('utf-8'))
@@ -151,7 +208,11 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
             # Headword Lookup
             # Check if headword itself has mapping (e.g. nom sg)
             headword_map = inflection_map.get(i.lemma_clean)
-            headword_json = json.dumps(headword_map, ensure_ascii=False) if headword_map else None
+            if headword_map:
+                headword_grouped = _group_inflection_items(headword_map)
+                headword_json = json.dumps(headword_grouped, ensure_ascii=False)
+            else:
+                headword_json = None
             lookups_data.append((i.lemma_clean, i.id, 1, headword_json))
             
             unique_infs = set(i.inflections_list_all)
@@ -161,7 +222,11 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
                 
                 # Get map for this form
                 form_map = inflection_map.get(inf)
-                form_json = json.dumps(form_map, ensure_ascii=False) if form_map else None
+                if form_map:
+                    form_grouped = _group_inflection_items(form_map)
+                    form_json = json.dumps(form_grouped, ensure_ascii=False)
+                else:
+                    form_json = None
                 
                 lookups_data.append((inf, i.id, 1, form_json))
                 
