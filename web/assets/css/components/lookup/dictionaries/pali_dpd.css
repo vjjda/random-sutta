@@ -124,6 +124,18 @@ details[open] .dpd-detail-icon {
     align-items: center;
 }
 
+.dpd-construction:before {
+    content: '[';
+    margin-right: 2px;
+    opacity: 0.7;
+}
+
+.dpd-construction:after {
+    content: ']';
+    margin-left: 2px;
+    opacity: 0.7;
+}
+
 .dpd-construction-item {
     white-space: nowrap;
 }
