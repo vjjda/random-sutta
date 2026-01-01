@@ -75,7 +75,15 @@ export const PaliEntryRenderer = {
                         });
                         
                         const itemsHtml = cleanItems
-                            .map(item => `<span class="dpd-inflection-item">${item}</span>`)
+                            .map(item => {
+                                const parts = item.split(' ');
+                                const lastPart = parts[parts.length - 1];
+                                if (parts.length > 1 && ['sg', 'pl'].includes(lastPart)) {
+                                    const main = parts.slice(0, -1).join(' ');
+                                    return `<span class="dpd-inflection-item"><span class="inflection-main">${main}</span> <span class="inflection-count">${lastPart}</span></span>`;
+                                }
+                                return `<span class="dpd-inflection-item">${item}</span>`;
+                            })
                             .join('');
                             
                         // Show label unless it's 'other'

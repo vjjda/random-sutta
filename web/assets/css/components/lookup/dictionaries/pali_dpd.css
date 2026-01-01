@@ -384,6 +384,17 @@ details[open] .dpd-detail-icon {
     font-size: 0.9em;
 }
 
+.inflection-main {
+    /* Default styling inherited */
+}
+
+.inflection-count {
+    color: var(--text-light);
+    opacity: 0.8;
+    font-size: 0.9em;
+    margin-left: 2px;
+}
+
 .dpd-separator-dot {
     color: var(--text-light);
     margin: 0 8px;
