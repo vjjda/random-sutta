@@ -122,6 +122,7 @@ details[open] .dpd-detail-icon {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    width: 100%;
 }
 
 .dpd-construction:before {
@@ -163,7 +164,7 @@ details[open] .dpd-detail-icon {
 
 .dpd-meaning-lit {
     color: var(--text-light);
-    font-size: 0.9em;
+    font-size: 0.85em;
     font-style: italic;
     display: block;
     margin-top: 2px;
