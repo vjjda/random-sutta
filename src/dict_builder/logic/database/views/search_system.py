@@ -180,6 +180,7 @@ class SearchSystemBuilder:
                 {grammar_field} AS grammar,
                 {example_field} AS example,
                 {col_root_extras},
+                e.stem, e.pattern,
                 {col_is_exact},
                 l.inflection_map
             FROM unique_keys k

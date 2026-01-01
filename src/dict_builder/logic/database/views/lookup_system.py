@@ -165,6 +165,7 @@ class LookupSystemBuilder:
                 {example_field} AS example,
                 {col_root_extras},
                 {col_headword_clean},
+                e.stem, e.pattern,
                 k.priority,
                 {col_is_exact},
                 {col_has_word},

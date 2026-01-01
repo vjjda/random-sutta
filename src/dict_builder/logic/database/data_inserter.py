@@ -24,8 +24,9 @@ class DataInserter:
                         id, headword, headword_clean, 
                         pos, meaning, construction, degree, 
                         meaning_lit, plus_case, 
+                        stem, pattern,
                         grammar_json, example_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 
                 # If tiny mode, we might need to adjust what data is passed, 

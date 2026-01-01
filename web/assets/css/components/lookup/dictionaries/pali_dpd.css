@@ -311,14 +311,14 @@ details[open] .dpd-detail-icon {
 
 /* --- INFLECTION INFO --- */
 .dpd-inflection-info {
-    color: var(--text-pali);
-    font-size: 0.8em;
-    font-weight: 500;
+    color: var(--text-pali); 
+    font-size: 0.75em;
+    font-weight: 600;
     text-transform: lowercase;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    margin-bottom: 0px;
+    margin-bottom: 2px;
     opacity: 0.85;
     line-height: 1.5;
 }
@@ -362,4 +362,13 @@ details[open] .dpd-detail-icon {
 
 .dpd-matched-key b {
     color: var(--primary-color);
+}
+
+/* --- META INFO (STEM/PATTERN) --- */
+.dpd-meta-info {
+    color: var(--text-light);
+    font-size: 0.9em;
+    font-weight: 400;
+    white-space: nowrap;
+    opacity: 0.8;
 }

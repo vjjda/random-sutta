@@ -77,6 +77,8 @@ export const PaliDPD = {
                     degree: row.degree,
                     meaning_lit: row.meaning_origin,
                     plus_case: row.plus_case,
+                    stem: row.stem,
+                    pattern: row.pattern,
                     
                     // Inflection Map (Grammatical Context)
                     inflection_map: row.inflection_map,

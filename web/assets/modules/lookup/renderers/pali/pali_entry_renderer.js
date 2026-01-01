@@ -19,11 +19,22 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
+                    const separator = '<span class="dpd-separator">|</span>';
                     inflectionText = mapData
                         .map(item => `<span class="dpd-inflection-item">${item}</span>`)
-                        .join('');
+                        .join(separator);
                 }
             } catch (e) { }
+        }
+
+        // Append Stem & Pattern Info
+        if (data.stem && data.pattern) {
+            const metaInfo = `<span class="dpd-meta-info">stem: ${data.stem} • pattern: ${data.pattern}</span>`;
+            if (inflectionText) {
+                inflectionText += `<span class="dpd-separator">|</span>${metaInfo}`;
+            } else {
+                inflectionText = metaInfo;
+            }
         }
 
         // Inflection Map (Grammatical Context) - Line 0 (Above Lemma)

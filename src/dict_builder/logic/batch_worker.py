@@ -41,9 +41,14 @@ def _generate_inflection_map(stem: str, template_data: List) -> dict:
     Generate a map of inflection forms to their grammatical descriptions.
     Returns: Dict[form_str, List[grammatical_descriptions]]
     """
-    # Exclude non-inflected stems, but ALLOW "*" (irregular stems)
-    if not stem or not template_data or stem.startswith("!") or stem.startswith("-"):
+    # Exclude non-inflected stems (starts with "-"), but ALLOW "*" and "!"
+    if not stem or not template_data or stem.startswith("-"):
         return {}
+    
+    # Handle Exclamation Stem (Remove "!")
+    clean_stem = stem
+    if stem.startswith("!"):
+        clean_stem = stem[1:]
     
     inf_map = {} # Dict[form, Set[meta]]
     
@@ -68,7 +73,7 @@ def _generate_inflection_map(stem: str, template_data: List) -> dict:
                     if stem == "*":
                         form = sfx # In irregular templates, suffix is the full form
                     else:
-                        form = f"{stem}{sfx}" if sfx else stem
+                        form = f"{clean_stem}{sfx}" if sfx else clean_stem
                         
                     if not form: continue
                     
@@ -112,6 +117,8 @@ def process_batch_worker(ids: List[int], config: BuilderConfig, target_set: Opti
                 def_data["degree"],
                 def_data["meaning_lit"],
                 def_data["plus_case"],
+                i.stem, # [NEW]
+                i.pattern, # [NEW]
                 process_data(grammar_json, config.USE_COMPRESSION), 
                 process_data(example_json, config.USE_COMPRESSION)
             ))

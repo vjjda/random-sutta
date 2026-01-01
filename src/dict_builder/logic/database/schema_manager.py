@@ -43,6 +43,8 @@ class SchemaManager:
             degree TEXT,
             meaning_lit TEXT,
             plus_case TEXT,
+            stem TEXT,
+            pattern TEXT,
             grammar_json TEXT,
             example_json TEXT
         """
