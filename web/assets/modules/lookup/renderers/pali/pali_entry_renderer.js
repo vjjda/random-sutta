@@ -10,7 +10,7 @@ export const PaliEntryRenderer = {
         const construction = data.construction || '';
         const degree = data.degree || '';
         
-        // Parse Inflection Info & Group by Gender/Tense
+        // Parse Inflection Info & Group by Gender/Person
         let inflectionHtmlContent = '';
         if (data.inflection_map) {
             try {
@@ -19,34 +19,41 @@ export const PaliEntryRenderer = {
                     : data.inflection_map;
                     
                 if (Array.isArray(mapData) && mapData.length > 0) {
-                    // Grouping Configuration (Expanded based on DPD Docs)
+                    // 1. Define Priority Lists for Grouping
+                    const priorityGroups = {
+                        gender: ['masc', 'nt', 'neut', 'fem', 'x'],
+                        person: ['1st', '2nd', '3rd'],
+                        // Fallback categories (Tense/Form) for items without gender/person
+                        tense: ['pr', 'imp', 'opt', 'cond', 'fut', 'aor', 'imperf', 'perf'],
+                        form: ['pp', 'ppr', 'fpp', 'grd', 'ptp', 'abs', 'ger', 'inf']
+                    };
+
+                    // Sorting Order: Gender -> Person -> Tense -> Form -> Other
                     const sortOrder = [
-                        // Genders
-                        'masc', 'nt', 'neut', 'fem', 'x',
-                        // Person (for pronouns)
-                        '1st', '2nd', '3rd',
-                        // Tenses & Moods
-                        'pr', 'imp', 'opt', 'cond', 'fut', 'aor', 'imperf', 'perf',
-                        // Verb Forms
-                        'pp', 'ppr', 'fpp', 'grd', 'ptp', 'abs', 'ger', 'inf',
-                        // Voice / Derivation
-                        'pass', 'caus', 'denom',
-                        // Parts of Speech
-                        'adj', 'pron', 'card', 'ord', 'indecl', 'adv', 'prep'
+                        ...priorityGroups.gender,
+                        ...priorityGroups.person,
+                        ...priorityGroups.tense,
+                        ...priorityGroups.form
                     ];
 
                     const getGroupKey = (item) => {
-                        const parts = item.toLowerCase().split(' ');
-                        const first = parts[0];
+                        const tokens = item.toLowerCase().split(' ');
                         
-                        // Handle Reflexive: group by 'reflx + tense'
-                        if (first === 'reflx' && parts.length > 1) {
-                            return `reflx ${parts[1]}`;
-                        }
+                        // Priority 1: Gender (Nouns, Adjectives, Participles)
+                        const gender = tokens.find(t => priorityGroups.gender.includes(t));
+                        if (gender) return gender;
+
+                        // Priority 2: Person (Verbs, Pronouns)
+                        const person = tokens.find(t => priorityGroups.person.includes(t));
+                        if (person) return person;
+
+                        // Priority 3: Tense/Form (Fallback for indeclinables, infinitives, etc.)
+                        const tense = tokens.find(t => priorityGroups.tense.includes(t));
+                        if (tense) return tense;
                         
-                        // Group by known categories
-                        if (sortOrder.includes(first)) return first;
-                        
+                        const form = tokens.find(t => priorityGroups.form.includes(t));
+                        if (form) return form;
+
                         return 'other';
                     };
 
@@ -61,35 +68,29 @@ export const PaliEntryRenderer = {
                     // Render Helper
                     const renderGroup = (items, label) => {
                         const cleanItems = items.map(item => {
-                            // Strip the label (case insensitive) from the start of the item
+                            // Remove the label token from the item string
                             const escapedLabel = label.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-                            const regex = new RegExp(`^${escapedLabel}\\s+`, 'i');
-                            return item.replace(regex, '');
+                            const regex = new RegExp(`\\b${escapedLabel}\\b`, 'gi');
+                            return item.replace(regex, '').replace(/\s+/g, ' ').trim();
                         });
                         
                         const itemsHtml = cleanItems
                             .map(item => `<span class="dpd-inflection-item">${item}</span>`)
                             .join('');
                             
-                        const labelHtml = label !== 'other' 
-                            ? `<span class="group-label">${label}:</span>` 
-                            : '';
+                        // Show label
+                        const labelHtml = `<span class="group-label">${label}:</span>`;
                             
-                        return `<div class="inflection-group ${'group-' + label.replace(' ', '-')}">${labelHtml}${itemsHtml}</div>`;
+                        return `<div class="inflection-group ${'group-' + label.replace(' ', '-')} ">${labelHtml}${itemsHtml}</div>`;
                     };
                     
                     // Sort Keys and Build HTML
                     const sortedKeys = Object.keys(groups).sort((a, b) => {
-                        if (a === 'other') return 1; // 'other' always last
-                        if (b === 'other') return -1;
-                        
                         const ia = sortOrder.indexOf(a);
                         const ib = sortOrder.indexOf(b);
-                        
                         if (ia !== -1 && ib !== -1) return ia - ib;
                         if (ia !== -1) return -1;
                         if (ib !== -1) return 1;
-                        
                         return a.localeCompare(b);
                     });
                     
