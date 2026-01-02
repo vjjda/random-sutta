@@ -9,7 +9,6 @@ __pycache__/
 Thumbs.db
 
 # IDE settings (Optional)
-.vscode/
 .idea/
 .venv/
 

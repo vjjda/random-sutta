@@ -1,0 +1,16 @@
+{
+  "files.exclude": {
+    "**/build": true,
+    "**/dist": true
+  },
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "SQLite",
+      "database": "${workspaceFolder:random_sutta}/data/dpd/dpd_mini.db",
+      "name": "DPD Mini"
+    }
+  ],
+  "sqltools.useNodeRuntime": true,
+  "css.lint.emptyRules": "ignore"
+}
