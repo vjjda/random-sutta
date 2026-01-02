@@ -64,13 +64,14 @@
 
 #lookup-word-heading {
     margin: 0;
-    font-size: 1.8rem;
+    font-size: clamp(1.2rem, 8vw, 2rem);
     font-weight: 200;
     color: var(--text-main);
     font-family: var(--font-main);
     line-height: 1.2;
     /* Allow Pali words to break if too long */
     overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 /* --- GRAMMAR TOGGLE BTN --- */

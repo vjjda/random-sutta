@@ -84,12 +84,16 @@ details[open] .dpd-detail-icon {
     justify-content: space-between;
     align-items: baseline;
     width: 100%;
+    gap: 8px;
 }
 
 .dpd-lemma {
-    font-weight: 700;
+    font-weight: 350;
     color: var(--primary-color);
-    font-size: 1.2rem;
+    font-size: clamp(1rem, 5vw, 1.5rem);
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
 }
 
 .dpd-pos-group {
@@ -160,7 +164,7 @@ details[open] .dpd-detail-icon {
 }
 
 .dpd-meaning {
-    font-weight: 500;
+    font-weight: 450;
 }
 
 .dpd-meaning-lit {

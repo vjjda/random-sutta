@@ -83,7 +83,11 @@ export const PopupOrchestrator = {
                 }
                 else if (CommentUI.isVisible()) this.closeAll();
             }
-            if (CommentUI.isVisible() && !QuicklookUI.isVisible()) {
+            // Check if Comment is the Top Layer
+            const commentEl = document.getElementById("comment-popup");
+            const isTopLayer = commentEl && commentEl.classList.contains("is-top-layer");
+            
+            if (CommentUI.isVisible() && !QuicklookUI.isVisible() && isTopLayer) {
                 if (e.key === "ArrowLeft") CommentController.navigate(-1);
                 if (e.key === "ArrowRight") CommentController.navigate(1);
             }

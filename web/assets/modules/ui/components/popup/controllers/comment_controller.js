@@ -50,6 +50,12 @@ export const CommentController = {
             const item = comments[index];
             const context = PopupScanner.getContextText(comments, index);
             CommentUI.render(item.text, index, total, context);
+
+            // [STACKING] Bring to Front
+            const commentEl = document.getElementById("comment-popup");
+            const lookupEl = document.getElementById("lookup-popup");
+            if (commentEl) commentEl.classList.add("is-top-layer");
+            if (lookupEl) lookupEl.classList.remove("is-top-layer");
         }
     },
 
@@ -77,5 +83,15 @@ export const CommentController = {
         QuicklookUI.hide(); // Close child popup (Quicklook)
         PopupState.clearActive();
         Scroller.highlightElement(null);
+
+        // [STACKING] Yield 'top-layer' to Lookup if it's still open
+        const commentEl = document.getElementById("comment-popup");
+        if (commentEl) commentEl.classList.remove("is-top-layer");
+
+        const lookupEl = document.getElementById("lookup-popup");
+        // Check visibility via class hidden logic
+        if (lookupEl && !lookupEl.classList.contains("hidden")) {
+            lookupEl.classList.add("is-top-layer");
+        }
     }
 };

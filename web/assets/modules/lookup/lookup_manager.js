@@ -31,7 +31,8 @@ export const LookupManager = {
         
         // Keyboard Navigation
         document.addEventListener("keydown", (e) => {
-            if (LookupUI.isVisible()) {
+            const lookupEl = document.getElementById("lookup-popup");
+            if (LookupUI.isVisible() && lookupEl && lookupEl.classList.contains("is-top-layer")) {
                 if (e.key === "ArrowLeft") LookupNavigator.navigate(-1, this._performLookup.bind(this));
                 if (e.key === "ArrowRight") LookupNavigator.navigate(1, this._performLookup.bind(this));
             }
@@ -64,6 +65,12 @@ export const LookupManager = {
             const renderData = PaliRenderer.renderList(results, cleanText);
             LookupUI.render(renderData, cleanText); 
             document.body.classList.add("lookup-open");
+
+            // [STACKING] Bring to Front
+            const lookupEl = document.getElementById("lookup-popup");
+            const commentEl = document.getElementById("comment-popup");
+            if (lookupEl) lookupEl.classList.add("is-top-layer");
+            if (commentEl) commentEl.classList.remove("is-top-layer");
             
             // Auto Scroll (only if first look, not nav)
             if (!LookupState.isNavigating) {
@@ -85,5 +92,15 @@ export const LookupManager = {
     clearHighlight() {
         LookupHighlighter.clearHighlight();
         document.body.classList.remove("lookup-open");
+        
+        // [STACKING] When closing, yield 'top-layer' status back to Comment if open
+        const lookupEl = document.getElementById("lookup-popup");
+        if (lookupEl) lookupEl.classList.remove("is-top-layer");
+
+        const commentEl = document.getElementById("comment-popup");
+        // Check if comment popup is visible (not hidden)
+        if (commentEl && !commentEl.classList.contains("hidden")) {
+            commentEl.classList.add("is-top-layer");
+        }
     }
 };
