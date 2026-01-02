@@ -46,7 +46,13 @@ export const CommentUI = {
             onSwipeRight: () => callbacks.onNavigate(-1)
         });
 
+        // [FIX] Isolate Header from Swipe/Scroll inheritance
         if (this.elements.headerContext) {
+            const stopPropagation = (e) => e.stopPropagation();
+            this.elements.headerContext.addEventListener("touchstart", stopPropagation, { passive: true });
+            this.elements.headerContext.addEventListener("touchmove", stopPropagation, { passive: true });
+            this.elements.headerContext.addEventListener("touchend", stopPropagation, { passive: true });
+
             this.elements.headerContext.addEventListener("wheel", (e) => {
                 if (this.elements.headerContext.scrollWidth > this.elements.headerContext.clientWidth) {
                     e.preventDefault();
@@ -71,7 +77,8 @@ export const CommentUI = {
         this.elements.content.innerHTML = text;
         
         if (this.elements.headerContext) {
-            this.elements.headerContext.textContent = contextText ? `"${contextText}"` : "";
+            // [UPDATED] Remove double quotes
+            this.elements.headerContext.textContent = contextText || "";
             this.elements.headerContext.scrollLeft = 0;
         }
 
