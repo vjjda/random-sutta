@@ -10,13 +10,13 @@ header {
 }
 
 /* [KHI BẬT TTS] Đẩy Header xuống để nhường chỗ cho Player (Fixed Top) */
-body.tts-open header {
-  padding-top: calc(20px + var(--tts-bottom-padding));
+body.tts-open #reader-view > header {
+  padding-top: var(--tts-bottom-padding);
 }
 
 @media (max-width: 600px) {
-  body.tts-open header {
-      padding-top: calc(30px + var(--tts-bottom-padding));
+  body.tts-open #reader-view > header {
+      padding-top: var(--tts-bottom-padding);
   }
 }
 

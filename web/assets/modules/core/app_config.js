@@ -8,8 +8,8 @@ export const AppConfig = {
     MAGIC_NAV_COOLDOWN: 60000,
 
     TTS: {
-        SCROLL_OFFSET_TOP: '15vh',
-        BOTTOM_PADDING: '300px', 
+        SCROLL_OFFSET_TOP: '30vh',
+        BOTTOM_PADDING: '150px', 
         
         DEFAULT_VOICE: {
             voiceURI: "en-US-Chirp3-HD-Algenib"
@@ -55,7 +55,7 @@ export const AppConfig = {
     },
 
     POPUP_LAYOUT: {
-        COMMENT_HEIGHT_VH: 40, 
+        COMMENT_HEIGHT_VH: 45, 
         QUICKLOOK_TOP_OFFSET_PX: 0 
     },
 
