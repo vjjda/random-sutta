@@ -4,105 +4,103 @@
 :root {
   --popup-comment-height: 40vh;
   --popup-quicklook-top: 70px;
-  
-  /* [UPDATED] Biến offset cho popup. 
-     Mặc định: Luôn cộng thêm vùng an toàn (Safe Area) để tránh Home Bar trên iPhone X+ */
-  --tts-popup-offset: env(safe-area-inset-bottom, 0px); 
 }
 
-/* [NEW] Khi TTS Open -> Đẩy popup lên cao hơn Player.
-   Player height ~120px (bao gồm cả Pill và Controls).
-   Ta để dư ra 115px cộng với safe area để đảm bảo không dính.
-*/
-body.tts-open {
-  --tts-popup-offset: 90px;
-}
+/* [REMOVED] TTS Popup Offset Logic - TTS is now at Top */
 
 .popup-container {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  width: 96%;
+  
+  /* [UPDATED] Full width on mobile to avoid side gaps */
+  width: 100%;
   max-width: var(--container-width);
+  
   background-color: var(--bg-card);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15);
   opacity: 1;
+  
+  /* [FIX] Stick to bottom, ignore TTS */
+  bottom: 0 !important;
+  border-radius: 20px 20px 0 0;
 }
 
 .popup-container.hidden {
   opacity: 0;
-  transform: translate(-50%, 50px);
+  transform: translate(-50%, 100%); /* Slide down fully */
   pointer-events: none;
 }
 
 .popup-body {
   position: relative;
+  /* [UPDATED] Add Safe Area Padding internally */
   padding: var(--popup-padding-mobile);
+  padding-bottom: calc(var(--popup-padding-mobile) + env(safe-area-inset-bottom, 20px));
+  
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* [UX] Cho phép cuộn dọc mượt mà, nhưng nhường quyền xử lý vuốt ngang cho JS */
   touch-action: pan-y;
   flex: 1;
   min-height: 0;
 }
 
 @media (min-width: 600px) {
-  .popup-body { padding: var(--popup-padding-desktop); }
+  .popup-body { 
+      padding: var(--popup-padding-desktop);
+      padding-bottom: var(--popup-padding-desktop);
+  }
+  /* On desktop/tablet, restore floating look if desired */
+  .popup-container {
+      width: 96%;
+      bottom: 20px !important;
+      border-radius: 20px;
+  }
 }
 
 /* --- COMMENT POPUP (Layer 1) --- */
 #comment-popup {
-  /* [UPDATED] Dùng biến offset để tự động trượt lên khi có Player */
-  bottom: var(--tts-popup-offset);
-  
+  bottom: 0;
   max-height: var(--popup-comment-height);
   height: var(--popup-comment-height);
   border-left: 5px solid var(--primary-color);
   z-index: 1020;
-  
-  /* [NEW] Thêm transition cho bottom để hiệu ứng mượt mà */
-  transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s;
 }
 
 /* --- QUICKLOOK POPUP (Layer 2) --- */
 #quicklook-popup {
   top: var(--popup-quicklook-top);
-  
-  /* [UPDATED] Tính toán vị trí đáy:
-     Chiều cao Comment Popup (40vh) + Khoảng đệm TTS (nếu có)
-     Giúp Quicklook co lại nhường chỗ cho Comment Popup trượt lên
-  */
-  bottom: calc(var(--popup-comment-height) + var(--tts-popup-offset));
+  /* Sits above Comment Popup if open, but mostly independent now */
+  bottom: 0; 
   
   height: auto;
-  max-height: none;
-  border-radius: 0;
+  max-height: 60vh; /* Limit height */
+  border-radius: 20px 20px 0 0;
   border-left: 5px solid var(--primitive-brown-300);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: none;
   z-index: 1010;
   
-  /* [NEW] Transition mượt mà đồng bộ với Comment Popup */
-  transition: bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s;
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s;
 }
 
 #quicklook-popup.hidden {
   opacity: 0;
   pointer-events: none;
-  transform: none; 
+  transform: translate(-50%, 100%);
 }
 
 /* Ensure content isn't hidden behind floating nav */
 #comment-popup .popup-body {
-  padding-bottom: 60px;
+  /* padding-bottom handled by generic rule */
 }
 
-/* [NEW] Body Padding for Popup
-   Ensures content behind popup can be scrolled into view.
-   Popup is ~40vh high.
-*/
+/* [NEW] Body Padding for Popup */
 body.popup-open, body.lookup-open {
+  /* No special body padding needed for bottom popups if they overlay content */
+  /* But if we want to scroll content fully: */
   padding-bottom: 45vh !important;
   transition: padding-bottom 0.3s ease;
 }

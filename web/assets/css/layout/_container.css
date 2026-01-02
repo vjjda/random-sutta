@@ -15,12 +15,12 @@
   min-height: 300px;
   
   /* [QUAN TRỌNG] Hiệu ứng chuyển đổi mượt mà khi bật/tắt Player */
-  transition: padding-bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: padding-top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* [KHI BẬT TTS] Áp dụng padding lớn để tránh bị che */
+/* [KHI BẬT TTS] Áp dụng padding TOP lớn để tránh bị che bởi Top Player */
 body.tts-open #sutta-container {
-  padding-bottom: var(--tts-bottom-padding);
+  padding-top: calc(20px + var(--tts-bottom-padding));
 }
 
 @media (max-width: 600px) {
@@ -33,6 +33,6 @@ body.tts-open #sutta-container {
   }
   
   body.tts-open #sutta-container {
-    padding-bottom: var(--tts-bottom-padding);
+    padding-top: calc(30px + var(--tts-bottom-padding));
   }
 }
