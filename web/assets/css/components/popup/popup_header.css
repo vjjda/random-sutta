@@ -37,6 +37,7 @@
   align-items: flex-start;
   gap: 10px;
   min-height: 50px;
+  border-left: 5px solid var(--primary-color);
 }
 
 /* Style riêng cho text trong Comment Header */
@@ -46,7 +47,6 @@
   font-size: 0.9rem;
   font-style: italic;
   color: var(--text-muted);
-  
   align-self: center;
   white-space: nowrap;
   overflow-x: auto;
@@ -130,7 +130,8 @@
   gap: 10px;
   min-height: 50px;
   /* border-top: 1px solid var(--border-light); */ /* Separate from body */
-  
+  border-left: 5px solid var(--primary-color);
+
   /* Make it obvious it's clickable */
   cursor: pointer;
   transition: background-color 0.2s;
