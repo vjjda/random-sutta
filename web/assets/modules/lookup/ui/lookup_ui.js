@@ -14,6 +14,7 @@ export const LookupUI = {
             wordHeading: document.getElementById("lookup-word-heading"),
             
             // Content
+            bestMatchesContainer: document.getElementById("lookup-best-matches"),
             popupBody: document.querySelector("#lookup-popup .popup-body"),
             contentDpd: document.getElementById("lookup-content-dpd"),
 
@@ -69,7 +70,7 @@ export const LookupUI = {
         });
     },
 
-    render(data, titleWord = "Lookup") {
+    render(data, titleWord = "Lookup", segmentText = "", rawResults = []) {
         let dictHtml = "";
 
         // Handle both simple string (loading/error) and object (results)
@@ -79,10 +80,64 @@ export const LookupUI = {
             dictHtml = data.dictHtml || "";
         }
 
-        // 1. Set Title (Heading Row)
+        // 1. Best Matches Logic (Context Aware)
+        if (this.elements.bestMatchesContainer) {
+            this.elements.bestMatchesContainer.innerHTML = "";
+            this.elements.bestMatchesContainer.classList.add("hidden");
+
+            // Only proceed if we have segment context and raw results
+            if (segmentText && rawResults && Array.isArray(rawResults) && rawResults.length > 0) {
+                // Normalize segment text for loose matching
+                // We keep spaces to ensure we don't accidentally merge words
+                const normSegment = segmentText.toLowerCase().replace(/[.,;:"'‘’“”\—?!()…]/g, ' '); 
+                const cleanTitle = titleWord.toLowerCase().trim();
+
+                const bestMatches = rawResults.filter(r => {
+                    const headword = r.headword || r.lookup_key || "";
+                    if (!headword) return false;
+
+                    const cleanHead = headword.toLowerCase().replace(/[.,;:"'‘’“”\—?!()…]/g, '').trim();
+
+                    // 1. Must check equality first (Exact match exclusion)
+                    if (cleanHead === cleanTitle) return false;
+
+                    // 2. The result must CONTAIN the lookup word (Context Suggestion implies expanding on the word)
+                    // e.g. Lookup "bhadante" -> Suggest "bhadante ti"
+                    if (!cleanHead.includes(cleanTitle)) return false;
+
+                    // 3. Check if phrase exists in segment
+                    return normSegment.includes(cleanHead);
+                });
+
+                if (bestMatches.length > 0) {
+                    this.elements.bestMatchesContainer.classList.remove("hidden");
+                    
+                    bestMatches.forEach(match => {
+                        const div = document.createElement("div");
+                        div.className = "best-match-item";
+                        
+                        // Highlight: Underline the lookup word inside the phrase
+                        const phrase = match.headword || match.lookup_key;
+                        // Escape titleWord for regex safety just in case
+                        const safeTitle = titleWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const regex = new RegExp(`(${safeTitle})`, 'gi');
+                        const highlightedPhrase = phrase.replace(regex, '<u>$1</u>');
+                        
+                        let html = `<div class="best-match-phrase">${highlightedPhrase}</div>`;
+                        if (match.meaning) {
+                            html += `<span class="best-match-meaning">${match.meaning}</span>`;
+                        }
+                        div.innerHTML = html;
+                        this.elements.bestMatchesContainer.appendChild(div);
+                    });
+                }
+            }
+        }
+
+        // 2. Set Title (Heading Row)
         if (this.elements.wordHeading) this.elements.wordHeading.textContent = titleWord;
 
-        // 2. Render DPD Content
+        // 3. Render DPD Content
         if (this.elements.contentDpd) this.elements.contentDpd.innerHTML = dictHtml;
 
         // [Z-INDEX] Bring to front

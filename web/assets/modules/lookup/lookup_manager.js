@@ -48,6 +48,15 @@ export const LookupManager = {
     async _performLookup(text, contextNode) {
         if (!text) return;
         
+        // [CONTEXT] Capture Segment Text for Best Match Logic
+        let segmentText = "";
+        if (contextNode) {
+            // Try to find the closest segment container (usually has class 'segment' or id)
+            // Fallback to parent element if no specific segment class found
+            const segment = contextNode.closest(".segment") || contextNode.closest("p") || contextNode.parentElement;
+            if (segment) segmentText = segment.textContent;
+        }
+
         // Clean Text
         // [UPDATED] Include all smart quotes
         const cleanText = text.toLowerCase().replace(/[.,;:"'‘’“”\—?!()…]/g, '').trim();
@@ -63,7 +72,7 @@ export const LookupManager = {
         
         if (results && results.length > 0) {
             const renderData = PaliRenderer.renderList(results, cleanText);
-            LookupUI.render(renderData, cleanText); 
+            LookupUI.render(renderData, cleanText, segmentText, results); 
             document.body.classList.add("lookup-open");
 
             // [STACKING] Bring to Front

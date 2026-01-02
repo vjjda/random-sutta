@@ -50,6 +50,53 @@
     overscroll-behavior: contain;
 }
 
+/* --- BEST MATCHES (Context Aware) --- */
+.lookup-best-matches {
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lookup-best-matches.hidden {
+    display: none;
+}
+
+.best-match-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.best-match-item {
+    background-color: var(--bg-secondary);
+    border-left: 3px solid var(--primary-color);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 1rem;
+    color: var(--text-main);
+    cursor: pointer; /* Maybe allow clicking to scroll to details? */
+}
+
+.best-match-phrase u {
+    text-decoration: underline;
+    text-decoration-color: var(--primary-color);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    font-weight: 600;
+}
+
+.best-match-meaning {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-top: 4px;
+    font-style: italic;
+}
+
 /* --- HEADING ROW --- */
 .lookup-heading-row {
     display: flex;
