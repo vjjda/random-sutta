@@ -25,7 +25,7 @@
   
   /* [FIX] Stick to bottom, ignore TTS */
   bottom: 0 !important;
-  border-radius: 20px 20px 0 0;
+  border-radius: 0;
 }
 
 .popup-container.hidden {
@@ -64,7 +64,7 @@
   .popup-container {
       width: 96%;
       bottom: 0 !important; /* [FIXED] Remove gap */
-      border-radius: 20px 20px 0 0; /* [FIXED] Flat bottom */
+      border-radius: 0; /* [FIXED] Flat bottom */
   }
 }
 
@@ -86,7 +86,7 @@
   
   height: auto;
   max-height: 60vh; /* Limit height */
-  border-radius: 20px 20px 0 0;
+  border-radius: 0;
   border-left: 5px solid var(--primitive-brown-300);
   border-bottom: none;
   z-index: 1010;

@@ -119,3 +119,28 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* --- QUICKLOOK FOOTER (Was Header) --- */
+.quicklook-footer {
+  padding: 10px 15px;
+  background-color: var(--bg-body);
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Center vertically since it's a footer */
+  gap: 10px;
+  min-height: 50px;
+  border-top: 1px solid var(--border-light); /* Separate from body */
+  
+  /* Make it obvious it's clickable */
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.quicklook-footer:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Ensure title in footer looks correct */
+.quicklook-footer .ql-title {
+  /* Inherit existing title flex properties */
+}

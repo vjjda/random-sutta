@@ -1,6 +1,7 @@
 // Path: web/assets/modules/ui/components/popup/ui/quicklook_ui.js
 export const QuicklookUI = {
     elements: {},
+    currentSourceUrl: null, // Store URL for footer click
 
     init(callbacks) {
         this.elements = {
@@ -9,7 +10,7 @@ export const QuicklookUI = {
             title: document.getElementById("quicklook-title"),
             closeBtn: document.getElementById("close-quicklook"),
             popupBody: document.querySelector("#quicklook-popup .popup-body"),
-            externalLinkBtn: document.getElementById("btn-quicklook-open")
+            footer: document.querySelector(".quicklook-footer") // New Footer
         };
 
         if (!this.elements.popup) return;
@@ -19,12 +20,17 @@ export const QuicklookUI = {
             callbacks.onClose();
         });
 
-        if (this.elements.externalLinkBtn) {
-            this.elements.externalLinkBtn.addEventListener("click", (e) => {
+        // [NEW] Footer Click -> Open Original Link
+        if (this.elements.footer) {
+            this.elements.footer.addEventListener("click", (e) => {
+                // Ignore if clicking the close button
+                if (e.target.closest("#close-quicklook")) return;
+                
                 e.preventDefault();
                 e.stopPropagation();
-                if (callbacks.onOpenOriginal && this.elements.externalLinkBtn.href) {
-                    callbacks.onOpenOriginal(this.elements.externalLinkBtn.href);
+                
+                if (callbacks.onOpenOriginal && this.currentSourceUrl) {
+                    callbacks.onOpenOriginal(this.currentSourceUrl);
                 }
             });
         }
@@ -42,14 +48,8 @@ export const QuicklookUI = {
         if (this.elements.title) this.elements.title.innerHTML = title;
         this.elements.content.innerHTML = htmlContent;
 
-        if (this.elements.externalLinkBtn) {
-            if (sourceUrl) {
-                this.elements.externalLinkBtn.href = sourceUrl;
-                this.elements.externalLinkBtn.classList.remove("hidden");
-            } else {
-                this.elements.externalLinkBtn.classList.add("hidden");
-            }
-        }
+        // Store URL for footer interaction
+        this.currentSourceUrl = sourceUrl;
 
         this.elements.popup.classList.remove("hidden");
         if (this.elements.popupBody) this.elements.popupBody.scrollTop = 0;
@@ -66,6 +66,7 @@ export const QuicklookUI = {
     hide() {
         this.elements.popup?.classList.add("hidden");
         if (this.elements.content) this.elements.content.innerHTML = "";
+        this.currentSourceUrl = null;
     },
     
     isVisible() {
