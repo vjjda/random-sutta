@@ -74,7 +74,7 @@ export const LookupManager = {
             // Only show error if explicitly navigating or clicking, maybe?
             // Current behavior: show error in popup if popup is open or navigating
             if (LookupState.isNavigating || LookupUI.isVisible()) {
-                LookupUI.showError(`"${cleanText}" not found.`);
+                LookupUI.showError(`"${cleanText}" not found.`, cleanText);
             }
         }
         

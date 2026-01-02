@@ -100,8 +100,8 @@ export const LookupUI = {
         this.render('<div style="text-align:center; padding: 20px;">Searching...</div>', title);
     },
 
-    showError(msg) {
-        this.render(`<p class="error-message">${msg}</p>`, "Error");
+    showError(msg, title = "Error") {
+        this.render(`<p class="error-message">${msg}</p>`, title);
     },
 
     hide() {
