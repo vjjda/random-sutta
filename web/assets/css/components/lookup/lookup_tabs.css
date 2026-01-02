@@ -34,7 +34,7 @@
 }
 
 .lookup-tab.active {
-    background-color: var(--bg-card); /* Matches Popup Body */
+    background-color: var(--bg-body); /* Matches Popup Body */
     color: var(--primary-color);
     font-weight: 450;
     
