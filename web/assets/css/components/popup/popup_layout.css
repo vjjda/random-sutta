@@ -112,6 +112,11 @@ body.popup-open #quicklook-popup {
   /* padding-bottom handled by generic rule */
 }
 
+/* [NEW] Quicklook Specific: Add extra breathing room at bottom for comfortable scrolling */
+#quicklook-popup .popup-body {
+  padding-bottom: 80px !important;
+}
+
 /* [NEW] Body Padding for Popup */
 body.popup-open, body.lookup-open {
   /* No special body padding needed for bottom popups if they overlay content */
