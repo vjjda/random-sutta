@@ -123,9 +123,19 @@ export const PaliEntryRenderer = {
         }
 
         // Line 3
+        // [MODIFIED] Format meaning to break only at semicolons
+        const formattedMeaning = meaning.split(';')
+            .map((segment, index, array) => {
+                const text = segment.trim();
+                // Add semicolon back if it's not the last segment
+                const suffix = index < array.length - 1 ? ';' : '';
+                return `<span class="dpd-meaning-segment">${text}${suffix}</span>`;
+            })
+            .join(' ');
+
         let line3 = `
             <div class="dpd-summary-line-3">
-                <div class="dpd-meaning">${meaning}</div>
+                <div class="dpd-meaning">${formattedMeaning}</div>
                 ${meaningLit ? `<div class="dpd-meaning-lit">lit. ${meaningLit}</div>` : ''}
             </div>`;
         

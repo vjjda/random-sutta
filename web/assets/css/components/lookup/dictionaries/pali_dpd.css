@@ -98,7 +98,8 @@ details[open] .dpd-detail-icon {
 
 .dpd-pos-group {
     text-align: right;
-    font-size: 0.9em;
+    font-size: clamp(0.75rem, 3.5vw, 0.9em);
+    flex-shrink: 0; /* Prevent shrinking width too much */
 }
 
 .dpd-pos {
@@ -165,6 +166,12 @@ details[open] .dpd-detail-icon {
 
 .dpd-meaning {
     font-weight: 450;
+    font-size: clamp(0.9rem, 4vw, 1rem);
+}
+
+.dpd-meaning-segment {
+    white-space: nowrap;
+    display: inline-block;
 }
 
 .dpd-meaning-lit {
@@ -300,7 +307,7 @@ details[open] .dpd-detail-icon {
 /* Deconstruction */
 .dpd-deconstruction {
     text-align: left;
-    padding: 8px 0;
+    padding: 8px 0 0 0;
 }
 
 .decon-key {
@@ -310,7 +317,7 @@ details[open] .dpd-detail-icon {
 }
 
 .dpd-deconstruction .dpd-summary-line-1 {
-    margin-bottom: 8px;
+    display: none;
 }
 
 .dpd-deconstruction-table {
