@@ -124,7 +124,17 @@ export class SqliteConnection {
 
     async _downloadAndUnzip() {
         if (!window.JSZip) throw new Error("JSZip not loaded");
-        const response = await fetch(this.zipUrl);
+        
+        // [FIX] Cache Busting Strategy
+        // 1. Use Hash from localStorage (set by _checkAndApplyUpdate) as version query
+        // 2. Use cache: 'reload' to force network request
+        const currentHash = localStorage.getItem(`${this.dbName}_hash`) || Date.now();
+        const safeUrl = `${this.zipUrl}?v=${currentHash}`;
+        
+        logger.info("Download", `Fetching DB from: ${safeUrl}`);
+
+        const response = await fetch(safeUrl, { cache: 'reload' });
+        
         if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
         const blob = await response.blob();
         const zip = await JSZip.loadAsync(blob);
