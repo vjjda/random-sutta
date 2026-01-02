@@ -38,7 +38,8 @@
   position: relative;
   /* [UPDATED] Add Safe Area Padding internally */
   padding: var(--popup-padding-mobile);
-  padding-bottom: calc(var(--popup-padding-y-mobile) + env(safe-area-inset-bottom, 20px));
+  /* Base padding + Extra breathing room (30px) + Safe Area */
+  padding-bottom: calc(var(--popup-padding-y-mobile) + 30vh + env(safe-area-inset-bottom, 20px));
   
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -50,7 +51,7 @@
 /* [NEW] PWA Adjustment: Remove extra bottom padding (no address bar) */
 @media all and (display-mode: standalone) {
   .popup-body {
-    padding-bottom: calc(var(--popup-padding-y-mobile) + env(safe-area-inset-bottom, 0px)); 
+    padding-bottom: calc(var(--popup-padding-y-mobile) + 30vh + env(safe-area-inset-bottom, 0px)); 
   }
 }
 
