@@ -94,6 +94,13 @@
   transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s;
 }
 
+/* [NEW] Stacking Logic: When Comment Popup is open, lift Quicklook above it */
+body.popup-open #quicklook-popup {
+  bottom: var(--popup-comment-height) !important;
+  top: auto; /* Let it grow upwards from the bottom constraint */
+  max-height: calc(100vh - var(--popup-comment-height) - var(--popup-quicklook-top));
+}
+
 #quicklook-popup.hidden {
   opacity: 0;
   pointer-events: none;
