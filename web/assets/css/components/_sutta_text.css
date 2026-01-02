@@ -115,26 +115,15 @@ p {
   display: block; 
 }
 
-/* [TYPE 1] Segment Highlight (High Profile) - SNAPPY MODE */
-.highlight {
-  background-color: var(--highlight-color-segment);
-  transition: background-color 0.5s ease, box-shadow 0.5s ease; /* Smooth fade */
-  border-radius: 4px;
-  box-shadow: 0 0 0 2px var(--highlight-color-segment);
-}
-
-/* [TYPE 2] Container Highlight (Low Profile) - SNAPPY MODE */
+/* SINGLE SOURCE OF TRUTH FOR HIGHLIGHTS */
+.highlight,
 .highlight-container {
   border-left: 4px solid var(--primary-color);
   padding-left: 1rem;
   margin-left: -1rem; 
-  background-color: rgba(139, 69, 19, 0.03); 
+  background-color: var(--highlight-color-background); 
   border-radius: 0 4px 4px 0;
-  transition: background-color 0.5s ease, border-color 0.5s ease; /* Smooth fade */
-}
-
-[data-theme="dark"] .highlight-container {
-  background-color: rgba(255, 255, 255, 0.03);
+  transition: none !important; /* SNAPPY MODE: No fading/movement */
 }
 
 /* Context Footer Styling - SNAPPY MODE */
