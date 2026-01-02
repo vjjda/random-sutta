@@ -55,8 +55,8 @@
   /* On desktop/tablet, restore floating look if desired */
   .popup-container {
       width: 96%;
-      bottom: 20px !important;
-      border-radius: 20px;
+      bottom: 0 !important; /* [FIXED] Remove gap */
+      border-radius: 20px 20px 0 0; /* [FIXED] Flat bottom */
   }
 }
 
