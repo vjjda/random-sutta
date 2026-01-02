@@ -4,6 +4,22 @@
   --tts-bottom-padding: 120px; 
 }
 
+/* [UPDATED] Add transition to header for smooth push-down */
+header {
+  transition: padding-top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* [KHI BẬT TTS] Đẩy Header xuống để nhường chỗ cho Player (Fixed Top) */
+body.tts-open header {
+  padding-top: calc(20px + var(--tts-bottom-padding));
+}
+
+@media (max-width: 600px) {
+  body.tts-open header {
+      padding-top: calc(30px + var(--tts-bottom-padding));
+  }
+}
+
 #sutta-container {
   background: transparent;
   border-top: 1px solid var(--border-color);
@@ -14,13 +30,14 @@
   
   min-height: 300px;
   
-  /* [QUAN TRỌNG] Hiệu ứng chuyển đổi mượt mà khi bật/tắt Player */
-  transition: padding-top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* [UPDATED] Revert to standard bottom padding transition */
+  transition: padding-bottom 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* [KHI BẬT TTS] Áp dụng padding TOP lớn để tránh bị che bởi Top Player */
+/* [KHI BẬT TTS] Không cần padding-top cho container nữa vì Header đã đẩy xuống.
+   Vẫn giữ padding-bottom nếu cần (ví dụ cho popup ở dưới) */
 body.tts-open #sutta-container {
-  padding-top: calc(20px + var(--tts-bottom-padding));
+  /* No extra top padding needed here */
 }
 
 @media (max-width: 600px) {
@@ -28,11 +45,10 @@ body.tts-open #sutta-container {
     padding: 0;
   }
   #sutta-container {
-    /* Mobile: Mặc định 80px, khi bật TTS sẽ dùng biến */
     padding: 30px 20px 80px 20px;
   }
   
   body.tts-open #sutta-container {
-    padding-top: calc(30px + var(--tts-bottom-padding));
+     /* Mobile adjustment if needed */
   }
 }

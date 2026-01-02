@@ -95,7 +95,8 @@ body.popup-open .tts-info,
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateY(5px);
+  /* [UPDATED] Move UP when hiding (retract to ceiling) */
+  transform: translateY(-10px);
   
   max-height: 0;
   padding-top: 0;

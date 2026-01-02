@@ -3,8 +3,8 @@
 /* --- SETTINGS PANEL (Popup inside Player) --- */
 #tts-settings-panel {
   position: absolute;
-  /* Đẩy lên trên container chính */
-  bottom: 100%;
+  /* [UPDATED] Push down below the player */
+  top: 100%;
   left: 0;
   width: 100%;
   
@@ -13,7 +13,9 @@
   border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 16px;
-  margin-bottom: 12px; /* Cách xa Pill Header một chút */
+  /* [UPDATED] Margin top to separate from controls */
+  margin-top: 12px;
+  margin-bottom: 0;
   box-shadow: var(--shadow-card);
   
   display: flex;
@@ -27,8 +29,9 @@
   overscroll-behavior: contain;
   
   pointer-events: auto;
-  animation: slideUp 0.2s ease-out;
-  transform-origin: bottom center;
+  /* [UPDATED] Slide Down Animation */
+  animation: slideDown 0.2s ease-out;
+  transform-origin: top center;
 }
 
 #tts-settings-panel.hidden {
@@ -181,7 +184,8 @@
 input:checked + .tts-slider { background-color: var(--primary-color); }
 input:checked + .tts-slider:before { transform: translateX(18px); }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+/* [UPDATED] Slide Down Animation */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
