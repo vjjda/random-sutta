@@ -152,7 +152,9 @@
   --z-popup: 1000;
   --z-toast: 2000;
   --radius-popup: 12px;
-  --popup-padding-mobile: 20px 16px;
+  --popup-padding-y-mobile: 20px;
+  --popup-padding-x-mobile: 16px;
+  --popup-padding-mobile: var(--popup-padding-y-mobile) var(--popup-padding-x-mobile);
   --popup-padding-desktop: 25px 30px;
 
   /* TTS Specific */
