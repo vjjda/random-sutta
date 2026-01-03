@@ -261,6 +261,48 @@
   transform: rotate(15deg);
 }
 
+/* --- Sepia Indicator Styling --- */
+.sepia-indicator {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 0 4px; /* Reduced padding to fit 3 digits */
+  border-radius: 4px;
+  margin-left: 4px;
+  cursor: pointer;
+  width: 38px;  /* Fixed width to prevent shifting (enough for "100") */
+  height: 32px; /* Match toggle button height */
+  flex-shrink: 0; /* Prevent shrinking in flex/grid layouts */
+  transition: all 0.2s ease;
+  
+  /* Flex alignment */
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center text within the fixed width */
+  
+  /* Refined Look */
+  text-decoration: none !important;
+  opacity: 1;
+  font-variant-numeric: tabular-nums;
+  line-height: 1; /* Reset line-height */
+  padding-bottom: 2px; /* Visual adjustment to align baseline with icon */
+}
+
+.sepia-indicator:hover {
+  background-color: var(--bg-hover);
+  /* Text remains muted on hover unless panel is open */
+  color: var(--text-muted); 
+}
+
+/* Only highlight when panel is open */
+.sepia-indicator.panel-open {
+  color: var(--primary-color);
+  background-color: var(--bg-hover);
+  font-weight: 700;
+}
+
 /* --- STATES --- */
 
 /* Syncing */

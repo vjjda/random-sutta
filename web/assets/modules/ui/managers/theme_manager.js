@@ -16,6 +16,7 @@ export const ThemeManager = {
         
         const sepiaPanel = document.getElementById("sepia-control-panel");
         const sepiaSlider = document.getElementById("sepia-slider");
+        const sepiaIndicator = document.getElementById("btn-sepia-indicator");
 
         // [NEW] Inject Config vào CSS Root Variables
         // Giúp CSS calc() sử dụng được các thông số từ app_config.js
@@ -31,6 +32,39 @@ export const ThemeManager = {
         // --- Helpers ---
 
         const getSepiaStorageKey = (theme) => `${AppConfig.SEPIA.STORAGE_KEY_PREFIX}${theme}`;
+        
+        // [NEW] Dynamic Panel Toggling & Positioning
+        const toggleSepiaPanel = () => {
+            if (!sepiaPanel) return;
+
+            const isHidden = sepiaPanel.classList.contains("hidden");
+
+            if (isHidden) {
+                // Show Panel
+                sepiaPanel.classList.remove("hidden");
+                if (sepiaIndicator) sepiaIndicator.classList.add("panel-open");
+
+                // Calculate Position
+                if (sepiaIndicator) {
+                    // Ensure panel has dimensions (browser might need a frame if display:none just removed)
+                    requestAnimationFrame(() => {
+                        sepiaPanel.style.right = "auto"; // Reset right
+                        
+                        const indicatorLeft = sepiaIndicator.offsetLeft;
+                        const indicatorWidth = sepiaIndicator.offsetWidth;
+                        const panelWidth = sepiaPanel.offsetWidth;
+                        
+                        // Center align: Left = IndicatorLeft + (IndicatorWidth/2) - (PanelWidth/2)
+                        const centeredLeft = indicatorLeft + (indicatorWidth / 2) - (panelWidth / 2);
+                        sepiaPanel.style.left = `${centeredLeft}px`;
+                    });
+                }
+            } else {
+                // Hide Panel
+                sepiaPanel.classList.add("hidden");
+                if (sepiaIndicator) sepiaIndicator.classList.remove("panel-open");
+            }
+        };
 
         const sliderToCss = (sliderValue, theme) => {
             const maxCss = theme === 'dark' 
@@ -47,6 +81,14 @@ export const ThemeManager = {
             
             if (sepiaSlider && sepiaSlider.value != sliderValue) {
                 sepiaSlider.value = sliderValue;
+            }
+
+            // [NEW] Update Indicator Text
+            if (sepiaIndicator) {
+                sepiaIndicator.textContent = sliderValue; // Just the number
+                // Optional: visual clue when active (value > 0) - Kept for logic but CSS overrides color
+                if (sliderValue > 0) sepiaIndicator.classList.add("has-value");
+                else sepiaIndicator.classList.remove("has-value");
             }
         };
 
@@ -71,42 +113,24 @@ export const ThemeManager = {
         applyTheme(currentTheme);
 
         // --- Event Listeners ---
+        // [NEW] Indicator Click
+        if (sepiaIndicator) {
+            sepiaIndicator.addEventListener("click", (e) => {
+                e.stopPropagation(); // Prevent propagation
+                toggleSepiaPanel();
+            });
+        }
+
         if (btn) {
-            let lastTapTime = 0;
-            let clickTimer = null;
-            let globalLastTouchTime = 0;
-
-            const handleAction = (e) => {
-                const now = Date.now();
-                if (e.type === 'mousedown' && (now - globalLastTouchTime < 800)) return;
-                if (e.type === 'touchstart') globalLastTouchTime = now;
+            btn.addEventListener("click", () => {
+                const newTheme = currentTheme === "light" ? "dark" : "light";
+                applyTheme(newTheme);
                 
-                if (e.cancelable && e.type !== 'mousedown') e.preventDefault();
-
-                const timeDiff = now - lastTapTime;
-                
-                if (timeDiff < 300 && timeDiff > 50) {
-                    if (clickTimer) clearTimeout(clickTimer);
-                    if (sepiaPanel) {
-                        sepiaPanel.classList.toggle("hidden");
-                        logger.info("Gesture", "Double tap -> Toggle Sepia Panel");
-                    }
-                    lastTapTime = 0;
-                } else {
-                    lastTapTime = now;
-                    clickTimer = setTimeout(() => {
-                        const newTheme = currentTheme === "light" ? "dark" : "light";
-                        applyTheme(newTheme);
-                        if (sepiaPanel && !sepiaPanel.classList.contains("hidden")) {
-                            sepiaPanel.classList.add("hidden");
-                        }
-                    }, 300);
+                // Close sepia panel if open to keep UI clean
+                if (sepiaPanel && !sepiaPanel.classList.contains("hidden")) {
+                    toggleSepiaPanel(); 
                 }
-            };
-
-            btn.addEventListener("mousedown", handleAction);
-            btn.addEventListener("touchstart", handleAction, { passive: false });
-            btn.addEventListener("click", (e) => e.preventDefault());
+            });
         }
 
         if (sepiaSlider) {
@@ -117,10 +141,12 @@ export const ThemeManager = {
             });
 
             document.addEventListener("click", (e) => {
-                if (!sepiaPanel.classList.contains("hidden") && 
+                // [UPDATED] Ignore clicks on indicator too
+                if (sepiaPanel && !sepiaPanel.classList.contains("hidden") && 
                     !sepiaPanel.contains(e.target) && 
-                    !btn.contains(e.target)) {
-                    sepiaPanel.classList.add("hidden");
+                    !btn.contains(e.target) &&
+                    (!sepiaIndicator || !sepiaIndicator.contains(e.target))) {
+                    toggleSepiaPanel(); // Use helper to ensure consistent state cleanup
                 }
             });
         }
