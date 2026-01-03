@@ -106,7 +106,6 @@ export const PaliEntryRenderer = {
                 <span class="dpd-lemma">${headword}</span>
                 <span class="dpd-pos-group">
                     <span class="dpd-pos">${pos}</span>
-                    ${plusCase ? `<span class="dpd-plus-case">(${plusCase})</span>` : ''}
                     ${degree ? `<span class="dpd-degree">${degree}</span>` : ''}
                 </span>
             </div>`;
@@ -135,7 +134,8 @@ export const PaliEntryRenderer = {
 
         let line3 = `
             <div class="dpd-summary-line-3">
-                <div class="dpd-meaning">${formattedMeaning}</div>
+                ${plusCase ? `<span class="dpd-plus-case">(${plusCase})</span>` : ''}
+                <span class="dpd-meaning">${formattedMeaning}</span>
                 ${meaningLit ? `<div class="dpd-meaning-lit">lit. ${meaningLit}</div>` : ''}
             </div>`;
         
