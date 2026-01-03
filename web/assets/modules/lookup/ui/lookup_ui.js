@@ -88,15 +88,23 @@ export const LookupUI = {
             // Only proceed if we have segment context and raw results
             if (segmentText && rawResults && Array.isArray(rawResults) && rawResults.length > 0) {
                 // Normalize segment text for loose matching
-                // We keep spaces to ensure we don't accidentally merge words
-                const normSegment = segmentText.toLowerCase().replace(/[.,;:"'‘’“”\—?!()…]/g, ' '); 
-                const cleanTitle = titleWord.toLowerCase().trim();
+                // [UPDATED] Logic aligned with src/dict_builder/tools/text_scanner.py
+                // 1. Normalize Niggahita
+                let normSegment = segmentText.replace(/ṁ/g, 'ṃ').replace(/Ṁ/g, 'Ṃ');
+                // 2. Remove quotes (Sandhi handling: join words like sāsanan”ti -> sāsananti)
+                normSegment = normSegment.replace(/['‘’“”""]/g, '');
+                // 3. Replace other punctuation with space
+                normSegment = normSegment.toLowerCase().replace(/[.,;:\—?!()…\-–]/g, ' ');
+                
+                const cleanTitle = titleWord.toLowerCase().replace(/ṁ/g, 'ṃ').trim();
 
                 const bestMatches = rawResults.filter(r => {
                     const headword = r.headword || r.lookup_key || "";
                     if (!headword) return false;
 
-                    const cleanHead = headword.toLowerCase().replace(/[.,;:"'‘’“”\—?!()…]/g, '').trim();
+                    // Apply same cleaning to headword
+                    let cleanHead = headword.replace(/ṁ/g, 'ṃ').replace(/['‘’“”""]/g, '');
+                    cleanHead = cleanHead.toLowerCase().replace(/[.,;:\—?!()…\-–]/g, ' ').trim();
 
                     // 1. Must check equality first (Exact match exclusion)
                     if (cleanHead === cleanTitle) return false;
@@ -106,7 +114,10 @@ export const LookupUI = {
                     if (!cleanHead.includes(cleanTitle)) return false;
 
                     // 3. Check if phrase exists in segment
-                    return normSegment.includes(cleanHead);
+                    // [UPDATED] Use Regex to ensure word boundary (avoid "na hi" matching inside "Tena hi")
+                    const escapedHead = cleanHead.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(^|\\s)${escapedHead}(\\s|$)`, 'i');
+                    return regex.test(normSegment);
                 });
 
                 if (bestMatches.length > 0) {

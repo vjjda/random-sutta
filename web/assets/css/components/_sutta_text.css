@@ -177,3 +177,24 @@ p {
   color: var(--text-main);
   margin-top: 2px;
 }
+
+/* --- COMMENT MARKER STYLING --- */
+/* Expanded hit area for better mobile touch response */
+.comment-marker {
+  color: var(--primary-color);
+  font-weight: bold;
+  vertical-align: super;
+  font-size: 0.75em;
+  padding: 10px 8px; /* Large touch target */
+  margin: 0 -4px;    /* Visual compensation */
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 10;
+}
+
+.comment-marker:hover {
+  color: var(--primary-hover);
+}

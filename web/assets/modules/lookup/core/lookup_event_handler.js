@@ -7,7 +7,8 @@ export const LookupEventHandler = {
         const container = document.getElementById("sutta-container");
         if (!container || !container.contains(e.target)) return;
         
-        if (e.target.closest("a, button, .lookup-highlight")) return;
+        // [UPDATED] Ignore clicks on links, buttons, existing highlights, AND comment markers
+        if (e.target.closest("a, button, .lookup-highlight, .comment-marker")) return;
 
         // [FIX] Dynamic trigger check based on active dictionaries
         if (!DictProvider.canTrigger(e.target)) return;
