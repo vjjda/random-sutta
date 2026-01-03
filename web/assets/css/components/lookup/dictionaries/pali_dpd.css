@@ -34,6 +34,10 @@
     gap: 4px;
 }
 
+.has-details .dpd-summary-content {
+    padding-right: 24px;
+}
+
 /* --- DETAIL ICON (Small 'i') --- */
 .dpd-detail-icon {
     position: absolute;
