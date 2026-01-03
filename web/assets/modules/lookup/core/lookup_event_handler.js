@@ -56,8 +56,8 @@ export const LookupEventHandler = {
         
         // 4. Update State & Lookup
         if (span) {
-            // Note: span.parentElement is the context
-            if (onLookupCallback) onLookupCallback(word, span.parentElement);
+            // [UPDATED] Pass the span itself to allow offset calculation
+            if (onLookupCallback) onLookupCallback(word, span);
         }
     }
 };

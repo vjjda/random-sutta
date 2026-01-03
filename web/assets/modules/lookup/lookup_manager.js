@@ -48,13 +48,26 @@ export const LookupManager = {
     async _performLookup(text, contextNode) {
         if (!text) return;
         
-        // [CONTEXT] Capture Segment Text for Best Match Logic
+        // [CONTEXT] Capture Segment Text & Click Offset
         let segmentText = "";
-        if (contextNode) {
-            // Try to find the closest segment container (usually has class 'segment' or id)
-            // Fallback to parent element if no specific segment class found
+        let clickOffset = -1;
+
+        if (contextNode && contextNode.nodeType === 1) { // Ensure it's an element
+            // Try to find the closest segment container
             const segment = contextNode.closest(".segment") || contextNode.closest("p") || contextNode.parentElement;
-            if (segment) segmentText = segment.textContent;
+            if (segment) {
+                segmentText = segment.textContent;
+                
+                // [UPDATED] Calculate Offset using Range (More robust)
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(segment);
+                    range.setEndBefore(contextNode);
+                    clickOffset = range.toString().length;
+                } catch (e) {
+                    logger.warn("Lookup", "Offset calc failed", e);
+                }
+            }
         }
 
         // Clean Text
@@ -72,7 +85,8 @@ export const LookupManager = {
         
         if (results && results.length > 0) {
             const renderData = PaliRenderer.renderList(results, cleanText);
-            LookupUI.render(renderData, cleanText, segmentText, results); 
+            // Pass clickOffset to render
+            LookupUI.render(renderData, cleanText, segmentText, results, clickOffset); 
             document.body.classList.add("lookup-open");
 
             // [STACKING] Bring to Front

@@ -127,7 +127,8 @@ export const LookupNavigator = {
             if (span) {
                 LookupHighlighter.scrollToElement(span);
                 // Callback to perform lookup
-                if (onLookupCallback) onLookupCallback(token.text, parent);
+                // [UPDATED] Pass the highlighted span, not the parent, for correct offset calc
+                if (onLookupCallback) onLookupCallback(token.text, span);
             }
         }
     },

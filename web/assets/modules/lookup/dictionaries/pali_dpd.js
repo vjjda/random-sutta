@@ -81,6 +81,7 @@ export const PaliDPD = {
                     target_id: row.target_id,
                     lookup_type: row.type,
                     headword: row.headword,
+                    headword_clean: row.headword_clean,
                     
                     // Identity & Meaning
                     pos: row.pos,

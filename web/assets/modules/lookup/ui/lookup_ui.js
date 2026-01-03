@@ -70,7 +70,7 @@ export const LookupUI = {
         });
     },
 
-    render(data, titleWord = "Lookup", segmentText = "", rawResults = []) {
+    render(data, titleWord = "Lookup", segmentText = "", rawResults = [], clickOffset = -1) {
         let dictHtml = "";
 
         // Handle both simple string (loading/error) and object (results)
@@ -99,7 +99,8 @@ export const LookupUI = {
                 const cleanTitle = titleWord.toLowerCase().replace(/ṁ/g, 'ṃ').trim();
 
                 const bestMatches = rawResults.filter(r => {
-                    const headword = r.headword || r.lookup_key || "";
+                    // [UPDATED] Prefer headword_clean if available (it has digits removed)
+                    const headword = r.headword_clean || r.headword || r.lookup_key || "";
                     if (!headword) return false;
 
                     // Apply same cleaning to headword
@@ -114,7 +115,29 @@ export const LookupUI = {
                     if (!cleanHead.includes(cleanTitle)) return false;
 
                     // 3. Check if phrase exists in segment
-                    // [UPDATED] Use Regex to ensure word boundary (avoid "na hi" matching inside "Tena hi")
+                    
+                    // [NEW] Precise Overlap Check
+                    // If we have the click location and it's a phrase, check if the clicked word is part of this phrase instance
+                    if (clickOffset >= 0 && cleanHead.includes(" ")) {
+                        const words = cleanHead.split(" ");
+                        const escapedWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                        // Allow non-word chars between words (e.g. "atha, kho")
+                        const pattern = `(${escapedWords.join('[\\W]+')})`; 
+                        const regex = new RegExp(pattern, 'gi');
+                        
+                        let match;
+                        while ((match = regex.exec(segmentText)) !== null) {
+                             const start = match.index;
+                             const end = start + match[0].length;
+                             // Check overlap: clickOffset must be inside the matched range
+                             if (clickOffset >= start && clickOffset < end) {
+                                 return true;
+                             }
+                        }
+                        return false; // Phrase found elsewhere but not here
+                    }
+
+                    // Fallback to loose check
                     const escapedHead = cleanHead.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     const regex = new RegExp(`(^|\\s)${escapedHead}(\\s|$)`, 'i');
                     return regex.test(normSegment);
