@@ -1,5 +1,6 @@
 // Path: web/assets/modules/lookup/ui/lookup_ui.js
 import { SwipeHandler } from 'ui/common/swipe_handler.js';
+import { ScrollHandler } from 'ui/common/scroll_handler.js';
 import { ZIndexManager } from 'ui/common/z_index_manager.js';
 
 export const LookupUI = {
@@ -28,6 +29,9 @@ export const LookupUI = {
 
         // [Z-INDEX] Manage stacking order
         ZIndexManager.register(this.elements.popup);
+        
+        // [SCROLL LOCK] Prevent Mouse/Trackpad scroll chaining
+        ScrollHandler.preventBackgroundScroll(this.elements.popup, this.elements.popupBody);
 
         this.elements.closeBtn.addEventListener("click", (e) => {
             e.stopPropagation();
