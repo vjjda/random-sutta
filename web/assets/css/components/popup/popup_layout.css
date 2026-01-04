@@ -107,7 +107,8 @@ body.popup-open #quicklook-popup {
 
 /* Ensure content isn't hidden behind floating nav */
 #comment-popup .popup-body {
-  /* padding-bottom handled by generic rule */
+  /* [UPDATED] Generous padding for overscroll (readability at bottom) */
+  padding-bottom: calc(30vh + env(safe-area-inset-bottom, 20px));
 }
 
 /* [NEW] Quicklook Specific: Add extra breathing room at bottom for comfortable scrolling */
