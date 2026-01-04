@@ -34,7 +34,10 @@ export class SwipeHandler {
 
         // 2. Touch Move (Lock Direction)
         element.addEventListener('touchmove', (e) => {
-            if (isVerticalScroll) return; // Already confirmed vertical -> Do nothing (let browser scroll)
+            if (isVerticalScroll) {
+                if (callbacks.onVerticalScroll) callbacks.onVerticalScroll(e);
+                return; // Already confirmed vertical -> Do nothing (let browser scroll or callback handle)
+            }
 
             const currentX = e.touches[0].clientX;
             const currentY = e.touches[0].clientY;

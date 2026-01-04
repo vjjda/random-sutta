@@ -66,7 +66,16 @@ export const LookupUI = {
         // Swipe Gestures (Shared Handler)
         SwipeHandler.attach(this.elements.popup, {
             onSwipeLeft: () => { if (callbacks.onNavigate) callbacks.onNavigate(1); },
-            onSwipeRight: () => { if (callbacks.onNavigate) callbacks.onNavigate(-1); }
+            onSwipeRight: () => { if (callbacks.onNavigate) callbacks.onNavigate(-1); },
+            onVerticalScroll: (e) => {
+                 // [FIX] Prevent scroll propagation if content is short (not scrollable)
+                 if (this.elements.popupBody) {
+                     const isScrollable = this.elements.popupBody.scrollHeight > this.elements.popupBody.clientHeight;
+                     if (!isScrollable && e.cancelable) {
+                         e.preventDefault();
+                     }
+                 }
+            }
         });
     },
 
