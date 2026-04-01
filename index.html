@@ -8,32 +8,33 @@
     <link
       rel="icon"
       type="image/png"
-      href="assets/icons/favicon-96x96.png"
+      href="./assets/favicon-96x96.DNaK8EOw.png"
       sizes="96x96"
     />
-    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
-    <link rel="shortcut icon" href="assets/icons/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.jsDxewtU.svg" />
+    <link rel="shortcut icon" href="./assets/favicon.CpObhj7W.ico" />
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="assets/icons/apple-touch-icon.png"
+      href="./assets/apple-touch-icon.CEswPk9o.png"
     />
-    <link rel="manifest" href="assets/icons/site.webmanifest" />
+    <link rel="manifest" href="./assets/site.DarfcPU8.webmanifest" />
     <link
       rel="preload"
-      href="assets/fonts/NotoSans-Regular.woff2"
+      href="./assets/NotoSans-Regular.DIxavQM0.woff2"
       as="font"
       type="font/woff2"
       crossorigin
     />
     <link
       rel="preload"
-      href="assets/fonts/NotoSans-Italic.woff2"
+      href="./assets/NotoSans-Italic.D_b783It.woff2"
       as="font"
       type="font/woff2"
       crossorigin
     />
-    <link rel="stylesheet" href="assets/style.bundle.css?v=v2026.03.06-19.37.19" />
+
+    <script src="libs/jszip.min.js"></script>
     <script type="importmap">
     {
       "imports": {
@@ -48,12 +49,10 @@
       }
     }
     </script>
-    <script src="assets/libs/jszip.min.js"></script>
-    <script
-      type="module"
-      src="assets/modules/core/app.js?v=v2026.03.06-19.37.19"
-    ></script>
-  </head>
+    <script type="module" crossorigin src="./assets/index.CuWe6xxS.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-sqlite.BCZAsSjU.js">
+    <link rel="stylesheet" crossorigin href="./assets/index.jI7siwx_.css">
+  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
   <body>
     <div id="global-progress-bar"></div>
 
@@ -525,19 +524,9 @@
       </div>
     </div>
 
-    <script>
-      if (
-        "serviceWorker" in navigator &&
-        window.location.protocol.startsWith("http")
-      ) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("./sw.js")
-            .then((reg) => console.log("SW registered!", reg.scope))
-            .catch((err) => console.log("SW registration failed:", err));
-        });
-      } else {
-        console.log("Service Worker skipped (file:// protocol or unsupported)");
+  </body>
+</html>
+tocol or unsupported)");
       }
     </script>
     <script>
