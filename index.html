@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#8b4513" />
     <title>Random Sutta Reader</title>
 
     <link
@@ -34,7 +35,19 @@
       crossorigin
     />
 
-    <script src="libs/jszip.min.js"></script>
+    <script>
+      // [CACHE BUSTER] Force clear cache if version changed
+      const APP_VERSION = "1.0.3";
+      if (localStorage.getItem("app_version") !== APP_VERSION) {
+        if ("caches" in window) {
+          caches.keys().then((names) => {
+            for (let name of names) caches.delete(name);
+          });
+        }
+        localStorage.setItem("app_version", APP_VERSION);
+        console.log("Cache cleared for version " + APP_VERSION);
+      }
+    </script>
     <script type="importmap">
     {
       "imports": {
@@ -49,9 +62,10 @@
       }
     }
     </script>
-    <script type="module" crossorigin src="./assets/index.CuWe6xxS.js"></script>
+    <script type="module" crossorigin src="./assets/index.De4b__o9.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor.BzxBCTXA.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-sqlite.BCZAsSjU.js">
-    <link rel="stylesheet" crossorigin href="./assets/index.jI7siwx_.css">
+    <link rel="stylesheet" crossorigin href="./assets/index.DIJk7EX9.css">
   <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
   <body>
     <div id="global-progress-bar"></div>
@@ -524,11 +538,6 @@
       </div>
     </div>
 
-  </body>
-</html>
-tocol or unsupported)");
-      }
-    </script>
     <script>
       // [AUTO-UPDATE] Force Reload when Service Worker updates
       if ('serviceWorker' in navigator) {
