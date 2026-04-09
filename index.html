@@ -49,7 +49,7 @@
 
     <script>
       // [CACHE BUSTER] Force clear cache if version changed
-      const APP_VERSION = "1775580324356";
+      const APP_VERSION = "1775715553992";
       if (localStorage.getItem("app_version") !== APP_VERSION) {
         if ("caches" in window) {
           caches.keys().then((names) => {
@@ -74,10 +74,10 @@
       }
     }
     </script>
-    <script type="module" crossorigin src="./assets/index.DKdEzx7F.js"></script>
+    <script type="module" crossorigin src="./assets/index.D6ANn7Tx.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-sqlite.BbVYh6oz.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor.BzxBCTXA.js">
-    <link rel="stylesheet" crossorigin href="./assets/index.ilXU78Sg.css">
+    <link rel="stylesheet" crossorigin href="./assets/index.BKsEr4vF.css">
   <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
   <body>
     <div id="global-progress-bar"></div>
@@ -168,6 +168,8 @@
             </button>
           </div>
         </header>
+
+        <div id="familiarity-bar-header"></div>
     
         <main id="sutta-container" class="sutta-text-view">
           <p class="placeholder">Click the button to load a sutta.</p>
@@ -219,16 +221,22 @@
 
         <div id="magic-breadcrumb-bar"></div>
       </div>
-    </div>
+    </div> <!-- Close magic-nav-wrapper -->
 
     <div id="magic-toc-drawer">
       <div id="magic-toc-tabs" class="lookup-header-tabs">
         <button id="tab-magic-toc" class="lookup-tab active">Contents</button>
         <button id="tab-magic-bookmarks" class="lookup-tab">Bookmarks</button>
+        <button id="tab-magic-history" class="lookup-tab">History</button>
       </div>
-      <div id="magic-toc-content" class="magic-tab-content active"></div>
+      <div id="magic-toc-content" class="magic-tab-content">
+        <!-- JS generates TOC here -->
+      </div>
       <div id="magic-bookmarks-content" class="magic-tab-content hidden">
         <div id="bookmarks-list"></div>
+      </div>
+      <div id="magic-history-content" class="magic-tab-content hidden">
+        <div id="history-list"></div>
       </div>
     </div>
     <div id="magic-backdrop" class="hidden"></div>
