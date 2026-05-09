@@ -52,7 +52,7 @@
 
     <script>
       // [CACHE BUSTER] Force clear cache if version changed
-      const APP_VERSION = "1777991490081";
+      const APP_VERSION = "1778286716160";
       if (localStorage.getItem("app_version") !== APP_VERSION) {
         if ("caches" in window) {
           caches.keys().then((names) => {
@@ -77,13 +77,20 @@
       }
     }
     </script>
-    <script type="module" crossorigin src="./assets/index.D6hIvN8f.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/vendor.BrismDpB.js">
-    <link rel="modulepreload" crossorigin href="./assets/vendor-sqlite.BbVYh6oz.js">
-    <link rel="stylesheet" crossorigin href="./assets/index.BjjQY2ZX.css">
+    <script type="module" crossorigin src="./assets/index.CGOP5atb.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor.BZRDD0Gh.js">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-sqlite.BV6P39FD.js">
+    <link rel="stylesheet" crossorigin href="./assets/index.BvgyhFBI.css">
   <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
   <body>
     <div id="global-progress-bar"></div>
+
+    <div id="sutta-loader" class="hidden">
+      <div class="loader-content">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">Loading Sutta...</div>
+      </div>
+    </div>
 
     <div id="splash-screen">
       <div class="splash-loader-box">
@@ -464,6 +471,7 @@
     </div>
 
     <div id="comment-popup" class="popup-container hidden">
+      <div class="popup-resize-handle" id="comment-resize-handle"></div>
       <div class="comment-header">
         <div id="comment-context-header" class="comment-header-text">...</div>
         <button id="close-comment" class="header-close-btn">×</button>
@@ -526,6 +534,7 @@
     </div>
 
     <div id="lookup-popup" class="popup-container hidden">
+      <div class="popup-resize-handle" id="lookup-resize-handle"></div>
       <div class="lookup-header-tabs">
         <div class="lookup-history-controls">
           <button id="btn-lookup-back" class="lookup-history-btn" title="Back" disabled>
