@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/random-sutta/sw.js', { scope: '/random-sutta/' })})}
