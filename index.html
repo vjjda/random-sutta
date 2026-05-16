@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
         <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://accounts.google.com; frame-src 'self'; worker-src 'self' blob:;" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#8b4513" />
     <title>Random Sutta Reader</title>
@@ -65,10 +66,10 @@
       }
     }
     </script>
-    <script type="module" crossorigin src="/random-sutta/assets/index.C4xMdnNR.js"></script>
+    <script type="module" crossorigin src="/random-sutta/assets/index.B-vHipLa.js"></script>
     <link rel="modulepreload" crossorigin href="/random-sutta/assets/vendor.Cwj2zKCd.js">
     <link rel="modulepreload" crossorigin href="/random-sutta/assets/vendor-sqlite.BSVgjUIk.js">
-    <link rel="stylesheet" crossorigin href="/random-sutta/assets/index.hyIZ3yA3.css">
+    <link rel="stylesheet" crossorigin href="/random-sutta/assets/index.D2xbIkSC.css">
   <link rel="manifest" href="/random-sutta/manifest.json"><script id="vite-plugin-pwa:inline-sw">if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/random-sutta/sw.js', { scope: '/random-sutta/' })})}</script></head>
   <body>
     <!-- Invisible Edge Navigation Buttons (Global) -->
@@ -138,6 +139,7 @@
               <div id="nav-title-text">
                 <span id="nav-main-title"></span>
                 <span id="nav-sub-title"></span>
+                <span id="nav-original-title" class="hidden"></span>
               </div>
     
               <div id="nav-search-container" class="hidden">
@@ -236,6 +238,19 @@
       </div>
       <div id="magic-read-content" class="magic-tab-content hidden">
         <div id="read-list"></div>
+      </div>
+      <div id="magic-toc-footer">
+        <div class="toc-footer-group">
+          <button class="toc-footer-btn" data-action="toc-level-minus" title="Collapse one level">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+          <button class="toc-footer-btn" data-action="toc-collapse-all" title="Collapse All">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"/></svg>
+          </button>
+          <button class="toc-footer-btn" data-action="toc-level-plus" title="Expand one level">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
       </div>
     </div>
     <div id="magic-backdrop" class="hidden"></div>
