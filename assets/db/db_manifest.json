@@ -1,54 +1,54 @@
 {
   "files": {
     "sutta_content_lzh_minor.db": {
-      "hash": "c1ec1cc5c4b6dfbd9ab09d035b760155ff571a7e8eefd521f91e0b188da85540",
-      "size_bytes": 12161024
+      "hash": "a2a0089d3f74aa399cab8ea45f5c4030bcf180682e0a7e4daa5b908efa8d34c1",
+      "size_bytes": 12165120
     },
     "sutta_content_lzh_vinaya_dg.db": {
-      "hash": "5b4bac059dfa1ece260ebaca833b132bc18f198dfd4dd5d4bfdf71f33e035062",
-      "size_bytes": 31232000
+      "hash": "15a6c2d019c8f07ad46ddb8a9018e37f6210956db4a6b3dc98886dac3e7795ce",
+      "size_bytes": 31227904
     },
     "sutta_core.db": {
-      "hash": "ae60aefbe1fe4050f3b84b55016ae3927b20d961e9558d7bc12b18bf1b3e24f2",
-      "size_bytes": 24694784
+      "hash": "41f529bac0c01759449959cff82294dbe7281f4c52535ea68175029d5b031da5",
+      "size_bytes": 24690688
     },
     "sutta_content_lzh_major.db": {
-      "hash": "dca7b2712b692974dfbcf0e7844c02538653b8b0b2231ddaea50d861603beb41",
-      "size_bytes": 64454656
+      "hash": "9a0ec9c65aa277d68711bb08b90b0b00a0b0391a3b3d32b5a72bd85daae42d65",
+      "size_bytes": 64450560
     },
     "sutta_content_lzh_vinaya_other.db": {
-      "hash": "e87829db841a35994e94adbcd9a57e8819e899cfc61c332e5a98a8d5cde7dd68",
-      "size_bytes": 14684160
+      "hash": "6796502cd9050827d889d3846e2b6fed002d85b65105e0ae12fb1692434f6b82",
+      "size_bytes": 14696448
     },
     "sutta_content_lzh_vinaya_sarv.db": {
-      "hash": "707bde407ef024e72c7dea299e8c048f6ea9d09a1f86ce95c6e1889470a9bf4a",
-      "size_bytes": 40099840
+      "hash": "5f33ceb1589a4c8dac946d7854c42d48220f32e93bca76ad3e40e9fbbb47f38d",
+      "size_bytes": 40095744
     },
     "sutta_content_lzh_abhidhamma.db": {
-      "hash": "36412ace558c2c5e89667943723cb99b9b4fabf703816d7765789a2963ca6f0d",
+      "hash": "32ce76499087fe08d375d9a2fb84f352c82b04b89f81ce31630064701500f0eb",
       "size_bytes": 14135296
     },
     "sutta_content_vinaya.db": {
-      "hash": "ff55c39cadc715428177d3033ea7258bd042a3a7232f2d3559a8902f6d98bc15",
-      "size_bytes": 53657600
+      "hash": "f25320374a0df81ebc2c7e74e97942645a52f66a8f2358cefb2134cd2da96d20",
+      "size_bytes": 53673984
     },
     "sutta_content_major.db": {
-      "hash": "35c1fd4605ac87b032106f08a4a301646fe6aa4bfffd5ca1729b0b124cef2ea5",
-      "size_bytes": 79953920
+      "hash": "9e8d2cbdf042574cd3180cbb42eb8190dfd00ab08b77edd8bb040c6a4a05138f",
+      "size_bytes": 79966208
     },
     "sutta_content_abhidhamma.db": {
-      "hash": "fbcdcae609741cfe5a697ae140b4724640c9e14096470dea82748bc415c85d25",
-      "size_bytes": 44814336
+      "hash": "06b93008dc5fa5798131ac43dfd99759a91e76503c18e7e02c5aa99208b1fa15",
+      "size_bytes": 44818432
     },
     "sutta_content_minor.db": {
-      "hash": "2add557dcd74d6d6a0c364a4765ee6263edb19d8c134f82276a19620ebdde249",
+      "hash": "968c6fabb4aa99a922c83a4fda09762d594607af97616a31d44bcc00ef1364b8",
       "size_bytes": 66744320
     },
     "sutta_content_lzh_vinaya_mg.db": {
-      "hash": "a83f815aab393e4f8263bfc2982d3805fe255966f06be0d30cfc2c808321f4ea",
-      "size_bytes": 27652096
+      "hash": "6a7bd295dacb923800375c0448c6c308eb50b7e4e86cc56072ce888ad176c0a8",
+      "size_bytes": 27643904
     }
   },
-  "total_size_bytes": 474284032,
-  "generated_at_ts": 1779209509.5741756
+  "total_size_bytes": 474308608,
+  "generated_at_ts": 1779247752.5649643
 }
