@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
         <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://accounts.google.com; frame-src 'self'; worker-src 'self' blob:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://accounts.google.com; frame-src 'self'; worker-src 'self' blob:;" />
     
     <!-- Resource Hints -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
@@ -29,31 +29,6 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Random Sutta" />
-
-    <!-- Module Preloads (Break Waterfall) -->
-    <script type="importmap">
-    {
-      "imports": {
-        "core/": "/assets/modules/core/",
-        "utils/": "/assets/modules/utils/",
-        "services/": "/assets/modules/services/",
-        "ui/": "/assets/modules/ui/",
-        "tts/": "/assets/modules/tts/",
-        "data/": "/assets/modules/data/",
-        "lookup/": "/assets/modules/lookup/",
-        "toolbar/": "/assets/modules/toolbar/",
-        "wa-sqlite/": "/assets/libs/"
-      }
-    }
-    </script>
-    <link rel="modulepreload" href="/random-sutta/assets/app.DcO7DtVF.js" />
-    <link rel="modulepreload" href="/random-sutta/assets/app_router.BUjgdrm0.js" />
-    <link rel="modulepreload" href="/random-sutta/assets/sutta_controller.BA7zK9MZ.js" />
-    <link rel="modulepreload" href="/random-sutta/assets/sutta_db.CdN0B3jp.js" />
-    <link rel="modulepreload" href="/random-sutta/assets/sutta_repository.DSmAPl3o.js" />
-    <link rel="modulepreload" href="data:text/javascript;base64,Ly8gUGF0aDogd2ViL2Fzc2V0cy9tb2R1bGVzL3NlcnZpY2VzL2luZGV4LmpzCmV4cG9ydCB7IFN1dHRhU2VydmljZSB9IGZyb20gJy4vc3V0dGFfc2VydmljZS5qcyc7CmV4cG9ydCB7IFJhbmRvbUJ1ZmZlciB9IGZyb20gJy4vcmFuZG9tX2J1ZmZlci5qcyc7CmV4cG9ydCB7IFJhbmRvbUhlbHBlciB9IGZyb20gJy4vcmFuZG9tX2hlbHBlci5qcyc7CmV4cG9ydCB7IFN0cnVjdHVyZVN0cmF0ZWd5IH0gZnJvbSAnLi9zdHJ1Y3R1cmVfc3RyYXRlZ3kuanMnOw==" />
-    <link rel="modulepreload" href="/random-sutta/assets/sutta_service.BINLCO52.js" />
-
     <link
       rel="preload"
       href="/random-sutta/assets/NotoSans-Regular.DIxavQM0.woff2"
@@ -81,9 +56,24 @@
       />
     </div>
 
-    <script type="module" crossorigin src="/random-sutta/assets/index.DdLOLDtH.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "core/": "/assets/modules/core/",
+        "utils/": "/assets/modules/utils/",
+        "services/": "/assets/modules/services/",
+        "ui/": "/assets/modules/ui/",
+        "tts/": "/assets/modules/tts/",
+        "data/": "/assets/modules/data/",
+        "lookup/": "/assets/modules/lookup/",
+        "toolbar/": "/assets/modules/toolbar/",
+        "wa-sqlite/": "/assets/libs/"
+      }
+    }
+    </script>
+    <script type="module" crossorigin src="/random-sutta/assets/index.DK7YZA_d.js"></script>
     <link rel="modulepreload" crossorigin href="/random-sutta/assets/vendor.gNe7-3h4.js">
-    <link rel="modulepreload" crossorigin href="/random-sutta/assets/vendor-sqlite.DCK3XawN.js">
+    <link rel="modulepreload" crossorigin href="/random-sutta/assets/vendor-sqlite.BSVgjUIk.js">
     <link rel="stylesheet" crossorigin href="/random-sutta/assets/index.UUnGaFpp.css">
   <link rel="manifest" href="/random-sutta/manifest.json"><script id="vite-plugin-pwa:inline-sw">if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/random-sutta/sw.js', { scope: '/random-sutta/' })})}</script></head>
   <body>
