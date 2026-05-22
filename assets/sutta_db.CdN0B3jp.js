@@ -42,7 +42,6 @@ export class SuttaDB {
             await DbManifestManager.load();
             
             // 2. Load Core DB
-            // [HYBRID] Core DB có thể dùng Remote để App sẵn sàng ngay lập tức (< 1s)
             const dbName = "sutta_core.db";
             this.core = await this._getOrUpdateDB(dbName, onProgress, { allowRemote: true });
 
@@ -68,7 +67,6 @@ export class SuttaDB {
         if (this.parallels) return this.parallels;
         try {
             const dbName = "sutta_parallels.db";
-            // Parallels cũng có thể dùng Remote
             this.parallels = await this._getOrUpdateDB(dbName, onProgress, { allowRemote: true });
             return this.parallels;
         } catch (e) {
@@ -102,7 +100,6 @@ export class SuttaDB {
                 }
 
                 const dbName = `sutta_content_${category}.db`;
-                // [HYBRID] Shard nội dung có thể load Remote ngay lập tức
                 const instance = await this._getOrUpdateDB(dbName, onProgress, { allowRemote: true });
                 this.shards.set(category, instance);
                 return instance;
@@ -120,7 +117,6 @@ export class SuttaDB {
 
     /**
      * Lấy DB từ Storage, cập nhật nếu cần, rồi mở kết nối.
-     * [NEW] Hỗ trợ Hybrid Mode: Remote (HttpVFS) + Background Hydration. Đã gỡ bỏ memory fallback trùng lặp.
      */
     static async _getOrUpdateDB(dbName, onProgress, options = {}) {
         const { allowRemote = false, forcePersistent = false } = options;
@@ -169,8 +165,9 @@ export class SuttaDB {
         }
 
         // 2. Thử Remote (HTTPVFS) nếu cho phép (Chỉ file raw mới hoạt động với Range Request)
+        // [FIX] Đã loại bỏ 'sutta_core.db' vì bạn chỉ dùng bản .gz trên server.
+        // MẸO: Nếu bạn nén .gz TẤT CẢ các database dưới đây, hãy để mảng này rỗng: []
         const hasRawDb = [
-            'sutta_core.db', 
             'sutta_search.db',
             'sutta_parallels.db', 
             'sutta_content_major.db', 
@@ -218,7 +215,6 @@ export class SuttaDB {
             }
         };
 
-        // Delay cực lâu (60s) để đảm bảo User đã load xong nội dung và rảnh tay hoàn toàn
         if ('requestIdleCallback' in window) {
             setTimeout(() => {
                 requestIdleCallback(() => start(), { timeout: 60000 });
