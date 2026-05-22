@@ -37,9 +37,8 @@ export class SuttaDB {
         try {
             // [OPTIMIZED] Pre-warm WASM and VFS in parallel
             getSharedSqlite().catch(() => {});
-            
+
             // 1. Load manifest (Cache-first)
-            // [OPTIMIZED] load() already calls refreshInBackground if cache is missing.
             await DbManifestManager.load();
             
             // 2. Load Core DB
@@ -48,7 +47,7 @@ export class SuttaDB {
             this.core = await this._getOrUpdateDB(dbName, onProgress, { allowRemote: true });
 
             this.isInitializing = false;
-            
+
             // [Background] Check for update only when idle
             if ('requestIdleCallback' in window) {
                 requestIdleCallback(() => DbManifestManager.refreshInBackground(), { timeout: 10000 });
@@ -114,14 +113,14 @@ export class SuttaDB {
                 this.loadingPromises.delete(category);
             }
         })();
-        
+
         this.loadingPromises.set(category, loadPromise);
         return await loadPromise;
     }
 
     /**
      * Lấy DB từ Storage, cập nhật nếu cần, rồi mở kết nối.
-     * [NEW] Hỗ trợ Hybrid Mode: Remote (HttpVFS) + Background Hydration.
+     * [NEW] Hỗ trợ Hybrid Mode: Remote (HttpVFS) + Background Hydration. Đã gỡ bỏ memory fallback trùng lặp.
      */
     static async _getOrUpdateDB(dbName, onProgress, options = {}) {
         const { allowRemote = false, forcePersistent = false } = options;
@@ -129,7 +128,7 @@ export class SuttaDB {
         const currentHash = await DbStorageManager.getStoredHash(dbName);
         const isUpToDate = currentHash === targetHash;
         let isCorrupted = false;
-        
+
         const attemptPersistent = async () => {
             let instance = null;
             try {
@@ -149,51 +148,27 @@ export class SuttaDB {
         const attemptRemote = async () => {
             logger.info("Hybrid", `Opening ${dbName} in REMOTE mode (Instant access)...`);
             try {
+                const BASE_URL = import.meta.env.BASE_URL || '/';
                 const remoteInstance = await initSQLite({ 
-                    dbName: `assets/db/${dbName}`, 
+                    dbName: `${BASE_URL}assets/db/${dbName}`, 
                     mode: 'remote' 
                 });
                 // Sau đó âm thầm tải về máy trong background
                 this._startBackgroundHydration(dbName);
                 return remoteInstance;
             } catch (e) {
-                logger.error("Hybrid", `Failed to open REMOTE ${dbName}`, e);
+                logger.warn("Hybrid", `Failed to open REMOTE ${dbName}. Will fallback to hydration.`, e);
                 return null;
             }
         };
-        
-        const attemptMemory = async () => {
-            logger.info("Hybrid", `Opening ${dbName} in MEMORY mode (Fast loading)...`);
-            try {
-                // [GZ-LOAD] Download gzipped file into memory
-                const fileStream = await DbStorageManager.fetchFile(dbName, targetHash, onProgress);
-                await importToMemoryStorage(dbName, fileStream);
-                
-                const memoryInstance = await initSQLite({ 
-                    dbName: dbName, 
-                    mode: 'memory' 
-                });
-                // Vẫn start hydration để session sau có thể dùng persistent
-                this._startBackgroundHydration(dbName);
-                return memoryInstance;
-            } catch (e) {
-                logger.error("Hybrid", `Failed to open MEMORY ${dbName}`, e);
-                return null;
-            }
-        };
-        
+
         // 1. Nếu đã có sẵn và đúng version -> Thử Persistent trước
         if (isUpToDate) {
             const instance = await attemptPersistent();
             if (instance) return instance;
         }
 
-        // 2. Nếu cho phép Remote và không bắt buộc Persistent
-        if (dbName === 'sutta_core.db' && allowRemote && !forcePersistent) {
-            const instance = await attemptMemory();
-            if (instance) return instance;
-        }
-
+        // 2. Thử Remote (HTTPVFS) nếu cho phép (Chỉ file raw mới hoạt động với Range Request)
         const hasRawDb = [
             'sutta_core.db', 
             'sutta_search.db',
@@ -201,16 +176,15 @@ export class SuttaDB {
             'sutta_content_major.db', 
             'dpd_mini.db'
         ].includes(dbName);
-        
+
         if (allowRemote && !forcePersistent && hasRawDb) {
             const instance = await attemptRemote();
             if (instance) return instance;
         }
 
-        // 3. Cuối cùng: Buộc phải tải về (hoặc tải lại nếu Persistent lỗi)
+        // 3. Cuối cùng: Tải toàn bộ file về (hỗ trợ .gz) và lưu vào Persistent OPFS (Hydration)
         try {
             logger.info("Storage", `Hydrating ${dbName} to persistent storage...`);
-            
             // Self-healing: Xóa hash để buộc DbStorageManager tải lại nếu file bị hỏng
             if (isCorrupted) {
                 logger.info("Storage", `Phát hiện file hỏng, cưỡng chế tải lại ${dbName}.`);
