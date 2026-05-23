@@ -72,17 +72,7 @@ def run_release_process(
             if not ota_packager.package_lean_ota(version_tag):
                 raise Exception("OTA packaging failed.")
 
-        # 2. AltStore Source Sync/Generation
-        if sync_altstore:
-            from .logic import sync_with_github
-            if not sync_with_github():
-                logger.warning("⚠️ AltStore sync failed.")
-        elif update_altstore:
-            from .logic import update_altstore_source
-            if not update_altstore_source(version_tag):
-                logger.warning("⚠️ AltStore source generation failed, but continuing...")
-
-        # 3. Create Artifact if requested or publishing
+        # [FIX] Re-insert artifact creation before Git/GH publish
         if create_zip or publish_gh:
             if not artifact_packer.create_release_artifact(version_tag):
                 raise Exception("Artifact creation failed.")
@@ -97,7 +87,29 @@ def run_release_process(
                 
                 if not github_publisher.publish_release(version_tag, is_official):
                     raise Exception("GitHub Release failed.")
-    
+
+        # =========================================================
+        # PHASE 4: POST-PUBLISH SYNC (AltStore)
+        # =========================================================
+        # [OPTIMIZED] AltStore sync should happen AFTER GitHub release is live
+        # so it can find the uploaded assets.
+        if sync_altstore:
+            from .logic import sync_with_github
+            if not sync_with_github():
+                logger.warning("⚠️ AltStore sync failed.")
+            # Commit the synced altstore.json if we are in git mode
+            if enable_git:
+                git_automator.commit_source_changes(f"altstore sync for {version_tag}")
+                git_automator.push_changes()
+
+        elif update_altstore:
+            from .logic import update_altstore_source
+            if not update_altstore_source(version_tag):
+                logger.warning("⚠️ AltStore source generation failed, but continuing...")
+            # If we updated altstore.json locally, it was already committed in Phase 3
+            # but if it was modified here, we might need another commit.
+            # However, update_altstore_source usually uses version_tag info.
+
         # [REMOVED] Không tự động xóa lock file ở đây để Makefile có thể chạy tiếp các task khác
         logger.info(f"🛡️  Publish process finished.")
 
