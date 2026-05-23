@@ -269,10 +269,10 @@ undo:
 
 # [NEW] Tự động commit các thay đổi về version (dùng amend để tránh rác log)
 git-commit-version:
-	@status=$$(git status --porcelain package.json src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj); \
+	@status=$$(git status --porcelain package.json pyproject.toml src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj); \
 	if [ -n "$$status" ]; then \
 		echo "📝 Automating version commit (amend)..."; \
-		git add package.json src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj; \
+		git add package.json pyproject.toml src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj; \
 		if git log -1 --pretty=%B | grep -q "bump version"; then \
 			git commit --amend --no-edit; \
 		else \
