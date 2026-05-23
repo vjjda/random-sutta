@@ -211,7 +211,8 @@ ota: re
 altstore-sync:
 	@echo "📡 Syncing AltStore with GitHub latest release..."
 	$(PYTHON) -m src.release_system --sync
-	@echo "✅ altstore.json updated. Remember to git push if needed."
+	@$(MAKE) git-commit-version
+	@echo "✅ altstore.json updated and committed."
 
 # Delete all releases except the latest one
 clean-releases:
