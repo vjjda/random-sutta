@@ -101,7 +101,8 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
         "version": clean_version,
         "date": date_str,
         "downloadURL": download_url,
-        "localizedDescription": f"Release {version_tag}"
+        "localizedDescription": f"Release {version_tag}",
+        "size": 110000000  # [FIXED] Mandatory field, set to ~110MB to match actual IPA
     }
 
     # Find if the app already exists in the source
@@ -112,6 +113,7 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
         # [NEW] Only keep the latest version to match GitHub release strategy
         app_entry["versions"] = [new_version]
         app_entry["iconURL"] = ICON_URL
+        app_entry["tintColor"] = "#01579b" # [NEW] Branding
     else:
         # Create new app entry
         app_entry = {
@@ -121,6 +123,7 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
             "subtitle": "Discover the Wisdom of the Buddha",
             "localizedDescription": "A lean, fast, and beautiful Sutta reader for PWA and Mobile.",
             "iconURL": ICON_URL,
+            "tintColor": "#01579b", # [NEW] Branding
             "permissions": {
                 "entitlements": [
                     {
