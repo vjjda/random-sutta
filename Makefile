@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api sync-dpd dry data d de dv dz da dt df build re dev view deploy beta official publish clean noedit undo mini app clean-releases apk open-apk clean-apk ios open-ios clean-ios macos macos-debug app-debug alfred
+.PHONY: help setup sync sync-text sync-api sync-dpd dry data d de dv dz da dt df build re dev view deploy beta official publish clean noedit undo mini app clean-releases apk open-apk clean-apk ios open-ios clean-ios macos macos-debug app-debug alfred install requirements pipreqs
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -11,7 +11,9 @@ help:
 	@echo "📚 RANDOM SUTTA DEVELOPER TOOLS (by Vijjo)"
 	@echo "----------------------------------------------------------------"
 	@echo "🛠️  SETUP & SYNC:"
-	@echo "  make setup          - Install Git hooks"
+	@echo "  make setup          - Install dependencies & Git hooks"
+	@echo "  make install        - Install Python dependencies (pip-sync)"
+	@echo "  make requirements   - Auto-generate requirements.txt from imports"
 	@echo "  make sync           - Sync ALL data (Bilara + API + DPD)"
 	@echo "  make sync-text      - Sync ONLY Bilara Text (-s)"
 	@echo "  make sync-api       - Sync ONLY API Metadata (-a)"
