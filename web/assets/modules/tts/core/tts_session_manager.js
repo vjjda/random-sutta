@@ -129,6 +129,7 @@ export const TTSSessionManager = {
                 id: `${currentChunkSegments[0].id}_p`,
                 text: currentChunkText.trim(),
                 element: currentChunkSegments[0].element, // Scroll to specific segment!
+                elements: currentChunkSegments.map(s => s.element), // All segments in chunk
                 blockElement: item.element, // Reference back to the <p> for markers
                 isFirstOfBlock: chunks.length === 0
             });

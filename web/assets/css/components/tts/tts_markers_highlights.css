@@ -98,38 +98,43 @@ body:not(.tts-open) .tts-marker {
   box-shadow: 0 0 8px var(--primitive-amber-500);
 }
 
-/* Text Highlighting */
+/* Text Highlighting - Base Backgrounds */
 .segment.tts-active,
-:not(.segment).tts-active {
+p.tts-active, h1.tts-active, h2.tts-active, h3.tts-active, h4.tts-active, h5.tts-active, h6.tts-active, blockquote.tts-active, li.tts-active {
   background-color: rgba(var(--primary-rgb), 0.05);
-  box-shadow: inset -4px 0 0 var(--primary-color); /* Use inset box-shadow instead of border to prevent shifting */
   border-radius: 8px 0 0 8px;
   position: relative;
   z-index: 1;
 }
 
-/* [NEW] Granular Chunk Highlighting (for split long segments) */
-/* When a chunk is active, the parent segment (.tts-block-active) gets the border-shadow but NO background */
+/* [NEW] Border Shadow - ONLY for Segments */
+/* This ensures the indicator is per-segment even in Paragraph mode */
+.segment.tts-active,
 .segment.tts-block-active {
-  background-color: transparent !important;
-  box-shadow: inset -4px 0 0 var(--primary-color);
-  border-radius: 8px 0 0 8px;
-  position: relative;
-  z-index: 1;
+  box-shadow: inset -4px 0 0 var(--primary-color) !important;
 }
 
+/* [NEW] Granular Block Context (for split items) */
+/* Block containers only get transparency (they don't need a background if chunks are highlighted) */
+p.tts-block-active, h1.tts-block-active, h2.tts-block-active, h3.tts-block-active, h4.tts-block-active, h5.tts-block-active, h6.tts-block-active, blockquote.tts-block-active, li.tts-block-active {
+  background-color: transparent !important;
+  box-shadow: none !important; /* No large border on whole paragraph */
+}
+
+/* [NEW] Granular Chunk Highlighting (for split long segments/paragraphs) */
+/* Focus on background ONLY, NO padding/margin/border to prevent text shifting */
 .tts-chunk.tts-active {
-  background-color: rgba(var(--primary-rgb), 0.12); /* Slightly stronger for focus */
+  background-color: rgba(var(--primary-rgb), 0.15);
   border-radius: 4px;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 [data-theme="dark"] .segment.tts-active,
-[data-theme="dark"] :not(.segment).tts-active {
+[data-theme="dark"] p.tts-active, [data-theme="dark"] blockquote.tts-active, [data-theme="dark"] li.tts-active {
   background-color: rgba(255, 255, 255, 0.05);
-}
-
-[data-theme="dark"] .segment.tts-block-active {
-  background-color: transparent !important;
 }
 
 [data-theme="dark"] .tts-chunk.tts-active {
