@@ -15,18 +15,12 @@ export const SyncUnificationUI = {
             document.body.appendChild(modal);
         }
 
-        const localStr = JSON.stringify(localData.payload, null, 2);
-        const cloudStr = JSON.stringify(cloudData.payload, null, 2);
+        const localStr = JSON.stringify(localData, null, 2);
+        const cloudStr = JSON.stringify(cloudData, null, 2);
 
         const diffHtml = this._computeHunkDiffHtml(localStr, cloudStr);
         document.getElementById("unif-diff-content").innerHTML = diffHtml;
         document.getElementById("unif-diff-area").classList.add("hidden"); 
-
-        // Update the 'Latest' hint
-        const isCloudNewer = cloudData.timestamp > localData.timestamp;
-        const latestLabel = isCloudNewer ? "Cloud" : "Local";
-        const latestTime = new Date(Math.max(cloudData.timestamp, localData.timestamp)).toLocaleTimeString();
-        document.getElementById("unif-latest-hint").innerText = `(${latestLabel} version is newer: ${latestTime})`;
         
         modal.classList.remove("hidden");
     },
@@ -47,25 +41,16 @@ export const SyncUnificationUI = {
                 </button>
                 <div class="unification-header">
                     <h3>Sync Unification</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Conflict detected between your local data and cloud.</p>
                 </div>
 
                 <div class="unification-actions-main">
-                    <button class="resolve-card primary" id="btn-unif-latest">
-                        <span class="card-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        </span>
-                        <div class="card-text">
-                            <strong>Use Latest</strong>
-                            <p id="unif-latest-hint" class="unif-latest-hint"></p>
-                        </div>
-                    </button>
-
-                    <button class="resolve-card" id="btn-unif-merge">
+                    <button class="resolve-card primary" id="btn-unif-merge">
                         <span class="card-icon">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
                         </span>
                         <div class="card-text">
-                            <strong>Smart Merge</strong>
+                            <strong>Smart Merge (Recommended)</strong>
                             <p>Safely combine changes from both sides.</p>
                         </div>
                     </button>
@@ -96,7 +81,6 @@ export const SyncUnificationUI = {
 
         div.querySelector("#btn-unif-local").onclick = () => this._handle("local");
         div.querySelector("#btn-unif-cloud").onclick = () => this._handle("cloud");
-        div.querySelector("#btn-unif-latest").onclick = () => this._handle("latest");
         div.querySelector("#btn-unif-merge").onclick = () => this._handle("merge");
         div.querySelector("#btn-unif-close").onclick = () => this._handle("cancel");
         div.querySelector("#btn-unif-toggle-details").onclick = () => {

@@ -107,15 +107,6 @@ export const SyncOrchestrator = {
                                 localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
                             } else if (choice === 'local') {
                                 await this._doPush(cloudSha);
-                            } else if (choice === 'latest') {
-                                // Latest logic
-                                if (cloudData.timestamp > localData.timestamp) {
-                                    this.unpackAndApply(cloudData);
-                                    localStorage.setItem("sync_github_sha", cloudSha);
-                                } else {
-                                    await this._doPush(cloudSha);
-                                }
-                                localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
                             } else if (choice === 'cancel') {
                                 logger.info("AutoSync", "User ignored unification choice.");
                             }
@@ -188,19 +179,14 @@ export const SyncOrchestrator = {
     },
 
     packData() {
-        const lastUpdate = parseInt(localStorage.getItem("sync_local_update_timestamp") || Date.now().toString(), 10);
-        const data = {
-            version: 1,
-            timestamp: lastUpdate,
-            payload: {}
-        };
+        const data = {};
         this.SYNC_KEYS.forEach(key => {
             const value = localStorage.getItem(key);
             if (value !== null) {
                 try {
-                    data.payload[key] = JSON.parse(value);
+                    data[key] = JSON.parse(value);
                 } catch {
-                    data.payload[key] = value;
+                    data[key] = value;
                 }
             }
         });
@@ -208,9 +194,12 @@ export const SyncOrchestrator = {
     },
 
     unpackAndApply(cloudData) {
-        if (!cloudData || !cloudData.payload) return;
+        if (!cloudData) return;
         
-        Object.entries(cloudData.payload).forEach(([key, value]) => {
+        // [COMPAT] If cloud data is in legacy format with payload
+        const payload = cloudData.payload || cloudData;
+
+        Object.entries(payload).forEach(([key, value]) => {
             // Only apply keys that we currently want to sync
             if (!this.SYNC_KEYS.includes(key)) return;
 
@@ -218,6 +207,7 @@ export const SyncOrchestrator = {
             localStorage.setItem(key, stringValue);
         });
 
+        // [COMPAT] Handle legacy timestamp
         if (cloudData.timestamp) {
             localStorage.setItem("sync_local_update_timestamp", cloudData.timestamp.toString());
         }
@@ -227,15 +217,17 @@ export const SyncOrchestrator = {
     },
 
     async smartMerge(cloudData, cloudSha) {
-        if (!cloudData || !cloudData.payload) return;
+        if (!cloudData) return;
         
+        // [COMPAT] Handle legacy format
+        const cloudPayload = cloudData.payload || cloudData;
         const localData = this.packData();
-        const mergedPayload = { ...localData.payload };
+        const mergedData = { ...localData };
         
         // Special logic for bookmarks (Merge by UID with Signed Timestamp)
-        if (cloudData.payload.sutta_bookmarks) {
-            const localBookmarks = localData.payload.sutta_bookmarks || {};
-            let cloudBookmarks = cloudData.payload.sutta_bookmarks;
+        if (cloudPayload.sutta_bookmarks) {
+            const localBookmarks = localData.sutta_bookmarks || {};
+            let cloudBookmarks = cloudPayload.sutta_bookmarks;
             
             // [COMPAT] Migrate cloud data to Signed Timestamp format before merging
             if (Array.isArray(cloudBookmarks)) {
@@ -282,13 +274,13 @@ export const SyncOrchestrator = {
                     mergedBookmarks[uid] = cloudVal;
                 }
             });
-            mergedPayload.sutta_bookmarks = mergedBookmarks;
+            mergedData.sutta_bookmarks = mergedBookmarks;
         }
 
         // Special logic for history (Object merge by ID with Format Migration)
-        if (cloudData.payload.sutta_history && typeof cloudData.payload.sutta_history === 'object') {
-            const localHistory = localData.payload.sutta_history || {};
-            const cloudHistory = cloudData.payload.sutta_history;
+        if (cloudPayload.sutta_history && typeof cloudPayload.sutta_history === 'object') {
+            const localHistory = localData.sutta_history || {};
+            const cloudHistory = cloudPayload.sutta_history;
             const mergedHistory = { ...localHistory };
             
             Object.keys(cloudHistory).forEach(uid => {
@@ -310,32 +302,25 @@ export const SyncOrchestrator = {
                     mergedHistory[uid] = [localLvl, localTs];
                 }
             });
-            mergedPayload.sutta_history = mergedHistory;
+            mergedData.sutta_history = mergedHistory;
         }
 
-        // For other keys, just take the one with the newest overall timestamp
-        Object.entries(cloudData.payload).forEach(([key, value]) => {
+        // For other keys, just take local (since we don't have timestamps per key)
+        // or take cloud if it didn't exist locally
+        Object.entries(cloudPayload).forEach(([key, value]) => {
             if (key === "sutta_bookmarks" || key === "sutta_history") return;
-            
-            if (!mergedPayload[key] || cloudData.timestamp > localData.timestamp) {
-                mergedPayload[key] = value;
+            if (mergedData[key] === undefined) {
+                mergedData[key] = value;
             }
         });
 
         // Apply back locally
         const mergeTimestamp = Date.now();
-        this.unpackAndApply({ 
-            payload: mergedPayload,
-            timestamp: mergeTimestamp
-        });
+        this.unpackAndApply(mergedData);
+        localStorage.setItem("sync_local_update_timestamp", mergeTimestamp.toString());
         
         // Push merged back to cloud
-        const mergedDataToPush = {
-            version: 1,
-            timestamp: mergeTimestamp,
-            payload: mergedPayload
-        };
-        const newSha = await GithubSync.uploadData(mergedDataToPush, cloudSha);
+        const newSha = await GithubSync.uploadData(mergedData, cloudSha);
         localStorage.setItem("sync_github_sha", newSha);
         localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
         logger.info("SmartMerge", "Done and pushed to cloud.");
