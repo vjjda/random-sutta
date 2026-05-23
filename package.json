@@ -2,6 +2,12 @@
   "name": "random-sutta",
   "version": "2026.143.436",
   "description": "Random Sutta Reader",
+  "author": "Vijjo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vjjda/random-sutta"
+  },
   "main": "index.js",
   "scripts": {
     "dev": "vite",

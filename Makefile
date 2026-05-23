@@ -8,7 +8,7 @@ PYTHON := python3
 # 🎯 DEFAULT / HELP
 # ==============================================================================
 help:
-	@echo "📚 RANDOM SUTTA DEVELOPER TOOLS"
+	@echo "📚 RANDOM SUTTA DEVELOPER TOOLS (by Vijjo)"
 	@echo "----------------------------------------------------------------"
 	@echo "🛠️  SETUP & SYNC:"
 	@echo "  make setup          - Install Git hooks"

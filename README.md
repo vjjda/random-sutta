@@ -1,5 +1,7 @@
 # Random Sutta Reader
 
+Created by **Vijjo**
+
 A fast, focus-oriented reader for Early Buddhist Texts (EBT), designed for a seamless reading experience with robust offline capabilities.
 Data is sourced from SuttaCentral's [Bilara](https://github.com/suttacentral/sc-data) project and Digital Pāḷi Dictionary ([DPD](https://digitalpalidictionary.github.io/)).
 

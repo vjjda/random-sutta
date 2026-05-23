@@ -54,7 +54,7 @@ class EpubPackager:
         opf_title = "SuttaCentral Tipitaka [Eng]" if self.eng_only else "SuttaCentral Tipitaka"
         opf_content = CONTENT_OPF_TEMPLATE.format(
             title=opf_title,
-            author="Random Sutta",
+            author="Vijjo",
             language="en",
             uuid=self.epub_uuid,
             date=self.date_str,

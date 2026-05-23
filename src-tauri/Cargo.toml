@@ -1,10 +1,10 @@
 [package]
 name = "app"
 version = "2026.143.436"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Discover the Wisdom of the Buddha - A lean, fast, and beautiful Sutta reader"
+authors = ["Vijjo"]
+license = "MIT"
+repository = "https://github.com/vjjda/random-sutta"
 edition = "2021"
 rust-version = "1.77.2"
 
