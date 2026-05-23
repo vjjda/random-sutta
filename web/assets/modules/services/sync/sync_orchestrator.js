@@ -263,7 +263,7 @@ export const SyncOrchestrator = {
             mergedPayload.sutta_bookmarks = mergedBookmarks;
         }
 
-        // Special logic for history (Object merge by ID)
+        // Special logic for history (Object merge by ID with Format Migration)
         if (cloudData.payload.sutta_history && typeof cloudData.payload.sutta_history === 'object') {
             const localHistory = localData.payload.sutta_history || {};
             const cloudHistory = cloudData.payload.sutta_history;
@@ -271,14 +271,21 @@ export const SyncOrchestrator = {
             
             Object.keys(cloudHistory).forEach(uid => {
                 const cloudItem = cloudHistory[uid];
-                // Clean item before merge
-                const cleanCloudItem = {
-                    level: cloudItem.level,
-                    timestamp: cloudItem.timestamp
-                };
+                // Handle Cloud format (could be old object or new array)
+                const cloudLvl = Array.isArray(cloudItem) ? cloudItem[0] : cloudItem.level;
+                const cloudTs = Array.isArray(cloudItem) ? cloudItem[1] : (cloudItem.timestamp || 0);
 
-                if (!mergedHistory[uid] || cleanCloudItem.timestamp > mergedHistory[uid].timestamp) {
-                    mergedHistory[uid] = cleanCloudItem;
+                const localItem = mergedHistory[uid];
+                // Handle Local format
+                const localTs = Array.isArray(localItem) ? localItem[1] : (localItem ? (localItem.timestamp || 0) : -1);
+
+                if (!localItem || cloudTs > localTs) {
+                    // Always merge into the optimized Array format
+                    mergedHistory[uid] = [cloudLvl, cloudTs];
+                } else if (!Array.isArray(localItem)) {
+                    // Migration-on-the-fly: If local is still an object but newer than cloud, convert it to array
+                    const localLvl = localItem.level;
+                    mergedHistory[uid] = [localLvl, localTs];
                 }
             });
             mergedPayload.sutta_history = mergedHistory;

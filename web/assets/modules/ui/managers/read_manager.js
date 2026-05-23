@@ -96,21 +96,22 @@ export const ReadManager = {
             const data = localStorage.getItem(this.STORAGE_KEY);
             let history = data ? JSON.parse(data) : {};
 
-            // [MIGRATION] Strip redundant metadata
+            // [MIGRATION] Convert Object format to Array format [level, timestamp]
             let migrated = false;
             Object.keys(history).forEach(uid => {
                 const item = history[uid];
-                if (item.acronym || item.title || item.original || item.date) {
-                    delete item.acronym;
-                    delete item.title;
-                    delete item.original;
-                    delete item.date;
+                
+                // If it's the old object format
+                if (typeof item === 'object' && !Array.isArray(item)) {
+                    const level = item.level !== undefined ? item.level : 0;
+                    const ts = item.timestamp || Date.now();
+                    history[uid] = [level, ts];
                     migrated = true;
                 }
             });
 
             if (migrated) {
-                logger.info("Migration", "Migrated history to new format");
+                logger.info("Migration", "Migrated history to Array format [level, timestamp]");
                 this.saveHistory(history);
             }
 
@@ -127,7 +128,12 @@ export const ReadManager = {
 
     getFamiliarity(id) {
         const history = this.getHistory();
-        return (history[id] && history[id].level > 0) ? history[id].level : 0;
+        const item = history[id];
+        if (!item) return 0;
+        
+        // Handle both new Array format and safety fallback
+        const level = Array.isArray(item) ? item[0] : (item.level || 0);
+        return level > 0 ? level : 0;
     },
 
     getKeepProbability(id) {
@@ -137,19 +143,14 @@ export const ReadManager = {
 
     setFamiliarity(id, level, skipRender = false) {
         const history = this.getHistory();
+        const now = Date.now();
+        
+        // Always store as [level, timestamp]
+        history[id] = [level, now];
         
         if (level === 0) {
-            if (history[id]) {
-                history[id].level = 0;
-                history[id].timestamp = Date.now();
-                delete history[id].deleted; // Clean up old flag
-            }
             logger.info("Familiarity", `Removed (tombstone level 0): ${id}`);
         } else {
-            history[id] = {
-                level: level,
-                timestamp: Date.now()
-            };
             logger.info("Familiarity", `Set: ${id} to level ${level}`);
         }
         
@@ -178,7 +179,12 @@ export const ReadManager = {
     async renderList() {
         if (!this.listContainer) return;
         const history = this.getHistory();
-        const entries = Object.entries(history).filter(([uid, data]) => data.level > 0);
+        
+        // entries structure: [uid, [level, timestamp]]
+        const entries = Object.entries(history).filter(([uid, data]) => {
+            const level = Array.isArray(data) ? data[0] : data.level;
+            return level > 0;
+        });
         
         if (entries.length === 0) {
             this.listContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No history yet.</div>`;
@@ -192,9 +198,10 @@ export const ReadManager = {
         // Group by Date extracted from timestamp
         const grouped = {};
         entries.forEach(([uid, data]) => {
-            const dateStr = new Date(data.timestamp).toISOString().split('T')[0];
+            const [level, timestamp] = Array.isArray(data) ? data : [data.level, data.timestamp];
+            const dateStr = new Date(timestamp).toISOString().split('T')[0];
             if (!grouped[dateStr]) grouped[dateStr] = [];
-            grouped[dateStr].push({ uid, ...data });
+            grouped[dateStr].push({ uid, level, timestamp });
         });
 
         // Sort dates descending
