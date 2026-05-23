@@ -351,7 +351,7 @@ ios:
 	@echo "🔄 Đồng bộ với dự án iOS (Capacitor)..."
 	npx cap sync ios
 	@echo "📦 Đang tạo bản build IPA cho AltStore..."
-	npx cap build ios --scheme App --configuration Release --xcode-export-method development
+	npx cap build ios --scheme App --configuration Release --xcode-export-method debugging
 	@mkdir -p dist/ios
 	@cp ios/App/output/App.ipa dist/ios/randomsutta.ipa
 	@echo "✅ XONG! File IPA của bạn nằm tại:"
