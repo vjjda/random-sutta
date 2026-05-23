@@ -269,6 +269,7 @@ apk-build:
 	export JAVA_HOME="/Library/Java/JavaVirtualMachines/microsoft-25.jdk/Contents/Home" && \
 	cd android && ./gradlew assembleDebug
 	@mkdir -p dist/apk
+	@rm -f dist/apk/*.apk
 	@cp android/app/build/outputs/apk/debug/app-debug.apk dist/apk/randomsutta.apk
 	@echo "✅ Build hoàn tất: dist/apk/randomsutta.apk"
 	@$(MAKE) git-commit-version
@@ -375,6 +376,8 @@ macos:
 	export PATH="$$HOME/.cargo/bin:$$PATH" && npx tauri build
 	@echo "📦 Đang chép file cài đặt vào thư mục dist/macos..."
 	@mkdir -p dist/macos
+	@rm -rf "dist/macos/Random Sutta.app"
+	@rm -f dist/macos/*.dmg
 	@cp -R "src-tauri/target/release/bundle/macos/Random Sutta.app" dist/macos/
 	@cp src-tauri/target/release/bundle/dmg/*.dmg dist/macos/
 	@echo "✅ XONG! Ứng dụng MacOS của bạn nằm tại:"
@@ -388,6 +391,7 @@ macos-debug:
 	export PATH="$$HOME/.cargo/bin:$$PATH" && npx tauri build --debug --no-bundle
 	@echo "📦 Đang chép file cài đặt vào thư mục dist/macos-debug..."
 	@mkdir -p dist/macos-debug
+	@rm -rf "dist/macos-debug/Random Sutta.app"
 	@cp -R "src-tauri/target/debug/bundle/macos/Random Sutta.app" dist/macos-debug/
 	@echo "✅ XONG! Bản Debug nằm tại: dist/macos-debug/Random Sutta.app"
 	@$(MAKE) git-commit-version
