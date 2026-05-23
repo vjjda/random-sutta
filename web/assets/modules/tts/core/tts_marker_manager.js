@@ -26,25 +26,25 @@ export const TTSMarkerManager = {
         const processedElements = new Set();
 
         playlist.forEach((item) => {
-            if (!item.element || processedElements.has(item.element)) return;
+            // [UPDATED] Use blockElement (the <p> tag) for uniqueness check in paragraph mode
+            const markerTarget = item.blockElement || item.element;
+            if (!markerTarget || processedElements.has(markerTarget)) return;
 
             // Mark element as processed
-            processedElements.add(item.element);
+            processedElements.add(markerTarget);
 
             // Create Marker
             const marker = document.createElement("button");
             marker.className = "tts-marker";
             marker.setAttribute("aria-label", "Play from here");
-            // Use the first chunk's ID as the anchor
+            // Use the chunk's ID as the anchor
             marker.setAttribute("data-tts-id", item.id); 
-            // Link marker back to element for reverse lookup if needed
-            // marker.dataset.elementId = item.element.id; 
             
-            // Inject: Prepend to the element
-            if (item.element.firstChild) {
-                item.element.insertBefore(marker, item.element.firstChild);
+            // Inject: Prepend to the markerTarget (Segment or Paragraph)
+            if (markerTarget.firstChild) {
+                markerTarget.insertBefore(marker, markerTarget.firstChild);
             } else {
-                item.element.appendChild(marker);
+                markerTarget.appendChild(marker);
             }
 
             this.markers.push(marker);
