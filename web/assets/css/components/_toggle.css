@@ -27,13 +27,22 @@
     align-items: center;
     padding: 12px 0;
     border-top: 1px solid var(--border-light);
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 12px;
+    flex-wrap: wrap; /* Allow wrapping on very small screens */
 }
 
 .setting-label-group {
     display: flex;
     align-items: center;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.setting-multi-badge-row {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto; /* Push to right on desktop/wide mobile */
 }
 
 .setting-value-badge {
@@ -75,6 +84,7 @@
     align-items: center;
     gap: 12px;
     margin-left: auto;
+    flex-shrink: 0;
     touch-action: pan-y; /* Allow vertical scroll but prevent default horizontal if swiping */
 }
 
@@ -117,17 +127,41 @@
 /* Responsive adjustment for narrow screens (e.g. iPhone) */
 @media (max-width: 420px) {
     .setting-item-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
+        gap: 6px; /* Tighter gap */
     }
 
     .setting-label-group {
-        justify-content: space-between;
-        width: 100%;
+        justify-content: flex-start; /* Keep tooltip near label */
+        flex: 1 1 auto;
+        min-width: 100px; /* Lower threshold for single line */
     }
 
-    .setting-multi-badge-row {
+    /* [NEW] For iPhone 12 / Mini (Extra Narrow) */
+    @media (max-width: 380px) {
+        .setting-item-row {
+            padding: 10px 0;
+            gap: 4px;
+        }
+        .toggle-label {
+            font-size: 0.85rem;
+        }
+        .setting-value-badge {
+            width: 40px; /* Even smaller */
+            font-size: 0.7rem;
+        }
+        .minimalist-label {
+            font-size: 0.75rem;
+            min-width: 40px;
+        }
+        .margin-control-group {
+            gap: 8px;
+        }
+    }
+
+    /* [WRAP LOGIC] Use margin-left: auto to push to right even if wrapped */
+    .setting-multi-badge-row,
+    .margin-control-group {
+        margin-left: auto;
         justify-content: flex-end;
     }
 }
