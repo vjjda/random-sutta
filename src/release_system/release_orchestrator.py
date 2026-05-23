@@ -52,6 +52,7 @@ def run_release_process(
     # Chỉ thực hiện nếu bump_version=True, hoặc nếu phát hiện version hiện tại trong file đang sai
     if bump_version:
         release_versioning.update_package_json(PROJECT_ROOT, clean_version)
+        release_versioning.update_pyproject_version(PROJECT_ROOT, clean_version)
         release_versioning.update_xcode_version(PROJECT_ROOT, clean_version)
         release_versioning.update_android_version(PROJECT_ROOT, clean_version)
         release_versioning.update_tauri_version(PROJECT_ROOT, clean_version)

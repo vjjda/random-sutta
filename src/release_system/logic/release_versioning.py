@@ -155,3 +155,26 @@ def update_tauri_version(project_root: Path, version: str) -> bool:
             logger.info(f"✅ Updated Cargo.toml -> {version}")
         except Exception: success = False
     return success
+
+def update_pyproject_version(project_root: Path, version: str) -> bool:
+    """Updates the version in pyproject.toml using simple regex to avoid needing a toml parser."""
+    pyproject_path = project_root / "pyproject.toml"
+    if not pyproject_path.exists(): return False
+    try:
+        import re
+        with open(pyproject_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Replace version = "..." in the [project] section
+        new_content = re.sub(r'^version\s*=\s*"[^"]+"', f'version = "{version}"', content, flags=re.MULTILINE)
+        
+        if content == new_content:
+            return True
+            
+        with open(pyproject_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        logger.info(f"✅ Updated pyproject.toml -> {version}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Failed to update pyproject.toml: {e}")
+        return False
