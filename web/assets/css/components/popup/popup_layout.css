@@ -208,11 +208,14 @@ body.parallels-open #quicklook-popup {
   padding-bottom: 80px !important;
 }
 
-/* [NEW] Body Padding for Popup */
-body.popup-open, body.lookup-open, body.parallels-open {
-  /* No special body padding needed for bottom popups if they overlay content */
-  /* But if we want to scroll content fully: */
-  padding-bottom: 45vh !important;
+/* [NEW] Scroll Container Padding for Popup */
+body.popup-open #reader-view main, body.popup-open #landing-view > div,
+body.lookup-open #reader-view main, body.lookup-open #landing-view > div,
+body.parallels-open #reader-view main, body.parallels-open #landing-view > div,
+body.filter-open #reader-view main, body.filter-open #landing-view > div,
+body.quicklook-open #reader-view main, body.quicklook-open #landing-view > div {
+  /* Ensure content can be scrolled above the bottom popups */
+  padding-bottom: 50dvh !important;
 }
 
 /* [DYNAMIC STACKING] Force active popup to top */

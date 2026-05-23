@@ -45,6 +45,7 @@ export const RandomButton = {
                 if (popup) {
                     ZIndexManager.bringToFront(popup); // Ensure it's above other things
                     popup.classList.remove("hidden");
+                    document.body.classList.add("filter-open");
                     if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback on open
                 }
             }, 500);

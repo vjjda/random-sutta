@@ -73,6 +73,7 @@ export const FilterComponent = {
             SwipeHandler.attach(filterPopup, {
                 onSwipeDown: () => {
                     filterPopup.classList.add("hidden");
+                    document.body.classList.remove("filter-open");
                 },
                 threshold: 50,
                 // Only allow swipe down if we are at the top of the scroll container
@@ -83,12 +84,14 @@ export const FilterComponent = {
         if (filterPopup && closeBtn) {
             closeBtn.addEventListener("click", () => {
                 filterPopup.classList.add("hidden");
+                document.body.classList.remove("filter-open");
             });
 
             // Click outside to close (optional, if we want typical popup behavior)
             filterPopup.addEventListener("click", (e) => {
                 if (e.target === filterPopup) {
                     filterPopup.classList.add("hidden");
+                    document.body.classList.remove("filter-open");
                 }
             });
         }
