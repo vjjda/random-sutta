@@ -62,17 +62,27 @@ h3 .segment {
 .comment-marker {
   color: var(--primary-color);
   font-weight: bold;
-  vertical-align: super;
+  vertical-align: baseline; /* [FIX] Prevent line-height expansion */
+  line-height: 0;           /* [FIX] Zero height contribution */
   font-size: 0.8em;
   padding: 0;
-  margin-left: 0.2em; /* Controlled gap from the preceding word */
+  margin-left: 0.2em;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
   position: relative;
+  top: -0.5em;             /* [FIX] Lift manually */
   z-index: 10;
   display: inline-block;
+}
+
+/* [NEW] Global SUP Reset to prevent line gaps */
+sup {
+  vertical-align: baseline;
+  position: relative;
+  top: -0.4em;
+  line-height: 0;
 }
 
 /* [NEW] Hit Area Expansion: Invisible larger touch target cho comment */
