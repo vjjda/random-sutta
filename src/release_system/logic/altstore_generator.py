@@ -132,9 +132,26 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
             "subtitle": "Discover the Wisdom of the Buddha",
             "localizedDescription": "A lean, fast, and beautiful Sutta reader for PWA and Mobile.",
             "iconURL": ICON_URL,
+            "permissions": {
+                "entitlements": [
+                    {
+                        "name": "get-task-allow"
+                    }
+                ]
+            },
             "versions": [new_version]
         }
         source["apps"].append(app_entry)
+
+    # Ensure existing app_entry also has permissions if it's missing
+    if "permissions" not in app_entry:
+        app_entry["permissions"] = {
+            "entitlements": [
+                {
+                    "name": "get-task-allow"
+                }
+            ]
+        }
 
     try:
         for path in target_paths:
