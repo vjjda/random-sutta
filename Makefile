@@ -1,5 +1,5 @@
 # Path: Makefile
-.PHONY: help setup sync sync-text sync-api sync-dpd dry data d de dv dz da dt df build re dev view deploy beta official publish clean noedit undo mini app clean-releases apk open-apk clean-apk ios open-ios clean-ios macos macos-debug app-debug alfred install requirements pipreqs
+.PHONY: help setup sync sync-text sync-api sync-dpd dry data d de dv dz da dt df build re dev view deploy beta official publish clean noedit undo mini app clean-releases apk open-apk clean-apk ios open-ios clean-ios macos macos-debug macos-setup app-debug alfred install requirements pipreqs
 
 # Python command (sử dụng môi trường hiện tại do direnv quản lý)
 PYTHON := python3
@@ -37,8 +37,9 @@ help:
 	@echo "🏗️  BUILD & PREVIEW:"
 	@echo "  make build          - Run Full Build (Data + Vite)"
 	@echo "  make re             - Quick Re-build (Vite Only)"
+	@echo "  make macos          - Build MacOS App (Universal Binary)"
 	@echo "  make macos-debug    - Build MacOS App (Debug mode)"
-	@echo "  make app            - Build MacOS App & Install to /Applications"
+	@echo "  make app            - Build MacOS App (Universal) & Install to /Applications"
 	@echo "  make alfred         - Build Alfred Workflow for quick search"
 	@echo "  make dev            - Vite Dev Server with HMR"
 	@echo "  make view           - Preview Vite Production Build"
@@ -398,17 +399,22 @@ clean-ios:
 # 🍏 MACOS / TAURI COMMANDS
 # ==============================================================================
 
-# Biên dịch ứng dụng MacOS bằng Tauri
+# Cài đặt các target cần thiết để build Universal Binary (Intel + Silicon)
+macos-setup:
+	@echo "🛠️  Đang cài đặt Rust targets cho Universal Binary..."
+	rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+# Biên dịch ứng dụng MacOS Universal Binary (Chạy tốt trên cả Intel và Apple Silicon)
 macos:
-	@echo "🍏 Đang biên dịch ứng dụng MacOS (Tauri)..."
-	export PATH="$$HOME/.cargo/bin:$$PATH" && npx tauri build
+	@echo "🍏 Đang biên dịch ứng dụng MacOS (Universal Binary)..."
+	export PATH="$$HOME/.cargo/bin:$$PATH" && npx tauri build --target universal-apple-darwin
 	@echo "📦 Đang chép file cài đặt vào thư mục dist/macos..."
 	@mkdir -p dist/macos
 	@rm -rf "dist/macos/Random Sutta.app"
 	@rm -f dist/macos/*.dmg
-	@cp -R "src-tauri/target/release/bundle/macos/Random Sutta.app" dist/macos/
-	@cp src-tauri/target/release/bundle/dmg/*.dmg dist/macos/
-	@echo "✅ XONG! Ứng dụng MacOS của bạn nằm tại:"
+	@cp -R "src-tauri/target/universal-apple-darwin/release/bundle/macos/Random Sutta.app" dist/macos/
+	@cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg dist/macos/
+	@echo "✅ XONG! Ứng dụng Universal MacOS của bạn nằm tại:"
 	@echo "📍 dist/macos/Random Sutta.app"
 	@echo "📍 dist/macos/"
 	@$(MAKE) git-commit-version
@@ -431,7 +437,7 @@ app: macos
 	@sleep 1
 	@echo "🚚 Đang cài đặt ứng dụng vào /Applications..."
 	@rm -rf "/Applications/Random Sutta.app"
-	@cp -R "src-tauri/target/release/bundle/macos/Random Sutta.app" "/Applications/"
+	@cp -R "src-tauri/target/universal-apple-darwin/release/bundle/macos/Random Sutta.app" "/Applications/"
 	@echo "🔄 Đang cập nhật Launch Services để nhận diện deep link..."
 	@/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "/Applications/Random Sutta.app"
 	@echo "✅ Đã cài đặt và đăng ký giao thức randomsutta:// thành công!"
