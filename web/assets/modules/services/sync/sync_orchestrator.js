@@ -8,7 +8,8 @@ const logger = getLogger("SyncOrchestrator");
 
 export const SyncOrchestrator = {
     SYNC_KEYS: ["sutta_bookmarks", "sutta_history", "tts_auto_next", "tts_playback_mode", "tts_active_engine", "tts_rate", "tts_pitch", "tts_voice_uri"],
-    DEBOUNCE_MS: 60000, // 1 minute debounce for cleaner history
+    DEBOUNCE_MS: 30 * 60 * 1000, // 30 minutes debounce for cleaner history
+    HEARTBEAT_MS: 30 * 60 * 1000, // 30 minutes heartbeat
     debounceTimer: null,
     isSyncing: false,
 
@@ -50,12 +51,12 @@ export const SyncOrchestrator = {
             }
         });
 
-        // Heartbeat check every 5 minutes while open
+        // Heartbeat check periodically while open
         setInterval(() => {
             if (GithubAuthManager.isAuthenticated() && !this.isSyncing) {
                 this.autoSync();
             }
-        }, 5 * 60 * 1000);
+        }, this.HEARTBEAT_MS);
 
         // Initial Sync if already authenticated
         if (GithubAuthManager.isAuthenticated()) {
