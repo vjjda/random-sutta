@@ -192,6 +192,7 @@ export const TTSSessionManager = {
                 id: `${item.id}_c${index}`,
                 text: chunk,
                 element: span, // Highlight/Scroll to this specific span!
+                blockElement: item.element, // Reference back to the segment element!
                 isFirstOfBlock: index === 0
             };
         });
