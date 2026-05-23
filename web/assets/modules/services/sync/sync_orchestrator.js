@@ -25,6 +25,14 @@ export const SyncOrchestrator = {
             this.autoSync();
         });
 
+        // [NEW] Resume sync when coming back online
+        window.addEventListener("online", () => {
+            logger.info("Network", "Back online. Checking sync...");
+            if (GithubAuthManager.isAuthenticated()) {
+                this.autoSync();
+            }
+        });
+
         // Listen for Local Changes
         window.addEventListener("local-data-changed", () => {
             localStorage.setItem("sync_local_update_timestamp", Date.now().toString());
@@ -57,6 +65,13 @@ export const SyncOrchestrator = {
 
     async autoSync() {
         if (this.isSyncing) return;
+
+        // [NEW] Connectivity Check
+        if (!navigator.onLine) {
+            logger.info("AutoSync", "Offline. Skipping sync.");
+            return;
+        }
+
         this.isSyncing = true;
         window.dispatchEvent(new CustomEvent("sync-start"));
         logger.info("AutoSync", "Starting auto-sync...");
@@ -136,6 +151,13 @@ export const SyncOrchestrator = {
 
     async autoPush() {
         if (this.isSyncing) return;
+
+        // [NEW] Connectivity Check
+        if (!navigator.onLine) {
+            logger.info("AutoPush", "Offline. Skipping push.");
+            return;
+        }
+
         this.isSyncing = true;
         window.dispatchEvent(new CustomEvent("sync-start"));
         try {
