@@ -25,7 +25,7 @@ function getDirectories(source) {
 
 // Đọc version từ package.json để đồng bộ hóa
 const packageJson = JSON.parse(fs.readFileSync(path.resolve('./package.json'), 'utf-8'));
-const buildVersion = packageJson.version || new Date().getTime();
+const baseVersion = packageJson.version || '0.0.0';
 
 const aliases = {};
 // Bỏ qua prefix __dirname vì ta có thể dùng path.resolve('.')
@@ -63,6 +63,9 @@ export default defineConfig(({ mode }) => {
     // GitHub Pages needs '/random-sutta/', but APK/Tauri needs './'
     // Dev mode usually works best with '/'
     const base = isNative ? './' : (isProd ? '/random-sutta/' : '/');
+
+    // [NEW] Dynamic version for dev mode to avoid "stuck" feeling
+    const buildVersion = isProd ? baseVersion : `${baseVersion}-dev.${Math.floor(Date.now() / 1000 / 60) % 10000}`;
 
     return {
         root: 'web', 
