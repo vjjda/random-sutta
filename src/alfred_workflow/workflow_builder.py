@@ -261,5 +261,3 @@ if __name__ == "__main__":
     print(f"✅ Workflow đã được tạo tại: {workflow_file}")
     print(f"💡 Chỉ cần click đúp vào file trên để cài đặt vào Alfred.")
 
-if __name__ == "__main__":
-    build_workflow()

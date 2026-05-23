@@ -453,5 +453,5 @@ app-debug: macos-debug
 # [NEW] Tạo Alfred Workflow để tìm kiếm nhanh
 alfred:
 	@echo "🍎 Đang tạo Alfred Workflow..."
-	$(PYTHON) -m src.alfred_workflow.workflow_builder
+	$(PYTHON) -m src.alfred_workflow
 	@echo "✅ XONG! File cài đặt nằm tại: dist/alfred/RandomSutta.alfredworkflow"
