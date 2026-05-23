@@ -1,31 +1,43 @@
+[project]
+name = "random-sutta"
+version = "2026.143.598"
+description = "A fast, focus-oriented reader for Early Buddhist Texts (EBT)"
+authors = [
+    { name = "Vijjo" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "sqlalchemy>=2.0.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=4.9.0",
+    "rich>=13.0.0",
+    "qrcode>=8.0.0",
+    "pydantic>=2.0.0",
+    "typing-extensions>=4.5.0",
+]
 
+[project.urls]
+Homepage = "https://github.com/vjjda/random-sutta"
+Repository = "https://github.com/vjjda/random-sutta.git"
 
-
+[tool.setuptools]
+packages = ["src"]
 
 [tool.cpath]
-
 extensions = ["css", "js", "py", "pyi", "scss", "sh", "template.toml", "ts", "zsh"]
-
 ignore = [".git", ".ruff_cache", ".venv", "__pycache__", "build", "dist", "node_modules", "out", "venv"]
 
 [tool.ndoc]
-
 extensions = ["py"]
-
 format_extensions = ["py"]
-
 ignore = [".DS_Store", ".git", ".gitignore", ".hg", ".ruff_cache", ".svn", ".venv", "__pycache__", "build", "dist", "node_modules", "out", "venv"]
 
 [tool.pcode]
-
 clean_extensions = ["py", "sh", "zsh"]
-
 extensions = ["", "bash", "cfg", "cfg.py", "gitignore", "ini", "json", "md", "py", "sh", "template", "toml", "txt", "xml", "yaml", "yml", "zsh", "html", "css", "js", "ts", "webmanifest", "css"]
-
 format_extensions = ["py"]
-
 ignore = [".DS_Store", ".git", ".hg", ".ruff_cache", ".svn", ".venv", "__pycache__", "venv", "release", "data", ".cache", "/web/assets/books/*", "/web/assets/libs/*", ".woff2", ".ttf", ".otf"]
-
 include = []
-
 output_dir = "~/Documents/code.context"

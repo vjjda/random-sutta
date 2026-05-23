@@ -44,13 +44,15 @@ We use `direnv` or manual virtual environment for Python tools.
 # Install Node dependencies
 npm install
 
-# Install Python dependencies and Setup Git hooks
+# Setup Python environment & Git hooks
 make setup
 ```
 
-Alternatively, you can install Python dependencies manually:
+**Note:** Python dependencies are managed via `pyproject.toml`. The `make setup` command automatically installs all necessary packages using `pip-tools`.
+
+If you add new imports to the code, you can update the dependency list automatically:
 ```bash
-pip install -r requirements.txt
+make requirements
 ```
 
 ### 3\. Fetch & Process Data
