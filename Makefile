@@ -60,7 +60,14 @@ setup: install
 
 install:
 	@echo "📦 Installing Python dependencies..."
-	$(PYTHON) -m pip install -r requirements.txt
+	$(PYTHON) -m pip install pip-tools
+	$(PYTHON) -m piptools sync requirements.txt
+
+# Regenerate requirements.txt from requirements.in
+requirements:
+	@echo "🔄 Generating locked requirements.txt..."
+	$(PYTHON) -m pip install pip-tools
+	$(PYTHON) -m piptools compile --upgrade requirements.in
 
 sync:
 	@echo "📥 Syncing ALL Data (Bilara + API + DPD)..."
