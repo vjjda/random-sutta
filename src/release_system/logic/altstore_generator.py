@@ -109,9 +109,8 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
 
     if app_entry:
         # Update existing app entry
-        # Remove version if it already exists (same string)
-        app_entry["versions"] = [v for v in app_entry["versions"] if v["version"] != clean_version]
-        app_entry["versions"].insert(0, new_version)
+        # [NEW] Only keep the latest version to match GitHub release strategy
+        app_entry["versions"] = [new_version]
         app_entry["iconURL"] = ICON_URL
     else:
         # Create new app entry
