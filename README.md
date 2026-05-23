@@ -41,11 +41,16 @@ cd random-sutta
 We use `direnv` or manual virtual environment for Python tools.
 
 ```bash
-# Setup Git hooks
-make setup
-
 # Install Node dependencies
 npm install
+
+# Install Python dependencies and Setup Git hooks
+make setup
+```
+
+Alternatively, you can install Python dependencies manually:
+```bash
+pip install -r requirements.txt
 ```
 
 ### 3\. Fetch & Process Data

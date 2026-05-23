@@ -54,9 +54,13 @@ help:
 # ==============================================================================
 # 🛠️ SETUP & SYNC
 # ==============================================================================
-setup:
+setup: install
 	@echo "🔧 Installing Git Hooks..."
 	$(PYTHON) src/setup_hooks.py
+
+install:
+	@echo "📦 Installing Python dependencies..."
+	$(PYTHON) -m pip install -r requirements.txt
 
 sync:
 	@echo "📥 Syncing ALL Data (Bilara + API + DPD)..."
