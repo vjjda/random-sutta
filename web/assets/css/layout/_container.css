@@ -5,14 +5,14 @@
   --reader-margin: 40px;
 }
 
-/* [UPDATED] Add transition to header for smooth push-down */
+/* [UPDATED] Remove transition from header as we don't need to push it down anymore */
 header {
-  transition: padding-top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* No transition needed for padding-top if we don't use it */
 }
 
-/* [KHI BẬT TTS] Đẩy Header xuống để nhường chỗ cho Player (Fixed Top) */
+/* [KHI BẬT TTS] Không còn đẩy Header xuống nữa (User request) */
 body.tts-open #reader-view > header {
-  padding-top: var(--tts-bottom-padding);
+  padding-top: 0;
 }
 
 @media (max-width: 600px) {
@@ -21,7 +21,7 @@ body.tts-open #reader-view > header {
   }
 
   body.tts-open #reader-view > header {
-      padding-top: var(--tts-bottom-padding);
+      padding-top: 0;
   }
 }
 
