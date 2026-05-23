@@ -168,21 +168,26 @@ beta: apk ios macos alfred
 clear-lock:
 	$(PYTHON) -m src.release_system --clear-lock
 
-# [UPDATED] Publish OFFICIAL (Đã sửa luồng: Bump version trước -> Build sau)
+# Publish OFFICIAL (Đã sửa luồng: Bump version trước -> Build sau)
 official: clear-lock
 	@echo "🚀 STARTING OFFICIAL RELEASE PROCESS..."
 	$(PYTHON) -m src.release_system --official --git --skip-publish
-	@$(MAKE) apk ios macos alfred
+	@$(MAKE) alfred apk ios macos
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
 	$(PYTHON) -m src.release_system --official --publish --skip-bump
 	@echo "🌟 OFFICIAL RELEASE COMPLETE!"
 	@$(MAKE) clear-lock
 
-# Publish + Deploy
-publish: 
-	@$(MAKE) official
+# Publish + Deploy (Đã sửa luồng: Deploy website sớm hơn trước khi upload GitHub)
+publish: clear-lock
+	@echo "🚀 STARTING FULL PUBLISH PROCESS..."
+	$(PYTHON) -m src.release_system --official --git --skip-publish
+	@$(MAKE) alfred apk ios macos
 	@$(MAKE) deploy-sync
+	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
+	$(PYTHON) -m src.release_system --official --publish --skip-bump
 	@echo "🌟 PUBLISHED AND DEPLOYED!"
+	@$(MAKE) clear-lock
 
 # [NEW] Deploy with version sync (no re-bump)
 deploy-sync:
