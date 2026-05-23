@@ -37,11 +37,30 @@ export const TTSHighlighter = {
             e.classList.remove("tts-active", "tts-block-active");
         });
 
+        if (activeEls.length === 0) return;
+
+        // 1. Mark active ones
         activeEls.forEach(el => {
             if (el) el.classList.add("tts-active");
         });
+
+        // 2. [NEW] Fill visual gaps between active elements for continuity
+        // This handles .no-trans segments or markers interleaved between active segments
+        if (activeEls.length > 1) {
+            const first = activeEls[0];
+            const last = activeEls[activeEls.length - 1];
+            
+            // Only fill if they share the same parent to avoid over-highlighting across blocks
+            if (first.parentElement === last.parentElement) {
+                let current = first.nextElementSibling;
+                while (current && current !== last) {
+                    current.classList.add("tts-active");
+                    current = current.nextElementSibling;
+                }
+            }
+        }
         
-        // Apply block highlight if different from active elements
+        // 3. Apply block highlight if different from active elements
         if (blockEl && !activeEls.includes(blockEl)) {
             blockEl.classList.add("tts-block-active");
         }
