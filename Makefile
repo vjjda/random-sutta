@@ -325,12 +325,12 @@ apk-copy:
 			echo "📲 Phát hiện thiết bị Android. Đang copy APK vào thư mục Download..."; \
 			adb push dist/apk/randomsutta.apk /sdcard/Download/randomsutta.apk && \
 			echo "✅ Đã copy vào /sdcard/Download/randomsutta.apk thành công!" || \
-			echo "❌ Lỗi khi copy. Hãy kiểm tra kết nối USB."; \
+			echo "⚠️ Lỗi khi copy. Bỏ qua bước copy."; \
 		else \
-			echo "⚠️ Không tìm thấy thiết bị Android nào qua ADB. Hãy bật USB Debugging."; \
+			echo "⚠️ Không tìm thấy thiết bị Android nào qua ADB. Bỏ qua bước copy."; \
 		fi \
 	else \
-		echo "⚠️ Không tìm thấy lệnh 'adb'. Hãy cài đặt Android Platform Tools."; \
+		echo "⚠️ Không tìm thấy lệnh 'adb'. Bỏ qua bước copy."; \
 	fi
 
 # Cài đặt trực tiếp APK vào máy Android và khởi chạy
