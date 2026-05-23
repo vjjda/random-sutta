@@ -115,8 +115,9 @@ body:not(.tts-open) .tts-marker {
 .tts-chunk.tts-active {
   background-color: rgba(var(--primary-rgb), 0.15);
   border-radius: 2px;
-  padding: 0 2px;
-  margin: 0 -2px;
+  padding: 0!important;
+  margin: 0!important;
+  border-right: 0px solid var(--primary-color);
 }
 
 [data-theme="dark"] .segment.tts-active,
