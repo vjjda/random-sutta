@@ -108,6 +108,28 @@ p.tts-active, h1.tts-active, h2.tts-active, h3.tts-active, h4.tts-active, h5.tts
   z-index: 1;
 }
 
+/* [NEW] Join consecutive active segments into a single background strip */
+.segment.tts-active {
+  margin-bottom: 0; /* Remove gap */
+  padding-bottom: var(--seg-spacing); /* Replace gap with padding to keep space but fill with background */
+  border-radius: 0; /* Square edges for joining */
+}
+
+/* Rounded corners for the very first and last segment in a sequence/block */
+.segment.tts-active:first-child {
+  border-top-left-radius: 8px;
+}
+.segment.tts-active:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom-left-radius: 8px;
+}
+
+/* If it's a single segment (not in a paragraph block), give it full radius */
+.segment.tts-active:only-child {
+  border-radius: 8px 0 0 8px;
+}
+
 /* [NEW] Block Context Shadow (for whole Paragraphs/Blocks) */
 .tts-block-active {
   box-shadow: inset -4px 0 0 var(--primary-color) !important;
