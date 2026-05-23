@@ -33,10 +33,10 @@
 /* Magic Trigger Button */
 #magic-toolbar-trigger {
   position: fixed;
-  bottom: 0;
+  bottom: 12px;
   left: 0;
   width: 50px;
-  height: 120px; /* Tăng chiều cao để dễ bấm hơn theo chiều dọc */
+  height: 100px; /* Adjusted height slightly since it's raised */
   z-index: 1090;
   background: transparent;
   border: none;
@@ -48,7 +48,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: calc(12px + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
   
   will-change: bottom;
 }
