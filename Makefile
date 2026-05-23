@@ -132,7 +132,7 @@ mini:
 	@echo "🔍 Searching for '$(MINI_ARGS)' in Mini DB..."
 	$(PYTHON) scripts/db_search.py $(MINI_ARGS) -d data/dpd/dpd_mini.db -c
 
-build: data re
+build: data de re
 
 # Chỉ chạy Vite Build (không chạy lại Data Processor)
 re:
