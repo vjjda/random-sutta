@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "2026.143.1164"
+version = "2026.143.1165"
 description = "Discover the Wisdom of the Buddha - A lean, fast, and beautiful Sutta reader"
 authors = ["Vijjo"]
 license = "MIT"
