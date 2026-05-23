@@ -57,18 +57,25 @@ make requirements
 
 ### 3\. Fetch & Process Data
 
-The project requires raw data (Bilara texts, SC API metadata, and DPD dictionary).
+The project requires raw data (Bilara texts, SC API metadata, and DPD dictionary). This step is essential for the first-time setup.
 
 ```bash
-# Sync ALL data sources (takes time)
+# 1. Sync ALL data sources from SuttaCentral & DPD (takes time)
 make sync
 
-# Process JSON into optimized SQLite databases
+# 2. Process Sutta JSON into optimized SQLite databases
 make data
 
-# Build Dictionaries (mini)
+# 3. Build & Export Dictionary (Mini)
+# This command builds the 'Mini' version of DPD and exports it to web assets.
+# Note: ONLY the 'Mini' version is used for the web/mobile app to keep bundle size lean.
 make de
 ```
+
+**Dictionary Versions:**
+*   `make de`: **(Standard)** Builds and exports the **Mini** dictionary to the web application.
+*   `make dt` / `make df`: Builds **Tiny** or **Full** versions (Primarily for reference or local testing).
+*   `make da`: Builds all versions sequentially.
 
 ### 4\. Development & Build
 
