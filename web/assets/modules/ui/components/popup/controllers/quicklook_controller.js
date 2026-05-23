@@ -77,7 +77,7 @@ export const QuicklookController = {
             // [NEW] Scroll and Highlight inside Quicklook
             marker.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (segment && segment.id) {
-                Scroller.highlightElement(segment.id, false, null, qBody);
+                Scroller.highlightElement(segment.id, false, null, qBody, PopupState.isAutoSwitch);
             }
 
             // [CRITICAL] Manage stacking: Comment must be above Quicklook

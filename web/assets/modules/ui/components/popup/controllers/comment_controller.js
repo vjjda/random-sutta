@@ -208,7 +208,7 @@ export const CommentController = {
                 // [NEW] Scroll and Highlight inside Quicklook
                 marker.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 if (segment && segment.id && qBody) {
-                    Scroller.highlightElement(segment.id, false, null, qBody);
+                    Scroller.highlightElement(segment.id, false, null, qBody, PopupState.isAutoSwitch);
                 }
             }
             return;
