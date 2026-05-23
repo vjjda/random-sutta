@@ -205,16 +205,20 @@ official: clear-lock
 	@echo "🌟 OFFICIAL RELEASE COMPLETE!"
 	@$(MAKE) clear-lock
 
-# Publish + Deploy (Đã sửa luồng: Deploy website sớm hơn trước khi upload GitHub)
+# Publish + Deploy (Đã sửa luồng: Deploy website và OTA sớm nhất có thể)
 publish: clear-lock
 	@echo "🚀 STARTING FULL PUBLISH PROCESS..."
+	@# 1. Bump version và commit thay đổi (Source of Truth)
 	$(PYTHON) -m src.release_system --official --git --skip-publish
+	@# 2. Deploy Web & OTA ngay lập tức (Đường nhanh nhất đến người dùng)
+	@$(MAKE) deploy-sync
+	@# 3. Build các bản cài đặt nặng cho các nền tảng
 	@$(MAKE) alfred apk ios macos
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		echo "🍎 macOS detected. Auto-installing app to /Applications..."; \
 		$(MAKE) app-install; \
 	fi
-	@$(MAKE) deploy-sync
+	@# 4. Upload tất cả lên GitHub Release
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
 	$(PYTHON) -m src.release_system --official --publish --skip-bump
 	@echo "🌟 PUBLISHED AND DEPLOYED!"
