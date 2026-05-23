@@ -35,11 +35,10 @@ export const RestorationController = {
                 CommentController.activate(snapshot.commentIndex, true);
                 restoredAnything = true;
 
-                // [FIXED] Restore Scroll & Highlight
+                // [FIXED] Restore Scroll
                 const item = comments[snapshot.commentIndex];
                 if (item && item.id) {
                     Scroller.jumpTo(item.id); 
-                    Scroller.highlightElement(item.id); // <--- Thêm dòng này
                 }
             }
         }

@@ -127,7 +127,7 @@ export const Scroller = {
         this.smoothScrollTo(targetId);
     },
 
-    highlightElement: function(targetId, autoRemove = false, endId = null, container = document) {
+    highlightElement: function(targetId, autoRemove = false, endId = null, container = document, highlightParent = true) {
         // [FIXED] Nếu targetId là null/undefined, dọn dẹp toàn bộ highlight hiện tại
         if (!targetId) {
             container.querySelectorAll('.highlight, .highlight-container, .parent-highlight-bridge').forEach(e => {
@@ -149,18 +149,18 @@ export const Scroller = {
                     retries++;
                     requestAnimationFrame(attemptHighlight);
                 } else if (startEl) {
-                    this._executeHighlight(startEl, null, autoRemove, targetId, endId, container);
+                    this._executeHighlight(startEl, null, autoRemove, targetId, endId, container, highlightParent);
                 }
                 return;
             }
 
-            this._executeHighlight(startEl, endEl, autoRemove, targetId, endId, container);
+            this._executeHighlight(startEl, endEl, autoRemove, targetId, endId, container, highlightParent);
         };
 
         requestAnimationFrame(attemptHighlight);
     },
 
-    _executeHighlight: function(startEl, endEl, autoRemove, targetId, endId, container = document) {
+    _executeHighlight: function(startEl, endEl, autoRemove, targetId, endId, container = document, highlightParent = true) {
         container.querySelectorAll('.highlight, .highlight-container, .parent-highlight-bridge').forEach(e => {
             e.classList.remove('highlight', 'highlight-container', 'parent-highlight-bridge');
         });
@@ -182,21 +182,25 @@ export const Scroller = {
                 seg.classList.add('highlight');
                 if (autoRemove) this._setupAutoRemove(seg, 'highlight');
 
-                // Walk up to find the closest block-level container
-                let parent = seg.parentElement;
-                while (parent && parent.tagName !== 'ARTICLE' && !BLOCK_TAGS.includes(parent.tagName)) {
-                    parent = parent.parentElement;
-                }
-                
-                if (parent && parent.tagName !== 'ARTICLE') {
-                    highlightedParents.add(parent);
+                if (highlightParent) {
+                    // Walk up to find the closest block-level container
+                    let parent = seg.parentElement;
+                    while (parent && parent.tagName !== 'ARTICLE' && !BLOCK_TAGS.includes(parent.tagName)) {
+                        parent = parent.parentElement;
+                    }
+                    
+                    if (parent && parent.tagName !== 'ARTICLE') {
+                        highlightedParents.add(parent);
+                    }
                 }
             }
 
-            highlightedParents.forEach(parent => {
-                parent.classList.add('parent-highlight-bridge');
-                if (autoRemove) this._setupAutoRemove(parent, 'parent-highlight-bridge');
-            });
+            if (highlightParent) {
+                highlightedParents.forEach(parent => {
+                    parent.classList.add('parent-highlight-bridge');
+                    if (autoRemove) this._setupAutoRemove(parent, 'parent-highlight-bridge');
+                });
+            }
 
         } else {
             const el = startEl.classList.contains('anchor-ref') ? (startEl.closest('.segment') || startEl) : startEl;

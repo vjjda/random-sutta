@@ -109,7 +109,8 @@ export const CommentController = {
                 PopupState.setCommentActive(inRangeIndices[0]);
                 const item = comments[inRangeIndices[0]];
                 if (item && item.id) {
-                    Scroller.highlightElement(item.id);
+                    // Auto mode uses paragraph highlight
+                    Scroller.highlightElement(item.id, false, null, document, true);
                 }
             }
         }
@@ -138,8 +139,6 @@ export const CommentController = {
         
         const currentComments = PopupState.getComments();
         if (index >= 0 && index < currentComments.length) {
-            this.activate(index);
-            
             // [FIXED] Jump & Highlight segment when marker is clicked directly
             // Use markerEl for precise scrolling if available, otherwise find it in the container
             const item = currentComments[index];
@@ -153,9 +152,8 @@ export const CommentController = {
             // [NEW] Balanced Smart Jump
             this._smartJump(markerEl, item?.id);
             
-            if (item && item.id) {
-                Scroller.highlightElement(item.id);
-            }
+            // Activate will handle the highlight
+            this.activate(index);
 
             QuicklookUI.hide();
         }
@@ -183,7 +181,9 @@ export const CommentController = {
 
             // [FIXED] Ensure segment highlight matches the currently active comment
             if (item && item.id) {
-                Scroller.highlightElement(item.id);
+                // If Auto mode is OFF (manual), we only want granular segment highlight
+                const highlightParent = PopupState.isAutoSwitch;
+                Scroller.highlightElement(item.id, false, null, document, highlightParent);
             }
         }
     },
@@ -238,10 +238,6 @@ export const CommentController = {
         
         // [NEW] Balanced Smart Jump
         this._smartJump(markerEl, item?.id);
-
-        if (item && item.id) {
-            Scroller.highlightElement(item.id);
-        }
     },
 
     /**
