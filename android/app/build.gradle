@@ -7,7 +7,7 @@ android {
         applicationId "com.randomsutta.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1001258352
+        versionCode 1001258357
         versionName "2026.143.1232"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
