@@ -11,6 +11,13 @@
       "iconURL": "https://vjjda.github.io/random-sutta/assets/icons/apple-touch-icon.png",
       "versions": [
         {
+          "version": "2026.143.449",
+          "date": "2026-05-23",
+          "downloadURL": "https://github.com/vjjda/random-sutta/releases/download/v2026.143.449/randomsutta.ipa",
+          "localizedDescription": "Release v2026.143.449",
+          "size": 119710452
+        },
+        {
           "version": "2026.143.436",
           "date": "2026-05-23",
           "downloadURL": "https://github.com/vjjda/random-sutta/releases/download/v2026.143.436/randomsutta.ipa",
