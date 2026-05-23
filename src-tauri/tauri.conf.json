@@ -36,8 +36,7 @@
       "icons/icon.ico"
     ],
     "android": {
-      "debugApplicationIdSuffix": ".debug",
-      "developerName": "Vijjo"
+      "debugApplicationIdSuffix": ".debug"
     }
   },
   "plugins": {
