@@ -203,7 +203,7 @@ export const CommentController = {
                 PopupState.nestedActiveIndex = nextIdx;
                 PopupState.nestedActiveText = marker.dataset.comment;
                 
-                CommentUI.render(marker.dataset.comment, nextIdx, markers.length, "Note from Preview");
+                CommentUI.render(marker.dataset.comment, nextIdx, markers.length, "Quicklook Note");
                 
                 // [NEW] Scroll and Highlight inside Quicklook
                 marker.scrollIntoView({ behavior: 'smooth', block: 'center' });

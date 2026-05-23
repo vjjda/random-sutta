@@ -2,6 +2,7 @@
 import { PopupState } from '../state/popup_state.js';
 import { QuicklookUI } from '../ui/quicklook_ui.js';
 import { CommentUI } from '../ui/comment_ui.js';
+import { CommentController } from './comment_controller.js';
 import { NavigationController } from './navigation_controller.js';
 import { SuttaService } from 'services/sutta_service.js';
 import { LeafRenderer } from 'ui/views/renderers/leaf_renderer.js';
@@ -19,6 +20,21 @@ export const QuicklookController = {
         QuicklookUI.init({
             onClose: () => {
                 QuicklookUI.hide();
+
+                // [NEW] Handle Nested Comment Cleanup
+                if (PopupState.nestedActiveIndex !== -1) {
+                    PopupState.nestedActiveIndex = -1;
+                    PopupState.nestedActiveText = null;
+
+                    if (PopupState.activeIndex !== -1) {
+                        // Restore main comment content if it was hidden under the nested one
+                        CommentController.activate(PopupState.activeIndex);
+                    } else {
+                        // No main comment, hide the popup that was used for nested content
+                        CommentUI.hide();
+                    }
+                }
+
                 if (PopupState.activeIndex !== -1) {
                     PopupState.activeType = 'comment';
                     PopupState.activeUrl = null;
@@ -56,7 +72,7 @@ export const QuicklookController = {
             PopupState.nestedActiveText = text;
 
             // Activate Comment UI with this content
-            CommentUI.render(text, index, markers.length, "Note from Preview");
+            CommentUI.render(text, index, markers.length, "Quicklook Note");
 
             // [NEW] Scroll and Highlight inside Quicklook
             marker.scrollIntoView({ behavior: 'smooth', block: 'center' });
