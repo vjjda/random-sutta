@@ -196,6 +196,10 @@ official: clear-lock
 	@echo "🚀 STARTING OFFICIAL RELEASE PROCESS..."
 	$(PYTHON) -m src.release_system --official --git --skip-publish
 	@$(MAKE) alfred apk ios macos
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "🍎 macOS detected. Auto-installing app to /Applications..."; \
+		$(MAKE) app; \
+	fi
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
 	$(PYTHON) -m src.release_system --official --publish --skip-bump
 	@echo "🌟 OFFICIAL RELEASE COMPLETE!"
@@ -206,6 +210,10 @@ publish: clear-lock
 	@echo "🚀 STARTING FULL PUBLISH PROCESS..."
 	$(PYTHON) -m src.release_system --official --git --skip-publish
 	@$(MAKE) alfred apk ios macos
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "🍎 macOS detected. Auto-installing app to /Applications..."; \
+		$(MAKE) app; \
+	fi
 	@$(MAKE) deploy-sync
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
 	$(PYTHON) -m src.release_system --official --publish --skip-bump
