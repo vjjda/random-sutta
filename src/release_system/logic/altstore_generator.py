@@ -71,15 +71,6 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
 
     logger.info(f"📲 Updating AltStore Source for {version_tag} (Internal version: {clean_version})...")
 
-    # 1. Calculate Size of IPA if available
-    ipa_path = PROJECT_ROOT / "dist/ios/randomsutta.ipa"
-    ipa_size = 0
-    if ipa_path.exists():
-        ipa_size = ipa_path.stat().st_size
-        logger.info(f"   📦 Found IPA: {ipa_size} bytes")
-    else:
-        logger.warning(f"   ⚠️ IPA not found at {ipa_path}. Size will be 0.")
-
     # Paths to write to
     target_paths = [PROJECT_ROOT / ALTSTORE_FILENAME]
     if DIST_WEB_DIR.exists():
@@ -110,8 +101,7 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
         "version": clean_version,
         "date": date_str,
         "downloadURL": download_url,
-        "localizedDescription": f"Release {version_tag}",
-        "size": ipa_size
+        "localizedDescription": f"Release {version_tag}"
     }
 
     # Find if the app already exists in the source
