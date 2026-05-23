@@ -99,8 +99,23 @@ body.view-mode-root-only .comment-marker {
 /* --- 5. HIGHLIGHTING SYSTEM --- */
 
 .segment.highlight {
-  margin-bottom: 0;
-  padding-bottom: var(--seg-spacing);
+  /* [FIXED] Prevent text shift by using normal margin for single/last segments. 
+     The swap for seamless highlighting is now conditional below. */
+  margin-bottom: var(--seg-spacing);
+  padding-bottom: 0;
+}
+
+/* Maintain consistency with typography.css for last segments */
+.segment.highlight:last-child {
+    margin-bottom: 0;
+}
+
+/* [NEW] Seamless Highlighting Logic
+   Only swap margin for padding when followed by another highlighted segment.
+   This bridges the background gap without affecting layout for single highlights. */
+.segment.highlight:has(+ .segment.highlight) {
+  margin-bottom: 0 !important;
+  padding-bottom: var(--seg-spacing) !important;
 }
 
 .highlight,
