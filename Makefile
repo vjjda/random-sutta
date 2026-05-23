@@ -198,7 +198,7 @@ official: clear-lock
 	@$(MAKE) alfred apk ios macos
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		echo "🍎 macOS detected. Auto-installing app to /Applications..."; \
-		$(MAKE) app; \
+		$(MAKE) app-install; \
 	fi
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
 	$(PYTHON) -m src.release_system --official --publish --skip-bump
@@ -212,7 +212,7 @@ publish: clear-lock
 	@$(MAKE) alfred apk ios macos
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		echo "🍎 macOS detected. Auto-installing app to /Applications..."; \
-		$(MAKE) app; \
+		$(MAKE) app-install; \
 	fi
 	@$(MAKE) deploy-sync
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
@@ -439,7 +439,9 @@ macos-debug:
 	@$(MAKE) git-commit-version
 
 # Cài đặt ứng dụng vào /Applications và cập nhật Launch Services
-app: macos
+app: macos app-install
+
+app-install:
 	@echo "🛑 Đang dừng các bản App đang chạy..."
 	@pkill -fi "Random Sutta" || true
 	@sleep 1
@@ -451,7 +453,12 @@ app: macos
 	@echo "✅ Đã cài đặt và đăng ký giao thức randomsutta:// thành công!"
 
 # [NEW] Cài đặt bản DEBUG vào /Applications và tự động mở
-app-debug: macos-debug
+app-debug: macos-debug app-debug-install
+	@echo "🚀 Đang khởi chạy ứng dụng..."
+	@open -a "Random Sutta"
+	@echo "✅ Đã cài đặt và khởi chạy bản DEBUG thành công!"
+
+app-debug-install:
 	@echo "🛑 Đang dừng các bản App đang chạy..."
 	@pkill -fi "Random Sutta" || true
 	@sleep 1
@@ -460,9 +467,7 @@ app-debug: macos-debug
 	@cp -R "src-tauri/target/debug/bundle/macos/Random Sutta.app" "/Applications/"
 	@echo "🔄 Đang cập nhật Launch Services..."
 	@/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "/Applications/Random Sutta.app"
-	@echo "🚀 Đang khởi chạy ứng dụng..."
-	@open -a "Random Sutta"
-	@echo "✅ Đã cài đặt và khởi chạy bản DEBUG thành công!"
+
 
 # [NEW] Tạo Alfred Workflow để tìm kiếm nhanh
 alfred:
