@@ -63,11 +63,20 @@ install:
 	$(PYTHON) -m pip install pip-tools
 	$(PYTHON) -m piptools sync requirements.txt
 
-# Regenerate requirements.txt from requirements.in
+# Regenerate requirements.txt by scanning source code imports
 requirements:
-	@echo "🔄 Generating locked requirements.txt..."
-	$(PYTHON) -m pip install pip-tools
-	$(PYTHON) -m piptools compile --upgrade requirements.in
+	@echo "🔍 Scanning source code for dependencies (pipreqs)..."
+	$(PYTHON) -m pip install pipreqs pip-tools
+	$(PYTHON) -m pipreqs.pipreqs . --force --savepath requirements.tmp --ignore .venv,node_modules,dist,build,data
+	@echo "🔄 Locking dependencies with pip-compile..."
+	$(PYTHON) -m piptools compile --upgrade requirements.tmp -o requirements.txt
+	@rm -f requirements.tmp requirements.in
+
+# Alias for old habit
+pipreqs: requirements
+
+# Alias for old habit
+pipreqs: requirements
 
 sync:
 	@echo "📥 Syncing ALL Data (Bilara + API + DPD)..."
