@@ -85,7 +85,7 @@ export const GithubSync = {
             const deviceId = GithubAuthManager.getDeviceId();
             logger.info("Upload", `Uploading ${filePath} using Data API (Device: ${deviceId})...`);
             
-            const contentString = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+            const contentString = typeof payload === "string" ? payload : this._stringifyCompact(payload);
             
             // 1. Get current branch reference (main)
             const refRes = await this._request("GET", "/git/refs/heads/main");
@@ -146,5 +146,21 @@ export const GithubSync = {
             logger.error("Upload Data API", error);
             throw error;
         }
+    },
+
+    /**
+     * [NEW] Helper to stringify JSON with indented structure but compact arrays for history.
+     * Collapses structures like:
+     * "mn127": [
+     *   1,
+     *   1778049057895
+     * ]
+     * Into: "mn127": [1, 1778049057895]
+     */
+    _stringifyCompact(obj) {
+        const json = JSON.stringify(obj, null, 2);
+        // Regex to collapse number arrays with exactly 2 elements onto one line
+        // Handles level (pos/neg/zero) and large timestamps
+        return json.replace(/:\s*\[\s*(-?\d+),\s*(\d+)\s*\]/g, ': [$1, $2]');
     }
 };
