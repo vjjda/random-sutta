@@ -454,4 +454,3 @@ app-debug: macos-debug
 alfred:
 	@echo "🍎 Đang tạo Alfred Workflow..."
 	$(PYTHON) -m src.alfred_workflow
-	@echo "✅ XONG! File cài đặt nằm tại: dist/alfred/RandomSutta.alfredworkflow"
