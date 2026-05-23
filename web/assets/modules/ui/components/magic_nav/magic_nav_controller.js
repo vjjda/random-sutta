@@ -302,26 +302,29 @@ export const MagicNav = {
         const tocContent = document.getElementById("magic-toc-content");
         if (!tocContent) return;
 
+        const baseId = id.split('#')[0];
         const removeOldFam = (element) => {
             for (let i = 1; i <= 5; i++) {
                 element.classList.remove(`fam-level-${i}`);
             }
         };
 
-        const item = tocContent.querySelector(`.toc-item[data-toc-id="${id}"]`);
-        if (item) {
+        // Update items matching exact ID or base ID
+        const items = tocContent.querySelectorAll(`.toc-item[data-toc-id="${id}"], .toc-item[data-toc-id="${baseId}"]`);
+        items.forEach(item => {
             removeOldFam(item);
             if (level > 0) item.classList.add(`fam-level-${level}`);
-        }
+        });
 
-        const wrapper = tocContent.querySelector(`.toc-node-wrapper[data-toc-id="${id}"]`);
-        if (wrapper) {
+        // Update wrappers/headers matching exact ID or base ID
+        const wrappers = tocContent.querySelectorAll(`.toc-node-wrapper[data-toc-id="${id}"], .toc-node-wrapper[data-toc-id="${baseId}"]`);
+        wrappers.forEach(wrapper => {
             const headerRow = wrapper.querySelector('.toc-header-row');
             if (headerRow) {
                 removeOldFam(headerRow);
                 if (level > 0) headerRow.classList.add(`fam-level-${level}`);
             }
-        }
+        });
     },
 
     render(localTree, currentUid, contextMeta, superTree, superMeta) {

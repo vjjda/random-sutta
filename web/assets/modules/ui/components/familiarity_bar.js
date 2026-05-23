@@ -41,7 +41,9 @@ export const FamiliarityBar = {
     },
 
     updateUIState(uid, level) {
-        const containers = document.querySelectorAll(`.familiarity-bar-container[data-uid="${uid}"]`);
+        if (!uid) return;
+        const baseId = uid.split('#')[0];
+        const containers = document.querySelectorAll(`.familiarity-bar-container[data-uid="${uid}"], .familiarity-bar-container[data-uid="${baseId}"]`);
         containers.forEach(container => {
             const buttons = container.querySelectorAll('.fam-btn');
             buttons.forEach(btn => {

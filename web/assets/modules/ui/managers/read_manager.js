@@ -127,8 +127,10 @@ export const ReadManager = {
     },
 
     getFamiliarity(id) {
+        if (!id) return 0;
+        const baseId = id.split('#')[0];
         const history = this.getHistory();
-        const item = history[id];
+        const item = history[baseId];
         if (!item) return 0;
         
         // Handle both new Array format and safety fallback
@@ -142,16 +144,18 @@ export const ReadManager = {
     },
 
     setFamiliarity(id, level, skipRender = false) {
+        if (!id) return;
+        const baseId = id.split('#')[0];
         const history = this.getHistory();
         const now = Date.now();
         
         // Always store as [level, timestamp]
-        history[id] = [level, now];
+        history[baseId] = [level, now];
         
         if (level === 0) {
-            logger.info("Familiarity", `Removed (tombstone level 0): ${id}`);
+            logger.info("Familiarity", `Removed (tombstone level 0): ${baseId}`);
         } else {
-            logger.info("Familiarity", `Set: ${id} to level ${level}`);
+            logger.info("Familiarity", `Set: ${baseId} to level ${level}`);
         }
         
         this.saveHistory(history);
@@ -160,7 +164,7 @@ export const ReadManager = {
         if (!skipRender) this.renderList();
         
         if (window.MagicNav) {
-            window.MagicNav.updateHistoryState(id, level);
+            window.MagicNav.updateHistoryState(baseId, level);
         }
     },
 

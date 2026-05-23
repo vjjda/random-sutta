@@ -61,12 +61,25 @@ export const TocRenderer = {
             }
         };
 
+        const _getFamLevel = (uid) => {
+            const entry = historyMap[uid];
+            if (!entry) {
+                // Try base ID if full ID has segment
+                if (uid.includes('#')) {
+                    const baseEntry = historyMap[uid.split('#')[0]];
+                    if (baseEntry) return Array.isArray(baseEntry) ? baseEntry[0] : (baseEntry.level || 0);
+                }
+                return 0;
+            }
+            return Array.isArray(entry) ? entry[0] : (entry.level || 0);
+        };
+
         const createItem = (id) => {
             const meta = metaMap[id] || {};
             const type = meta.type || (level === 0 ? 'leaf' : 'subleaf');
             const isActive = id === currentUid ? "active" : "";
             const isBookmarked = bookmarkedSet.has(id) ? "bookmarked" : "";
-            const famLevel = historyMap[id] ? historyMap[id].level : 0;
+            const famLevel = _getFamLevel(id);
             const famClass = famLevel > 0 ? `fam-level-${famLevel}` : "";
             const dataAction = isActive ? "" : 'data-action="load"';
             
@@ -84,7 +97,7 @@ export const TocRenderer = {
             const paddingLeft = 15 + (currentLevel * 16);
             const isActive = id === currentUid;
             const isBookmarked = bookmarkedSet.has(id) ? "bookmarked" : "";
-            const famLevel = historyMap[id] ? historyMap[id].level : 0;
+            const famLevel = _getFamLevel(id);
             const famClass = famLevel > 0 ? `fam-level-${famLevel}` : "";
             const isClickable = !!metaMap[id];
             
