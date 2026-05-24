@@ -37,6 +37,30 @@ const logger = getLogger("App");
 document.addEventListener("DOMContentLoaded", async () => {
   console.time("🚀 App Start to Ready");
 
+  // --- Global Timeout Safety ---
+  let isReadyHandled = false;
+  const initTimeout = setTimeout(() => {
+    if (!isReadyHandled) {
+      logger.warn("Init", "Initialization is taking too long (15s). Something might be hung.");
+      handleInitError(new Error("Loading is taking longer than usual. You may have a slow connection or be offline."));
+      
+      // Allow user to try to enter anyway
+      const statusDiv = document.getElementById("status");
+      if (statusDiv) {
+        const entryBtn = document.createElement("button");
+        entryBtn.innerText = "Try Starting Anyway";
+        entryBtn.className = "pwa-btn-ghost";
+        entryBtn.style.marginTop = "10px";
+        entryBtn.onclick = () => {
+          ViewManager.hideSplashScreen();
+          isReadyHandled = true;
+        };
+        statusDiv.appendChild(document.createElement("br"));
+        statusDiv.appendChild(entryBtn);
+      }
+    }
+  }, 15000);
+
   // Initialize Update Managers
   PWAManager.init();
   NativeUpdater.init();
@@ -97,24 +121,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const handleInitError = (err) => {
+    if (isReadyHandled) return;
     logger.error("Init", err);
     const statusDiv = document.getElementById("status");
     const splashLoader = document.querySelector(".splash-loader-box");
     
     if (statusDiv) {
+      const isOffline = !navigator.onLine;
+      const errorMsg = isOffline 
+        ? "App is offline and data is not cached yet. Please connect to internet for the first run."
+        : (err.message || "Failed to load database.");
+
       statusDiv.innerHTML = `
-        <div style="color: #ff6b6b; margin-bottom: 20px;">
-          <b>Initialization Error</b><br/>
-          <span style="font-size: 0.85rem; opacity: 0.8;">${err.message || "Failed to load database."}</span>
+        <div style="color: #ff6b6b; margin-bottom: 20px; padding: 0 20px;">
+          <b style="font-size: 1.1rem;">Initialization Issue</b><br/>
+          <span style="font-size: 0.85rem; opacity: 0.8;">${errorMsg}</span>
         </div>
         <button id="btn-retry-init" style="
           background: var(--primary-color);
           color: white;
           border: none;
-          padding: 10px 20px;
-          border-radius: 20px;
+          padding: 10px 24px;
+          border-radius: 24px;
           cursor: pointer;
           font-weight: bold;
+          font-size: 1rem;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         ">Retry Loading</button>
       `;
       
@@ -125,9 +157,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     
     if (splashLoader) splashLoader.style.display = "none";
-    
-    // [IMPORTANT] Don't hide splash screen automatically on error
-    // ViewManager.hideSplashScreen(); 
   };
 
   try {
@@ -136,7 +165,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.timeEnd("📡 Service Init");
 
     if (!isReady) {
-        throw new Error("Sutta Service failed (DB error). Check internet.");
+        throw new Error("Sutta Service failed to initialize.");
     }
 
     const navHeader = document.getElementById("nav-header");
@@ -152,6 +181,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Delegate Routing to AppRouter
     await AppRouter.init();
 
+    clearTimeout(initTimeout);
+    isReadyHandled = true;
     ViewManager.hideSplashScreen();
     console.timeEnd("🚀 App Start to Ready");
 
@@ -167,6 +198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         setTimeout(startBackgroundTasks, 500);
     }
   } catch (err) {
+    clearTimeout(initTimeout);
     handleInitError(err);
   }
 });
