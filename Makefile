@@ -185,7 +185,7 @@ deploy: re ota
 # Publish Pre-release
 beta: apk ios macos alfred
 	@echo "🚀 PUBLISHING BETA..."
-	$(PYTHON) -m src.release_system --publish --altstore
+	$(PYTHON) -m src.release_system --publish --altstore --bump all
 
 # [NEW] Clear version lock
 clear-lock:
@@ -194,14 +194,14 @@ clear-lock:
 # Publish OFFICIAL (Đã sửa luồng: Bump version trước -> Build sau)
 official: clear-lock
 	@echo "🚀 STARTING OFFICIAL RELEASE PROCESS..."
-	$(PYTHON) -m src.release_system --official --git --skip-publish
+	$(PYTHON) -m src.release_system --official --git --skip-publish --bump all
 	@$(MAKE) alfred apk ios macos
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		echo "🍎 macOS detected. Auto-installing app to /Applications..."; \
 		$(MAKE) app-install; \
 	fi
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
-	$(PYTHON) -m src.release_system --official --publish --skip-bump
+	$(PYTHON) -m src.release_system --official --publish
 	@echo "🌟 OFFICIAL RELEASE COMPLETE!"
 	@$(MAKE) clear-lock
 
@@ -209,7 +209,7 @@ official: clear-lock
 publish: clear-lock
 	@echo "🚀 STARTING FULL PUBLISH PROCESS..."
 	@# 1. Bump version và commit thay đổi (Source of Truth)
-	$(PYTHON) -m src.release_system --official --git --skip-publish
+	$(PYTHON) -m src.release_system --official --git --skip-publish --bump all
 	@# 2. Deploy Web & OTA ngay lập tức (Đường nhanh nhất đến người dùng)
 	@$(MAKE) deploy-sync
 	@# 3. Build các bản cài đặt nặng cho các nền tảng
@@ -220,7 +220,7 @@ publish: clear-lock
 	fi
 	@# 4. Upload tất cả lên GitHub Release
 	@echo "📤 UPLOADING ARTIFACTS TO GITHUB..."
-	$(PYTHON) -m src.release_system --official --publish --skip-bump
+	$(PYTHON) -m src.release_system --official --publish
 	@echo "🌟 PUBLISHED AND DEPLOYED!"
 	@$(MAKE) clear-lock
 
@@ -228,13 +228,13 @@ publish: clear-lock
 deploy-sync:
 	@echo "🚀 Deploying Web & OTA with current version..."
 	@$(MAKE) re
-	$(PYTHON) -m src.release_system --ota --skip-bump
+	$(PYTHON) -m src.release_system --ota --bump web
 	npm run deploy
 
 # [NEW] Chỉ Release các bản build hiện có trong dist/ (không build lại)
 release-only:
 	@echo "🚀 RELEASING EXISTING ARTIFACTS TO GITHUB..."
-	$(PYTHON) -m src.release_system --publish --altstore --skip-bump
+	$(PYTHON) -m src.release_system --publish --altstore
 
 # [NEW] OTA Update Packaging
 ota: re

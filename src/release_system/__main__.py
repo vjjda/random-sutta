@@ -18,8 +18,7 @@ def main():
     parser.add_argument("--sync", action="store_true", help="Sync AltStore with GitHub latest release.")
     parser.add_argument("--clear-lock", action="store_true", help="Manually clear the version lock file.")
     parser.add_argument("--skip-publish", action="store_true", help="Force skip GitHub upload (even in official mode).")
-    parser.add_argument("--skip-bump", action="store_false", dest="bump", help="Skip updating package.json version.")
-    parser.set_defaults(bump=True)
+    parser.add_argument("--bump", nargs="?", const="all", default=None, help="Bump version for specified platforms (e.g., all, web, android, ios, macos).")
     
     # [NEW] Thêm cờ zip
     parser.add_argument("-z", "--zip", action="store_true", help="Create ZIP artifact (default: Skip if not publishing).")
@@ -42,7 +41,7 @@ def main():
             package_ota=args.ota,
             update_altstore=args.altstore,
             sync_altstore=args.sync,
-            bump_version=args.bump,
+            bump_targets=args.bump,
             skip_publish=args.skip_publish
         )
     except KeyboardInterrupt:

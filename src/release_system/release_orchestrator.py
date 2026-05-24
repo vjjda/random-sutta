@@ -6,6 +6,7 @@ import sys
 from .release_config import CRITICAL_ASSETS, PROJECT_ROOT
 from .logic import (
     release_versioning,
+    version_bumper,
     asset_validator,
     git_automator,
     github_publisher,
@@ -24,7 +25,7 @@ def run_release_process(
     package_ota: bool = False,
     update_altstore: bool = False,
     sync_altstore: bool = False,
-    bump_version: bool = True,
+    bump_targets: str = None,
     skip_publish: bool = False
 ) -> None:
     
@@ -37,9 +38,10 @@ def run_release_process(
     if publish_gh: 
         enable_git = True
 
-    # [UPDATED] Luôn dùng PROJECT_ROOT và truyền flag bump
-    version_tag = release_versioning.generate_version_tag(PROJECT_ROOT, bump=bump_version)
-    clean_version = release_versioning.get_clean_version(PROJECT_ROOT, bump=bump_version)
+    # [UPDATED] Luôn dùng PROJECT_ROOT và truyền flag bump nếu bump_targets được truyền
+    should_bump = bump_targets is not None
+    version_tag = release_versioning.generate_version_tag(PROJECT_ROOT, bump=should_bump)
+    clean_version = release_versioning.get_clean_version(PROJECT_ROOT, bump=should_bump)
 
     mode_label = "OFFICIAL (Latest)" if is_official else "PRE-RELEASE"
     if not publish_gh: mode_label = "LOCAL BUILD (No Publish)"
@@ -48,14 +50,9 @@ def run_release_process(
 
     logger.info(f"🚀 STARTING PROCESS: {version_tag} | Mode: {mode_label}")
 
-    # [NEW] Auto-update version number across ALL platforms
-    # Chỉ thực hiện nếu bump_version=True, hoặc nếu phát hiện version hiện tại trong file đang sai
-    if bump_version:
-        release_versioning.update_package_json(PROJECT_ROOT, clean_version)
-        release_versioning.update_pyproject_version(PROJECT_ROOT, clean_version)
-        release_versioning.update_xcode_version(PROJECT_ROOT, clean_version)
-        release_versioning.update_android_version(PROJECT_ROOT, clean_version)
-        release_versioning.update_tauri_version(PROJECT_ROOT, clean_version)
+    # [NEW] Auto-update version number selectively
+    if should_bump:
+        version_bumper.bump_versions(PROJECT_ROOT, clean_version, target=bump_targets)
     else:
         logger.info(f"ℹ️  Using existing version: {clean_version}")
 
