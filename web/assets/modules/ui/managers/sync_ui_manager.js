@@ -88,6 +88,7 @@ export const SyncUIManager = {
 
                     this.els.clientIdInput.parentNode.insertBefore(wrapper, this.els.clientIdInput);
                     this.els.deviceNameInput = deviceInput;
+                    this.els.deviceRenameBtn = renameBtn;
                     deviceInput.onclick = (e) => e.stopPropagation();
                 }
 
@@ -197,14 +198,65 @@ export const SyncUIManager = {
     },
 
     async _handleDeviceRename() {
-        const currentId = GithubAuthManager.getDeviceId();
-        const newId = prompt("Enter new Device ID:", currentId);
-        if (newId && newId !== currentId) {
-            if (confirm(`Change Device ID to "${newId}"? This will update your identifier for future syncs.`)) {
+        if (!this.els.deviceNameInput || !this.els.deviceRenameBtn) return;
+        
+        const input = this.els.deviceNameInput;
+        const btn = this.els.deviceRenameBtn;
+        
+        const isEditing = !input.readOnly;
+        
+        if (isEditing) {
+            // Save mode
+            const newId = input.value.trim();
+            const currentId = GithubAuthManager.getDeviceId();
+            
+            if (newId && newId !== currentId) {
                 GithubAuthManager.setDeviceId(newId);
-                if (this.els.deviceNameInput) this.els.deviceNameInput.value = newId;
                 logger.info("Rename", `Device renamed to ${newId}`);
+            } else {
+                input.value = currentId; // restore if empty or unchanged
             }
+            
+            // Revert UI
+            input.readOnly = true;
+            input.style.cursor = "default";
+            input.style.opacity = "0.8";
+            input.blur();
+            
+            // Edit icon
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`;
+            btn.style.color = "var(--text-muted)";
+            btn.title = "Rename Device ID";
+            
+            if (input._enterHandler) {
+                input.removeEventListener("keydown", input._enterHandler);
+                input._enterHandler = null;
+            }
+        } else {
+            // Edit mode
+            input.readOnly = false;
+            input.style.cursor = "text";
+            input.style.opacity = "1";
+            input.focus();
+            
+            // Place cursor at the end
+            const val = input.value;
+            input.value = "";
+            input.value = val;
+            
+            // Check (Save) icon
+            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+            btn.style.color = "#2ecc71";
+            btn.title = "Save Device ID";
+            
+            // Save on enter
+            input._enterHandler = (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    this._handleDeviceRename();
+                }
+            };
+            input.addEventListener("keydown", input._enterHandler);
         }
     },
 
