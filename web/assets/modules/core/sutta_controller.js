@@ -262,7 +262,7 @@ export const SuttaController = {
       const suttaUid = input.uid || input.payload.uid;
       logger.info('loadRandom', `Selected: ${suttaUid}`);
       
-      const success = await this.loadSutta(input, shouldUpdateUrl, 0, { transition: false, ...options });
+      const success = await this.loadSutta(input, shouldUpdateUrl, 0, { transition: false, force: true, ...options });
 
       logger.timerEnd('Random Process Total');
       return success !== false;
