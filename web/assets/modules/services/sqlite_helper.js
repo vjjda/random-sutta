@@ -44,16 +44,23 @@ export async function getSharedSqlite() {
                         navigator.storage.getDirectory;
 
         // [STRATEGY] Try OPFS first for performance. 
-        // It's supported on iOS 16.4+ and most modern browsers.
         if (hasOPFS) {
             try {
                 logger.info("VFS", "Attempting OPFS initialization...");
-                const { OPFSAnyContextVFS } = await import('@journeyapps/wa-sqlite/src/examples/OPFSAnyContextVFS.js');
-                vfs = new OPFSAnyContextVFS("RS_Persistent_Storage", sqliteModule);
-                await vfs.isReady();
+                const initOPFS = async () => {
+                    const { OPFSAnyContextVFS } = await import('@journeyapps/wa-sqlite/src/examples/OPFSAnyContextVFS.js');
+                    const vfsInst = new OPFSAnyContextVFS("RS_Persistent_Storage", sqliteModule);
+                    await vfsInst.isReady();
+                    return vfsInst;
+                };
+                
+                vfs = await Promise.race([
+                    initOPFS(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("OPFS init timed out (2.5s)")), 2500))
+                ]);
                 logger.info("VFS", "✅ OPFS initialized.");
             } catch (e) {
-                logger.warn("VFS", "OPFS initialization failed, falling back to IndexedDB", e);
+                logger.warn("VFS", "OPFS initialization failed/timed out, falling back to IndexedDB", e);
                 vfs = null;
             }
         }
@@ -62,9 +69,17 @@ export async function getSharedSqlite() {
         if (!vfs) {
             try {
                 logger.info("VFS", "Initializing IndexedDB fallback (IDBBatchAtomicVFS)...");
-                const { IDBBatchAtomicVFS } = await import('@journeyapps/wa-sqlite/src/examples/IDBBatchAtomicVFS.js');
-                vfs = new IDBBatchAtomicVFS("RS_Persistent_Storage_IDB");
-                await vfs.isReady();
+                const initIDB = async () => {
+                    const { IDBBatchAtomicVFS } = await import('@journeyapps/wa-sqlite/src/examples/IDBBatchAtomicVFS.js');
+                    const vfsInst = new IDBBatchAtomicVFS("RS_Persistent_Storage_IDB");
+                    await vfsInst.isReady();
+                    return vfsInst;
+                };
+
+                vfs = await Promise.race([
+                    initIDB(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("IndexedDB init timed out (2.5s)")), 2500))
+                ]);
                 logger.info("VFS", "✅ IndexedDB VFS initialized.");
             } catch (e) {
                 logger.error("VFS", "Critical: Failed to initialize any persistent VFS", e);
