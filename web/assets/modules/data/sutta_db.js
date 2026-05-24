@@ -105,6 +105,17 @@ export class SuttaDB {
             await DbStorageManager.ensureUpdated(dbName, this.manifest, onProgress);
             return await initSQLitePersistent({ dbName });
         } catch (e) {
+            // [OFFLINE ROBUSTNESS] If update fails and we are offline, just try to open what we have
+            if (!navigator.onLine) {
+                logger.warn("Storage", `Offline: Update check failed for ${dbName}. Trying to open existing local copy.`);
+                try {
+                    return await initSQLitePersistent({ dbName });
+                } catch (innerErr) {
+                    logger.error("Storage", `Failed to open existing local copy for ${dbName} while offline.`);
+                    throw innerErr;
+                }
+            }
+
             logger.warn("Storage", `Failed to open ${dbName}, attempting re-download...`);
             await DbStorageManager.setStoredHash(dbName, null);
             await DbStorageManager.ensureUpdated(dbName, this.manifest, onProgress);

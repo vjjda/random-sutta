@@ -12,28 +12,33 @@ export const DbManifestManager = {
 
     /**
      * Nạp manifest (Ưu tiên Cache để khởi động nhanh)
-     */
-    async load() {
-        try {
-            const cached = await BlobCache.getBlob('db_manifest');
-            if (cached) {
-                this.manifest = JSON.parse(new TextDecoder().decode(cached));
-                logger.info("Load", "Loaded from cache");
-                return this.manifest;
-            }
-        } catch (e) {
-            logger.warn("Load", "Failed to load from cache", e);
-        }
+     async load() {
+         try {
+             const cached = await BlobCache.getBlob('db_manifest');
+             if (cached) {
+                 this.manifest = JSON.parse(new TextDecoder().decode(cached));
+                 logger.info("Load", "Loaded from cache");
+                 return this.manifest;
+             }
+         } catch (e) {
+             logger.warn("Load", "Failed to load from cache", e);
+         }
 
-        // Nếu không có cache, buộc phải fetch từ mạng
-        return await this.refreshInBackground();
-    },
+         // Nếu không có cache, chỉ fetch nếu online
+         if (navigator.onLine) {
+             return await this.refreshInBackground();
+         } else {
+             logger.warn("Load", "Offline and no cached manifest available.");
+             return null;
+         }
+     },
 
-    /**
-     * Cập nhật manifest từ mạng và lưu vào cache.
-     */
-    async refreshInBackground() {
-        const tryFetch = async (url) => {
+     /**
+      * Cập nhật manifest từ mạng và lưu vào cache.
+      */
+     async refreshInBackground() {
+         if (!navigator.onLine) return this.manifest;
+     ...
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000); 
             try {

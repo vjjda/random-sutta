@@ -12,25 +12,40 @@ export const BlobCache = {
     async init() {
         if (this._db) return;
         return new Promise((resolve) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_BLOBS)) {
-                    db.createObjectStore(STORE_BLOBS);
-                }
-            };
-            request.onsuccess = (e) => {
-                this._db = e.target.result;
+            // [NEW] Safety timeout for iOS IDB hangs
+            const timeoutId = setTimeout(() => {
+                logger.warn("Init", "IDB initialization timed out (3s). Proceeding without cache.");
                 resolve();
-            };
-            request.onerror = (e) => {
-                logger.warn("Init", "IDB BlobCache failed", e);
-                resolve(); // Resolve to fallback gracefully
-            };
-            request.onblocked = () => {
-                logger.warn("Init", "IDB BlobCache blocked");
+            }, 3000);
+
+            try {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_BLOBS)) {
+                        db.createObjectStore(STORE_BLOBS);
+                    }
+                };
+                request.onsuccess = (e) => {
+                    clearTimeout(timeoutId);
+                    this._db = e.target.result;
+                    resolve();
+                };
+                request.onerror = (e) => {
+                    clearTimeout(timeoutId);
+                    logger.warn("Init", "IDB BlobCache failed", e);
+                    resolve(); 
+                };
+                request.onblocked = () => {
+                    clearTimeout(timeoutId);
+                    logger.warn("Init", "IDB BlobCache blocked");
+                    resolve();
+                };
+            } catch (e) {
+                clearTimeout(timeoutId);
+                logger.warn("Init", "IDB open exception", e);
                 resolve();
-            };
+            }
         });
     },
 

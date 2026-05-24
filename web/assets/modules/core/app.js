@@ -54,6 +54,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         entryBtn.onclick = () => {
           ViewManager.hideSplashScreen();
           isReadyHandled = true;
+          
+          // [FIX] Enable buttons if forced entry
+          const randomBtn = document.getElementById("btn-random");
+          if (randomBtn) randomBtn.disabled = false;
+          const landingRandomBtn = document.getElementById("btn-landing-random");
+          if (landingRandomBtn) landingRandomBtn.disabled = false;
         };
         statusDiv.appendChild(document.createElement("br"));
         statusDiv.appendChild(entryBtn);
