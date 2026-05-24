@@ -39,7 +39,10 @@
             </div>
             <div id="sync-input-area" class="hidden sync-input-area">
               <input type="text" id="sync-client-id" placeholder="Paste Client ID here..." class="sync-id-input">
-              <button id="btn-sync-connect" class="text-btn sync-connect-btn">Connect</button>
+              <div id="sync-btn-group" style="display: flex; gap: 8px;">
+                <button id="btn-sync-cancel" class="text-btn sync-cancel-btn" style="flex: 1;">Cancel</button>
+                <button id="btn-sync-connect" class="text-btn sync-connect-btn" style="flex: 1;">Connect</button>
+              </div>
             </div>
           </div>
         </div>

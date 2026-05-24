@@ -11,6 +11,7 @@ export const SyncUIManager = {
             widget: document.getElementById("sync-widget"),
             btnLogin: document.getElementById("btn-sync-login"),
             btnConnect: document.getElementById("btn-sync-connect"),
+            btnCancel: document.getElementById("btn-sync-cancel"),
             btnLogout: document.getElementById("btn-sync-logout"),
             btnSyncNow: document.getElementById("btn-sync-now"),
             manualControls: document.getElementById("sync-manual-controls"),
@@ -101,7 +102,8 @@ export const SyncUIManager = {
                     repoInput.className = "sync-id-input"; 
                     repoInput.style.marginTop = "8px";
                     repoInput.style.marginBottom = "8px";
-                    this.els.clientIdInput.parentNode.insertBefore(repoInput, this.els.btnConnect);
+                    const btnGroup = document.getElementById("sync-btn-group");
+                    this.els.clientIdInput.parentNode.insertBefore(repoInput, btnGroup);
                     this.els.repoNameInput = repoInput;
                     repoInput.onclick = (e) => e.stopPropagation();
                 }
@@ -111,6 +113,13 @@ export const SyncUIManager = {
                 this.els.inputArea.classList.add("hidden");
             }
         };
+
+        if (this.els.btnCancel) {
+            this.els.btnCancel.onclick = (e) => {
+                e.stopPropagation();
+                this.els.inputArea.classList.add("hidden");
+            };
+        }
 
         this.els.btnConnect.onclick = async (e) => {
             e.stopPropagation();
