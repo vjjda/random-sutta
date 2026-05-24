@@ -229,6 +229,7 @@ deploy-sync:
 	@echo "🚀 Deploying Web & OTA with current version..."
 	@$(MAKE) re
 	$(PYTHON) -m src.release_system --ota --bump web
+	@$(MAKE) git-commit-version
 	npm run deploy
 
 # [NEW] Chỉ Release các bản build hiện có trong dist/ (không build lại)
@@ -284,14 +285,14 @@ undo:
 
 # [NEW] Tự động commit các thay đổi về version (dùng amend để tránh rác log)
 git-commit-version:
-	@status=$$(git status --porcelain package.json pyproject.toml src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj); \
+	@status=$$(git status --porcelain package.json pyproject.toml src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj web/); \
 	if [ -n "$$status" ]; then \
 		echo "📝 Automating version commit (amend)..."; \
-		git add package.json pyproject.toml src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj; \
-		if git log -1 --pretty=%B | grep -q "bump version"; then \
-			git commit --amend --no-edit; \
+		git add package.json pyproject.toml src-tauri/Cargo.lock src-tauri/Cargo.toml src-tauri/tauri.conf.json android/app/build.gradle altstore.json ios/App/App.xcodeproj/project.pbxproj web/; \
+		if git log -1 --pretty=%B | grep -qi "bump version"; then \
+			git commit --amend --no-edit -n; \
 		else \
-			git commit -m "chore: bump version and sync artifacts" || true; \
+			git commit -m "chore(release): bump version and update artifacts" -n || true; \
 		fi; \
 		echo "✅ Version changes committed."; \
 	fi

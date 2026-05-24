@@ -29,7 +29,17 @@ def commit_source_changes(version_tag: str) -> bool:
     logger.info("🐙 Committing source changes...")
     
     # Files to stage
-    target_files = ["package.json", "altstore.json", "web/"]
+    target_files = [
+        "package.json", 
+        "altstore.json", 
+        "web/",
+        "pyproject.toml",
+        "src-tauri/Cargo.toml",
+        "src-tauri/Cargo.lock",
+        "src-tauri/tauri.conf.json",
+        "android/app/build.gradle",
+        "ios/App/App.xcodeproj/project.pbxproj"
+    ]
     
     for target in target_files:
         if (PROJECT_ROOT / target).exists():
@@ -41,13 +51,24 @@ def commit_source_changes(version_tag: str) -> bool:
         logger.info("   ℹ️  No source changes to commit.")
         return True
 
-    commit_msg = f"chore(release): bump version and update altstore source for {version_tag}"
+    # Kiểm tra tin nhắn commit cuối cùng
+    log_result = subprocess.run(["git", "log", "-1", "--pretty=%B"], cwd=PROJECT_ROOT, capture_output=True, text=True)
+    last_msg = log_result.stdout.strip()
+
+    commit_msg = f"chore(release): bump version and update artifacts for {version_tag}"
     
     # [FIX 2] Thêm cờ '-n' (no-verify) để bỏ qua pre-commit hook
-    # Tránh việc script commit -> kích hoạt hook -> hook lại chạy script build -> vòng lặp
-    if _run_git_cmd(["commit", "-n", "-m", commit_msg]):
-        logger.info(f"   ✅ Git committed: '{commit_msg}'")
-        return True
+    # Nếu commit trước đó đã là bump version, ta amend với message mới để tránh commit rác
+    if "bump version" in last_msg.lower():
+        logger.info("   📝 Automating version commit (amend)...")
+        if _run_git_cmd(["commit", "--amend", "-m", commit_msg, "-n"]):
+            logger.info(f"   ✅ Git commit amended: '{commit_msg}'")
+            return True
+    else:
+        if _run_git_cmd(["commit", "-n", "-m", commit_msg]):
+            logger.info(f"   ✅ Git committed: '{commit_msg}'")
+            return True
+            
     return False
 
 def push_changes() -> bool:
