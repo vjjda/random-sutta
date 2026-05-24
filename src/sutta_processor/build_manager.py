@@ -35,7 +35,8 @@ from .optimizer import run_optimizer
 logger = logging.getLogger("SuttaProcessor.BuildManager")
 
 def _compress_db_task(db_file: Path, dist_dir: Path) -> str:
-    """Standalone task to copy and compress a single DB file (picklable)."""
+    """Standalone task to copy and compress a single DB file (picklable).
+    Keeps both .db and .db.gz for compatibility."""
     import gzip
     import shutil
     try:
@@ -47,11 +48,12 @@ def _compress_db_task(db_file: Path, dist_dir: Path) -> str:
             with gzip.GzipFile(gz_path, "wb", mtime=0) as f_out:
                 shutil.copyfileobj(f_in, f_out)
         
-        # Remove raw .db to save space
-        if target_path.exists():
-            os.remove(target_path)
+        # [FIX] DO NOT remove raw .db. 
+        # Older iOS (< 16.4) lacks DecompressionStream and needs the raw .db.
+        # if target_path.exists():
+        #     os.remove(target_path)
             
-        return f"Compressed: {db_file.name}"
+        return f"Compressed: {db_file.name} (Kept raw)"
     except Exception as e:
         return f"Failed {db_file.name}: {e}"
 
