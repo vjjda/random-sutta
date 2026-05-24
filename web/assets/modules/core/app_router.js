@@ -21,7 +21,10 @@ export const AppRouter = {
         
         logger.info("handleInitialRoute", "Start", { q: initialParams.q, hasProgress: !!progress });
 
-        if (initialParams.q) {
+        // [FIX] Ensure q is not just truthy but a valid string (not 'undefined' or 'null' as strings)
+        const isValidUid = (id) => id && id !== 'undefined' && id !== 'null';
+
+        if (isValidUid(initialParams.q)) {
             await ViewManager.switchView('reader');
             
             let loadId = initialParams.q;
@@ -39,7 +42,7 @@ export const AppRouter = {
             RandomBuffer.startBackgroundWork();
         } else {
             // Root access -> Try restore last read or go to Landing
-            if (progress && progress.uid) {
+            if (progress && isValidUid(progress.uid)) {
                 logger.info("handleInitialRoute", `Restoring last read: ${progress.uid}`);
                 await ViewManager.switchView('reader');
                 
@@ -50,11 +53,11 @@ export const AppRouter = {
                     await SuttaController.loadSutta(progress.uid, true, progress.scrollY);
                 } catch (e) {
                     logger.error("handleInitialRoute", "Restoration failed, falling back to landing", e);
-                    ViewManager.switchView('landing');
+                    await ViewManager.switchView('landing');
                 }
             } else {
-                logger.info("handleInitialRoute", "No progress found, showing landing");
-                ViewManager.switchView('landing');
+                logger.info("handleInitialRoute", "No valid progress found, showing landing");
+                await ViewManager.switchView('landing');
             }
             
             RandomBuffer.startBackgroundWork();

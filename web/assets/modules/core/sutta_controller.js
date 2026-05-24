@@ -48,7 +48,11 @@ export const SuttaController = {
     const { SuttaService } = await import("services/sutta_service.js");
     if (!SuttaService.isReady) {
         logger.info("loadSutta", "Waiting for SuttaService initialization...");
-        await SuttaService.init();
+        const ready = await SuttaService.init();
+        if (!ready) {
+            logger.error("loadSutta", "SuttaService failed to initialize, aborting load.");
+            return false;
+        }
     }
 
     if (SuttaLoaderUI.isLoading && !options.force) return;
@@ -230,6 +234,10 @@ export const SuttaController = {
   loadRandomSutta: async function (shouldUpdateUrl = true, options = {}) {
     try {
       PopupAPI.hideAll();
+      
+      // [NEW] Show loader early because DB init or payload fetching might be slow
+      SuttaLoaderUI.show();
+      
       logger.timer('Random Process Total');
 
       // [FIX] Ensure SuttaDB is ready before proceeding
@@ -245,16 +253,23 @@ export const SuttaController = {
       const input = await RandomBuffer.getPayload(filters);
 
       const isValid = input && (input.uid || (input.payload && input.payload.uid));
-      if (!isValid) return;
+      if (!isValid) {
+          logger.warn("Random", "No valid payload received from buffer/helper");
+          SuttaLoaderUI.hide();
+          return false;
+      }
 
       const suttaUid = input.uid || input.payload.uid;
       logger.info('loadRandom', `Selected: ${suttaUid}`);
       
-      await this.loadSutta(input, shouldUpdateUrl, 0, { transition: false, ...options });
+      const success = await this.loadSutta(input, shouldUpdateUrl, 0, { transition: false, ...options });
 
       logger.timerEnd('Random Process Total');
+      return success !== false;
     } catch (e) {
       logger.error("Random", "Failed to load random sutta", e);
+      SuttaLoaderUI.hide();
+      return false;
     }
   },
 

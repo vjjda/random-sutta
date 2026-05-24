@@ -97,8 +97,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     console.time("📡 Service Init");
-    await SuttaService.init();
+    const isReady = await SuttaService.init();
     console.timeEnd("📡 Service Init");
+
+    if (!isReady) {
+        throw new Error("Failed to initialize Sutta Service (Database error)");
+    }
 
     const navHeader = document.getElementById("nav-header");
     if (navHeader) navHeader.classList.remove("hidden");

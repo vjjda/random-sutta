@@ -17,12 +17,19 @@ export const RandomButton = {
 
                 try {
                     // Wait for random load
-                    await SuttaController.loadRandomSutta(true);
-                    // View switching is usually handled inside loadSutta -> ViewManager
-                    // but we can ensure it here if needed.
-                    ViewManager.switchView('reader');
-                } finally {
-                    // Reset button state (though usually landing view is hidden now)
+                    const success = await SuttaController.loadRandomSutta(true);
+                    
+                    if (success) {
+                        // ONLY switch view if we actually loaded something
+                        ViewManager.switchView('reader');
+                    } else {
+                        // [NEW] If loading failed (e.g. no internet/DB error), 
+                        // reset the button so they can try again or see an error.
+                        landingRandomBtn.classList.remove("is-loading");
+                        if (spinner) spinner.classList.add("hidden");
+                    }
+                } catch (err) {
+                    console.error("Landing Random Click Error:", err);
                     landingRandomBtn.classList.remove("is-loading");
                     if (spinner) spinner.classList.add("hidden");
                 }
