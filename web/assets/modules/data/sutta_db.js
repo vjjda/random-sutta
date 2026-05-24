@@ -101,25 +101,38 @@ export class SuttaDB {
      * Bao gồm logic retry nếu file hỏng.
      */
     static async _getOrUpdateDB(dbName, onProgress) {
+        let updateFailed = false;
+        
         try {
             await DbStorageManager.ensureUpdated(dbName, this.manifest, onProgress);
-            return await initSQLitePersistent({ dbName });
         } catch (e) {
-            // [OFFLINE ROBUSTNESS] If update fails and we are offline, just try to open what we have
-            if (!navigator.onLine) {
-                logger.warn("Storage", `Offline: Update check failed for ${dbName}. Trying to open existing local copy.`);
-                try {
-                    return await initSQLitePersistent({ dbName });
-                } catch (innerErr) {
-                    logger.error("Storage", `Failed to open existing local copy for ${dbName} while offline.`);
-                    throw innerErr;
-                }
+            updateFailed = true;
+            const hasLocalCopy = await DbStorageManager.getStoredHash(dbName) !== null;
+            
+            if (hasLocalCopy) {
+                logger.warn("Storage", `Update fetch failed for ${dbName}. Falling back to existing local copy.`, e.message);
+            } else {
+                logger.error("Storage", `Failed to fetch ${dbName} and no local copy exists.`);
+                throw e;
             }
+        }
 
-            logger.warn("Storage", `Failed to open ${dbName}, attempting re-download...`);
-            await DbStorageManager.setStoredHash(dbName, null);
-            await DbStorageManager.ensureUpdated(dbName, this.manifest, onProgress);
+        try {
+            // Attempt to open the database (either updated or fallback)
             return await initSQLitePersistent({ dbName });
+        } catch (openErr) {
+            // If opening fails, the local file is likely corrupted or missing
+            logger.error("Storage", `Failed to open ${dbName}. File might be corrupted. Attempting recovery...`, openErr);
+            
+            // Only retry download if we didn't just fail a network update
+            if (!updateFailed) {
+                logger.info("Storage", `Retrying download for ${dbName}...`);
+                await DbStorageManager.setStoredHash(dbName, null);
+                await DbStorageManager.ensureUpdated(dbName, this.manifest, onProgress);
+                return await initSQLitePersistent({ dbName });
+            } else {
+                throw new Error(`Database corrupted and network unavailable to recover: ${dbName}`);
+            }
         }
     }
 

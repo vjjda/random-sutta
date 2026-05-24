@@ -13,11 +13,21 @@ export const DbStorageManager = {
      * Đảm bảo Database đã được cập nhật dựa trên manifest.
      */
     async ensureUpdated(dbName, manifest, onProgress) {
-        const targetHash = manifest?.files?.[dbName]?.hash || "dev";
+        const targetHash = manifest?.files?.[dbName]?.hash;
         const currentHash = await this.getStoredHash(dbName);
         
+        // [OFFLINE FIX] If we have a local copy but couldn't load the manifest, 
+        // assume it's up to date to prevent network hangs on cold starts.
+        if (currentHash && !manifest) {
+            logger.info("Ensure", `No manifest available. Skipping update for ${dbName}.`);
+            if (onProgress) onProgress(100, 100);
+            return false;
+        }
+
+        const effectiveTargetHash = targetHash || "dev";
+        
         // 1. Kiểm tra xem có cần update không (dựa trên hash)
-        let needsUpdate = currentHash !== targetHash;
+        let needsUpdate = currentHash !== effectiveTargetHash;
         
         if (!needsUpdate) {
             logger.debug("Ensure", `Hash matches for ${dbName}, skipping update.`);
@@ -26,11 +36,11 @@ export const DbStorageManager = {
         }
 
         // 2. Nếu cần update, download và import
-        logger.info("Ensure", `Updating ${dbName}: ${currentHash} -> ${targetHash}`);
+        logger.info("Ensure", `Updating ${dbName}: ${currentHash} -> ${effectiveTargetHash}`);
         try {
-            const fileStream = await this.fetchFile(dbName, targetHash, onProgress);
+            const fileStream = await this.fetchFile(dbName, effectiveTargetHash, onProgress);
             await importToPersistentStorage(dbName, fileStream);
-            await this.setStoredHash(dbName, targetHash);
+            await this.setStoredHash(dbName, effectiveTargetHash);
             return true;
         } catch (e) {
             logger.error("Ensure", `Failed to update ${dbName}`, e);
