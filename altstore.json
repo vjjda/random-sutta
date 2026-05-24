@@ -18,11 +18,6 @@
           "size": 110000000
         }
       ],
-      "appPermissions": {
-        "entitlements": [
-          "get-task-allow"
-        ]
-      },
       "tintColor": "#01579b"
     }
   ]

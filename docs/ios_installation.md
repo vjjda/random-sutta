@@ -66,7 +66,6 @@ After the first time you install the app using any method, you must trust the de
 ---
 
 ## Troubleshooting
-- **"get-task-allow" error:** If AltStore complains about permissions, ensure you are using the latest `altstore.json` which declares the necessary entitlements.
 - **7-Day Limit:** Apps installed with a free Apple ID expire after 7 days. You must "Refresh" them in AltStore or re-sideload them to keep them working.
 
 *May you be happy, may you be free from suffering.*
