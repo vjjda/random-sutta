@@ -47,10 +47,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Allow user to try to enter anyway
       const statusDiv = document.getElementById("status");
       if (statusDiv) {
+        // [NEW] Use the error handler UI style to ensure centering
+        if (statusDiv.style.display !== "flex") {
+          statusDiv.style.display = "flex";
+          statusDiv.style.flexDirection = "column";
+          statusDiv.style.alignItems = "center";
+          statusDiv.style.textAlign = "center";
+          statusDiv.style.textTransform = "none";
+          statusDiv.style.letterSpacing = "normal";
+        }
+
         const entryBtn = document.createElement("button");
         entryBtn.innerText = "Try Starting Anyway";
-        entryBtn.className = "pwa-btn-ghost";
-        entryBtn.style.marginTop = "10px";
+        entryBtn.style.marginTop = "16px";
+        entryBtn.style.background = "transparent";
+        entryBtn.style.color = "var(--text-muted)";
+        entryBtn.style.border = "1px solid var(--border-light)";
+        entryBtn.style.padding = "8px 24px";
+        entryBtn.style.borderRadius = "24px";
+        entryBtn.style.cursor = "pointer";
+        entryBtn.style.fontSize = "0.9rem";
+        entryBtn.style.fontWeight = "500";
+        
         entryBtn.onclick = () => {
           ViewManager.hideSplashScreen();
           isReadyHandled = true;
@@ -61,7 +79,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           const landingRandomBtn = document.getElementById("btn-landing-random");
           if (landingRandomBtn) landingRandomBtn.disabled = false;
         };
-        statusDiv.appendChild(document.createElement("br"));
         statusDiv.appendChild(entryBtn);
       }
     }
@@ -138,21 +155,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? "App is offline and data is not cached yet. Please connect to internet for the first run."
         : (err.message || "Failed to load database.");
 
+      // Ensure statusDiv can center its own content
+      statusDiv.style.display = "flex";
+      statusDiv.style.flexDirection = "column";
+      statusDiv.style.alignItems = "center";
+      statusDiv.style.textAlign = "center";
+      statusDiv.style.textTransform = "none";
+      statusDiv.style.letterSpacing = "normal";
+
       statusDiv.innerHTML = `
-        <div style="color: #ff6b6b; margin-bottom: 20px; padding: 0 20px;">
-          <b style="font-size: 1.1rem;">Initialization Issue</b><br/>
-          <span style="font-size: 0.85rem; opacity: 0.8;">${errorMsg}</span>
+        <div style="color: #ff6b6b; margin-bottom: 24px; padding: 0 32px; line-height: 1.5;">
+          <b style="font-size: 1.2rem; display: block; margin-bottom: 8px;">Initialization Issue</b>
+          <span style="font-size: 0.9rem; opacity: 0.9; font-weight: 400;">${errorMsg}</span>
         </div>
         <button id="btn-retry-init" style="
           background: var(--primary-color);
           color: white;
           border: none;
-          padding: 10px 24px;
-          border-radius: 24px;
+          padding: 12px 32px;
+          border-radius: 30px;
           cursor: pointer;
-          font-weight: bold;
+          font-weight: 700;
           font-size: 1rem;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          box-shadow: 0 4px 15px rgba(139, 69, 19, 0.3);
+          transition: transform 0.2s ease;
         ">Retry Loading</button>
       `;
       
