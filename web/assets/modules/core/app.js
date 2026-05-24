@@ -70,6 +70,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   GestureManager.init();
   initPopupSystem();
   FilterComponent.init();
+  // [MOVED] RandomButton needs to be ready as soon as the landing view is visible
+  RandomButton.init();
 
   // --- Phase 3: Secondary Components (Deferred to Idle) ---
   const initSecondary = () => {
@@ -78,7 +80,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     SyncUIManager.init();
     TooltipManager.init();
     ToolbarManager.init();
-    RandomButton.init();
 
     TTSBootstrap.init({
       onAutoNext: async () => {
@@ -95,13 +96,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     setTimeout(initSecondary, 200);
   }
 
+  const handleInitError = (err) => {
+    logger.error("Init", err);
+    const statusDiv = document.getElementById("status");
+    const splashLoader = document.querySelector(".splash-loader-box");
+    
+    if (statusDiv) {
+      statusDiv.innerHTML = `
+        <div style="color: #ff6b6b; margin-bottom: 20px;">
+          <b>Initialization Error</b><br/>
+          <span style="font-size: 0.85rem; opacity: 0.8;">${err.message || "Failed to load database."}</span>
+        </div>
+        <button id="btn-retry-init" style="
+          background: var(--primary-color);
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 20px;
+          cursor: pointer;
+          font-weight: bold;
+        ">Retry Loading</button>
+      `;
+      
+      const retryBtn = document.getElementById("btn-retry-init");
+      if (retryBtn) {
+        retryBtn.onclick = () => window.location.reload();
+      }
+    }
+    
+    if (splashLoader) splashLoader.style.display = "none";
+    
+    // [IMPORTANT] Don't hide splash screen automatically on error
+    // ViewManager.hideSplashScreen(); 
+  };
+
   try {
     console.time("📡 Service Init");
     const isReady = await SuttaService.init();
     console.timeEnd("📡 Service Init");
 
     if (!isReady) {
-        throw new Error("Failed to initialize Sutta Service (Database error)");
+        throw new Error("Sutta Service failed (DB error). Check internet.");
     }
 
     const navHeader = document.getElementById("nav-header");
@@ -132,13 +167,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         setTimeout(startBackgroundTasks, 500);
     }
   } catch (err) {
-    logger.error("Init", err);
-    const statusDiv = document.getElementById("status");
-    if (statusDiv) {
-      statusDiv.textContent = "Error loading database.";
-      statusDiv.style.color = "#ff6b6b";
-    }
-    ViewManager.hideSplashScreen();
+    handleInitError(err);
   }
 });
 

@@ -23,13 +23,16 @@ export const RandomButton = {
                         // ONLY switch view if we actually loaded something
                         ViewManager.switchView('reader');
                     } else {
-                        // [NEW] If loading failed (e.g. no internet/DB error), 
-                        // reset the button so they can try again or see an error.
+                        // [NEW] Provide feedback on failure
+                        console.warn("RandomButton: Load failed or returned no data.");
+                        alert("Unable to load a random sutta. Please check your connection or try again.");
+                        
                         landingRandomBtn.classList.remove("is-loading");
                         if (spinner) spinner.classList.add("hidden");
                     }
                 } catch (err) {
                     console.error("Landing Random Click Error:", err);
+                    alert("A critical error occurred while loading. The database might still be initializing.");
                     landingRandomBtn.classList.remove("is-loading");
                     if (spinner) spinner.classList.add("hidden");
                 }

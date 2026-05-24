@@ -53,28 +53,44 @@ export const DbStorageManager = {
         const query = `?v=${hash || Date.now()}`;
         
         const tryFetchFile = async (basePath) => {
+            const fullPathGz = `${basePath}${fileName}.gz${query}`;
+            const fullPathRaw = `${basePath}${fileName}${query}`;
+
             if ('DecompressionStream' in window) {
                 try {
-                    const response = await fetch(`${basePath}${fileName}.gz${query}`);
+                    logger.debug("Fetch", `Attempting GZ: ${fullPathGz}`);
+                    const response = await fetch(fullPathGz);
                     if (response.ok && !response.headers.get("content-type")?.includes("text/html")) {
                         return { response, isGz: true };
                     }
-                } catch (e) {}
+                } catch (e) {
+                    logger.warn("Fetch", `GZ failed: ${fullPathGz}`, e);
+                }
+            } else {
+                logger.info("Fetch", "DecompressionStream not supported, skipping .gz attempt.");
             }
 
             try {
-                const response = await fetch(`${basePath}${fileName}${query}`);
+                logger.debug("Fetch", `Attempting RAW: ${fullPathRaw}`);
+                const response = await fetch(fullPathRaw);
                 if (response.ok && !response.headers.get("content-type")?.includes("text/html")) {
                     return { response, isGz: false };
                 }
-            } catch (e) {}
+            } catch (e) {
+                logger.warn("Fetch", `RAW failed: ${fullPathRaw}`, e);
+            }
             return null;
         };
 
         let result = await tryFetchFile('assets/db/');
         if (!result) result = await tryFetchFile('/assets/db/');
+        if (!result && window.location.pathname.includes('index.html')) {
+            // Capacitor/Cordova fallback for file:// paths
+            const base = window.location.pathname.split('index.html')[0];
+            result = await tryFetchFile(base + 'assets/db/');
+        }
         
-        if (!result) throw new Error(`Could not fetch database file: ${fileName}`);
+        if (!result) throw new Error(`Could not fetch database file: ${fileName}. Check connection.`);
 
         const { response, isGz } = result;
         const total = parseInt(response.headers.get('content-length') || "0", 10);
@@ -91,10 +107,14 @@ export const DbStorageManager = {
         const reader = response.body.getReader();
         const { done, value } = await reader.read();
         
-        if (done) throw new Error("Empty response body");
+        if (done) throw new Error("Empty response body from server.");
 
         // Kiểm tra GZIP magic bytes [0x1F, 0x8B]
         let needsDecompression = (value[0] === 0x1f && value[1] === 0x8b);
+
+        if (needsDecompression && !('DecompressionStream' in window)) {
+             throw new Error("Browser lacks DecompressionStream for .gz file. Please provide uncompressed .db files on server.");
+        }
 
         const combinedStream = new ReadableStream({
             start(controller) { controller.enqueue(value); },

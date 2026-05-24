@@ -3,6 +3,9 @@ import { Factory } from '@journeyapps/wa-sqlite/src/sqlite-api.js';
 import { OPFSAnyContextVFS } from '@journeyapps/wa-sqlite/src/examples/OPFSAnyContextVFS.js';
 import SQLiteESMFactory from '@journeyapps/wa-sqlite/dist/wa-sqlite-async.mjs'; 
 import * as SQLiteConstants from '@journeyapps/wa-sqlite/src/sqlite-constants.js';
+import { getLogger } from 'utils/logger.js';
+
+const logger = getLogger("SQLiteHelper");
 
 const wasmUrlAsync = new URL('@journeyapps/wa-sqlite/dist/wa-sqlite-async.wasm?url', import.meta.url).href;
 
@@ -35,10 +38,32 @@ export async function getSharedSqlite() {
         });
         const sqlite = Factory(sqliteModule);
         
-        // Tạo một VFS chung cho toàn bộ App sử dụng OPFS (Origin Private File System)
-        // Thay vì IndexedDB (chậm hơn cho random read lớn), ta dùng OPFSAnyContextVFS hỗ trợ mọi luồng.
-        const vfs = new OPFSAnyContextVFS("RS_Persistent_Storage", sqliteModule);
-        await vfs.isReady(); // QUAN TRỌNG: Chờ VFS sẵn sàng trước khi register
+        // --- VFS Selection Logic ---
+        let vfs;
+        const useOPFS = typeof StorageManager !== 'undefined' && 
+                        navigator.storage && 
+                        navigator.storage.getDirectory;
+
+        if (useOPFS) {
+            try {
+                logger.info("VFS", "Attempting OPFS initialization...");
+                vfs = new OPFSAnyContextVFS("RS_Persistent_Storage", sqliteModule);
+                await vfs.isReady();
+                logger.info("VFS", "✅ OPFS initialized.");
+            } catch (e) {
+                logger.warn("VFS", "OPFS failed, falling back to IndexedDB", e);
+                vfs = null;
+            }
+        }
+
+        if (!vfs) {
+            logger.info("VFS", "Initializing IndexedDB fallback (IDBBatchAtomicVFS)...");
+            // Dynamic import to keep main bundle small
+            const { IDBBatchAtomicVFS } = await import('@journeyapps/wa-sqlite/src/examples/IDBBatchAtomicVFS.js');
+            vfs = new IDBBatchAtomicVFS("RS_Persistent_Storage_IDB");
+            await vfs.isReady();
+            logger.info("VFS", "✅ IndexedDB VFS initialized.");
+        }
         
         sqlite.vfs_register(vfs, true); 
 
