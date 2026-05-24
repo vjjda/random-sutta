@@ -124,15 +124,25 @@ def update_altstore_source(version_tag: str, date_str: str = None) -> bool:
             "localizedDescription": "A lean, fast, and beautiful Sutta reader for PWA and Mobile.",
             "iconURL": ICON_URL,
             "tintColor": "#01579b", # [NEW] Branding
+            "appPermissions": {
+                "entitlements": [
+                    "get-task-allow"
+                ]
+            },
             "versions": [new_version]
         }
         source["apps"].append(app_entry)
 
+    # Ensure existing app_entry also has appPermissions if it's missing or using old format
+    if "appPermissions" not in app_entry:
+        app_entry["appPermissions"] = {
+            "entitlements": [
+                "get-task-allow"
+            ]
+        }
     # [NEW] Remove legacy permissions if present
     if "permissions" in app_entry:
         del app_entry["permissions"]
-    if "appPermissions" in app_entry:
-        del app_entry["appPermissions"]
 
     try:
         for path in target_paths:
