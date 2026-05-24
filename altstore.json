@@ -18,11 +18,9 @@
           "size": 110000000
         }
       ],
-      "permissions": {
+      "appPermissions": {
         "entitlements": [
-          {
-            "name": "get-task-allow"
-          }
+          "get-task-allow"
         ]
       },
       "tintColor": "#01579b"
