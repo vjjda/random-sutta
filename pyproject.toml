@@ -1,6 +1,6 @@
 [project]
 name = "random-sutta"
-version = "2026.144.1115"
+version = "2026.144.1135"
 description = "A fast, focus-oriented reader for Early Buddhist Texts (EBT)"
 authors = [
     { name = "Vijjo" }
