@@ -149,8 +149,9 @@ export default defineConfig(({ mode }) => {
                     background_color: '#fdfbf7',
                     display: 'standalone', 
                     orientation: 'portrait',
-                    start_url: base + '?utm_source=pwa', 
-                    scope: base,
+                    // [FIX] Always force start at root, avoid saving current query params into the home screen icon
+                    start_url: isProd ? '/random-sutta/' : '/', 
+                    scope: isProd ? '/random-sutta/' : '/',
                     icons: [
                         { 
                             src: 'assets/icons/web-app-manifest-192x192.png', 
