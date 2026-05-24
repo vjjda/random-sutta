@@ -56,6 +56,7 @@ export const DbStorageManager = {
             const fullPathGz = `${basePath}${fileName}.gz${query}`;
             const fullPathRaw = `${basePath}${fileName}${query}`;
 
+            // 1. Try GZ first if supported
             if ('DecompressionStream' in window) {
                 try {
                     logger.debug("Fetch", `Attempting GZ: ${fullPathGz}`);
@@ -63,34 +64,30 @@ export const DbStorageManager = {
                     if (response.ok && !response.headers.get("content-type")?.includes("text/html")) {
                         return { response, isGz: true };
                     }
-                } catch (e) {
-                    logger.warn("Fetch", `GZ failed: ${fullPathGz}`, e);
-                }
-            } else {
-                logger.info("Fetch", "DecompressionStream not supported, skipping .gz attempt.");
+                } catch (e) {}
             }
 
+            // 2. Try RAW as fallback
             try {
                 logger.debug("Fetch", `Attempting RAW: ${fullPathRaw}`);
                 const response = await fetch(fullPathRaw);
                 if (response.ok && !response.headers.get("content-type")?.includes("text/html")) {
                     return { response, isGz: false };
                 }
-            } catch (e) {
-                logger.warn("Fetch", `RAW failed: ${fullPathRaw}`, e);
-            }
+            } catch (e) {}
             return null;
         };
 
         let result = await tryFetchFile('assets/db/');
         if (!result) result = await tryFetchFile('/assets/db/');
+        
+        // [NATIVE FIX] On Capacitor, sometimes paths are tricky
         if (!result && window.location.pathname.includes('index.html')) {
-            // Capacitor/Cordova fallback for file:// paths
             const base = window.location.pathname.split('index.html')[0];
             result = await tryFetchFile(base + 'assets/db/');
         }
         
-        if (!result) throw new Error(`Could not fetch database file: ${fileName}. Check connection.`);
+        if (!result) throw new Error(`Could not fetch database file: ${fileName}. Please check your internet connection.`);
 
         const { response, isGz } = result;
         const total = parseInt(response.headers.get('content-length') || "0", 10);
@@ -110,10 +107,11 @@ export const DbStorageManager = {
         if (done) throw new Error("Empty response body from server.");
 
         // Kiểm tra GZIP magic bytes [0x1F, 0x8B]
+        // [IMPORTANT] Even if isGz is false from URL, the content might be GZIPed by server/proxy
         let needsDecompression = (value[0] === 0x1f && value[1] === 0x8b);
 
         if (needsDecompression && !('DecompressionStream' in window)) {
-             throw new Error("Browser lacks DecompressionStream for .gz file. Please provide uncompressed .db files on server.");
+             throw new Error("Your browser does not support GZIP decompression. Please update iOS or use a modern browser.");
         }
 
         const combinedStream = new ReadableStream({
@@ -126,7 +124,7 @@ export const DbStorageManager = {
         });
 
         let finalStream = combinedStream.pipeThrough(progressStream);
-        if (needsDecompression && isGz) {
+        if (needsDecompression) {
             finalStream = finalStream.pipeThrough(new DecompressionStream('gzip'));
         }
 

@@ -48,12 +48,11 @@ def _compress_db_task(db_file: Path, dist_dir: Path) -> str:
             with gzip.GzipFile(gz_path, "wb", mtime=0) as f_out:
                 shutil.copyfileobj(f_in, f_out)
         
-        # [FIX] DO NOT remove raw .db. 
-        # Older iOS (< 16.4) lacks DecompressionStream and needs the raw .db.
-        # if target_path.exists():
-        #     os.remove(target_path)
+        # [RESTORED] Remove raw .db to save space in the IPA/App bundle
+        if target_path.exists():
+            os.remove(target_path)
             
-        return f"Compressed: {db_file.name} (Kept raw)"
+        return f"Compressed: {db_file.name}"
     except Exception as e:
         return f"Failed {db_file.name}: {e}"
 

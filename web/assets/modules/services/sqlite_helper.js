@@ -39,19 +39,13 @@ export async function getSharedSqlite() {
         
         // --- VFS Selection Logic ---
         let vfs;
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        
         const hasOPFS = typeof StorageManager !== 'undefined' && 
                         navigator.storage && 
                         navigator.storage.getDirectory;
 
-        // [STRATEGY] On iOS/Safari, OPFS Access Handles (needed for performance) 
-        // were only added in 16.4 and can still be buggy in workers.
-        // IndexedDB is generally more stable for PWA use cases on Safari.
-        const preferIDB = isIOS;
-
-        if (hasOPFS && !preferIDB) {
+        // [STRATEGY] Try OPFS first for performance. 
+        // It's supported on iOS 16.4+ and most modern browsers.
+        if (hasOPFS) {
             try {
                 logger.info("VFS", "Attempting OPFS initialization...");
                 const { OPFSAnyContextVFS } = await import('@journeyapps/wa-sqlite/src/examples/OPFSAnyContextVFS.js');
@@ -64,16 +58,16 @@ export async function getSharedSqlite() {
             }
         }
 
+        // [FALLBACK] IndexedDB for older iOS or if OPFS is buggy
         if (!vfs) {
             try {
-                logger.info("VFS", `Initializing IndexedDB fallback (IDBBatchAtomicVFS). PreferIDB=${preferIDB}`);
+                logger.info("VFS", "Initializing IndexedDB fallback (IDBBatchAtomicVFS)...");
                 const { IDBBatchAtomicVFS } = await import('@journeyapps/wa-sqlite/src/examples/IDBBatchAtomicVFS.js');
                 vfs = new IDBBatchAtomicVFS("RS_Persistent_Storage_IDB");
                 await vfs.isReady();
                 logger.info("VFS", "✅ IndexedDB VFS initialized.");
             } catch (e) {
                 logger.error("VFS", "Critical: Failed to initialize any persistent VFS", e);
-                // Fallback to Memory if all else fails
                 const { MemoryVFS } = await import('@journeyapps/wa-sqlite/src/examples/MemoryVFS.js');
                 vfs = new MemoryVFS();
                 logger.warn("VFS", "⚠️ Using MemoryVFS (Non-persistent fallback)");
