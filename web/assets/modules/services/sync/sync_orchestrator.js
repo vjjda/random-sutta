@@ -73,14 +73,64 @@ export const SyncOrchestrator = {
         try {
             const legacyRes = await GithubSync.downloadData("sync.json");
             if (legacyRes) {
-                logger.info("Legacy", "Found sync.json on GitHub, preparing to delete...");
-                alert("Định dạng đồng bộ cũ (sync.json) không còn được hỗ trợ. Dữ liệu cũ trên đám mây sẽ bị xóa để chuyển sang định dạng mới gọn gàng hơn.");
-                await GithubSync.deleteFile("sync.json", legacyRes.sha, "Remove legacy sync.json");
-                logger.info("Legacy", "Deleted old sync.json from cloud");
+                logger.info("Legacy", "Found sync.json on GitHub. Migrating data...");
+                alert("Hệ thống đang chuyển đổi định dạng đồng bộ (từ 1 file sang nhiều file gọn gàng hơn). Vui lòng đợi trong giây lát...");
+                
+                // 1. Unpack legacy data and save to localStorage
+                const legacyData = legacyRes.data;
+                const payload = legacyData.payload || legacyData;
+                
+                Object.entries(payload).forEach(([key, value]) => {
+                    if (this.SETTING_KEYS.includes(key) || key === "sutta_bookmarks" || key === "sutta_history") {
+                         // Fallback migrations for bookmarks and history
+                         if (key === "sutta_bookmarks") {
+                            let converted = {};
+                            if (Array.isArray(value)) {
+                                value.forEach(b => {
+                                    const uid = b.uid || b.id;
+                                    if (uid) converted[uid] = (b.status !== false) ? Math.abs(b.timestamp || Date.now()) : -Math.abs(b.timestamp || Date.now());
+                                });
+                            } else {
+                                Object.entries(value).forEach(([uid, item]) => {
+                                     if (typeof item === 'object') {
+                                         converted[uid] = (item.status !== false) ? Math.abs(item.timestamp || 0) : -Math.abs(item.timestamp || 0);
+                                     } else {
+                                         converted[uid] = item; // Already a number
+                                     }
+                                });
+                            }
+                            localStorage.setItem(key, JSON.stringify(converted));
+                         } else if (key === "sutta_history") {
+                            let converted = {};
+                            Object.entries(value).forEach(([uid, item]) => {
+                                const level = Array.isArray(item) ? item[0] : (item.level || 0);
+                                const ts = Array.isArray(item) ? item[1] : (item.timestamp || 0);
+                                converted[uid] = [level, ts];
+                            });
+                            localStorage.setItem(key, JSON.stringify(converted));
+                         } else {
+                            const stringValue = typeof value === 'object' ? JSON.stringify(value) : value;
+                            localStorage.setItem(key, stringValue);
+                         }
+                    }
+                });
+
+                if (legacyData.timestamp) {
+                    localStorage.setItem("sync_local_update_timestamp", legacyData.timestamp.toString());
+                }
+
+                // 2. Force push the newly unpacked data into the new multi-file structure
+                logger.info("Legacy", "Pushing migrated data to new format...");
+                await this.forcePush();
+
+                // 3. Delete the legacy file
+                logger.info("Legacy", "Deleting legacy sync.json...");
+                await GithubSync.deleteFile("sync.json", legacyRes.sha, "Remove legacy sync.json after migration");
+                logger.info("Legacy", "Migration complete!");
             }
         } catch (e) {
-            // Ignore if file doesn't exist
-            logger.info("Legacy", "No legacy sync.json found on cloud.");
+            // Ignore if file doesn't exist or other network error during this check
+            logger.info("Legacy", "No legacy sync.json found on cloud or failed to check.");
         }
     },
 
