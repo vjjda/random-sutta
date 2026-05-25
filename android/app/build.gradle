@@ -7,8 +7,8 @@ android {
         applicationId "com.randomsutta.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1001260595
-        versionName "2026.145.595"
+        versionCode 1001260740
+        versionName "2026.145.740"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
