@@ -17,14 +17,16 @@ export const SyncDataPacker = {
     },
 
     // A fallback list of specific legacy keys if they don't follow prefixes strictly
-    KNOWN_KEYS: ["tts_auto_next", "tts_playback_mode", "tts_active_engine", "tts_rate", "tts_pitch", "tts_voice_uri"],
+    KNOWN_KEYS: ["tts_auto_next", "tts_playback_mode", "tts_rate", "tts_pitch", "tts_voice_uri"],
 
     // Keys that might match the prefix but are purely local caches or ephemeral state
     IGNORED_KEYS: [
         "tts_gcloud_voices_list_v4", 
         "tts_gcloud_voices_ts_v4",
         "tts_gcloud_voices_list_v3",
-        "tts_gcloud_voices_ts_v3"
+        "tts_gcloud_voices_ts_v3",
+        "tts_active_engine",
+        "tts_gcloud_key"
     ],
 
     packData() {
