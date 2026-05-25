@@ -17,9 +17,15 @@ export const SyncDataPacker = {
     },
 
     // A fallback list of specific legacy keys if they don't follow prefixes strictly
-    // Or we just scan localStorage for anything matching prefixes.
-    // For safety during migration, we explicitly track known keys to migrate old data correctly.
     KNOWN_KEYS: ["tts_auto_next", "tts_playback_mode", "tts_active_engine", "tts_rate", "tts_pitch", "tts_voice_uri"],
+
+    // Keys that might match the prefix but are purely local caches or ephemeral state
+    IGNORED_KEYS: [
+        "tts_gcloud_voices_list_v4", 
+        "tts_gcloud_voices_ts_v4",
+        "tts_gcloud_voices_list_v3",
+        "tts_gcloud_voices_ts_v3"
+    ],
 
     packData() {
         const settings = {};
@@ -27,7 +33,7 @@ export const SyncDataPacker = {
         // Find all localStorage items matching our prefixes
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (!key) continue;
+            if (!key || this.IGNORED_KEYS.includes(key)) continue;
             
             for (const [prefix, groupName] of Object.entries(this.SETTING_PREFIXES)) {
                 if (key.startsWith(prefix) || this.KNOWN_KEYS.includes(key)) {
