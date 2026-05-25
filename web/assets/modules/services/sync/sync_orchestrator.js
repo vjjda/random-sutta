@@ -63,6 +63,51 @@ export const SyncOrchestrator = {
         }
     },
 
+    _showMigrationToast(message, isCompleted = false) {
+        let toast = document.getElementById("sync-migration-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "sync-migration-toast";
+            Object.assign(toast.style, {
+                position: "fixed",
+                bottom: "20px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                backgroundColor: "var(--bg-card, #fff)",
+                color: "var(--text-primary, #000)",
+                padding: "16px 24px",
+                borderRadius: "12px",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+                zIndex: "9999",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                fontWeight: "500",
+                fontSize: "0.95rem",
+                transition: "opacity 0.3s ease, bottom 0.3s ease"
+            });
+            document.body.appendChild(toast);
+        }
+        
+        if (isCompleted) {
+            toast.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color, #4CAF50)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ${message}`;
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                toast.style.bottom = "10px";
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        } else {
+            toast.innerHTML = `<div style="width: 20px; height: 20px; border: 3px solid var(--border-color, #eee); border-top: 3px solid var(--primary-color, #2196F3); border-radius: 50%; animation: sync-spin 1s linear infinite;"></div> ${message}`;
+            
+            if (!document.getElementById("sync-spinner-style")) {
+                const style = document.createElement("style");
+                style.id = "sync-spinner-style";
+                style.innerHTML = "@keyframes sync-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
+                document.head.appendChild(style);
+            }
+        }
+    },
+
     async _checkAndCleanLegacy() {
         const legacySha = localStorage.getItem("sync_github_sha");
         if (legacySha) {
@@ -74,7 +119,7 @@ export const SyncOrchestrator = {
             const legacyRes = await GithubSync.downloadData("sync.json");
             if (legacyRes) {
                 logger.info("Legacy", "Found sync.json on GitHub. Migrating data...");
-                alert("Hệ thống đang chuyển đổi định dạng đồng bộ (từ 1 file sang nhiều file gọn gàng hơn). Vui lòng đợi trong giây lát...");
+                this._showMigrationToast("Migrating sync format. Please wait...", false);
                 
                 // 1. Unpack legacy data and save to localStorage
                 const legacyData = legacyRes.data;
@@ -127,6 +172,7 @@ export const SyncOrchestrator = {
                 logger.info("Legacy", "Deleting legacy sync.json...");
                 await GithubSync.deleteFile("sync.json", legacyRes.sha, "Remove legacy sync.json after migration");
                 logger.info("Legacy", "Migration complete!");
+                this._showMigrationToast("Migration completed successfully!", true);
             }
         } catch (e) {
             // Ignore if file doesn't exist or other network error during this check
