@@ -1,0 +1,45 @@
+/* Path: web/assets/css/components/_sync_toast.css */
+
+.sync-migration-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bg-card, #ffffff);
+    color: var(--text-primary, #000000);
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: opacity 0.3s ease, bottom 0.3s ease;
+}
+
+.sync-migration-toast.hide {
+    opacity: 0;
+    bottom: 10px;
+}
+
+.sync-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--border-color, #eeeeee);
+    border-top: 3px solid var(--primary-color, #2196F3);
+    border-radius: 50%;
+    animation: sync-spin 1s linear infinite;
+}
+
+@keyframes sync-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.sync-success-icon {
+    width: 24px;
+    height: 24px;
+    stroke: var(--primary-color, #4CAF50);
+}

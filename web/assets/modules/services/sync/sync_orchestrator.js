@@ -68,43 +68,21 @@ export const SyncOrchestrator = {
         if (!toast) {
             toast = document.createElement("div");
             toast.id = "sync-migration-toast";
-            Object.assign(toast.style, {
-                position: "fixed",
-                bottom: "20px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                backgroundColor: "var(--bg-card, #fff)",
-                color: "var(--text-primary, #000)",
-                padding: "16px 24px",
-                borderRadius: "12px",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
-                zIndex: "9999",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                fontWeight: "500",
-                fontSize: "0.95rem",
-                transition: "opacity 0.3s ease, bottom 0.3s ease"
-            });
+            toast.className = "sync-migration-toast";
             document.body.appendChild(toast);
         }
         
+        // Ensure it's visible if reused
+        toast.classList.remove("hide");
+        
         if (isCompleted) {
-            toast.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color, #4CAF50)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ${message}`;
+            toast.innerHTML = `<svg class="sync-success-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ${message}`;
             setTimeout(() => {
-                toast.style.opacity = "0";
-                toast.style.bottom = "10px";
+                toast.classList.add("hide");
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         } else {
-            toast.innerHTML = `<div style="width: 20px; height: 20px; border: 3px solid var(--border-color, #eee); border-top: 3px solid var(--primary-color, #2196F3); border-radius: 50%; animation: sync-spin 1s linear infinite;"></div> ${message}`;
-            
-            if (!document.getElementById("sync-spinner-style")) {
-                const style = document.createElement("style");
-                style.id = "sync-spinner-style";
-                style.innerHTML = "@keyframes sync-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }";
-                document.head.appendChild(style);
-            }
+            toast.innerHTML = `<div class="sync-spinner"></div> ${message}`;
         }
     },
 
