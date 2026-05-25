@@ -3,7 +3,6 @@ import { getLogger } from "utils/logger.js";
 import { GithubAuthManager } from "services/sync/github_auth_manager.js";
 
 const logger = getLogger("GithubSync");
-const FILE_PATH = "sync.json";
 
 export const GithubSync = {
     /**
@@ -40,7 +39,7 @@ export const GithubSync = {
         return response;
     },
 
-    async downloadData(filePath = FILE_PATH) {
+    async downloadData(filePath) {
         try {
             logger.info("Download", `Fetching ${filePath}...`);
             const response = await this._request("GET", `/contents/${filePath}?cache_bust=${Date.now()}`);
@@ -77,49 +76,65 @@ export const GithubSync = {
     },
 
     /**
-     * Advanced Upload using Git Data API for clean commit history.
-     * Logic: Get Main Ref -> Create Blob -> Create Tree (relative to old tree) -> Create Commit -> Update Ref.
+     * Delete a file from GitHub
      */
-    async uploadData(payload, currentSha = null, filePath = FILE_PATH) {
+    async deleteFile(filePath, sha, message = `Delete ${filePath}`) {
+        try {
+            logger.info("Delete", `Deleting ${filePath}...`);
+            const response = await this._request("DELETE", `/contents/${filePath}`, {
+                message: message,
+                sha: sha
+            });
+            return response.ok;
+        } catch (error) {
+            logger.error("Delete", error);
+            return false;
+        }
+    },
+
+    /**
+     * Upload multiple files in a single Git commit using the Data API.
+     * files: Array of objects { path, content }
+     */
+    async uploadMultipleFiles(files, commitMessage = "Sync: Update multiple files") {
         try {
             const deviceId = GithubAuthManager.getDeviceId();
-            logger.info("Upload", `Uploading ${filePath} using Data API (Device: ${deviceId})...`);
-            
-            const contentString = typeof payload === "string" ? payload : this._stringifyCompact(payload);
+            const fullMessage = `${commitMessage} [${deviceId}]`;
+            logger.info("Upload", `Uploading ${files.length} files using Data API (Device: ${deviceId})...`);
             
             // 1. Get current branch reference (main)
             const refRes = await this._request("GET", "/git/refs/heads/main");
             const refData = await refRes.json();
             const lastCommitSha = refData.object.sha;
 
-            // 2. Create a new Blob
-            const blobRes = await this._request("POST", "/git/blobs", {
-                content: contentString,
-                encoding: "utf-8"
-            });
-            const blobData = await blobRes.json();
-            const newBlobSha = blobData.sha;
+            // 2. Create Blobs for all files
+            const treeItems = [];
+            for (const file of files) {
+                const contentString = typeof file.content === "string" ? file.content : this._stringifyCompact(file.content);
+                const blobRes = await this._request("POST", "/git/blobs", {
+                    content: contentString,
+                    encoding: "utf-8"
+                });
+                const blobData = await blobRes.json();
+                treeItems.push({
+                    path: file.path,
+                    mode: "100644",
+                    type: "blob",
+                    sha: blobData.sha
+                });
+            }
 
-            // 3. Create a new Tree
-            // This replaces the file at 'filePath' with the new blob, basing it on the last commit's tree
+            // 3. Create a new Tree based on the last commit
             const treeRes = await this._request("POST", "/git/trees", {
                 base_tree: lastCommitSha,
-                tree: [
-                    {
-                        path: filePath,
-                        mode: "100644",
-                        type: "blob",
-                        sha: newBlobSha
-                    }
-                ]
+                tree: treeItems
             });
             const treeData = await treeRes.json();
             const newTreeSha = treeData.sha;
 
             // 4. Create the Commit
-            const commitMessage = `Sync: Update ${filePath} [${deviceId}]`;
             const commitRes = await this._request("POST", "/git/commits", {
-                message: commitMessage,
+                message: fullMessage,
                 tree: newTreeSha,
                 parents: [lastCommitSha]
             });
@@ -127,8 +142,6 @@ export const GithubSync = {
             const newCommitSha = commitData.sha;
 
             // 5. Update the Reference (Main branch)
-            // 'force: true' handles the case where someone else pushed in the meantime (Data API is low level)
-            // However, we rely on our high-level Sha checks in SyncOrchestrator to avoid losing data.
             await this._request("PATCH", "/git/refs/heads/main", {
                 sha: newCommitSha,
                 force: true 
@@ -136,12 +149,33 @@ export const GithubSync = {
 
             logger.info("Upload", "Data API Success.");
             
-            // Return the SHA of the FILE (not the commit) to stay compatible with existing logic
-            // We need to fetch the file info again to get the NEW sha of the file itself
-            const fileRes = await this._request("GET", `/contents/${filePath}`);
-            const fileData = await fileRes.json();
-            return fileData.sha;
+            // Return new SHAs for the updated files by fetching the new tree
+            const newTreeRes = await this._request("GET", `/git/trees/${newTreeSha}?recursive=1`);
+            const newTreeData = await newTreeRes.json();
+            
+            const newShas = {};
+            for (const file of files) {
+                const node = newTreeData.tree.find(t => t.path === file.path);
+                if (node) {
+                    newShas[file.path] = node.sha;
+                }
+            }
+            return newShas;
 
+        } catch (error) {
+            logger.error("Upload Multiple", error);
+            throw error;
+        }
+    },
+
+    /**
+     * Advanced Upload using Git Data API for clean commit history.
+     * Logic: Get Main Ref -> Create Blob -> Create Tree (relative to old tree) -> Create Commit -> Update Ref.
+     */
+    async uploadData(payload, currentSha = null, filePath) {
+        try {
+            const shas = await this.uploadMultipleFiles([{ path: filePath, content: payload }], `Sync: Update ${filePath}`);
+            return shas[filePath];
         } catch (error) {
             logger.error("Upload Data API", error);
             throw error;

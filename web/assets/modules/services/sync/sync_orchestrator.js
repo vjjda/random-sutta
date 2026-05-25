@@ -6,9 +6,16 @@ import { SyncUnificationUI } from "ui/managers/sync_unification_ui.js";
 
 const logger = getLogger("SyncOrchestrator");
 
+const FILES = {
+    SETTINGS: "sync/settings.json",
+    BOOKMARKS: "sync/bookmarks.json",
+    HISTORY_ACTIVE: "sync/history_active.json",
+    HISTORY_MASTERED: "sync/history_mastered.json"
+};
+
 export const SyncOrchestrator = {
-    SYNC_KEYS: ["sutta_bookmarks", "sutta_history", "tts_auto_next", "tts_playback_mode", "tts_active_engine", "tts_rate", "tts_pitch", "tts_voice_uri"],
-    DEBOUNCE_MS: 30 * 60 * 1000, // 30 minutes debounce for cleaner history
+    SETTING_KEYS: ["tts_auto_next", "tts_playback_mode", "tts_active_engine", "tts_rate", "tts_pitch", "tts_voice_uri"],
+    DEBOUNCE_MS: 30 * 60 * 1000, // 30 minutes debounce
     HEARTBEAT_MS: 30 * 60 * 1000, // 30 minutes heartbeat
     debounceTimer: null,
     isSyncing: false,
@@ -16,17 +23,14 @@ export const SyncOrchestrator = {
     init() {
         GithubAuthManager.init();
         
-        // Ensure local update timestamp is initialized
         if (!localStorage.getItem("sync_local_update_timestamp")) {
             localStorage.setItem("sync_local_update_timestamp", "0");
         }
 
-        // Listen for Auth Success
         window.addEventListener("github-auth-success", () => {
             this.autoSync();
         });
 
-        // [NEW] Resume sync when coming back online
         window.addEventListener("online", () => {
             logger.info("Network", "Back online. Checking sync...");
             if (GithubAuthManager.isAuthenticated()) {
@@ -34,7 +38,6 @@ export const SyncOrchestrator = {
             }
         });
 
-        // Listen for Local Changes
         window.addEventListener("local-data-changed", () => {
             localStorage.setItem("sync_local_update_timestamp", Date.now().toString());
             if (GithubAuthManager.isAuthenticated()) {
@@ -42,8 +45,6 @@ export const SyncOrchestrator = {
             }
         });
 
-        // [STRATEGY] Sync Unification on App Focus or Periodically
-        // This ensures that if you change data on another device, this device notices it
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible" && GithubAuthManager.isAuthenticated()) {
                 logger.info("Focus", "App became visible, checking for updates...");
@@ -51,23 +52,41 @@ export const SyncOrchestrator = {
             }
         });
 
-        // Heartbeat check periodically while open
         setInterval(() => {
             if (GithubAuthManager.isAuthenticated() && !this.isSyncing) {
                 this.autoSync();
             }
         }, this.HEARTBEAT_MS);
 
-        // Initial Sync if already authenticated
         if (GithubAuthManager.isAuthenticated()) {
             this.autoSync();
+        }
+    },
+
+    async _checkAndCleanLegacy() {
+        const legacySha = localStorage.getItem("sync_github_sha");
+        if (legacySha) {
+            logger.info("Legacy", "Found local legacy sync_github_sha, will clear it.");
+            localStorage.removeItem("sync_github_sha");
+        }
+        
+        try {
+            const legacyRes = await GithubSync.downloadData("sync.json");
+            if (legacyRes) {
+                logger.info("Legacy", "Found sync.json on GitHub, preparing to delete...");
+                alert("Định dạng đồng bộ cũ (sync.json) không còn được hỗ trợ. Dữ liệu cũ trên đám mây sẽ bị xóa để chuyển sang định dạng mới gọn gàng hơn.");
+                await GithubSync.deleteFile("sync.json", legacyRes.sha, "Remove legacy sync.json");
+                logger.info("Legacy", "Deleted old sync.json from cloud");
+            }
+        } catch (e) {
+            // Ignore if file doesn't exist
+            logger.info("Legacy", "No legacy sync.json found on cloud.");
         }
     },
 
     async autoSync() {
         if (this.isSyncing) return;
 
-        // [NEW] Connectivity Check
         if (!navigator.onLine) {
             logger.info("AutoSync", "Offline. Skipping sync.");
             return;
@@ -78,46 +97,65 @@ export const SyncOrchestrator = {
         logger.info("AutoSync", "Starting auto-sync...");
         
         try {
-            const cloudResult = await GithubSync.downloadData();
-            const localSha = localStorage.getItem("sync_github_sha");
+            await this._checkAndCleanLegacy();
+
+            const cloudDataMap = {};
+            const cloudShas = {};
+            let hasCloudData = false;
+
+            for (const f of Object.values(FILES)) {
+                const res = await GithubSync.downloadData(f);
+                if (res) {
+                    cloudDataMap[f] = res.data;
+                    cloudShas[f] = res.sha;
+                    hasCloudData = true;
+                }
+            }
+
             const localUpdateTimestamp = parseInt(localStorage.getItem("sync_local_update_timestamp") || "0", 10);
             const lastSyncTimestamp = parseInt(localStorage.getItem("sync_last_success_timestamp") || "0", 10);
 
-            if (cloudResult) {
-                const { data: cloudData, sha: cloudSha } = cloudResult;
+            if (hasCloudData) {
+                let cloudHasChanged = false;
+                for (const f of Object.values(FILES)) {
+                    const localSha = localStorage.getItem(`sync_sha_${f}`);
+                    if (cloudShas[f] !== localSha && cloudShas[f] !== undefined) {
+                        cloudHasChanged = true;
+                    }
+                }
                 
-                if (cloudSha === localSha) {
+                if (!cloudHasChanged) {
                     logger.info("AutoSync", "Cloud is up to date.");
                     if (localUpdateTimestamp > lastSyncTimestamp) {
                         logger.info("AutoSync", "Local changes detected, pushing to cloud.");
-                        await this._doPush(cloudSha);
+                        await this._doPush(this._getLocalShas());
                     }
                 } else {
                     logger.info("AutoSync", "Cloud has changed.");
                     if (localUpdateTimestamp > lastSyncTimestamp) {
                         logger.info("AutoSync", "Local has changed too. Triggering Unification UI.");
                         this.isSyncing = false; // Release lock for UI interaction
-                        const localData = this.packData();
-                        SyncUnificationUI.show(localData, cloudData, async (choice) => {
+                        const localDataMap = this.packData();
+                        SyncUnificationUI.show(localDataMap, cloudDataMap, async (choice) => {
                             this.isSyncing = true;
                             if (choice === 'merge') {
-                                await this.smartMerge(cloudData, cloudSha);
+                                await this.smartMerge(cloudDataMap, cloudShas);
                             } else if (choice === 'cloud') {
-                                this.unpackAndApply(cloudData);
-                                localStorage.setItem("sync_github_sha", cloudSha);
+                                this.unpackAndApply(cloudDataMap);
+                                this._saveShas(cloudShas);
                                 localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
                             } else if (choice === 'local') {
-                                await this._doPush(cloudSha);
+                                await this._doPush(this._getLocalShas());
                             } else if (choice === 'cancel') {
                                 logger.info("AutoSync", "User ignored unification choice.");
                             }
                             window.dispatchEvent(new CustomEvent("sync-end"));
                         });
-                        return; // Exit and wait for UI callback
+                        return; // Wait for callback
                     } else {
                         logger.info("AutoSync", "No local changes. Pulling from cloud.");
-                        this.unpackAndApply(cloudData);
-                        localStorage.setItem("sync_github_sha", cloudSha);
+                        this.unpackAndApply(cloudDataMap);
+                        this._saveShas(cloudShas);
                         localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
                     }
                 }
@@ -144,7 +182,6 @@ export const SyncOrchestrator = {
     async autoPush() {
         if (this.isSyncing) return;
 
-        // [NEW] Connectivity Check
         if (!navigator.onLine) {
             logger.info("AutoPush", "Offline. Skipping push.");
             return;
@@ -153,12 +190,10 @@ export const SyncOrchestrator = {
         this.isSyncing = true;
         window.dispatchEvent(new CustomEvent("sync-start"));
         try {
-            const localSha = localStorage.getItem("sync_github_sha");
-            await this._doPush(localSha);
+            await this._doPush(this._getLocalShas());
             window.dispatchEvent(new CustomEvent("sync-end"));
         } catch (e) {
             logger.error("AutoPush", e);
-            // If it's a conflict (409 from Github API), we should trigger autoSync to resolve it
             if (e.message.includes("409")) {
                  logger.warn("AutoPush", "Conflict detected during push. Triggering autoSync...");
                  this.isSyncing = false;
@@ -171,177 +206,205 @@ export const SyncOrchestrator = {
         }
     },
 
-    async _doPush(currentSha) {
-        const localData = this.packData();
-        const newSha = await GithubSync.uploadData(localData, currentSha);
-        localStorage.setItem("sync_github_sha", newSha);
-        localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
-        logger.info("_doPush", "Success");
+    _getLocalShas() {
+        const shas = {};
+        for (const f of Object.values(FILES)) {
+            const val = localStorage.getItem(`sync_sha_${f}`);
+            if (val) shas[f] = val;
+        }
+        return shas;
+    },
+
+    _saveShas(shas) {
+        for (const [f, sha] of Object.entries(shas)) {
+            if (sha) {
+                localStorage.setItem(`sync_sha_${f}`, sha);
+            }
+        }
+    },
+
+    async _doPush(currentShas) {
+        const localDataMap = this.packData();
+        const filesToUpload = [];
+
+        // Upload all parts that are necessary. With Data API we can just override tree.
+        for (const [f, content] of Object.entries(localDataMap)) {
+            filesToUpload.push({
+                path: f,
+                content: content
+            });
+        }
+
+        if (filesToUpload.length > 0) {
+            const newShas = await GithubSync.uploadMultipleFiles(filesToUpload, "Sync: Auto push updates");
+            this._saveShas(newShas);
+            localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
+            logger.info("_doPush", "Success");
+        }
     },
 
     packData() {
-        const data = {};
-        this.SYNC_KEYS.forEach(key => {
+        const settings = {};
+        this.SETTING_KEYS.forEach(key => {
             const value = localStorage.getItem(key);
             if (value !== null) {
-                try {
-                    data[key] = JSON.parse(value);
-                } catch {
-                    data[key] = value;
-                }
+                try { settings[key] = JSON.parse(value); } catch { settings[key] = value; }
             }
         });
-        return data;
-    },
 
-    unpackAndApply(cloudData) {
-        if (!cloudData) return;
-        
-        // [COMPAT] If cloud data is in legacy format with payload
-        const payload = cloudData.payload || cloudData;
+        const bookmarks = JSON.parse(localStorage.getItem("sutta_bookmarks") || "{}");
+        const history = JSON.parse(localStorage.getItem("sutta_history") || "{}");
 
-        Object.entries(payload).forEach(([key, value]) => {
-            // Only apply keys that we currently want to sync
-            if (!this.SYNC_KEYS.includes(key)) return;
+        const history_active = {};
+        const history_mastered = {};
 
-            const stringValue = typeof value === 'object' ? JSON.stringify(value) : value;
-            localStorage.setItem(key, stringValue);
+        Object.entries(history).forEach(([uid, val]) => {
+            // New strict format is Array: [level, timestamp]
+            const level = Array.isArray(val) ? val[0] : 0;
+            if (level >= 5) {
+                history_mastered[uid] = val;
+            } else {
+                history_active[uid] = val;
+            }
         });
 
-        // [COMPAT] Handle legacy timestamp
-        if (cloudData.timestamp) {
-            localStorage.setItem("sync_local_update_timestamp", cloudData.timestamp.toString());
+        return {
+            [FILES.SETTINGS]: settings,
+            [FILES.BOOKMARKS]: bookmarks,
+            [FILES.HISTORY_ACTIVE]: history_active,
+            [FILES.HISTORY_MASTERED]: history_mastered
+        };
+    },
+
+    unpackAndApply(cloudDataMap) {
+        if (!cloudDataMap) return;
+
+        if (cloudDataMap[FILES.SETTINGS]) {
+            Object.entries(cloudDataMap[FILES.SETTINGS]).forEach(([key, value]) => {
+                const stringValue = typeof value === 'object' ? JSON.stringify(value) : value;
+                localStorage.setItem(key, stringValue);
+            });
         }
-        
-        // Notify app to refresh UI
+
+        if (cloudDataMap[FILES.BOOKMARKS]) {
+            localStorage.setItem("sutta_bookmarks", JSON.stringify(cloudDataMap[FILES.BOOKMARKS]));
+        }
+
+        // Merge active and mastered history
+        const mergedHistory = {};
+        if (cloudDataMap[FILES.HISTORY_MASTERED]) {
+            Object.assign(mergedHistory, cloudDataMap[FILES.HISTORY_MASTERED]);
+        }
+        if (cloudDataMap[FILES.HISTORY_ACTIVE]) {
+            Object.assign(mergedHistory, cloudDataMap[FILES.HISTORY_ACTIVE]);
+        }
+        if (Object.keys(mergedHistory).length > 0) {
+            localStorage.setItem("sutta_history", JSON.stringify(mergedHistory));
+        }
+
         window.dispatchEvent(new CustomEvent("sync-data-applied"));
     },
 
-    async smartMerge(cloudData, cloudSha) {
-        if (!cloudData) return;
+    async smartMerge(cloudDataMap, cloudShas) {
+        const localDataMap = this.packData();
+        const mergedMap = {};
+
+        // Merge Settings (Local wins if conflict)
+        mergedMap[FILES.SETTINGS] = { ...(cloudDataMap[FILES.SETTINGS] || {}), ...localDataMap[FILES.SETTINGS] };
+
+        // Merge Bookmarks
+        const localBookmarks = localDataMap[FILES.BOOKMARKS] || {};
+        const cloudBookmarks = cloudDataMap[FILES.BOOKMARKS] || {};
+        const mergedBookmarks = { ...localBookmarks };
         
-        // [COMPAT] Handle legacy format
-        const cloudPayload = cloudData.payload || cloudData;
-        const localData = this.packData();
-        const mergedData = { ...localData };
-        
-        // Special logic for bookmarks (Merge by UID with Signed Timestamp)
-        if (cloudPayload.sutta_bookmarks) {
-            const localBookmarks = localData.sutta_bookmarks || {};
-            let cloudBookmarks = cloudPayload.sutta_bookmarks;
+        Object.keys(cloudBookmarks).forEach(uid => {
+            const cloudVal = cloudBookmarks[uid];
+            const cloudTs = Math.abs(cloudVal);
+            const localVal = mergedBookmarks[uid] || 0;
+            const localTs = Math.abs(localVal);
             
-            // [COMPAT] Migrate cloud data to Signed Timestamp format before merging
-            if (Array.isArray(cloudBookmarks)) {
-                const converted = {};
-                cloudBookmarks.forEach(b => {
-                    const uid = b.uid || b.id;
-                    if (uid) {
-                        const ts = b.timestamp || Date.now();
-                        const status = b.status !== undefined ? b.status : !b.deleted;
-                        converted[uid] = status ? Math.abs(ts) : -Math.abs(ts);
-                    }
-                });
-                cloudBookmarks = converted;
-            } else {
-                const converted = {};
-                Object.keys(cloudBookmarks).forEach(uid => {
-                    const item = cloudBookmarks[uid];
-                    if (typeof item === 'object' && item !== null) {
-                        const ts = item.timestamp || 0;
-                        const status = item.status !== undefined ? item.status : !item.deleted;
-                        converted[uid] = status ? Math.abs(ts) : -Math.abs(ts);
-                    } else if (typeof item === 'number') {
-                        converted[uid] = item;
-                    }
-                });
-                cloudBookmarks = converted;
+            if (!mergedBookmarks[uid] || cloudTs > localTs) {
+                mergedBookmarks[uid] = cloudVal;
             }
+        });
+        mergedMap[FILES.BOOKMARKS] = mergedBookmarks;
 
-            const mergedBookmarks = { ...localBookmarks };
-            Object.keys(cloudBookmarks).forEach(uid => {
-                const cloudVal = cloudBookmarks[uid];
-                const cloudTs = Math.abs(cloudVal);
-                
-                const localVal = mergedBookmarks[uid];
-                // Handle legacy local formats during merge just in case
-                let localTs = 0;
-                if (typeof localVal === 'number') {
-                    localTs = Math.abs(localVal);
-                } else if (typeof localVal === 'object' && localVal !== null) {
-                    localTs = localVal.timestamp || 0;
-                }
+        // Merge History
+        const localHistory = { ...(localDataMap[FILES.HISTORY_ACTIVE] || {}), ...(localDataMap[FILES.HISTORY_MASTERED] || {}) };
+        const cloudHistory = { ...(cloudDataMap[FILES.HISTORY_ACTIVE] || {}), ...(cloudDataMap[FILES.HISTORY_MASTERED] || {}) };
+        const mergedHistory = { ...localHistory };
 
-                if (!mergedBookmarks[uid] || cloudTs > localTs) {
-                    mergedBookmarks[uid] = cloudVal;
-                }
-            });
-            mergedData.sutta_bookmarks = mergedBookmarks;
-        }
+        Object.keys(cloudHistory).forEach(uid => {
+            const cloudItem = cloudHistory[uid];
+            const cloudLvl = Array.isArray(cloudItem) ? cloudItem[0] : 0;
+            const cloudTs = Array.isArray(cloudItem) ? cloudItem[1] : 0;
 
-        // Special logic for history (Object merge by ID with Format Migration)
-        if (cloudPayload.sutta_history && typeof cloudPayload.sutta_history === 'object') {
-            const localHistory = localData.sutta_history || {};
-            const cloudHistory = cloudPayload.sutta_history;
-            const mergedHistory = { ...localHistory };
-            
-            Object.keys(cloudHistory).forEach(uid => {
-                const cloudItem = cloudHistory[uid];
-                // Handle Cloud format (could be old object or new array)
-                const cloudLvl = Array.isArray(cloudItem) ? cloudItem[0] : cloudItem.level;
-                const cloudTs = Array.isArray(cloudItem) ? cloudItem[1] : (cloudItem.timestamp || 0);
+            const localItem = mergedHistory[uid];
+            const localTs = Array.isArray(localItem) ? localItem[1] : -1;
 
-                const localItem = mergedHistory[uid];
-                // Handle Local format
-                const localTs = Array.isArray(localItem) ? localItem[1] : (localItem ? (localItem.timestamp || 0) : -1);
-
-                if (!localItem || cloudTs > localTs) {
-                    // Always merge into the optimized Array format
-                    mergedHistory[uid] = [cloudLvl, cloudTs];
-                } else if (!Array.isArray(localItem)) {
-                    // Migration-on-the-fly: If local is still an object but newer than cloud, convert it to array
-                    const localLvl = localItem.level;
-                    mergedHistory[uid] = [localLvl, localTs];
-                }
-            });
-            mergedData.sutta_history = mergedHistory;
-        }
-
-        // For other keys, just take local (since we don't have timestamps per key)
-        // or take cloud if it didn't exist locally
-        Object.entries(cloudPayload).forEach(([key, value]) => {
-            if (key === "sutta_bookmarks" || key === "sutta_history") return;
-            if (mergedData[key] === undefined) {
-                mergedData[key] = value;
+            if (!localItem || cloudTs > localTs) {
+                mergedHistory[uid] = [cloudLvl, cloudTs];
             }
         });
 
-        // Apply back locally
+        // Split merged history back into active and mastered
+        mergedMap[FILES.HISTORY_ACTIVE] = {};
+        mergedMap[FILES.HISTORY_MASTERED] = {};
+        Object.entries(mergedHistory).forEach(([uid, val]) => {
+            if (val[0] >= 5) {
+                mergedMap[FILES.HISTORY_MASTERED][uid] = val;
+            } else {
+                mergedMap[FILES.HISTORY_ACTIVE][uid] = val;
+            }
+        });
+
+        // Apply locally
         const mergeTimestamp = Date.now();
-        this.unpackAndApply(mergedData);
+        this.unpackAndApply(mergedMap);
         localStorage.setItem("sync_local_update_timestamp", mergeTimestamp.toString());
         
-        // Push merged back to cloud
-        const newSha = await GithubSync.uploadData(mergedData, cloudSha);
-        localStorage.setItem("sync_github_sha", newSha);
+        // Push to cloud
+        const filesToUpload = [];
+        for (const [f, content] of Object.entries(mergedMap)) {
+            filesToUpload.push({ path: f, content: content });
+        }
+        const newShas = await GithubSync.uploadMultipleFiles(filesToUpload, "Sync: Smart Merge");
+        this._saveShas(newShas);
         localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
         logger.info("SmartMerge", "Done and pushed to cloud.");
     },
 
     async forcePush() {
         logger.info("ForcePush", "Overwriting cloud with local data...");
-        // Get cloud sha first to overwrite safely
-        const cloudResult = await GithubSync.downloadData();
-        const cloudSha = cloudResult ? cloudResult.sha : null;
-        await this._doPush(cloudSha);
+        const localDataMap = this.packData();
+        const filesToUpload = [];
+        for (const [f, content] of Object.entries(localDataMap)) {
+            filesToUpload.push({ path: f, content: content });
+        }
+        const newShas = await GithubSync.uploadMultipleFiles(filesToUpload, "Sync: Force Push");
+        this._saveShas(newShas);
+        localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
         logger.info("ForcePush", "Done");
     },
 
     async forcePull() {
         logger.info("ForcePull", "Overwriting local with cloud data...");
-        const cloudResult = await GithubSync.downloadData();
-        if (cloudResult) {
-            this.unpackAndApply(cloudResult.data);
-            localStorage.setItem("sync_github_sha", cloudResult.sha);
+        const cloudDataMap = {};
+        const cloudShas = {};
+        let hasCloudData = false;
+
+        for (const f of Object.values(FILES)) {
+            const res = await GithubSync.downloadData(f);
+            if (res) {
+                cloudDataMap[f] = res.data;
+                cloudShas[f] = res.sha;
+                hasCloudData = true;
+            }
+        }
+
+        if (hasCloudData) {
+            this.unpackAndApply(cloudDataMap);
+            this._saveShas(cloudShas);
             localStorage.setItem("sync_last_success_timestamp", Date.now().toString());
             logger.info("ForcePull", "Done");
         } else {
