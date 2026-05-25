@@ -28,7 +28,7 @@ export const TTSStateStore = {
             this.autoNextEnabled = (savedAutoNext === "true");
         }
         
-        const savedMode = localStorage.getItem("tts_playback_mode");
+        const savedMode = localStorage.getItem("tts_playback_mode") || "segment";
         if (savedMode) {
             this.playbackMode = savedMode;
         }

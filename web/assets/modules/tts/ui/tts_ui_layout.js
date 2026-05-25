@@ -4,7 +4,7 @@ export const TTSUILayout = {
         // ... (Giữ nguyên phần đầu: logic lấy biến settings) ...
         const savedAutoNext = localStorage.getItem("tts_auto_next");
         const isAutoNext = savedAutoNext === null ? true : (savedAutoNext === "true");
-        const savedMode = localStorage.getItem("tts_playback_mode");
+        const savedMode = localStorage.getItem("tts_playback_mode") || "segment";
         const isParagraph = savedMode ? (savedMode === "paragraph") : true; 
         const savedEngine = localStorage.getItem("tts_active_engine");
         const isGCloud = (savedEngine === "gcloud");
