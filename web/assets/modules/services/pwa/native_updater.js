@@ -1,5 +1,6 @@
 // Path: web/assets/modules/services/pwa/native_updater.js
 import { getLogger } from "utils/logger.js";
+import { AppConfig } from "core/app_config.js";
 
 const logger = getLogger("NativeUpdater");
 
@@ -9,7 +10,7 @@ const logger = getLogger("NativeUpdater");
  */
 export const NativeUpdater = {
     // URL to your version manifest on GitHub Pages
-    MANIFEST_URL: "https://vjjda.github.io/random-sutta/native_version.json",
+    MANIFEST_URL: `${AppConfig.REMOTE_BASE_URL}/native_version.json`,
 
     async init() {
         // Only run on native platforms (Android/iOS)
@@ -47,7 +48,10 @@ export const NativeUpdater = {
             
             // 2. Get current version from the plugin
             const current = await CapacitorUpdater.current();
-            const currentVersion = current.bundle?.version || "0.0.0";
+            
+            // [FIX] If no OTA bundle applied yet, fallback to the built-in version (__APP_VERSION__)
+            // This prevents re-downloading the same version as an OTA update immediately after install.
+            const currentVersion = current.bundle?.version || (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : "0.0.0");
             
             logger.info("Check", `Current: ${currentVersion}, Latest: ${manifest.version}`);
 

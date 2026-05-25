@@ -2,6 +2,7 @@
 import { getLogger } from 'utils/logger.js';
 import { importToPersistentStorage } from 'services/sqlite_helper.js';
 import { BlobCache } from 'services/blob_cache.js';
+import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("StorageManager");
 
@@ -95,6 +96,12 @@ export const DbStorageManager = {
         if (!result && window.location.pathname.includes('index.html')) {
             const base = window.location.pathname.split('index.html')[0];
             result = await tryFetchFile(base + 'assets/db/');
+        }
+
+        // [NATIVE FALLBACK] If still not found, fetch from remote server (essential for Lean OTA)
+        if (!result && window.Capacitor && window.Capacitor.isNativePlatform()) {
+            logger.info("Fetch", `Local file missing. Falling back to remote: ${AppConfig.REMOTE_BASE_URL}/assets/db/`);
+            result = await tryFetchFile(`${AppConfig.REMOTE_BASE_URL}/assets/db/`);
         }
         
         if (!result) throw new Error(`Could not fetch database file: ${fileName}. Please check your internet connection.`);

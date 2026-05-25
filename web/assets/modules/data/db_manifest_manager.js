@@ -1,6 +1,7 @@
 // Path: web/assets/modules/data/db_manifest_manager.js
 import { getLogger } from 'utils/logger.js';
 import { BlobCache } from 'services/blob_cache.js';
+import { AppConfig } from 'core/app_config.js';
 
 const logger = getLogger("ManifestManager");
 
@@ -60,9 +61,15 @@ export const DbManifestManager = {
         try {
             let data = await tryFetch('assets/db/db_manifest.json');
             if (!data) data = await tryFetch('/assets/db/db_manifest.json');
-            
-            if (data) {
-                const oldManifest = this.manifest;
+
+            // [NATIVE FALLBACK] Nếu không tìm thấy file local (thường xảy ra sau Lean OTA update)
+            // ta fetch trực tiếp từ server để có manifest và download DB mới.
+            if (!data && window.Capacitor && window.Capacitor.isNativePlatform()) {
+                logger.info("Refresh", "Local manifest missing. Falling back to remote...");
+                data = await tryFetch(`${AppConfig.REMOTE_BASE_URL}/assets/db/db_manifest.json`);
+            }
+
+            if (data) {                const oldManifest = this.manifest;
                 this.manifest = data;
                 await BlobCache.setBlob('db_manifest', new TextEncoder().encode(JSON.stringify(this.manifest)).buffer);
                 

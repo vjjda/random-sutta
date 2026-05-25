@@ -1,5 +1,8 @@
 // Path: web/assets/modules/core/app_config.js
 export const AppConfig = {
+    // URL của website chính thức (dùng làm fallback cho OTA và fetch database)
+    REMOTE_BASE_URL: "https://vjjda.github.io/random-sutta",
+    
     // ... (Giữ nguyên các config cũ)
     BUFFER_SIZE: 3, 
     INITIAL_PRELOAD_DELAY: 3000,
